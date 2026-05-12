@@ -197,10 +197,19 @@ export default function App() {
 
     // Submit to Google Form silently via hidden iframe
     try {
-      const formData = new URLSearchParams();
-      Object.keys(FIELD_MAP).forEach(key => {
-        formData.append(FIELD_MAP[key], form[key] || "");
-      });
+      // Prepare values — override any that don't match Google Form options
+      const validRoles = [
+        "Business Development Officer (Nurse)",
+        "Business Development Officer (Marketing)",
+        "Digital Marketing Executive",
+        "Software Developer (Frontend/Backend)",
+      ];
+      const submitValues = { ...form };
+      // If role doesn't match a Google Form option, append it to whyOrion instead
+      if (!validRoles.includes(submitValues.role)) {
+        submitValues.whyOrion = `[Applied as: ${submitValues.role}]\n\n${submitValues.whyOrion}`;
+        submitValues.role = ""; // leave blank so Google doesn't reject
+      }
 
       const url = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
 
@@ -219,7 +228,7 @@ export default function App() {
         const input = document.createElement("input");
         input.type = "hidden";
         input.name = FIELD_MAP[key];
-        input.value = form[key] || "";
+        input.value = submitValues[key] || "";
         formEl.appendChild(input);
       });
 
@@ -431,21 +440,20 @@ export default function App() {
                   <label style={labelStyle}>Highest Qualification <span style={requiredStar}>*</span></label>
                   <select style={{ ...inputStyle, cursor: "pointer" }} value={form.qualification} onChange={e => update("qualification", e.target.value)}>
                     <option value="">Select</option>
-                    <option>SSCE / WAEC</option>
-                    <option>OND / NCE</option>
+                    <option>SSCE/WAEC</option>
+                    <option>OND/NCE</option>
                     <option>HND</option>
-                    <option>BSc / B.Tech / BNSc</option>
-                    <option>MSc / MBA / MPH</option>
-                    <option>PhD / Doctorate</option>
+                    <option>BSc/B.Tech/BNSc</option>
+                    <option>MSc/MBA/MPH</option>
+                    <option>ASN/BSN</option>
                     <option>Professional Certification</option>
-                    <option>Other</option>
                   </select>
                 </div>
                 <div>
                   <label style={labelStyle}>Years of Relevant Experience <span style={requiredStar}>*</span></label>
                   <select style={{ ...inputStyle, cursor: "pointer" }} value={form.experience} onChange={e => update("experience", e.target.value)}>
                     <option value="">Select</option>
-                    <option>No experience (fresh graduate)</option>
+                    <option>No experience</option>
                     <option>Less than 1 year</option>
                     <option>1–2 years</option>
                     <option>3–5 years</option>
@@ -487,7 +495,7 @@ export default function App() {
                   <select style={{ ...inputStyle, cursor: "pointer" }} value={form.referral} onChange={e => update("referral", e.target.value)}>
                     <option value="">Select</option>
                     <option>Social media</option>
-                    <option>Friend / referral</option>
+                    <option>Friend/referral</option>
                     <option>Job board</option>
                     <option>Google search</option>
                     <option>Our website</option>
