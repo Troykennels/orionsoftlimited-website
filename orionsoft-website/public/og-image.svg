@@ -1,0 +1,30 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Orion Soft Limited - Software for Healthcare and Business">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(250 130) rotate(35) scale(1000 740)">
+      <stop stop-color="#073B4C"/>
+      <stop offset="0.44" stop-color="#050A12"/>
+      <stop offset="1" stop-color="#0B1221"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="140" y1="120" x2="920" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00C8FF"/>
+      <stop offset="0.55" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <path d="M0 470C240 420 390 530 610 486C840 440 905 280 1200 328V630H0V470Z" fill="#00C8FF" opacity="0.08"/>
+  <rect x="78" y="76" width="1044" height="478" rx="34" fill="#0F1A2E" opacity="0.72" stroke="rgba(255,255,255,0.12)"/>
+  <g transform="translate(132 132)">
+    <rect width="82" height="82" rx="22" fill="url(#accent)"/>
+    <path d="M27 45C27 33.954 35.954 25 47 25C58.046 25 67 33.954 67 45C67 56.046 58.046 65 47 65" fill="none" stroke="#050A12" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="44" cy="44" r="8" fill="#050A12"/>
+  </g>
+  <text x="236" y="166" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="800">Orion<tspan fill="#00C8FF">Soft</tspan> Limited</text>
+  <text x="132" y="290" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="900">Software for Healthcare</text>
+  <text x="132" y="372" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="900">and Business</text>
+  <text x="136" y="444" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="500">CareCore HMS, custom systems, APIs, dashboards, and support.</text>
+  <g transform="translate(136 486)">
+    <rect width="178" height="42" rx="10" fill="#00C8FF" opacity="0.14" stroke="#00C8FF" stroke-opacity="0.34"/>
+    <text x="20" y="28" fill="#7DD3FC" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Lagos, Nigeria</text>
+  </g>
+</svg>
