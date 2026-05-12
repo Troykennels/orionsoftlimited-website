@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'orionsoft_website.jsx']),
+  globalIgnores(['dist', 'orionsoft_website.jsx', 'orionsoft_careers (1).jsx']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

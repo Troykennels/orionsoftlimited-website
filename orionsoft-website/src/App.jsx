@@ -42,6 +42,63 @@ const COMPANY_RC = "9535128";
 const FORM_ENDPOINT = import.meta.env.VITE_ORIONSOFT_FORM_ENDPOINT || "";
 const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
+const CAREER_ROLES = [
+  {
+    title: "Business Development Officer",
+    type: "Sales",
+    location: "Hybrid / Remote",
+    color: C.accent,
+    desc: "Build relationships with healthcare and business clients, run product demos, follow up on leads, and help new customers understand Orion Soft solutions.",
+    requirements: [
+      "Experience in sales, marketing, healthcare operations, or client relations",
+      "Strong communication and follow-up skills",
+      "Comfortable presenting software products to decision makers",
+      "Able to work independently and report progress clearly",
+    ],
+    compensation: "Base plus performance incentives",
+  },
+  {
+    title: "Digital Marketing Executive",
+    type: "Marketing",
+    location: "Remote",
+    color: C.mint,
+    desc: "Manage content, campaigns, product education, and inbound lead generation across Orion Soft's digital channels.",
+    requirements: [
+      "Experience managing business social media or digital campaigns",
+      "Ability to create clear product content and short-form assets",
+      "Understanding of LinkedIn, search, email, and social growth",
+      "Portfolio or examples of previous marketing work",
+    ],
+    compensation: "Competitive based on experience",
+  },
+  {
+    title: "Software Developer",
+    type: "Engineering",
+    location: "Remote",
+    color: C.purple,
+    desc: "Help build, improve, and maintain Orion Soft products across frontend, backend, APIs, and product infrastructure.",
+    requirements: [
+      "Experience with React, APIs, databases, or backend development",
+      "Portfolio, GitHub, or examples of real projects",
+      "Ability to work with product requirements and ship reliably",
+      "Interest in healthcare, operations, automation, or AI is a plus",
+    ],
+    compensation: "Competitive based on skill level",
+  },
+  {
+    title: "General Application",
+    type: "Open",
+    location: "Flexible",
+    color: C.amber,
+    desc: "Do not see a perfect fit? Tell us what you can bring to Orion Soft and where you believe you can create value.",
+    requirements: [
+      "Clear evidence of skill, initiative, and professionalism",
+      "Strong written communication",
+      "Ability to learn quickly and work with a growing team",
+    ],
+    compensation: "Depends on role and experience",
+  },
+];
 
 const formRows = (data) => Object.entries(data)
   .filter(([, value]) => value !== undefined && value !== null && `${value}`.trim() !== "")
@@ -171,7 +228,7 @@ function Nav({ currentPage, setCurrentPage }) {
     { label: "Services", page: "home", anchor: "#services" },
     { label: "Pricing", page: "home", anchor: "#pricing" },
     { label: "About", page: "home", anchor: "#about" },
-    { label: "Client Access", page: "signup" },
+    { label: "Careers", page: "careers" },
     { label: "Feedback", page: "feedback" },
   ];
 
@@ -346,15 +403,6 @@ function Hero({ setCurrentPage }) {
               }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
                  onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
                 Get Started →
-              </button>
-              <button onClick={() => setCurrentPage("signup")} style={{
-                border: `1px solid rgba(45,212,191,0.32)`, color: C.mint,
-                padding: "15px 32px", borderRadius: 11, textDecoration: "none",
-                fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-                background: "rgba(45,212,191,0.06)", transition: "all 0.3s",
-              }} onMouseEnter={e => { e.target.style.background = "rgba(45,212,191,0.12)"; }}
-                 onMouseLeave={e => { e.target.style.background = "rgba(45,212,191,0.06)"; }}>
-                Client Access
               </button>
               <a href="#products" style={{
                 border: `1px solid rgba(0,200,255,0.25)`, color: C.accent,
@@ -1220,19 +1268,17 @@ function OnboardingPage({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // CTA BANNER
 // ═══════════════════════════════════════
-function SignupPage({ setCurrentPage }) {
+function CareersPage({ setCurrentPage }) {
+  const [selectedRole, setSelectedRole] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [delivery, setDelivery] = useState("");
   const [form, setForm] = useState({
-    name: "",
-    organisation: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    accountUse: "Client portal access",
-    website: "",
+    fullName: "", email: "", phone: "", location: "",
+    role: CAREER_ROLES[0].title, experience: "", qualification: "",
+    availability: "", cvLink: "", portfolio: "", referral: "",
+    whyOrion: "", website: "",
   });
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
@@ -1242,42 +1288,30 @@ function SignupPage({ setCurrentPage }) {
     setForm(current => ({ ...current, [key]: value }));
   };
 
+  const selectRole = (index) => {
+    setSelectedRole(index);
+    update("role", CAREER_ROLES[index].title);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const email = form.email.trim();
+    const requiredFields = ["fullName", "email", "phone", "location", "role", "experience", "qualification", "availability", "cvLink", "whyOrion"];
+    const missing = requiredFields.find(key => !`${form[key]}`.trim());
 
-    if (!form.name.trim() || !email || !form.password || !form.confirmPassword) {
-      setError("Please complete all required fields.");
+    if (missing) {
+      setError("Please complete all required fields before submitting.");
       return;
     }
 
-    if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
-      setError("Please use a valid Gmail address.");
+    if (!/\S+@\S+\.\S+/.test(form.email)) {
+      setError("Please enter a valid email address.");
       return;
     }
-
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    const safeForm = { ...form };
-    delete safeForm.password;
-    delete safeForm.confirmPassword;
 
     setSubmitting(true);
     setError("");
     try {
-      const result = await sendWebsiteForm("client account signup", {
-        ...safeForm,
-        email,
-        passwordStatus: "Password entered in browser only; not sent by this form.",
-      });
+      const result = await sendWebsiteForm("career application", form);
       setDelivery(result);
       setSubmitted(true);
     } catch {
@@ -1287,6 +1321,18 @@ function SignupPage({ setCurrentPage }) {
     }
   };
 
+  const resetForm = () => {
+    setSubmitted(false);
+    setSelectedRole(0);
+    setForm({
+      fullName: "", email: "", phone: "", location: "",
+      role: CAREER_ROLES[0].title, experience: "", qualification: "",
+      availability: "", cvLink: "", portfolio: "", referral: "",
+      whyOrion: "", website: "",
+    });
+  };
+
+  const activeRole = CAREER_ROLES[selectedRole];
   const inputSt = {
     width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 10,
     border: `1px solid ${C.border}`, background: C.card, color: C.heading,
@@ -1297,23 +1343,30 @@ function SignupPage({ setCurrentPage }) {
   if (submitted) {
     return (
       <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
-        <div style={{ textAlign: "center", maxWidth: 520 }}>
+        <div style={{ textAlign: "center", maxWidth: 560 }}>
           <div style={{
             width: 80, height: 80, borderRadius: 20, margin: "0 auto 24px",
             background: `linear-gradient(135deg, ${C.accent}20, ${C.mint}20)`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34,
-            color: C.mint, fontWeight: 900, fontFamily: font,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: C.mint, fontSize: 30, fontWeight: 900, fontFamily: font,
           }}>OK</div>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Signup Received</h2>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Application Received</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Thank you. Orion Soft has received your client access request.
-            {delivery === "email" ? ` Your email app was opened so the request can be sent to ${COMPANY_EMAIL}.` : ""}
+            Thank you for applying for {form.role}. Our team will review your application and contact you if there is a match.
+            {delivery === "email" ? ` Your email app was opened so the application can be sent to ${COMPANY_EMAIL}.` : ""}
           </p>
-          <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
-            background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-            color: C.bg, padding: "14px 32px", borderRadius: 10, border: "none",
-            fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-          }}>Back to Home</button>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={resetForm} style={{
+              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+              color: C.bg, padding: "14px 28px", borderRadius: 10, border: "none",
+              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+            }}>Apply for Another Role</button>
+            <button onClick={() => setCurrentPage("home")} style={{
+              background: `${C.accent}10`, color: C.accent, padding: "14px 28px",
+              borderRadius: 10, border: `1px solid ${C.accent}33`,
+              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+            }}>Back to Home</button>
+          </div>
         </div>
       </section>
     );
@@ -1321,71 +1374,146 @@ function SignupPage({ setCurrentPage }) {
 
   return (
     <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         <Reveal>
           <button onClick={() => setCurrentPage("home")} style={{
             background: "none", border: "none", color: C.accent, fontSize: 14,
-            fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600,
+            fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 700,
           }}>Back to Home</button>
         </Reveal>
 
         <Reveal delay={0.05}>
-          <h1 style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 8 }}>
-            Request Client Access
-          </h1>
-          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Use your Gmail address to request access for demos, product updates, and project conversations.
-          </p>
+          <div style={{ maxWidth: 720, marginBottom: 42 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: C.mint, fontFamily: font, letterSpacing: "0.08em" }}>CAREERS</span>
+            <h1 style={{ fontSize: "clamp(30px, 5vw, 52px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "10px 0 12px" }}>
+              Join the team building practical software for real operations.
+            </h1>
+            <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
+              We are looking for thoughtful, reliable people across product, engineering, marketing, and client growth.
+              Choose a role, review the requirements, and submit your application below.
+            </p>
+          </div>
         </Reveal>
 
-        <Reveal delay={0.12}>
-          <form onSubmit={handleSubmit} style={{
-            background: C.card, borderRadius: 20, padding: "clamp(24px, 4vw, 40px)",
-            border: `1px solid ${C.border}`,
-          }}>
-            <input
-              type="text"
-              tabIndex={-1}
-              autoComplete="off"
-              value={form.website}
-              onChange={e => update("website", e.target.value)}
-              style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
-              aria-hidden="true"
-            />
-            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Your full name" /></div>
-              <div><label style={labelSt}>Organisation</label><input style={inputSt} value={form.organisation} onChange={e => update("organisation", e.target.value)} placeholder="Company or facility" /></div>
+        <div className="career-layout" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) minmax(320px, 1.1fr)", gap: 24, alignItems: "start" }}>
+          <Reveal delay={0.1}>
+            <div style={{ display: "grid", gap: 12 }}>
+              {CAREER_ROLES.map((role, index) => (
+                <button key={role.title} type="button" onClick={() => selectRole(index)} style={{
+                  textAlign: "left", background: selectedRole === index ? `${role.color}14` : C.card,
+                  border: `1px solid ${selectedRole === index ? role.color + "55" : C.border}`,
+                  borderRadius: 14, padding: 20, cursor: "pointer", transition: "all 0.25s",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 8 }}>
+                    <div>
+                      <h2 style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 4 }}>{role.title}</h2>
+                      <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: 0 }}>{role.type} / {role.location}</p>
+                    </div>
+                    <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${role.color}`, background: selectedRole === index ? role.color : "transparent", flexShrink: 0, marginTop: 4 }} />
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 10px" }}>{role.desc}</p>
+                  <p style={{ fontSize: 12.5, color: role.color, fontFamily: font, fontWeight: 800, margin: 0 }}>{role.compensation}</p>
+                </button>
+              ))}
+
+              <article style={{ background: C.card, border: `1px solid ${activeRole.color}33`, borderRadius: 14, padding: 22, marginTop: 8 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 14 }}>Requirements for {activeRole.title}</h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {activeRole.requirements.map(req => (
+                    <div key={req} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <span style={{ color: activeRole.color, fontWeight: 900, fontSize: 13, marginTop: 1 }}>✓</span>
+                      <span style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.55 }}>{req}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Gmail Address *</label>
-              <input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="yourname@gmail.com" autoComplete="email" />
-            </div>
-            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div><label style={labelSt}>Password *</label><input type="password" style={inputSt} value={form.password} onChange={e => update("password", e.target.value)} placeholder="Minimum 8 characters" autoComplete="new-password" /></div>
-              <div><label style={labelSt}>Confirm Password *</label><input type="password" style={inputSt} value={form.confirmPassword} onChange={e => update("confirmPassword", e.target.value)} placeholder="Repeat password" autoComplete="new-password" /></div>
-            </div>
-            <div style={{ marginBottom: 22 }}>
-              <label style={labelSt}>Account Use</label>
-              <select style={{ ...inputSt, cursor: "pointer" }} value={form.accountUse} onChange={e => update("accountUse", e.target.value)}>
-                <option>Client portal access</option>
-                <option>CareCore demo access</option>
-                <option>Project consultation</option>
-                <option>Product updates</option>
-              </select>
-            </div>
-            {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 14 }}>{error}</p>}
-            <button type="submit" disabled={submitting} style={{
-              width: "100%", padding: "15px", borderRadius: 12, border: "none",
-              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-              color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font,
-              cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
-              boxShadow: `0 8px 28px ${C.accentGlow}`,
-            }}>{submitting ? "Submitting..." : "Request Access"}</button>
-            <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, textAlign: "center", marginTop: 14, lineHeight: 1.6 }}>
-              Your password is checked in the browser only and is not sent by this form. A secure client portal can be connected when the authentication provider is ready.
-            </p>
-          </form>
-        </Reveal>
+          </Reveal>
+
+          <Reveal delay={0.16}>
+            <form onSubmit={handleSubmit} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "clamp(24px, 4vw, 38px)" }}>
+              <input
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={form.website}
+                onChange={e => update("website", e.target.value)}
+                style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
+                aria-hidden="true"
+              />
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>Application Form</h2>
+              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, lineHeight: 1.65, marginBottom: 24 }}>
+                Applications go directly to Orion Soft. Use a shareable CV link from Google Drive, Dropbox, LinkedIn, or your portfolio.
+              </p>
+
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.fullName} onChange={e => update("fullName", e.target.value)} placeholder="Your full name" /></div>
+                <div><label style={labelSt}>Email *</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="you@example.com" /></div>
+              </div>
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+1 555 000 0000" /></div>
+                <div><label style={labelSt}>Country / Region *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, Country" /></div>
+              </div>
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div>
+                  <label style={labelSt}>Role *</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.role} onChange={e => {
+                    const nextIndex = CAREER_ROLES.findIndex(role => role.title === e.target.value);
+                    if (nextIndex >= 0) setSelectedRole(nextIndex);
+                    update("role", e.target.value);
+                  }}>
+                    {CAREER_ROLES.map(role => <option key={role.title}>{role.title}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelSt}>Availability *</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.availability} onChange={e => update("availability", e.target.value)}>
+                    <option value="">Select</option>
+                    <option>Immediately</option>
+                    <option>Within 2 weeks</option>
+                    <option>Within 1 month</option>
+                    <option>More than 1 month</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelSt}>Qualification *</label><input style={inputSt} value={form.qualification} onChange={e => update("qualification", e.target.value)} placeholder="Degree, certification, or equivalent" /></div>
+                <div>
+                  <label style={labelSt}>Experience *</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.experience} onChange={e => update("experience", e.target.value)}>
+                    <option value="">Select</option>
+                    <option>No experience yet</option>
+                    <option>Less than 1 year</option>
+                    <option>1-2 years</option>
+                    <option>3-5 years</option>
+                    <option>5+ years</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelSt}>CV / Resume Link *</label>
+                <input style={inputSt} value={form.cvLink} onChange={e => update("cvLink", e.target.value)} placeholder="https://drive.google.com/..." />
+              </div>
+              <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div><label style={labelSt}>Portfolio / LinkedIn</label><input style={inputSt} value={form.portfolio} onChange={e => update("portfolio", e.target.value)} placeholder="https://linkedin.com/in/..." /></div>
+                <div><label style={labelSt}>How did you hear about us?</label><input style={inputSt} value={form.referral} onChange={e => update("referral", e.target.value)} placeholder="Referral, LinkedIn, website..." /></div>
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label style={labelSt}>Why do you want to work at Orion Soft? *</label>
+                <textarea style={{ ...inputSt, resize: "vertical" }} rows={5} value={form.whyOrion} onChange={e => update("whyOrion", e.target.value)} placeholder="Tell us what you can contribute and why this role fits you." />
+              </div>
+
+              {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 14 }}>{error}</p>}
+              <button type="submit" disabled={submitting} style={{
+                width: "100%", padding: "15px", borderRadius: 12, border: "none",
+                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                color: C.bg, fontSize: 15, fontWeight: 800, fontFamily: font,
+                cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
+                boxShadow: `0 8px 28px ${C.accentGlow}`,
+              }}>{submitting ? "Submitting..." : "Submit Application"}</button>
+            </form>
+          </Reveal>
+        </div>
       </div>
     </section>
   );
@@ -1475,12 +1603,12 @@ function CTABanner({ setCurrentPage }) {
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               boxShadow: `0 8px 28px ${C.accentGlow}`, transition: "all 0.3s",
             }}>Start Your Project →</button>
-            <button onClick={() => setCurrentPage("signup")} style={{
+            <button onClick={() => setCurrentPage("careers")} style={{
               border: `1px solid ${C.mint}44`, color: C.mint,
               padding: "14px 32px", borderRadius: 10, textDecoration: "none",
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               background: `${C.mint}10`, transition: "all 0.3s",
-            }}>Request Client Access</button>
+            }}>View Careers</button>
             <a href="#products" style={{
               border: `1px solid ${C.accent}33`, color: C.accent,
               padding: "14px 32px", borderRadius: 10, textDecoration: "none",
@@ -1664,7 +1792,7 @@ function LegalPage({ type, setCurrentPage }) {
   const sections = isPrivacy ? [
     {
       h: "Information We Collect",
-      p: "When you submit a project request, signup request, or feedback, we collect the details you choose to provide, including your name, organisation, email, phone number, country or region, request category, and message. Password fields are not emailed through the website form endpoint.",
+      p: "When you submit a project request, job application, or feedback, we collect the details you choose to provide, including your name, organisation, email, phone number, country or region, request category, CV or portfolio link, and message.",
     },
     {
       h: "How We Use Information",
@@ -1757,7 +1885,7 @@ function Footer({ setCurrentPage }) {
 
           {[
             { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
-            { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Client Access", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("signup"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
+            { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
             <div key={ci}>
@@ -1851,6 +1979,7 @@ export default function App() {
           .nav-links { display: none !important; }
           .nav-burger { display: block !important; }
           .form-grid { grid-template-columns: 1fr !important; }
+          .career-layout { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 769px) {
           .nav-burger { display: none !important; }
@@ -1888,8 +2017,8 @@ export default function App() {
         <FeedbackPage setCurrentPage={setCurrentPage} />
       )}
 
-      {currentPage === "signup" && (
-        <SignupPage setCurrentPage={setCurrentPage} />
+      {currentPage === "careers" && (
+        <CareersPage setCurrentPage={setCurrentPage} />
       )}
 
       {currentPage === "privacy" && (
