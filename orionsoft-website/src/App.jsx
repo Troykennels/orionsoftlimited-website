@@ -4,28 +4,28 @@ import { useState, useEffect, useRef } from "react";
 // DESIGN SYSTEM
 // ═══════════════════════════════════════
 const C = {
-  bg: "#050A12",
-  surface: "#0B1221",
-  card: "#0F1A2E",
-  cardHover: "#132240",
-  border: "rgba(255,255,255,0.06)",
-  borderHover: "rgba(0,200,255,0.2)",
+  bg: "#0A2540",
+  surface: "#102A43",
+  card: "#132F4C",
+  cardHover: "#173B60",
+  border: "rgba(255,255,255,0.09)",
+  borderHover: "rgba(45,212,191,0.25)",
   white: "#FFFFFF",
-  text: "#CBD5E1",
-  textMuted: "#64748B",
-  heading: "#F1F5F9",
-  accent: "#00C8FF",
-  accentDim: "rgba(0,200,255,0.12)",
-  accentGlow: "rgba(0,200,255,0.25)",
-  mint: "#34D399",
-  mintDim: "rgba(52,211,153,0.12)",
-  purple: "#A78BFA",
-  purpleDim: "rgba(167,139,250,0.12)",
-  amber: "#FBBF24",
-  amberDim: "rgba(251,191,36,0.12)",
-  rose: "#FB7185",
-  roseDim: "rgba(251,113,133,0.12)",
-  success: "#34D399",
+  text: "#D7E3EF",
+  textMuted: "#8DA2B8",
+  heading: "#F8FBFF",
+  accent: "#38BDF8",
+  accentDim: "rgba(56,189,248,0.14)",
+  accentGlow: "rgba(56,189,248,0.24)",
+  mint: "#2DD4BF",
+  mintDim: "rgba(45,212,191,0.13)",
+  purple: "#C4B5FD",
+  purpleDim: "rgba(196,181,253,0.12)",
+  amber: "#FCD34D",
+  amberDim: "rgba(252,211,77,0.12)",
+  rose: "#FDA4AF",
+  roseDim: "rgba(253,164,175,0.12)",
+  success: "#2DD4BF",
   light: "#F8FAFC",
   lightCard: "#FFFFFF",
   lightBorder: "#E2E8F0",
@@ -137,14 +137,14 @@ function OrionLogo({ size = 32, gradientId = "orion-logo" }) {
           <stop offset="1" stopColor="#34D399" />
         </linearGradient>
       </defs>
-      <rect x="3" y="3" width="58" height="58" rx="17" fill="#050A12" />
+      <rect x="3" y="3" width="58" height="58" rx="17" fill="#0A2540" />
       <rect x="6" y="6" width="52" height="52" rx="15" fill={`url(#${gradientId}-space)`} />
       <circle cx="46" cy="16" r="2.5" fill="#FBBF24" />
       <circle cx="18" cy="46" r="2" fill="#F8FAFC" opacity="0.9" />
       <circle cx="18" cy="18" r="1.4" fill="#F8FAFC" opacity="0.75" />
       <path d="M20 34C20 25.163 27.163 18 36 18C44.837 18 52 25.163 52 34C52 42.837 44.837 50 36 50" stroke={`url(#${gradientId}-orbit)`} strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M14 37C20 29 31 24 47 22" stroke="#050A12" strokeWidth="4" strokeLinecap="round" opacity="0.65" />
-      <circle cx="34" cy="34" r="6" fill="#050A12" />
+      <path d="M14 37C20 29 31 24 47 22" stroke="#0A2540" strokeWidth="4" strokeLinecap="round" opacity="0.65" />
+      <circle cx="34" cy="34" r="6" fill="#0A2540" />
       <circle cx="34" cy="34" r="2.4" fill="#00C8FF" />
     </svg>
   );
@@ -171,6 +171,7 @@ function Nav({ currentPage, setCurrentPage }) {
     { label: "Services", page: "home", anchor: "#services" },
     { label: "Pricing", page: "home", anchor: "#pricing" },
     { label: "About", page: "home", anchor: "#about" },
+    { label: "Client Access", page: "signup" },
     { label: "Feedback", page: "feedback" },
   ];
 
@@ -190,7 +191,7 @@ function Nav({ currentPage, setCurrentPage }) {
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-      background: scrolled ? "rgba(5,10,18,0.92)" : "transparent",
+      background: scrolled ? "rgba(10,37,64,0.92)" : "transparent",
       backdropFilter: scrolled ? "blur(24px) saturate(1.2)" : "none",
       borderBottom: scrolled ? `1px solid ${C.border}` : "none",
       transition: "all 0.35s ease", padding: "0 clamp(16px, 4vw, 32px)",
@@ -247,7 +248,7 @@ function Nav({ currentPage, setCurrentPage }) {
       {menuOpen && (
         <div className="mobile-menu" style={{
           position: "absolute", top: 68, left: 0, right: 0,
-          background: "rgba(5,10,18,0.98)", backdropFilter: "blur(24px)",
+          background: "rgba(10,37,64,0.98)", backdropFilter: "blur(24px)",
           padding: "16px 24px 24px", borderBottom: `1px solid ${C.border}`,
         }}>
           {links.map(l => (
@@ -280,14 +281,15 @@ function Hero({ setCurrentPage }) {
   return (
     <section style={{
       minHeight: "100vh", display: "flex", alignItems: "center",
-      background: C.bg, position: "relative", overflow: "hidden",
+      background: `linear-gradient(135deg, ${C.bg} 0%, ${C.surface} 54%, #17365A 100%)`,
+      position: "relative", overflow: "hidden",
       padding: "100px clamp(16px, 4vw, 32px) 80px",
     }}>
       {/* Mesh gradients */}
-      <div style={{ position: "absolute", inset: 0, opacity: 0.5,
-        background: `radial-gradient(ellipse 600px 500px at 25% 30%, rgba(0,200,255,0.06), transparent),
-                     radial-gradient(ellipse 500px 400px at 75% 70%, rgba(52,211,153,0.04), transparent),
-                     radial-gradient(ellipse 800px 600px at 50% 50%, rgba(167,139,250,0.03), transparent)` }} />
+      <div style={{ position: "absolute", inset: 0, opacity: 0.72,
+        background: `radial-gradient(ellipse 680px 520px at 22% 24%, rgba(56,189,248,0.14), transparent),
+                     radial-gradient(ellipse 520px 420px at 78% 68%, rgba(45,212,191,0.10), transparent),
+                     radial-gradient(ellipse 760px 560px at 52% 52%, rgba(196,181,253,0.08), transparent)` }} />
       {/* Grid */}
       <div style={{ position: "absolute", inset: 0, opacity: 0.025,
         backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`,
@@ -303,7 +305,7 @@ function Hero({ setCurrentPage }) {
             }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
               <span style={{ fontSize: 12.5, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>
-                SOFTWARE COMPANY • LAGOS, NIGERIA
+                GLOBAL SOFTWARE COMPANY
               </span>
             </div>
           </Reveal>
@@ -330,7 +332,7 @@ function Hero({ setCurrentPage }) {
             }}>
               Orion Soft Limited designs and deploys custom software solutions for healthcare,
               operations, and business management. Our flagship product, CareCore, is already
-              transforming hospitals across Nigeria.
+              helping hospitals and growing teams run with more clarity, speed, and control.
             </p>
           </Reveal>
 
@@ -344,6 +346,15 @@ function Hero({ setCurrentPage }) {
               }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
                  onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
                 Get Started →
+              </button>
+              <button onClick={() => setCurrentPage("signup")} style={{
+                border: `1px solid rgba(45,212,191,0.32)`, color: C.mint,
+                padding: "15px 32px", borderRadius: 11, textDecoration: "none",
+                fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+                background: "rgba(45,212,191,0.06)", transition: "all 0.3s",
+              }} onMouseEnter={e => { e.target.style.background = "rgba(45,212,191,0.12)"; }}
+                 onMouseLeave={e => { e.target.style.background = "rgba(45,212,191,0.06)"; }}>
+                Client Access
               </button>
               <a href="#products" style={{
                 border: `1px solid rgba(0,200,255,0.25)`, color: C.accent,
@@ -368,7 +379,7 @@ function Hero({ setCurrentPage }) {
               { val: "25+", label: "Software Modules" },
               { val: "118", label: "API Endpoints" },
               { val: "99.5%", label: "Uptime SLA" },
-              { val: "NDPA", label: "Compliant" },
+              { val: "Secure", label: "Privacy-first" },
             ].map((s, i) => (
               <div key={i}>
                 <div style={{ fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em" }}>{s.val}</div>
@@ -409,7 +420,7 @@ function Products({ setCurrentPage }) {
       name: "Coming Soon",
       tag: "2026",
       tagColor: C.mint,
-      desc: "We are building more products for Nigerian businesses — inventory management, school administration, and logistics platforms. Join the waitlist to be first in line.",
+      desc: "We are building more products for growing businesses, including inventory management, school administration, and logistics platforms. Join the waitlist to be first in line.",
       features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale", "HR & Payroll", "More Coming"],
       color: C.mint,
       icon: "🚀",
@@ -489,12 +500,12 @@ function Products({ setCurrentPage }) {
 // ═══════════════════════════════════════
 function Services({ setCurrentPage }) {
   const services = [
-    { icon: "💻", title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, price: "From ₦500,000" },
-    { icon: "🏥", title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, price: "From ₦350,000" },
-    { icon: "🔧", title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, price: "From ₦300,000" },
-    { icon: "📊", title: "Data & Analytics", desc: "Custom dashboards and reporting tools for real-time business intelligence.", color: C.amber, price: "From ₦250,000" },
-    { icon: "🛡️", title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and digital transformation guidance.", color: C.rose, price: "From ₦150,000" },
-    { icon: "🎓", title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, price: "From ₦100,000" },
+    { icon: "💻", title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, price: "Custom quote" },
+    { icon: "🏥", title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, price: "Deployment quote" },
+    { icon: "🔧", title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, price: "Scoped quote" },
+    { icon: "📊", title: "Data & Analytics", desc: "Custom dashboards and reporting tools for real-time business intelligence.", color: C.amber, price: "Custom quote" },
+    { icon: "🛡️", title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and digital transformation guidance.", color: C.rose, price: "Strategy quote" },
+    { icon: "🎓", title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, price: "Support quote" },
   ];
 
   return (
@@ -654,7 +665,7 @@ function EngineeringStandards() {
     },
     {
       title: "Security & Privacy",
-      desc: "We design around least-privilege access, secure form handling, HTTPS deployments, staff permissions, data retention, and NDPA-aware workflows.",
+      desc: "We design around least-privilege access, secure form handling, HTTPS deployments, staff permissions, data retention, and privacy-aware workflows.",
       points: ["Role permissions", "Audit trails", "Privacy-first forms"],
       color: C.mint,
     },
@@ -776,10 +787,10 @@ function CareCoreSection() {
 // ═══════════════════════════════════════
 function Pricing({ setCurrentPage }) {
   const tiers = [
-    { name: "Clinic", beds: "1–10 beds", onboard: "₦350K – 500K", monthly: "₦30,000", color: C.mint, popular: false },
-    { name: "Small Hospital", beds: "11–50 beds", onboard: "₦500K – 800K", monthly: "₦60,000", color: C.accent, popular: true },
-    { name: "Medium Hospital", beds: "51–150 beds", onboard: "₦800K – 1.2M", monthly: "₦100,000", color: C.purple, popular: false },
-    { name: "Large Hospital", beds: "150+ beds", onboard: "₦1.2M – 2M", monthly: "₦150–250K", color: C.amber, popular: false },
+    { name: "Clinic", beds: "1-10 beds", onboard: "Starter quote", monthly: "Managed plan", color: C.mint, popular: false },
+    { name: "Small Hospital", beds: "11-50 beds", onboard: "Growth quote", monthly: "Managed plan", color: C.accent, popular: true },
+    { name: "Medium Hospital", beds: "51-150 beds", onboard: "Scale quote", monthly: "Managed plan", color: C.purple, popular: false },
+    { name: "Large Hospital", beds: "150+ beds", onboard: "Enterprise quote", monthly: "Enterprise SLA", color: C.amber, popular: false },
   ];
 
   return (
@@ -816,11 +827,11 @@ function Pricing({ setCurrentPage }) {
                   <div style={{ fontSize: 22, fontWeight: 800, color: C.lightHeading, fontFamily: font }}>{t.onboard}</div>
                 </div>
                 <div style={{ marginBottom: 24 }}>
-                  <span style={{ fontSize: 12.5, color: C.lightMuted, fontFamily: font, fontWeight: 500 }}>Monthly</span>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: t.color, fontFamily: font }}>{t.monthly}<span style={{ fontSize: 13, fontWeight: 500, color: C.lightMuted }}>/mo</span></div>
+                  <span style={{ fontSize: 12.5, color: C.lightMuted, fontFamily: font, fontWeight: 500 }}>Support</span>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: t.color, fontFamily: font }}>{t.monthly}</div>
                 </div>
                 <div style={{ flex: 1 }}>
-                  {["All 25+ modules included", "Role-based staff training", "30-day onsite support", "Monthly updates & patches"].map((f, fi) => (
+                  {["All 25+ modules included", "Role-based staff training", "Launch support", "Monthly updates & patches"].map((f, fi) => (
                     <div key={fi} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                       <span style={{ color: t.color, fontSize: 14, fontWeight: 700 }}>✓</span>
                       <span style={{ fontSize: 13.5, color: C.lightText, fontFamily: font }}>{f}</span>
@@ -860,25 +871,25 @@ function About() {
             <div>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: C.purple, fontFamily: font, letterSpacing: "0.08em" }}>ABOUT US</span>
               <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em", margin: "12px 0 20px" }}>
-                Built in Lagos.<br />Built for Africa.
+                Built with global standards.<br />Designed for real operations.
               </h2>
               <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 20 }}>
-                Orion Soft Limited is a CAC-registered software company based in Lagos, Nigeria. We
-                build practical, affordable technology for businesses that operate in the real
-                conditions of the Nigerian market — intermittent connectivity, diverse staff
-                technical literacy, and cost sensitivity.
+                Orion Soft Limited builds practical, dependable software for healthcare providers
+                and ambitious businesses. We focus on secure systems, clear workflows, fast
+                interfaces, and implementation support that helps teams adopt technology with
+                confidence.
               </p>
               <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 28 }}>
-                Our team combines deep technical expertise with on-the-ground understanding of how
-                Nigerian businesses actually work. We do not build software in a vacuum — we visit
-                your facility, understand your workflow, and build what you actually need.
+                Our team combines product thinking, engineering discipline, and close discovery
+                with each client. We study your workflow, map the operational gaps, and build
+                software that fits the way your organisation needs to work.
               </p>
 
               <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
                 {[
-                  { val: "CAC", label: "Registered" },
-                  { val: "NDPA", label: "Compliant" },
-                  { val: "Lagos", label: "Based" },
+                  { val: "Global", label: "Delivery" },
+                  { val: "Secure", label: "Privacy-first" },
+                  { val: "SLA", label: "Support" },
                 ].map((s, i) => (
                   <div key={i} style={{
                     background: C.card, borderRadius: 12, padding: "16px 24px",
@@ -1062,11 +1073,11 @@ function OnboardingPage({ setCurrentPage }) {
             </div>
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div><label style={labelSt}>Email *</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="name@organisation.com" /></div>
-              <div><label style={labelSt}>Phone Number *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="080..." /></div>
+              <div><label style={labelSt}>Phone Number *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+1 555 000 0000" /></div>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Location *</label>
-              <input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, State" />
+              <label style={labelSt}>Country / Region *</label>
+              <input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, Country" />
             </div>
 
             {/* CareCore specific */}
@@ -1119,11 +1130,11 @@ function OnboardingPage({ setCurrentPage }) {
                     <label style={labelSt}>Budget Range</label>
                     <select style={{ ...inputSt, cursor: "pointer" }} value={form.budget} onChange={e => update("budget", e.target.value)}>
                       <option value="">Select range</option>
-                      <option>₦250K – ₦500K</option>
-                      <option>₦500K – ₦1M</option>
-                      <option>₦1M – ₦3M</option>
-                      <option>₦3M – ₦5M</option>
-                      <option>₦5M+</option>
+                      <option>Under $2,500</option>
+                      <option>$2,500 - $5,000</option>
+                      <option>$5,000 - $15,000</option>
+                      <option>$15,000 - $30,000</option>
+                      <option>$30,000+</option>
                       <option>Not sure yet</option>
                     </select>
                   </div>
@@ -1167,7 +1178,7 @@ function OnboardingPage({ setCurrentPage }) {
               <label style={labelSt}>How did you hear about us?</label>
               <select style={{ ...inputSt, cursor: "pointer" }} value={form.hearAbout} onChange={e => update("hearAbout", e.target.value)}>
                 <option value="">Select</option>
-                <option>Referral from another hospital</option>
+                <option>Referral from another client</option>
                 <option>Social media</option>
                 <option>Google search</option>
                 <option>Our sales team visited</option>
@@ -1209,6 +1220,177 @@ function OnboardingPage({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // CTA BANNER
 // ═══════════════════════════════════════
+function SignupPage({ setCurrentPage }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [delivery, setDelivery] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    organisation: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    accountUse: "Client portal access",
+    website: "",
+  });
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+
+  const update = (key, value) => {
+    setError("");
+    setForm(current => ({ ...current, [key]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const email = form.email.trim();
+
+    if (!form.name.trim() || !email || !form.password || !form.confirmPassword) {
+      setError("Please complete all required fields.");
+      return;
+    }
+
+    if (!/^[^\s@]+@gmail\.com$/i.test(email)) {
+      setError("Please use a valid Gmail address.");
+      return;
+    }
+
+    if (form.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    const safeForm = { ...form };
+    delete safeForm.password;
+    delete safeForm.confirmPassword;
+
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await sendWebsiteForm("client account signup", {
+        ...safeForm,
+        email,
+        passwordStatus: "Password entered in browser only; not sent by this form.",
+      });
+      setDelivery(result);
+      setSubmitted(true);
+    } catch {
+      setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inputSt = {
+    width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 10,
+    border: `1px solid ${C.border}`, background: C.card, color: C.heading,
+    fontSize: 14, fontFamily: font, outline: "none", transition: "border-color 0.2s",
+  };
+  const labelSt = { fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 6, display: "block" };
+
+  if (submitted) {
+    return (
+      <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
+        <div style={{ textAlign: "center", maxWidth: 520 }}>
+          <div style={{
+            width: 80, height: 80, borderRadius: 20, margin: "0 auto 24px",
+            background: `linear-gradient(135deg, ${C.accent}20, ${C.mint}20)`,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34,
+            color: C.mint, fontWeight: 900, fontFamily: font,
+          }}>OK</div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Signup Received</h2>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
+            Thank you. Orion Soft has received your client access request.
+            {delivery === "email" ? ` Your email app was opened so the request can be sent to ${COMPANY_EMAIL}.` : ""}
+          </p>
+          <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
+            background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+            color: C.bg, padding: "14px 32px", borderRadius: 10, border: "none",
+            fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+          }}>Back to Home</button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <Reveal>
+          <button onClick={() => setCurrentPage("home")} style={{
+            background: "none", border: "none", color: C.accent, fontSize: 14,
+            fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600,
+          }}>Back to Home</button>
+        </Reveal>
+
+        <Reveal delay={0.05}>
+          <h1 style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 8 }}>
+            Request Client Access
+          </h1>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
+            Use your Gmail address to request access for demos, product updates, and project conversations.
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.12}>
+          <form onSubmit={handleSubmit} style={{
+            background: C.card, borderRadius: 20, padding: "clamp(24px, 4vw, 40px)",
+            border: `1px solid ${C.border}`,
+          }}>
+            <input
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={form.website}
+              onChange={e => update("website", e.target.value)}
+              style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
+              aria-hidden="true"
+            />
+            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Your full name" /></div>
+              <div><label style={labelSt}>Organisation</label><input style={inputSt} value={form.organisation} onChange={e => update("organisation", e.target.value)} placeholder="Company or facility" /></div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelSt}>Gmail Address *</label>
+              <input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="yourname@gmail.com" autoComplete="email" />
+            </div>
+            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+              <div><label style={labelSt}>Password *</label><input type="password" style={inputSt} value={form.password} onChange={e => update("password", e.target.value)} placeholder="Minimum 8 characters" autoComplete="new-password" /></div>
+              <div><label style={labelSt}>Confirm Password *</label><input type="password" style={inputSt} value={form.confirmPassword} onChange={e => update("confirmPassword", e.target.value)} placeholder="Repeat password" autoComplete="new-password" /></div>
+            </div>
+            <div style={{ marginBottom: 22 }}>
+              <label style={labelSt}>Account Use</label>
+              <select style={{ ...inputSt, cursor: "pointer" }} value={form.accountUse} onChange={e => update("accountUse", e.target.value)}>
+                <option>Client portal access</option>
+                <option>CareCore demo access</option>
+                <option>Project consultation</option>
+                <option>Product updates</option>
+              </select>
+            </div>
+            {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 14 }}>{error}</p>}
+            <button type="submit" disabled={submitting} style={{
+              width: "100%", padding: "15px", borderRadius: 12, border: "none",
+              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+              color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font,
+              cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
+              boxShadow: `0 8px 28px ${C.accentGlow}`,
+            }}>{submitting ? "Submitting..." : "Request Access"}</button>
+            <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, textAlign: "center", marginTop: 14, lineHeight: 1.6 }}>
+              Your password is checked in the browser only and is not sent by this form. A secure client portal can be connected when the authentication provider is ready.
+            </p>
+          </form>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function FAQSection({ setCurrentPage }) {
   const faqs = [
     {
@@ -1293,6 +1475,12 @@ function CTABanner({ setCurrentPage }) {
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               boxShadow: `0 8px 28px ${C.accentGlow}`, transition: "all 0.3s",
             }}>Start Your Project →</button>
+            <button onClick={() => setCurrentPage("signup")} style={{
+              border: `1px solid ${C.mint}44`, color: C.mint,
+              padding: "14px 32px", borderRadius: 10, textDecoration: "none",
+              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+              background: `${C.mint}10`, transition: "all 0.3s",
+            }}>Request Client Access</button>
             <a href="#products" style={{
               border: `1px solid ${C.accent}33`, color: C.accent,
               padding: "14px 32px", borderRadius: 10, textDecoration: "none",
@@ -1476,7 +1664,7 @@ function LegalPage({ type, setCurrentPage }) {
   const sections = isPrivacy ? [
     {
       h: "Information We Collect",
-      p: "When you submit a project request or feedback, we collect the details you choose to provide, including your name, organisation, email, phone number, location, request category, and message.",
+      p: "When you submit a project request, signup request, or feedback, we collect the details you choose to provide, including your name, organisation, email, phone number, country or region, request category, and message. Password fields are not emailed through the website form endpoint.",
     },
     {
       h: "How We Use Information",
@@ -1563,13 +1751,13 @@ function Footer({ setCurrentPage }) {
               <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250 }}>
-              Building practical software for Nigerian businesses. Founded by {FOUNDER_NAME}. Registration details available on request. NDPA-aware.
+              Building practical software for ambitious businesses. Founded by {FOUNDER_NAME}. Registration details available on request. Privacy-aware.
             </p>
           </div>
 
           {[
             { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
-            { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
+            { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Client Access", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("signup"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
             <div key={ci}>
@@ -1579,7 +1767,7 @@ function Footer({ setCurrentPage }) {
                   <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_PHONE}</a><br />
                   <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
                   <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>WhatsApp Orion Soft</a><br />
-                  Founder/CEO: {FOUNDER_NAME}<br />Lagos, Nigeria
+                  Founder/CEO: {FOUNDER_NAME}
                 </div>
               ) : col.links.map((link, li) => (
                 <a key={li} href={link.a} onClick={link.onClick} style={{
@@ -1698,6 +1886,10 @@ export default function App() {
 
       {currentPage === "feedback" && (
         <FeedbackPage setCurrentPage={setCurrentPage} />
+      )}
+
+      {currentPage === "signup" && (
+        <SignupPage setCurrentPage={setCurrentPage} />
       )}
 
       {currentPage === "privacy" && (

@@ -1,5 +1,6 @@
 const DEFAULT_TO_EMAIL = "orionsoftlimited@gmail.com";
 const DEFAULT_FROM_EMAIL = "Orion Soft Website <onboarding@resend.dev>";
+const SENSITIVE_FIELDS = new Set(["password", "confirmPassword", "passwordConfirmation"]);
 
 function json(response, status, data) {
   response.status(status).setHeader("Content-Type", "application/json");
@@ -17,8 +18,15 @@ function escapeHtml(value) {
 
 function formatEntries(payload) {
   return Object.entries(payload)
+    .filter(([key]) => !SENSITIVE_FIELDS.has(key))
     .filter(([, value]) => value !== undefined && value !== null && `${value}`.trim() !== "")
     .map(([key, value]) => [key, `${value}`]);
+}
+
+function stripSensitiveFields(payload) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key]) => !SENSITIVE_FIELDS.has(key)),
+  );
 }
 
 function buildSubject(type) {
@@ -66,6 +74,16 @@ export default async function handler(request, response) {
     return;
   }
 
+  if (request.method === "GET") {
+    json(response, 200, {
+      ok: true,
+      emailServiceConfigured: Boolean(process.env.RESEND_API_KEY),
+      toEmailConfigured: Boolean(process.env.FORM_TO_EMAIL),
+      fromEmailConfigured: Boolean(process.env.FORM_FROM_EMAIL),
+    });
+    return;
+  }
+
   if (request.method !== "POST") {
     json(response, 405, { ok: false, error: "Method not allowed" });
     return;
@@ -79,7 +97,7 @@ export default async function handler(request, response) {
 
   let payload;
   try {
-    payload = await readPayload(request);
+    payload = stripSensitiveFields(await readPayload(request));
   } catch {
     json(response, 400, { ok: false, error: "Invalid JSON payload" });
     return;
