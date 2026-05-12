@@ -155,19 +155,19 @@ export default function App() {
 
   // Google Form connection — LIVE and connected to orionsoftlimited@gmail.com
   const GOOGLE_FORM_ID = "1FAIpQLSdEMr5TKsf9O5pik29gQ2_uVAEaaL6axO1B76ZgNMS2eoEwgQ";
-  const FIELD_MAP = {
-    fullName:      "entry.456607244",
-    email:         "entry.2071528042",
-    phone:         "entry.1047973783",
-    location:      "entry.624260353",
-    role:          "entry.1956222092",
-    qualification: "entry.2139165398",
-    experience:    "entry.823766006",
-    cvLink:        "entry.613018374",
-    portfolio:     "entry.1264022189",
-    availability:  "entry.1524407148",
-    referral:      "entry.1725080512",
-    whyOrion:      "entry.1635774021",
+const FIELD_MAP = {
+  fullName:      "entry.456607244",
+  email:         "entry.2071528042",
+  phone:         "entry.1047973783",
+  location:      "entry.624260353",
+  role:          "entry.1956222092",
+  qualification: "entry.2139165398",
+  experience:    "entry.823766006",
+  cvLink:        "entry.613018374",
+  portfolio:     "entry.1264022189",
+  availability:  "entry.1524407148",
+  referral:      "entry.1725080512",
+  whyOrion:      "entry.1635774021",
   };
 
   const handleSubmit = async () => {
