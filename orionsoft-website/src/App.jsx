@@ -44,59 +44,64 @@ const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
 const CAREER_ROLES = [
   {
-    title: "Business Development Officer",
+    title: "Business Development Officer (Nurse)",
     type: "Sales",
-    location: "Hybrid / Remote",
+    location: "Lagos",
     color: C.accent,
-    desc: "Build relationships with healthcare and business clients, run product demos, follow up on leads, and help new customers understand Orion Soft solutions.",
+    desc: "Visit hospitals, demo CareCore HMS, onboard new clients, and provide ongoing support. Nursing background required.",
     requirements: [
-      "Experience in sales, marketing, healthcare operations, or client relations",
-      "Strong communication and follow-up skills",
-      "Comfortable presenting software products to decision makers",
-      "Able to work independently and report progress clearly",
+      "Registered Nurse (RN) or Registered Midwife (RM)",
+      "Valid nursing/midwifery license",
+      "Strong communication and presentation skills",
+      "Comfortable using smartphones and computers",
+      "Willingness to travel within Lagos and environs",
     ],
-    compensation: "Base plus performance incentives",
+    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K commission per onboarding",
+  },
+  {
+    title: "Business Development Officer (Marketing)",
+    type: "Sales",
+    location: "Lagos",
+    color: C.mint,
+    desc: "Drive CareCore adoption through hospital visits, relationship building, cold outreach, and closing deals. Marketing/sales background preferred.",
+    requirements: [
+      "HND/BSc in Marketing, Business Admin, or related field",
+      "1+ year experience in B2B sales or field marketing",
+      "Confident presenting to senior hospital management",
+      "Strong negotiation and follow-up skills",
+      "Own smartphone, comfortable with digital tools",
+    ],
+    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K commission per onboarding",
   },
   {
     title: "Digital Marketing Executive",
     type: "Marketing",
-    location: "Remote",
-    color: C.mint,
-    desc: "Manage content, campaigns, product education, and inbound lead generation across Orion Soft's digital channels.",
+    location: "Lagos / Remote",
+    color: C.purple,
+    desc: "Manage Orion Soft's social media, create content showcasing CareCore, run campaigns, and generate inbound leads for the sales team.",
     requirements: [
-      "Experience managing business social media or digital campaigns",
-      "Ability to create clear product content and short-form assets",
-      "Understanding of LinkedIn, search, email, and social growth",
-      "Portfolio or examples of previous marketing work",
+      "Experience managing business social media accounts",
+      "Ability to create short video content (reels, demos)",
+      "Knowledge of Instagram, LinkedIn, Twitter/X, WhatsApp marketing",
+      "Basic graphic design (Canva or similar)",
+      "Understanding of healthcare or B2B marketing is a plus",
     ],
-    compensation: "Competitive based on experience",
+    compensation: "Competitive — based on experience",
   },
   {
-    title: "Software Developer",
+    title: "Software Developer (Frontend/Backend)",
     type: "Engineering",
     location: "Remote",
-    color: C.purple,
-    desc: "Help build, improve, and maintain Orion Soft products across frontend, backend, APIs, and product infrastructure.",
-    requirements: [
-      "Experience with React, APIs, databases, or backend development",
-      "Portfolio, GitHub, or examples of real projects",
-      "Ability to work with product requirements and ship reliably",
-      "Interest in healthcare, operations, automation, or AI is a plus",
-    ],
-    compensation: "Competitive based on skill level",
-  },
-  {
-    title: "General Application",
-    type: "Open",
-    location: "Flexible",
     color: C.amber,
-    desc: "Do not see a perfect fit? Tell us what you can bring to Orion Soft and where you believe you can create value.",
+    desc: "Help build and improve CareCore and other Orion Soft products. Work with React, Flask, PostgreSQL, and modern web technologies.",
     requirements: [
-      "Clear evidence of skill, initiative, and professionalism",
-      "Strong written communication",
-      "Ability to learn quickly and work with a growing team",
+      "Proficiency in React (frontend) or Flask/Python (backend)",
+      "Experience with REST APIs and database management",
+      "Portfolio or GitHub with previous work",
+      "Ability to work independently and meet deadlines",
+      "Bonus: experience with healthcare systems or AI integration",
     ],
-    compensation: "Depends on role and experience",
+    compensation: "Competitive — based on experience and skill level",
   },
 ];
 
@@ -1311,8 +1316,53 @@ function CareersPage({ setCurrentPage }) {
     setSubmitting(true);
     setError("");
     try {
-      const result = await sendWebsiteForm("career application", form);
-      setDelivery(result);
+      // Google Form field mapping
+      const GOOGLE_FORM_ID = "1FAIpQLSdEMr5TKsf9O5pik29gQ2_uVAEaaL6axO1B76ZgNMS2eoEwgQ";
+      const FIELD_MAP = {
+        fullName:      "entry.456607244",
+        email:         "entry.2071528042",
+        phone:         "entry.1047973783",
+        location:      "entry.624260353",
+        role:          "entry.1956222092",
+        qualification: "entry.2139165398",
+        experience:    "entry.823766006",
+        cvLink:        "entry.613018374",
+        portfolio:     "entry.1264022189",
+        availability:  "entry.1524407148",
+        referral:      "entry.1725080512",
+        whyOrion:      "entry.1635774021",
+      };
+
+      const url = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
+
+      // Hidden iframe to avoid CORS
+      const iframe = document.createElement("iframe");
+      iframe.name = "hidden_gform";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+
+      const formEl = document.createElement("form");
+      formEl.method = "POST";
+      formEl.action = url;
+      formEl.target = "hidden_gform";
+
+      Object.keys(FIELD_MAP).forEach(key => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = FIELD_MAP[key];
+        input.value = form[key] || "";
+        formEl.appendChild(input);
+      });
+
+      document.body.appendChild(formEl);
+      formEl.submit();
+
+      setTimeout(() => {
+        try { document.body.removeChild(formEl); } catch {}
+        try { document.body.removeChild(iframe); } catch {}
+      }, 3000);
+
+      setDelivery("sent");
       setSubmitted(true);
     } catch {
       setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
@@ -1470,6 +1520,7 @@ function CareersPage({ setCurrentPage }) {
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.availability} onChange={e => update("availability", e.target.value)}>
                     <option value="">Select</option>
                     <option>Immediately</option>
+                    <option>Within 1 week</option>
                     <option>Within 2 weeks</option>
                     <option>Within 1 month</option>
                     <option>More than 1 month</option>
@@ -1477,16 +1528,28 @@ function CareersPage({ setCurrentPage }) {
                 </div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div><label style={labelSt}>Qualification *</label><input style={inputSt} value={form.qualification} onChange={e => update("qualification", e.target.value)} placeholder="Degree, certification, or equivalent" /></div>
+                <div><label style={labelSt}>Qualification *</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.qualification} onChange={e => update("qualification", e.target.value)}>
+                    <option value="">Select</option>
+                    <option>SSCE/WAEC</option>
+                    <option>OND/NCE</option>
+                    <option>HND</option>
+                    <option>BSc/B.Tech/BNSc</option>
+                    <option>MSc/MBA/MPH</option>
+                    <option>ASN/BSN</option>
+                    <option>Professional Certification</option>
+                  </select>
+                </div>
                 <div>
                   <label style={labelSt}>Experience *</label>
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.experience} onChange={e => update("experience", e.target.value)}>
                     <option value="">Select</option>
-                    <option>No experience yet</option>
+                    <option>No experience</option>
                     <option>Less than 1 year</option>
-                    <option>1-2 years</option>
-                    <option>3-5 years</option>
-                    <option>5+ years</option>
+                    <option>1–2 years</option>
+                    <option>3–5 years</option>
+                    <option>5–10 years</option>
+                    <option>10+ years</option>
                   </select>
                 </div>
               </div>
@@ -1496,7 +1559,17 @@ function CareersPage({ setCurrentPage }) {
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div><label style={labelSt}>Portfolio / LinkedIn</label><input style={inputSt} value={form.portfolio} onChange={e => update("portfolio", e.target.value)} placeholder="https://linkedin.com/in/..." /></div>
-                <div><label style={labelSt}>How did you hear about us?</label><input style={inputSt} value={form.referral} onChange={e => update("referral", e.target.value)} placeholder="Referral, LinkedIn, website..." /></div>
+                <div><label style={labelSt}>How did you hear about us?</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.referral} onChange={e => update("referral", e.target.value)}>
+                    <option value="">Select</option>
+                    <option>Social media</option>
+                    <option>Friend/referral</option>
+                    <option>Job board</option>
+                    <option>Google search</option>
+                    <option>Our website</option>
+                    <option>Other</option>
+                  </select>
+                </div>
               </div>
               <div style={{ marginBottom: 18 }}>
                 <label style={labelSt}>Why do you want to work at Orion Soft? *</label>
