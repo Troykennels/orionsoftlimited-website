@@ -3,11 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ],
-  "functions": {
-    "api/forms.js": {
-      "runtime": "@vercel/node@3"
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
-  }
+  ]
 }
