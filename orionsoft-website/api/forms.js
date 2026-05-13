@@ -1,11 +1,5 @@
 const DEFAULT_TO_EMAIL = "orionsoftlimited@gmail.com";
 const DEFAULT_FROM_EMAIL = "Orion Soft Website <onboarding@resend.dev>";
-const SENSITIVE_FIELDS = new Set(["password", "confirmPassword", "passwordConfirmation"]);
-
-function json(response, status, data) {
-  response.status(status).setHeader("Content-Type", "application/json");
-  response.send(JSON.stringify(data));
-}
 
 function escapeHtml(value) {
   return String(value)
@@ -18,15 +12,8 @@ function escapeHtml(value) {
 
 function formatEntries(payload) {
   return Object.entries(payload)
-    .filter(([key]) => !SENSITIVE_FIELDS.has(key))
     .filter(([, value]) => value !== undefined && value !== null && `${value}`.trim() !== "")
     .map(([key, value]) => [key, `${value}`]);
-}
-
-function stripSensitiveFields(payload) {
-  return Object.fromEntries(
-    Object.entries(payload).filter(([key]) => !SENSITIVE_FIELDS.has(key)),
-  );
 }
 
 function buildSubject(type) {
@@ -58,58 +45,64 @@ function buildText(payload) {
     .join("\n");
 }
 
-async function readPayload(request) {
-  if (request.body && typeof request.body === "object") return request.body;
-  if (typeof request.body === "string" && request.body.trim()) return JSON.parse(request.body);
-
-  const chunks = [];
-  for await (const chunk of request) chunks.push(chunk);
-  const body = Buffer.concat(chunks).toString("utf8");
-  return body ? JSON.parse(body) : {};
-}
-
 export default async function handler(request, response) {
+  // CORS headers
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+
   if (request.method === "OPTIONS") {
     response.status(204).end();
     return;
   }
 
+  const apiKey = process.env.RESEND_API_KEY;
+
   if (request.method === "GET") {
-    json(response, 200, {
+    response.status(200).json({
       ok: true,
-      emailServiceConfigured: Boolean(process.env.RESEND_API_KEY),
-      toEmailConfigured: Boolean(process.env.FORM_TO_EMAIL),
-      fromEmailConfigured: Boolean(process.env.FORM_FROM_EMAIL),
+      emailServiceConfigured: Boolean(apiKey),
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 6) + "..." : "NOT SET",
+      envKeysAvailable: Object.keys(process.env).filter(k => k.includes("RESEND") || k.includes("FORM")).join(", ") || "NONE",
     });
     return;
   }
 
   if (request.method !== "POST") {
-    json(response, 405, { ok: false, error: "Method not allowed" });
+    response.status(405).json({ ok: false, error: "Method not allowed" });
     return;
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    json(response, 503, { ok: false, error: "Email service not configured" });
+    response.status(503).json({ ok: false, error: "Email service not configured. RESEND_API_KEY not found in environment." });
     return;
   }
 
   let payload;
   try {
-    payload = stripSensitiveFields(await readPayload(request));
+    if (request.body && typeof request.body === "object") {
+      payload = request.body;
+    } else if (typeof request.body === "string" && request.body.trim()) {
+      payload = JSON.parse(request.body);
+    } else {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const body = Buffer.concat(chunks).toString("utf8");
+      payload = body ? JSON.parse(body) : {};
+    }
   } catch {
-    json(response, 400, { ok: false, error: "Invalid JSON payload" });
+    response.status(400).json({ ok: false, error: "Invalid JSON payload" });
     return;
   }
 
+  // Honeypot check
   if (payload.website) {
-    json(response, 200, { ok: true, ignored: true });
+    response.status(200).json({ ok: true, ignored: true });
     return;
   }
 
   if (!payload.type) {
-    json(response, 400, { ok: false, error: "Missing submission type" });
+    response.status(400).json({ ok: false, error: "Missing submission type" });
     return;
   }
 
@@ -117,29 +110,32 @@ export default async function handler(request, response) {
   const from = process.env.FORM_FROM_EMAIL || DEFAULT_FROM_EMAIL;
   const replyTo = payload.email && /\S+@\S+\.\S+/.test(payload.email) ? payload.email : undefined;
 
-  const resendResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": crypto.randomUUID(),
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: buildSubject(payload.type),
-      html: buildHtml(payload),
-      text: buildText(payload),
-      reply_to: replyTo,
-    }),
-  });
+  try {
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: buildSubject(payload.type),
+        html: buildHtml(payload),
+        text: buildText(payload),
+        reply_to: replyTo,
+      }),
+    });
 
-  if (!resendResponse.ok) {
-    const errorText = await resendResponse.text();
-    json(response, 502, { ok: false, error: "Email delivery failed", detail: errorText });
-    return;
+    if (!resendResponse.ok) {
+      const errorText = await resendResponse.text();
+      response.status(502).json({ ok: false, error: "Email delivery failed", detail: errorText });
+      return;
+    }
+
+    const result = await resendResponse.json();
+    response.status(200).json({ ok: true, id: result.id });
+  } catch (err) {
+    response.status(500).json({ ok: false, error: "Internal error", detail: err.message });
   }
-
-  const result = await resendResponse.json();
-  json(response, 200, { ok: true, id: result.id });
 }
