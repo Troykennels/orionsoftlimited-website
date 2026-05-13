@@ -103,6 +103,20 @@ const CAREER_ROLES = [
     ],
     compensation: "Competitive — based on experience and skill level",
   },
+  {
+    title: "General Application",
+    type: "Open",
+    location: "Lagos / Remote",
+    color: C.rose,
+    desc: "Don't see a role that fits you? We're always looking for talented, driven people. If you believe you can add value to Orion Soft, tell us what you bring to the table.",
+    requirements: [
+      "Passion for technology, healthcare, or business",
+      "Self-motivated and results-oriented",
+      "Strong communication skills",
+      "Willingness to learn and grow with a startup",
+    ],
+    compensation: "Depends on role and experience",
+  },
 ];
 
 const formRows = (data) => Object.entries(data)
@@ -112,13 +126,6 @@ const formRows = (data) => Object.entries(data)
 
 const asPhoneLink = (phone) => `tel:+234${phone.replace(/^0/, "").replace(/\D/g, "")}`;
 const asWhatsAppLink = (phone) => `https://wa.me/234${phone.replace(/^0/, "").replace(/\D/g, "")}`;
-
-function openMailFallback(type, payload) {
-  const subject = encodeURIComponent(`Orion Soft website ${type}`);
-  const body = encodeURIComponent(formRows(payload));
-  window.location.href = `mailto:${COMPANY_EMAIL}?subject=${subject}&body=${body}`;
-  return "email";
-}
 
 function getPreferredFormEndpoint() {
   if (FORM_ENDPOINT) return FORM_ENDPOINT;
@@ -137,22 +144,18 @@ async function sendWebsiteForm(type, data) {
 
   const endpoint = getPreferredFormEndpoint();
 
-  if (endpoint) {
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error("Submission failed");
-      return "sent";
-    } catch {
-      return openMailFallback(type, payload);
-    }
+  if (!endpoint) {
+    throw new Error("No form endpoint configured");
   }
 
-  return openMailFallback(type, payload);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) throw new Error("Submission failed");
+  return "sent";
 }
 
 // ═══════════════════════════════════════
@@ -1044,7 +1047,7 @@ function OnboardingPage({ setCurrentPage }) {
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
             Thank you for reaching out to Orion Soft. Our team will review your submission and
             contact you within 24 hours to discuss next steps.
-            {delivery === "email" ? ` Your email app was opened so the message can be sent to ${COMPANY_EMAIL}.` : ""}
+            
           </p>
           <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
@@ -1316,53 +1319,8 @@ function CareersPage({ setCurrentPage }) {
     setSubmitting(true);
     setError("");
     try {
-      // Google Form field mapping
-      const GOOGLE_FORM_ID = "1FAIpQLSdEMr5TKsf9O5pik29gQ2_uVAEaaL6axO1B76ZgNMS2eoEwgQ";
-      const FIELD_MAP = {
-        fullName:      "entry.456607244",
-        email:         "entry.2071528042",
-        phone:         "entry.1047973783",
-        location:      "entry.624260353",
-        role:          "entry.1956222092",
-        qualification: "entry.2139165398",
-        experience:    "entry.823766006",
-        cvLink:        "entry.613018374",
-        portfolio:     "entry.1264022189",
-        availability:  "entry.1524407148",
-        referral:      "entry.1725080512",
-        whyOrion:      "entry.1635774021",
-      };
-
-      const url = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse`;
-
-      // Hidden iframe to avoid CORS
-      const iframe = document.createElement("iframe");
-      iframe.name = "hidden_gform";
-      iframe.style.display = "none";
-      document.body.appendChild(iframe);
-
-      const formEl = document.createElement("form");
-      formEl.method = "POST";
-      formEl.action = url;
-      formEl.target = "hidden_gform";
-
-      Object.keys(FIELD_MAP).forEach(key => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = FIELD_MAP[key];
-        input.value = form[key] || "";
-        formEl.appendChild(input);
-      });
-
-      document.body.appendChild(formEl);
-      formEl.submit();
-
-      setTimeout(() => {
-        try { document.body.removeChild(formEl); } catch {}
-        try { document.body.removeChild(iframe); } catch {}
-      }, 3000);
-
-      setDelivery("sent");
+      const result = await sendWebsiteForm("career application", form);
+      setDelivery(result);
       setSubmitted(true);
     } catch {
       setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
@@ -1403,7 +1361,7 @@ function CareersPage({ setCurrentPage }) {
           <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Application Received</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
             Thank you for applying for {form.role}. Our team will review your application and contact you if there is a match.
-            {delivery === "email" ? ` Your email app was opened so the application can be sent to ${COMPANY_EMAIL}.` : ""}
+            
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={resetForm} style={{
@@ -1759,7 +1717,7 @@ function FeedbackPage({ setCurrentPage }) {
           <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Feedback Received</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
             Thank you. Your report helps Orion Soft improve the website and product experience.
-            {delivery === "email" ? ` Your email app was opened so the message can be sent to ${COMPANY_EMAIL}.` : ""}
+            
           </p>
           <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
