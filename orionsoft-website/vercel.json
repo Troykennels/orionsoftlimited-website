@@ -1,5 +1,13 @@
 {
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
+  ],
+  "functions": {
+    "api/forms.js": {
+      "runtime": "@vercel/node@3"
+    }
+  }
 }
