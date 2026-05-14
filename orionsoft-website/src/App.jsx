@@ -42,6 +42,9 @@ const COMPANY_RC = "9535128";
 const COMPANY_WEBSITE = "orionsoftlimited.com";
 const FORM_ENDPOINT = import.meta.env.VITE_ORIONSOFT_FORM_ENDPOINT || "";
 const BUILT_IN_FORM_ENDPOINT = "/api/forms";
+const TAWK_PROPERTY_ID = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
+const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || "";
+const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
 const CAREER_ROLES = [
   {
@@ -2107,16 +2110,93 @@ function FeedbackPage({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // FOOTER
 // ═══════════════════════════════════════
+function TawkLiveChat() {
+  useEffect(() => {
+    if (!HAS_TAWK_LIVE_CHAT || typeof window === "undefined") return;
+
+    window.Tawk_API = window.Tawk_API || {};
+    window.Tawk_LoadStart = new Date();
+
+    const scriptId = "orionsoft-tawk-widget";
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_ID}`;
+    script.charset = "UTF-8";
+    script.setAttribute("crossorigin", "*");
+    document.body.appendChild(script);
+  }, []);
+
+  return null;
+}
+
 function LiveChatFloat({ setCurrentPage }) {
   const [open, setOpen] = useState(false);
-  const message = encodeURIComponent("Hello Orion Soft, I need help with CareCore or a software project.");
-  const whatsappUrl = `${asWhatsAppLink(COMPANY_PHONE)}?text=${message}`;
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [chat, setChat] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    topic: "CareCore demo",
+    message: "",
+    website: "",
+  });
+
+  const updateChat = (key, value) => {
+    setError("");
+    setChat(current => ({ ...current, [key]: value }));
+  };
+
+  const handleChatSubmit = async (event) => {
+    event.preventDefault();
+    if (!chat.name.trim() || !chat.message.trim() || (!chat.email.trim() && !chat.phone.trim())) {
+      setError("Please add your name, message, and either phone or email.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await sendWebsiteForm("live chat message", {
+        ...chat,
+        preferredReply: chat.phone ? "Phone / WhatsApp" : "Email",
+      });
+      setSent(true);
+      setChat({
+        name: "",
+        email: "",
+        phone: "",
+        topic: "CareCore demo",
+        message: "",
+        website: "",
+      });
+    } catch (err) {
+      setError("Chat delivery is not available right now. Please use the project form or call us.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const chatInput = {
+    width: "100%",
+    border: `1px solid ${C.border}`,
+    background: "rgba(255,255,255,0.055)",
+    color: C.heading,
+    borderRadius: 9,
+    padding: "10px 12px",
+    fontSize: 13,
+    outline: "none",
+  };
 
   return (
     <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 5000, fontFamily: font }}>
       {open && (
         <div style={{
-          width: "min(340px, calc(100vw - 32px))",
+          width: "min(380px, calc(100vw - 32px))",
           background: "rgba(10,37,64,0.98)",
           border: `1px solid ${C.border}`,
           borderRadius: 16,
@@ -2127,26 +2207,78 @@ function LiveChatFloat({ setCurrentPage }) {
           <div style={{ padding: "16px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 900, color: C.heading }}>Orion Soft Support</div>
-              <div style={{ fontSize: 12, color: C.mint, marginTop: 3 }}>Live chat via WhatsApp</div>
+              <div style={{ fontSize: 12, color: C.mint, marginTop: 3 }}>Send a message inside the website</div>
             </div>
             <button type="button" aria-label="Close live chat" onClick={() => setOpen(false)} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, color: C.text, width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>x</button>
           </div>
           <div style={{ padding: 18 }}>
-            <p style={{ margin: "0 0 14px", color: C.text, fontSize: 13.5, lineHeight: 1.7 }}>
-              Need a demo, pricing help, or support with a request? Start a WhatsApp chat and Orion Soft will respond directly.
-            </p>
-            <div style={{ display: "grid", gap: 10 }}>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer" style={{
-                display: "block",
-                textAlign: "center",
-                textDecoration: "none",
-                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-                color: C.bg,
-                borderRadius: 10,
-                padding: "12px 14px",
-                fontSize: 14,
-                fontWeight: 900,
-              }}>Chat on WhatsApp</a>
+            {sent ? (
+              <div>
+                <div style={{ border: `1px solid ${C.mint}33`, background: C.mintDim, borderRadius: 12, padding: 16, marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: C.heading, marginBottom: 6 }}>Message sent</div>
+                  <p style={{ margin: 0, color: C.text, fontSize: 13.5, lineHeight: 1.65 }}>
+                    A receptionist can now pick it up from Orion Soft's website email and reply using your phone or email.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setSent(false)} style={{
+                  width: "100%",
+                  background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                  border: "none",
+                  color: C.bg,
+                  borderRadius: 10,
+                  padding: "11px 14px",
+                  fontSize: 13.5,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}>Send Another Message</button>
+              </div>
+            ) : (
+              <form onSubmit={handleChatSubmit}>
+                <input
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={chat.website}
+                  onChange={e => updateChat("website", e.target.value)}
+                  style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
+                  aria-hidden="true"
+                />
+                <p style={{ margin: "0 0 14px", color: C.text, fontSize: 13.5, lineHeight: 1.7 }}>
+                  Ask for a demo, pricing, support, or a quick project question. The message stays on this site.
+                </p>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <input style={chatInput} value={chat.name} onChange={e => updateChat("name", e.target.value)} placeholder="Your name *" />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <input type="email" style={chatInput} value={chat.email} onChange={e => updateChat("email", e.target.value)} placeholder="Email" />
+                    <input style={chatInput} value={chat.phone} onChange={e => updateChat("phone", e.target.value)} placeholder="Phone / WhatsApp" />
+                  </div>
+                  <select style={{ ...chatInput, cursor: "pointer" }} value={chat.topic} onChange={e => updateChat("topic", e.target.value)}>
+                    <option>CareCore demo</option>
+                    <option>Pricing question</option>
+                    <option>Custom software</option>
+                    <option>Support request</option>
+                    <option>Career question</option>
+                    <option>Other</option>
+                  </select>
+                  <textarea style={{ ...chatInput, resize: "vertical" }} rows={4} value={chat.message} onChange={e => updateChat("message", e.target.value)} placeholder="Type your message here *" />
+                </div>
+                {error && <p style={{ fontSize: 12.5, color: C.rose, margin: "10px 0 0", lineHeight: 1.5 }}>{error}</p>}
+                <button type="submit" disabled={submitting} style={{
+                  width: "100%",
+                  marginTop: 12,
+                  background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                  border: "none",
+                  color: C.bg,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  fontSize: 14,
+                  fontWeight: 900,
+                  cursor: submitting ? "wait" : "pointer",
+                  opacity: submitting ? 0.72 : 1,
+                }}>{submitting ? "Sending..." : "Send Message"}</button>
+              </form>
+            )}
+            <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
               <button type="button" onClick={() => { setCurrentPage("onboarding"); setOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{
                 background: `${C.accent}10`,
                 border: `1px solid ${C.accent}33`,
@@ -2436,7 +2568,7 @@ export default function App() {
       )}
 
       <Footer setCurrentPage={setCurrentPage} />
-      <LiveChatFloat setCurrentPage={setCurrentPage} />
+      {HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={setCurrentPage} />}
     </div>
   );
 }
