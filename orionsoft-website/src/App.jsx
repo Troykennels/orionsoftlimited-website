@@ -1034,6 +1034,7 @@ function OnboardingPage({ setCurrentPage }) {
     name: "", org: "", email: "", phone: "", location: "",
     facilitySize: "", departments: "", currentSystem: "",
     projectDesc: "", budget: "", timeline: "", service: "",
+    systemType: "", users: "", workflow: "", platform: "", integrations: "", priority: "",
     hearAbout: "", message: "", website: "",
   });
 
@@ -1047,7 +1048,7 @@ function OnboardingPage({ setCurrentPage }) {
     const missingCommon = ["name", "org", "email", "phone", "location"].find(key => !form[key].trim());
     const missingSpecific =
       formType === "carecore" && !form.facilitySize ? "facilitySize" :
-      formType === "custom" && !form.projectDesc.trim() ? "projectDesc" :
+      formType === "custom" && (!form.systemType || !form.projectDesc.trim()) ? "custom" :
       formType === "consult" && !form.service ? "service" :
       "";
 
@@ -1116,12 +1117,12 @@ function OnboardingPage({ setCurrentPage }) {
       note: "Best for clinics, hospitals, and diagnostic centers comparing HMS options.",
     },
     custom: {
-      tag: "BUILD REQUEST",
-      title: "Scope a custom software project",
-      copy: "Tell us what workflow is slowing your team down so Orion Soft can suggest a practical build plan, timeline, and budget path.",
+      tag: "OTHER SYSTEM REQUEST",
+      title: "Request another system or custom software",
+      copy: "Choose the kind of system you need, describe the workflow, and Orion Soft will shape it into a practical build plan.",
       accent: C.mint,
-      button: "Send Project Brief",
-      note: "Best for portals, dashboards, inventory tools, school systems, and integrations.",
+      button: "Send System Request",
+      note: "Best for school systems, inventory tools, portals, dashboards, CRMs, booking apps, integrations, and internal workflow systems.",
     },
     consult: {
       tag: "ADVISORY CALL",
@@ -1132,6 +1133,14 @@ function OnboardingPage({ setCurrentPage }) {
       note: "Best for strategy, system reviews, data, training, and support questions.",
     },
   }[formType];
+  const systemPresets = [
+    "School / LMS system",
+    "Inventory or POS system",
+    "Business dashboard / analytics",
+    "Customer portal",
+    "Booking / appointment system",
+    "CRM / sales management",
+  ];
 
   return (
     <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
@@ -1195,6 +1204,21 @@ function OnboardingPage({ setCurrentPage }) {
               <div style={{ fontSize: 11, fontWeight: 900, color: inquiryPurpose.accent, fontFamily: font, marginBottom: 6 }}>{inquiryPurpose.tag}</div>
               <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{inquiryPurpose.note}</p>
             </div>
+            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
+              {["1. Review", "2. Clarify", "3. Quote"].map((step, index) => (
+                <div key={step} style={{
+                  border: `1px solid ${C.border}`,
+                  background: "rgba(255,255,255,0.035)",
+                  borderRadius: 10,
+                  padding: "11px 12px",
+                  color: index === 0 ? inquiryPurpose.accent : C.textMuted,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  fontFamily: font,
+                  textAlign: "center",
+                }}>{step}</div>
+              ))}
+            </div>
 
             {/* Contact fields */}
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
@@ -1249,11 +1273,86 @@ function OnboardingPage({ setCurrentPage }) {
             {formType === "custom" && (
               <>
                 <div style={{ borderTop: `1px solid ${C.border}`, margin: "24px 0", paddingTop: 24 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 16 }}>Project Details</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>System Details</h3>
+                  <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.6, margin: "0 0 16px" }}>
+                    This section is different from the CareCore form so businesses can request any other system clearly.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {systemPresets.map(system => (
+                      <button key={system} type="button" onClick={() => update("systemType", system)} style={{
+                        background: form.systemType === system ? C.mint : "rgba(255,255,255,0.055)",
+                        color: form.systemType === system ? C.bg : C.text,
+                        border: `1px solid ${form.systemType === system ? C.mint : C.border}`,
+                        borderRadius: 999,
+                        padding: "8px 11px",
+                        fontSize: 12.5,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}>{system}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelSt}>Type of system *</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.systemType} onChange={e => update("systemType", e.target.value)}>
+                      <option value="">Select system type</option>
+                      <option>School / LMS system</option>
+                      <option>Inventory or POS system</option>
+                      <option>Business dashboard / analytics</option>
+                      <option>Customer portal</option>
+                      <option>Booking / appointment system</option>
+                      <option>CRM / sales management</option>
+                      <option>HR / payroll workflow</option>
+                      <option>API / system integration</option>
+                      <option>Mobile app</option>
+                      <option>Other custom system</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelSt}>Expected users</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.users} onChange={e => update("users", e.target.value)}>
+                      <option value="">Select size</option>
+                      <option>1-5 users</option>
+                      <option>6-20 users</option>
+                      <option>21-100 users</option>
+                      <option>100+ users</option>
+                      <option>Public customer-facing system</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelSt}>Preferred platform</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.platform} onChange={e => update("platform", e.target.value)}>
+                      <option value="">Select platform</option>
+                      <option>Web app</option>
+                      <option>Mobile app</option>
+                      <option>Web + mobile</option>
+                      <option>Admin dashboard only</option>
+                      <option>Not sure yet</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelSt}>Top priority</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.priority} onChange={e => update("priority", e.target.value)}>
+                      <option value="">Select priority</option>
+                      <option>Launch quickly</option>
+                      <option>Automate manual work</option>
+                      <option>Improve reporting</option>
+                      <option>Reduce errors</option>
+                      <option>Connect existing tools</option>
+                      <option>Scale an existing system</option>
+                    </select>
+                  </div>
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={labelSt}>What do you need built? *</label>
-                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={4} value={form.projectDesc} onChange={e => update("projectDesc", e.target.value)} placeholder="Describe your project, the problem it should solve, and any specific features you need..." />
+                  <label style={labelSt}>Workflow or problem to solve *</label>
+                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={4} value={form.projectDesc} onChange={e => update("projectDesc", e.target.value)} placeholder="Example: We manage stock manually and need approvals, sales tracking, invoices, and weekly reports..." />
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelSt}>Important features or integrations</label>
+                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={3} value={form.integrations} onChange={e => update("integrations", e.target.value)} placeholder="Payments, SMS, WhatsApp, accounting software, Excel import, existing database, barcode scanner..." />
                 </div>
                 <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                   <div>
@@ -2142,6 +2241,7 @@ function LiveChatFloat({ setCurrentPage }) {
     email: "",
     phone: "",
     topic: "CareCore demo",
+    supportArea: "",
     message: "",
     website: "",
   });
@@ -2171,6 +2271,7 @@ function LiveChatFloat({ setCurrentPage }) {
         email: "",
         phone: "",
         topic: "CareCore demo",
+        supportArea: "",
         message: "",
         website: "",
       });
@@ -2197,6 +2298,7 @@ function LiveChatFloat({ setCurrentPage }) {
     { label: "Build software", topic: "Custom software", message: "Hello Orion Soft, I need a custom software solution and would like to discuss the scope." },
     { label: "Support", topic: "Support request", message: "Hello Orion Soft, I need support with a product or request." },
   ];
+  const supportAreas = ["CareCore HMS", "Website issue", "Billing", "Training", "Login/access", "Feature request"];
 
   return (
     <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 5000, fontFamily: font }}>
@@ -2311,6 +2413,30 @@ function LiveChatFloat({ setCurrentPage }) {
                     <option>Career question</option>
                     <option>Other</option>
                   </select>
+                  {chat.topic === "Support request" && (
+                    <div style={{
+                      border: `1px solid ${C.mint}33`,
+                      background: "rgba(45,212,191,0.07)",
+                      borderRadius: 12,
+                      padding: 12,
+                    }}>
+                      <div style={{ fontSize: 12, color: C.mint, fontWeight: 900, marginBottom: 9 }}>What do you need support with?</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {supportAreas.map(area => (
+                          <button key={area} type="button" onClick={() => updateChat("supportArea", area)} style={{
+                            background: chat.supportArea === area ? C.mint : "rgba(255,255,255,0.08)",
+                            color: chat.supportArea === area ? C.bg : C.text,
+                            border: `1px solid ${chat.supportArea === area ? C.mint : C.border}`,
+                            borderRadius: 999,
+                            padding: "7px 10px",
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}>{area}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <textarea style={{ ...chatInput, resize: "vertical" }} rows={4} value={chat.message} onChange={e => updateChat("message", e.target.value)} placeholder="Type your message here *" />
                 </div>
                 {error && <p style={{ fontSize: 12.5, color: C.rose, margin: "10px 0 0", lineHeight: 1.5 }}>{error}</p>}
@@ -2563,6 +2689,7 @@ export default function App() {
         body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
         * { letter-spacing: 0 !important; }
         button, a, input, textarea, select { font: inherit; }
+        select option { color: #0F172A; background: #FFFFFF; }
         button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
           outline: 3px solid ${C.accent};
           outline-offset: 3px;
