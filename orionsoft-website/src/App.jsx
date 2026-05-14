@@ -445,6 +445,15 @@ function Hero({ setCurrentPage }) {
                  onMouseLeave={e => { e.target.style.background = "rgba(0,200,255,0.04)"; }}>
                 Our Products
               </a>
+              <a href="#flyers" style={{
+                border: `1px solid rgba(45,212,191,0.28)`, color: C.mint,
+                padding: "15px 32px", borderRadius: 11, textDecoration: "none",
+                fontSize: 15, fontWeight: 700, fontFamily: font,
+                background: "rgba(45,212,191,0.06)", transition: "all 0.3s",
+              }} onMouseEnter={e => { e.target.style.background = "rgba(45,212,191,0.12)"; }}
+                 onMouseLeave={e => { e.target.style.background = "rgba(45,212,191,0.06)"; }}>
+                View Flyers
+              </a>
             </div>
           </Reveal>
         </div>
@@ -1036,6 +1045,7 @@ function OnboardingPage({ setCurrentPage }) {
     const missingSpecific =
       formType === "carecore" && !form.facilitySize ? "facilitySize" :
       formType === "custom" && !form.projectDesc.trim() ? "projectDesc" :
+      formType === "consult" && !form.service ? "service" :
       "";
 
     if (missingCommon || missingSpecific) {
@@ -1093,6 +1103,32 @@ function OnboardingPage({ setCurrentPage }) {
   };
 
   const labelSt = { fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 6, display: "block" };
+  const inquiryPurpose = {
+    carecore: {
+      tag: "HOSPITAL DEMO",
+      title: "Book a CareCore HMS walkthrough",
+      copy: "Use this when your facility wants patient records, billing, pharmacy, lab, wards, and reporting in one hospital system.",
+      accent: C.accent,
+      button: "Request CareCore Demo",
+      note: "Best for clinics, hospitals, and diagnostic centers comparing HMS options.",
+    },
+    custom: {
+      tag: "BUILD REQUEST",
+      title: "Scope a custom software project",
+      copy: "Tell us what workflow is slowing your team down so Orion Soft can suggest a practical build plan, timeline, and budget path.",
+      accent: C.mint,
+      button: "Send Project Brief",
+      note: "Best for portals, dashboards, inventory tools, school systems, and integrations.",
+    },
+    consult: {
+      tag: "ADVISORY CALL",
+      title: "Ask for technical guidance",
+      copy: "Use this when you need a conversation before deciding what to build, integrate, audit, or improve.",
+      accent: C.purple,
+      button: "Request Consultation",
+      note: "Best for strategy, system reviews, data, training, and support questions.",
+    },
+  }[formType];
 
   return (
     <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
@@ -1107,10 +1143,10 @@ function OnboardingPage({ setCurrentPage }) {
 
         <Reveal delay={0.05}>
           <h1 style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 8 }}>
-            Get Started with Orion Soft
+            {inquiryPurpose.title}
           </h1>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Fill out the form below and our team will reach out within 24 hours.
+            {inquiryPurpose.copy}
           </p>
         </Reveal>
 
@@ -1137,8 +1173,11 @@ function OnboardingPage({ setCurrentPage }) {
 
         <Reveal delay={0.15}>
           <form onSubmit={handleSubmit} style={{
-            background: C.card, borderRadius: 20, padding: "clamp(24px, 4vw, 40px)",
-            border: `1px solid ${C.border}`,
+            background: `linear-gradient(180deg, ${inquiryPurpose.accent}10, rgba(19,47,76,0.98) 180px)`,
+            borderRadius: 20,
+            padding: "clamp(24px, 4vw, 40px)",
+            border: `1px solid ${inquiryPurpose.accent}44`,
+            boxShadow: `0 24px 70px ${inquiryPurpose.accent}10`,
           }}>
             <input
               type="text"
@@ -1149,7 +1188,12 @@ function OnboardingPage({ setCurrentPage }) {
               style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
               aria-hidden="true"
             />
-            {/* Common fields */}
+            <div style={{ border: `1px solid ${inquiryPurpose.accent}33`, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 18, marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: inquiryPurpose.accent, fontFamily: font, marginBottom: 6 }}>{inquiryPurpose.tag}</div>
+              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{inquiryPurpose.note}</p>
+            </div>
+
+            {/* Contact fields */}
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Your full name" /></div>
               <div><label style={labelSt}>Organisation *</label><input style={inputSt} value={form.org} onChange={e => update("org", e.target.value)} placeholder="Facility or company name" /></div>
@@ -1242,7 +1286,7 @@ function OnboardingPage({ setCurrentPage }) {
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 16 }}>How Can We Help?</h3>
                 </div>
                 <div style={{ marginBottom: 16 }}>
-                  <label style={labelSt}>Service of Interest</label>
+                  <label style={labelSt}>Service of Interest *</label>
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.service} onChange={e => update("service", e.target.value)}>
                     <option value="">Select a service</option>
                     <option>IT Consulting & Strategy</option>
@@ -1287,7 +1331,7 @@ function OnboardingPage({ setCurrentPage }) {
               boxShadow: `0 8px 28px ${C.accentGlow}`,
             }} onMouseEnter={e => e.target.style.boxShadow = `0 12px 36px ${C.accentGlow}`}
                onMouseLeave={e => e.target.style.boxShadow = `0 8px 28px ${C.accentGlow}`}>
-              {submitting ? "Sending..." : "Submit Request →"}
+              {submitting ? "Sending..." : inquiryPurpose.button}
             </button>
 
             <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, textAlign: "center", marginTop: 14 }}>
@@ -1470,7 +1514,13 @@ function CareersPage({ setCurrentPage }) {
           </Reveal>
 
           <Reveal delay={0.16}>
-            <form onSubmit={handleSubmit} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "clamp(24px, 4vw, 38px)" }}>
+            <form onSubmit={handleSubmit} style={{
+              background: `linear-gradient(180deg, ${activeRole.color}12, rgba(19,47,76,0.98) 210px)`,
+              border: `1px solid ${activeRole.color}44`,
+              borderRadius: 20,
+              padding: "clamp(24px, 4vw, 38px)",
+              boxShadow: `0 24px 70px ${activeRole.color}10`,
+            }}>
               <input
                 type="text"
                 tabIndex={-1}
@@ -1480,10 +1530,20 @@ function CareersPage({ setCurrentPage }) {
                 style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
                 aria-hidden="true"
               />
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>Application Form</h2>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>{activeRole.title} Application</h2>
               <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, lineHeight: 1.65, marginBottom: 24 }}>
-                Applications go directly to Orion Soft. Use a shareable CV link from Google Drive, Dropbox, LinkedIn, or your portfolio.
+                This form is for hiring only. Show us your fit for the selected role, your availability, and where we can review your CV or work.
               </p>
+              <div style={{
+                border: `1px solid ${activeRole.color}33`,
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 22,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: activeRole.color, fontFamily: font, marginBottom: 6 }}>ROLE SNAPSHOT</div>
+                <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{activeRole.desc}</p>
+              </div>
 
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.fullName} onChange={e => update("fullName", e.target.value)} placeholder="Your full name" /></div>
@@ -1572,7 +1632,7 @@ function CareersPage({ setCurrentPage }) {
                 color: C.bg, fontSize: 15, fontWeight: 800, fontFamily: font,
                 cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
                 boxShadow: `0 8px 28px ${C.accentGlow}`,
-              }}>{submitting ? "Submitting..." : "Submit Application"}</button>
+              }}>{submitting ? "Submitting..." : `Apply for ${activeRole.type} Role`}</button>
             </form>
           </Reveal>
         </div>
@@ -1582,6 +1642,7 @@ function CareersPage({ setCurrentPage }) {
 }
 
 function FlyerShowcase({ setCurrentPage }) {
+  const [activeFlyer, setActiveFlyer] = useState("company");
   const flyerStats = [
     { val: "25+", label: "Modules" },
     { val: "3-4 wks", label: "Go-live" },
@@ -1603,13 +1664,35 @@ function FlyerShowcase({ setCurrentPage }) {
           <SectionHeader
             tag="MEDIA KIT"
             tagColor={C.accent}
-            title="Flyers and Business Identity"
-            subtitle="Share-ready Orion Soft material for demos, hiring, WhatsApp broadcasts, and quick company introductions."
+            title="Website Flyers and Business Identity"
+            subtitle="Share-ready Orion Soft flyer previews are now part of the website for demos, hiring, WhatsApp broadcasts, and quick company introductions."
             dark
           />
         </Reveal>
 
+        <Reveal delay={0.04}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 30 }}>
+            {[
+              { id: "company", label: "Company Flyer" },
+              { id: "hiring", label: "Hiring Flyer" },
+            ].map(tab => (
+              <button key={tab.id} type="button" onClick={() => setActiveFlyer(tab.id)} style={{
+                border: `1px solid ${activeFlyer === tab.id ? C.accent + "66" : C.border}`,
+                background: activeFlyer === tab.id ? C.accentDim : "rgba(255,255,255,0.035)",
+                color: activeFlyer === tab.id ? C.accent : C.text,
+                borderRadius: 8,
+                padding: "11px 18px",
+                fontSize: 13.5,
+                fontWeight: 800,
+                fontFamily: font,
+                cursor: "pointer",
+              }}>{tab.label}</button>
+            ))}
+          </div>
+        </Reveal>
+
         <div className="media-layout" style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 22, marginTop: 56, alignItems: "start" }}>
+          {activeFlyer === "company" && (
           <Reveal delay={0.06}>
             <article style={{
               background: C.card,
@@ -1629,6 +1712,7 @@ function FlyerShowcase({ setCurrentPage }) {
                   </div>
                   <span style={{ fontSize: 11, color: C.accent, fontFamily: font, fontWeight: 800, background: C.accentDim, border: `1px solid ${C.accent}33`, borderRadius: 7, padding: "7px 12px" }}>SOFTWARE COMPANY</span>
                 </div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: C.mint, fontFamily: font, marginBottom: 12 }}>COMPANY FLYER</div>
 
                 <h3 style={{ fontSize: "clamp(30px, 4.5vw, 48px)", fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.05, marginBottom: 14 }}>
                   We Build Software That Powers <span style={{ color: C.mint }}>Hospitals</span>
@@ -1674,8 +1758,10 @@ function FlyerShowcase({ setCurrentPage }) {
               </div>
             </article>
           </Reveal>
+          )}
 
           <div style={{ display: "grid", gap: 18 }}>
+            {activeFlyer === "hiring" && (
             <Reveal delay={0.12}>
               <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 22 }}>
@@ -1685,6 +1771,7 @@ function FlyerShowcase({ setCurrentPage }) {
                   </div>
                   <span style={{ fontSize: 11, color: C.rose, fontFamily: font, fontWeight: 800, background: C.roseDim, border: `1px solid ${C.rose}33`, borderRadius: 7, padding: "7px 12px" }}>WE ARE HIRING</span>
                 </div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: C.mint, fontFamily: font, marginBottom: 12 }}>HIRING FLYER</div>
                 <h3 style={{ fontSize: 28, fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.08, marginBottom: 10 }}>Join Our Team. Build the Future.</h3>
                 <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 20 }}>We are building practical technology for Nigerian healthcare and growing businesses.</p>
                 <div style={{ display: "grid", gap: 9, marginBottom: 22 }}>
@@ -1709,6 +1796,7 @@ function FlyerShowcase({ setCurrentPage }) {
                 }}>View Open Roles</button>
               </article>
             </Reveal>
+            )}
 
             <Reveal delay={0.18}>
               <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
@@ -1945,8 +2033,11 @@ function FeedbackPage({ setCurrentPage }) {
 
         <Reveal delay={0.12}>
           <form onSubmit={handleSubmit} style={{
-            background: C.card, borderRadius: 20, padding: "clamp(24px, 4vw, 40px)",
-            border: `1px solid ${C.border}`,
+            background: `linear-gradient(180deg, ${C.amber}12, rgba(19,47,76,0.98) 190px)`,
+            borderRadius: 20,
+            padding: "clamp(24px, 4vw, 40px)",
+            border: `1px solid ${C.amber}40`,
+            boxShadow: `0 24px 70px ${C.amber}0F`,
           }}>
             <input
               type="text"
@@ -1957,6 +2048,13 @@ function FeedbackPage({ setCurrentPage }) {
               style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
               aria-hidden="true"
             />
+            <div style={{ border: `1px solid ${C.amber}33`, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 18, marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 900, color: C.amber, fontFamily: font, marginBottom: 6 }}>WEBSITE FEEDBACK DESK</div>
+              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>
+                Use this form for bugs, broken pages, confusing content, product suggestions, and visitor experience reports.
+              </p>
+            </div>
+
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
               <div><label style={labelSt}>Name</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Optional" /></div>
               <div><label style={labelSt}>Email</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="Optional, for follow-up" /></div>
@@ -1998,7 +2096,7 @@ function FeedbackPage({ setCurrentPage }) {
               color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font,
               cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
               boxShadow: `0 8px 28px ${C.accentGlow}`,
-            }}>{submitting ? "Sending..." : "Send Feedback"}</button>
+            }}>{submitting ? "Sending..." : "Send Website Report"}</button>
           </form>
         </Reveal>
       </div>
@@ -2015,7 +2113,7 @@ function LiveChatFloat({ setCurrentPage }) {
   const whatsappUrl = `${asWhatsAppLink(COMPANY_PHONE)}?text=${message}`;
 
   return (
-    <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 1200, fontFamily: font }}>
+    <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 5000, fontFamily: font }}>
       {open && (
         <div style={{
           width: "min(340px, calc(100vw - 32px))",
@@ -2067,21 +2165,21 @@ function LiveChatFloat({ setCurrentPage }) {
         minWidth: 58,
         height: 58,
         borderRadius: 999,
-        border: `1px solid ${C.accent}55`,
+        border: `2px solid ${C.white}`,
         background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
         color: C.bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 9,
-        padding: "0 18px",
-        boxShadow: `0 16px 38px ${C.accentGlow}`,
+        padding: "0 20px",
+        boxShadow: `0 16px 38px ${C.accentGlow}, 0 0 0 8px rgba(56,189,248,0.10)`,
         cursor: "pointer",
         fontSize: 14,
         fontWeight: 900,
       }}>
-        <span style={{ width: 10, height: 10, borderRadius: "50%", background: C.bg, opacity: 0.8 }} />
-        <span className="chat-label">Live Chat</span>
+        <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden="true">?</span>
+        <span>Live Chat</span>
       </button>
     </div>
   );
