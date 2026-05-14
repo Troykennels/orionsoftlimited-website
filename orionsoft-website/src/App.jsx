@@ -39,6 +39,7 @@ const COMPANY_EMAIL = "orionsoftlimited@gmail.com";
 const COMPANY_PHONE = "08165556805";
 const FOUNDER_NAME = "Famojuro Mathew";
 const COMPANY_RC = "9535128";
+const COMPANY_WEBSITE = "orionsoftlimited.com";
 const FORM_ENDPOINT = import.meta.env.VITE_ORIONSOFT_FORM_ENDPOINT || "";
 const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
@@ -154,8 +155,30 @@ async function sendWebsiteForm(type, data) {
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) throw new Error("Submission failed");
-  return "sent";
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok || result?.ok === false) {
+    const message = result?.hint || result?.detail || result?.error || "Submission failed";
+    throw new Error(message);
+  }
+
+  return result?.id ? `sent:${result.id}` : "sent";
+}
+
+function buildFallbackMailto(type, data) {
+  const subject = encodeURIComponent(`Orion Soft website ${type}`);
+  const body = encodeURIComponent(formRows({
+    type,
+    ...data,
+    page: typeof window !== "undefined" ? window.location.href : "",
+    submittedAt: new Date().toISOString(),
+  }));
+  return `mailto:${COMPANY_EMAIL}?subject=${subject}&body=${body}`;
 }
 
 // ═══════════════════════════════════════
@@ -235,6 +258,7 @@ function Nav({ currentPage, setCurrentPage }) {
     { label: "Standards", page: "home", anchor: "#standards" },
     { label: "Services", page: "home", anchor: "#services" },
     { label: "Pricing", page: "home", anchor: "#pricing" },
+    { label: "Flyers", page: "home", anchor: "#flyers" },
     { label: "About", page: "home", anchor: "#about" },
     { label: "Careers", page: "careers" },
     { label: "Feedback", page: "feedback" },
@@ -1025,8 +1049,11 @@ function OnboardingPage({ setCurrentPage }) {
       const result = await sendWebsiteForm(`request: ${formType}`, form);
       setDelivery(result);
       setSubmitted(true);
-    } catch {
-      setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
+    } catch (err) {
+      window.location.href = buildFallbackMailto(`request: ${formType}`, form);
+      setDelivery("email-draft");
+      setSubmitted(true);
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -1045,9 +1072,9 @@ function OnboardingPage({ setCurrentPage }) {
           }}>✅</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Submission Received!</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Thank you for reaching out to Orion Soft. Our team will review your submission and
-            contact you within 24 hours to discuss next steps.
-            
+            {delivery === "email-draft"
+              ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your request.`
+              : "Thank you for reaching out to Orion Soft. Our team will review your submission and contact you within 24 hours to discuss next steps."}
           </p>
           <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
@@ -1322,8 +1349,11 @@ function CareersPage({ setCurrentPage }) {
       const result = await sendWebsiteForm("career application", form);
       setDelivery(result);
       setSubmitted(true);
-    } catch {
-      setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
+    } catch (err) {
+      window.location.href = buildFallbackMailto("career application", form);
+      setDelivery("email-draft");
+      setSubmitted(true);
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -1360,8 +1390,9 @@ function CareersPage({ setCurrentPage }) {
           }}>OK</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Application Received</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Thank you for applying for {form.role}. Our team will review your application and contact you if there is a match.
-            
+            {delivery === "email-draft"
+              ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your application.`
+              : `Thank you for applying for ${form.role}. Our team will review your application and contact you if there is a match.`}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={resetForm} style={{
@@ -1550,6 +1581,166 @@ function CareersPage({ setCurrentPage }) {
   );
 }
 
+function FlyerShowcase({ setCurrentPage }) {
+  const flyerStats = [
+    { val: "25+", label: "Modules" },
+    { val: "3-4 wks", label: "Go-live" },
+    { val: "99.5%", label: "Uptime target" },
+    { val: "NDPA", label: "Privacy aware" },
+  ];
+
+  const roles = [
+    "Business Development Officer (Nurse)",
+    "Business Development Officer (Marketing)",
+    "Digital Marketing Executive",
+    "Software Developer",
+  ];
+
+  return (
+    <section id="flyers" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeader
+            tag="MEDIA KIT"
+            tagColor={C.accent}
+            title="Flyers and Business Identity"
+            subtitle="Share-ready Orion Soft material for demos, hiring, WhatsApp broadcasts, and quick company introductions."
+            dark
+          />
+        </Reveal>
+
+        <div className="media-layout" style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 22, marginTop: 56, alignItems: "start" }}>
+          <Reveal delay={0.06}>
+            <article style={{
+              background: C.card,
+              border: `1px solid ${C.border}`,
+              borderRadius: 16,
+              padding: "clamp(22px, 3vw, 34px)",
+              minHeight: 560,
+              position: "relative",
+              overflow: "hidden",
+            }}>
+              <div style={{ position: "absolute", inset: 0, opacity: 0.04, backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "42px 42px" }} />
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 34, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <OrionLogo size={38} gradientId="flyer-company-logo" />
+                    <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                  </div>
+                  <span style={{ fontSize: 11, color: C.accent, fontFamily: font, fontWeight: 800, background: C.accentDim, border: `1px solid ${C.accent}33`, borderRadius: 7, padding: "7px 12px" }}>SOFTWARE COMPANY</span>
+                </div>
+
+                <h3 style={{ fontSize: "clamp(30px, 4.5vw, 48px)", fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.05, marginBottom: 14 }}>
+                  We Build Software That Powers <span style={{ color: C.mint }}>Hospitals</span>
+                </h3>
+                <p style={{ fontSize: 15, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 560, marginBottom: 26 }}>
+                  CareCore HMS brings patient records, AI-assisted diagnosis, billing, lab, pharmacy, maternal health, ward management, and analytics into one connected workflow.
+                </p>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 30 }}>
+                  {["Patient Records", "AI Diagnosis", "Billing", "Lab", "Pharmacy", "Analytics", "Ward Management", "Training"].map(item => (
+                    <span key={item} style={{ fontSize: 12.5, color: C.text, fontFamily: font, fontWeight: 700, background: "rgba(255,255,255,0.045)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 11px" }}>{item}</span>
+                  ))}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 32 }}>
+                  {flyerStats.map(stat => (
+                    <div key={stat.label} style={{ border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.035)", borderRadius: 10, padding: "14px 10px", textAlign: "center" }}>
+                      <div style={{ fontSize: 21, fontWeight: 900, color: C.heading, fontFamily: font }}>{stat.val}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18, borderTop: `1px solid ${C.border}`, paddingTop: 24, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>Book a Free Demo</div>
+                    <a href={`mailto:${COMPANY_EMAIL}`} style={{ display: "block", color: C.textMuted, textDecoration: "none", fontSize: 13, fontFamily: font }}>{COMPANY_EMAIL}</a>
+                    <a href={asPhoneLink(COMPANY_PHONE)} style={{ display: "block", color: C.textMuted, textDecoration: "none", fontSize: 13, fontFamily: font, marginTop: 2 }}>+234 816 555 6805</a>
+                    <div style={{ color: C.textMuted, fontSize: 12, fontFamily: font, marginTop: 4 }}>{COMPANY_WEBSITE}</div>
+                  </div>
+                  <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+                    background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                    color: C.bg,
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "13px 20px",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    fontFamily: font,
+                    cursor: "pointer",
+                  }}>Request Demo</button>
+                </div>
+              </div>
+            </article>
+          </Reveal>
+
+          <div style={{ display: "grid", gap: 18 }}>
+            <Reveal delay={0.12}>
+              <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 22 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <OrionLogo size={34} gradientId="flyer-hiring-logo" />
+                    <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                  </div>
+                  <span style={{ fontSize: 11, color: C.rose, fontFamily: font, fontWeight: 800, background: C.roseDim, border: `1px solid ${C.rose}33`, borderRadius: 7, padding: "7px 12px" }}>WE ARE HIRING</span>
+                </div>
+                <h3 style={{ fontSize: 28, fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.08, marginBottom: 10 }}>Join Our Team. Build the Future.</h3>
+                <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 20 }}>We are building practical technology for Nigerian healthcare and growing businesses.</p>
+                <div style={{ display: "grid", gap: 9, marginBottom: 22 }}>
+                  {roles.map((role, index) => (
+                    <div key={role} style={{ border: `1px solid ${C.border}`, borderLeft: `3px solid ${[C.accent, C.mint, C.purple, C.amber][index]}`, background: "rgba(255,255,255,0.035)", borderRadius: 10, padding: "11px 13px" }}>
+                      <div style={{ fontSize: 13.5, color: C.heading, fontFamily: font, fontWeight: 800 }}>{role}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>{index < 2 ? "Lagos + commission" : "Lagos / Remote"}</div>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setCurrentPage("careers")} style={{
+                  width: "100%",
+                  background: `${C.mint}12`,
+                  color: C.mint,
+                  border: `1px solid ${C.mint}33`,
+                  borderRadius: 10,
+                  padding: "12px 16px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  fontFamily: font,
+                  cursor: "pointer",
+                }}>View Open Roles</button>
+              </article>
+            </Reveal>
+
+            <Reveal delay={0.18}>
+              <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
+                <span style={{ fontSize: 11, color: C.purple, fontFamily: font, fontWeight: 800, background: C.purpleDim, border: `1px solid ${C.purple}33`, borderRadius: 7, padding: "7px 12px" }}>BUSINESS CARD</span>
+                <div style={{ marginTop: 20, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, background: "#060B16", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", inset: 0, opacity: 0.06, backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "28px 28px" }} />
+                  <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 32 }}>
+                        <OrionLogo size={34} gradientId="business-card-logo" />
+                        <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                      </div>
+                      <div style={{ fontSize: 21, fontWeight: 900, color: C.heading, fontFamily: font, marginBottom: 4 }}>{FOUNDER_NAME}</div>
+                      <div style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 800 }}>Founder & CEO</div>
+                    </div>
+                    <div style={{ textAlign: "right", fontSize: 12.5, color: C.textMuted, fontFamily: font, lineHeight: 1.8 }}>
+                      <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>+234 816 555 6805</a><br />
+                      <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
+                      {COMPANY_WEBSITE}<br />
+                      Lagos, Nigeria
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FAQSection({ setCurrentPage }) {
   const faqs = [
     {
@@ -1691,8 +1882,11 @@ function FeedbackPage({ setCurrentPage }) {
       const result = await sendWebsiteForm("visitor feedback", form);
       setDelivery(result);
       setSubmitted(true);
-    } catch {
-      setError(`We could not send this automatically. Please email ${COMPANY_EMAIL} or try again.`);
+    } catch (err) {
+      window.location.href = buildFallbackMailto("visitor feedback", form);
+      setDelivery("email-draft");
+      setSubmitted(true);
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -1716,8 +1910,9 @@ function FeedbackPage({ setCurrentPage }) {
           }}>✓</div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Feedback Received</h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Thank you. Your report helps Orion Soft improve the website and product experience.
-            
+            {delivery === "email-draft"
+              ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your feedback.`
+              : "Thank you. Your report helps Orion Soft improve the website and product experience."}
           </p>
           <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
@@ -1814,6 +2009,84 @@ function FeedbackPage({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // FOOTER
 // ═══════════════════════════════════════
+function LiveChatFloat({ setCurrentPage }) {
+  const [open, setOpen] = useState(false);
+  const message = encodeURIComponent("Hello Orion Soft, I need help with CareCore or a software project.");
+  const whatsappUrl = `${asWhatsAppLink(COMPANY_PHONE)}?text=${message}`;
+
+  return (
+    <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 1200, fontFamily: font }}>
+      {open && (
+        <div style={{
+          width: "min(340px, calc(100vw - 32px))",
+          background: "rgba(10,37,64,0.98)",
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          boxShadow: "0 22px 60px rgba(0,0,0,0.34)",
+          overflow: "hidden",
+          marginBottom: 12,
+        }}>
+          <div style={{ padding: "16px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: C.heading }}>Orion Soft Support</div>
+              <div style={{ fontSize: 12, color: C.mint, marginTop: 3 }}>Live chat via WhatsApp</div>
+            </div>
+            <button type="button" aria-label="Close live chat" onClick={() => setOpen(false)} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, color: C.text, width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>x</button>
+          </div>
+          <div style={{ padding: 18 }}>
+            <p style={{ margin: "0 0 14px", color: C.text, fontSize: 13.5, lineHeight: 1.7 }}>
+              Need a demo, pricing help, or support with a request? Start a WhatsApp chat and Orion Soft will respond directly.
+            </p>
+            <div style={{ display: "grid", gap: 10 }}>
+              <a href={whatsappUrl} target="_blank" rel="noreferrer" style={{
+                display: "block",
+                textAlign: "center",
+                textDecoration: "none",
+                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                color: C.bg,
+                borderRadius: 10,
+                padding: "12px 14px",
+                fontSize: 14,
+                fontWeight: 900,
+              }}>Chat on WhatsApp</a>
+              <button type="button" onClick={() => { setCurrentPage("onboarding"); setOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{
+                background: `${C.accent}10`,
+                border: `1px solid ${C.accent}33`,
+                color: C.accent,
+                borderRadius: 10,
+                padding: "11px 14px",
+                fontSize: 13.5,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}>Open Project Form</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <button type="button" aria-label="Open Orion Soft live chat" aria-expanded={open} onClick={() => setOpen(current => !current)} style={{
+        minWidth: 58,
+        height: 58,
+        borderRadius: 999,
+        border: `1px solid ${C.accent}55`,
+        background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+        color: C.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 9,
+        padding: "0 18px",
+        boxShadow: `0 16px 38px ${C.accentGlow}`,
+        cursor: "pointer",
+        fontSize: 14,
+        fontWeight: 900,
+      }}>
+        <span style={{ width: 10, height: 10, borderRadius: "50%", background: C.bg, opacity: 0.8 }} />
+        <span className="chat-label">Live Chat</span>
+      </button>
+    </div>
+  );
+}
+
 function LegalPage({ type, setCurrentPage }) {
   const isPrivacy = type === "privacy";
   const title = isPrivacy ? "Privacy Policy" : "Terms of Service";
@@ -1915,7 +2188,7 @@ function Footer({ setCurrentPage }) {
           </div>
 
           {[
-            { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
+            { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Flyers & Media Kit", a: "#flyers", onClick: goHomeAnchor("#flyers") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
             { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
@@ -2011,6 +2284,8 @@ export default function App() {
           .nav-burger { display: block !important; }
           .form-grid { grid-template-columns: 1fr !important; }
           .career-layout { grid-template-columns: 1fr !important; }
+          .media-layout { grid-template-columns: 1fr !important; }
+          .chat-label { display: none !important; }
         }
         @media (min-width: 769px) {
           .nav-burger { display: none !important; }
@@ -2020,6 +2295,7 @@ export default function App() {
           section { padding-left: 18px !important; padding-right: 18px !important; }
           button, a { max-width: 100%; }
           input, textarea, select { font-size: 16px !important; }
+          .live-chat { right: 16px !important; bottom: 16px !important; }
         }
       `}</style>
 
@@ -2034,6 +2310,7 @@ export default function App() {
           <Services setCurrentPage={setCurrentPage} />
           <CareCoreSection />
           <Pricing setCurrentPage={setCurrentPage} />
+          <FlyerShowcase setCurrentPage={setCurrentPage} />
           <About />
           <FAQSection setCurrentPage={setCurrentPage} />
           <CTABanner setCurrentPage={setCurrentPage} />
@@ -2061,6 +2338,7 @@ export default function App() {
       )}
 
       <Footer setCurrentPage={setCurrentPage} />
+      <LiveChatFloat setCurrentPage={setCurrentPage} />
     </div>
   );
 }

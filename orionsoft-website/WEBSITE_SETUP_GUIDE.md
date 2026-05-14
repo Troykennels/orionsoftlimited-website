@@ -184,7 +184,7 @@ The website will automatically show it in the **Systems & Apps** section.
 
 Recommended setup for this project now:
 
-- Built-in Vercel endpoint: deploy `api/forms.js` together with the site and add `RESEND_API_KEY`, `FORM_TO_EMAIL`, and `FORM_FROM_EMAIL` in Vercel environment variables.
+- Built-in Vercel endpoint: deploy `api/forms.js` together with the site and add `RESEND_API_KEY`, `FORM_TO_EMAIL`, and `FORM_FROM_EMAIL` in Vercel environment variables. `FORM_FROM_EMAIL` must use a domain verified in Resend, for example `Orion Soft Website <hello@orionsoftlimited.com>`.
 - External endpoint override: set `VITE_ORIONSOFT_FORM_ENDPOINT` only if you want to use another service instead of the built-in endpoint.
 - Email fallback: if neither endpoint works, the site still opens the visitor's email app addressed to `orionsoftlimited@gmail.com`.
 

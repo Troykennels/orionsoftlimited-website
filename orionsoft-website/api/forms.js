@@ -1,5 +1,5 @@
 const DEFAULT_TO_EMAIL = "orionsoftlimited@gmail.com";
-const DEFAULT_FROM_EMAIL = "Orion Soft Website <onboarding@resend.dev>";
+const DEFAULT_FROM_EMAIL = "Orion Soft Website <hello@orionsoftlimited.com>";
 
 function escapeHtml(value) {
   return String(value)
@@ -43,6 +43,44 @@ function buildText(payload) {
   return formatEntries(payload)
     .map(([key, value]) => `${key}: ${value}`)
     .join("\n");
+}
+
+function splitEmails(value) {
+  return String(value || "")
+    .split(",")
+    .map(email => email.trim())
+    .filter(Boolean);
+}
+
+async function readResendError(resendResponse) {
+  const raw = await resendResponse.text();
+  if (!raw) return "";
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.message || parsed.error || raw;
+  } catch {
+    return raw;
+  }
+}
+
+function buildDeliveryHint(status, detail, from) {
+  const lowerDetail = String(detail || "").toLowerCase();
+  const lowerFrom = String(from || "").toLowerCase();
+
+  if (status === 403 && lowerFrom.includes("@resend.dev")) {
+    return "Resend's resend.dev sender is only for testing and can only send to the email address on the Resend account. Verify your own domain in Resend and set FORM_FROM_EMAIL to an address on that domain.";
+  }
+
+  if (lowerDetail.includes("verify a domain") || lowerDetail.includes("domain is not verified")) {
+    return "The sender address must use a domain verified in Resend. In Vercel, set FORM_FROM_EMAIL to something like Orion Soft Website <hello@orionsoftlimited.com> after verifying orionsoftlimited.com in Resend.";
+  }
+
+  if (lowerDetail.includes("api key")) {
+    return "Check that RESEND_API_KEY is set in the Vercel project environment variables for Production and redeploy after saving it.";
+  }
+
+  return "Check RESEND_API_KEY, FORM_FROM_EMAIL, FORM_TO_EMAIL, and the Resend email logs for this request.";
 }
 
 export default async function handler(request, response) {
@@ -108,7 +146,13 @@ export default async function handler(request, response) {
 
   const to = process.env.FORM_TO_EMAIL || DEFAULT_TO_EMAIL;
   const from = process.env.FORM_FROM_EMAIL || DEFAULT_FROM_EMAIL;
+  const toEmails = splitEmails(to);
   const replyTo = payload.email && /\S+@\S+\.\S+/.test(payload.email) ? payload.email : undefined;
+
+  if (!toEmails.length) {
+    response.status(400).json({ ok: false, error: "No recipient configured. Set FORM_TO_EMAIL." });
+    return;
+  }
 
   try {
     const resendResponse = await fetch("https://api.resend.com/emails", {
@@ -119,7 +163,7 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         from,
-        to: [to],
+        to: toEmails,
         subject: buildSubject(payload.type),
         html: buildHtml(payload),
         text: buildText(payload),
@@ -128,8 +172,14 @@ export default async function handler(request, response) {
     });
 
     if (!resendResponse.ok) {
-      const errorText = await resendResponse.text();
-      response.status(502).json({ ok: false, error: "Email delivery failed", detail: errorText });
+      const detail = await readResendError(resendResponse);
+      response.status(502).json({
+        ok: false,
+        error: "Email delivery failed",
+        status: resendResponse.status,
+        detail,
+        hint: buildDeliveryHint(resendResponse.status, detail, from),
+      });
       return;
     }
 
