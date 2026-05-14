@@ -2183,41 +2183,73 @@ function LiveChatFloat({ setCurrentPage }) {
 
   const chatInput = {
     width: "100%",
-    border: `1px solid ${C.border}`,
-    background: "rgba(255,255,255,0.055)",
+    border: `1px solid rgba(215,227,239,0.12)`,
+    background: "rgba(255,255,255,0.075)",
     color: C.heading,
-    borderRadius: 9,
-    padding: "10px 12px",
+    borderRadius: 10,
+    padding: "11px 12px",
     fontSize: 13,
     outline: "none",
   };
+  const quickTopics = [
+    { label: "Book demo", topic: "CareCore demo", message: "Hello Orion Soft, I would like to book a CareCore demo for my facility." },
+    { label: "Get pricing", topic: "Pricing question", message: "Hello Orion Soft, please share pricing details for CareCore or your software services." },
+    { label: "Build software", topic: "Custom software", message: "Hello Orion Soft, I need a custom software solution and would like to discuss the scope." },
+    { label: "Support", topic: "Support request", message: "Hello Orion Soft, I need support with a product or request." },
+  ];
 
   return (
     <div className="live-chat" style={{ position: "fixed", right: 22, bottom: 22, zIndex: 5000, fontFamily: font }}>
       {open && (
         <div style={{
-          width: "min(380px, calc(100vw - 32px))",
-          background: "rgba(10,37,64,0.98)",
-          border: `1px solid ${C.border}`,
-          borderRadius: 16,
-          boxShadow: "0 22px 60px rgba(0,0,0,0.34)",
+          width: "min(410px, calc(100vw - 32px))",
+          background: "rgba(8,28,48,0.98)",
+          border: `1px solid rgba(56,189,248,0.22)`,
+          borderRadius: 18,
+          boxShadow: "0 28px 80px rgba(0,0,0,0.42)",
           overflow: "hidden",
           marginBottom: 12,
         }}>
-          <div style={{ padding: "16px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: C.heading }}>Orion Soft Support</div>
-              <div style={{ fontSize: 12, color: C.mint, marginTop: 3 }}>Send a message inside the website</div>
+          <div style={{
+            padding: 18,
+            borderBottom: `1px solid rgba(255,255,255,0.08)`,
+            background: `linear-gradient(135deg, rgba(56,189,248,0.18), rgba(45,212,191,0.10))`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+          }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                color: C.bg,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                fontWeight: 900,
+              }}>OS</div>
+              <div>
+                <div style={{ fontSize: 15.5, fontWeight: 900, color: C.heading }}>Orion Soft Reception</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: C.mint, marginTop: 3 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 10px ${C.mint}` }} />
+                  Online desk / replies by phone or email
+                </div>
+              </div>
             </div>
             <button type="button" aria-label="Close live chat" onClick={() => setOpen(false)} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, color: C.text, width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 18, lineHeight: 1 }}>x</button>
           </div>
-          <div style={{ padding: 18 }}>
+          <div style={{ padding: 18, background: "linear-gradient(180deg, rgba(10,37,64,0.98), rgba(7,20,35,0.98))" }}>
             {sent ? (
               <div>
-                <div style={{ border: `1px solid ${C.mint}33`, background: C.mintDim, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: C.heading, marginBottom: 6 }}>Message sent</div>
+                <div style={{ border: `1px solid ${C.mint}33`, background: C.mintDim, borderRadius: 14, padding: 18, marginBottom: 12 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: C.mint, color: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, marginBottom: 12 }}>OK</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: C.heading, marginBottom: 6 }}>Message sent to Orion Soft</div>
                   <p style={{ margin: 0, color: C.text, fontSize: 13.5, lineHeight: 1.65 }}>
-                    A receptionist can now pick it up from Orion Soft's website email and reply using your phone or email.
+                    The receptionist desk will receive it through Resend and reply using the contact detail you provided.
                   </p>
                 </div>
                 <button type="button" onClick={() => setSent(false)} style={{
@@ -2243,9 +2275,28 @@ function LiveChatFloat({ setCurrentPage }) {
                   style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
                   aria-hidden="true"
                 />
-                <p style={{ margin: "0 0 14px", color: C.text, fontSize: 13.5, lineHeight: 1.7 }}>
-                  Ask for a demo, pricing, support, or a quick project question. The message stays on this site.
-                </p>
+                <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
+                  <div style={{ maxWidth: "88%", background: "rgba(255,255,255,0.075)", border: `1px solid ${C.border}`, borderRadius: "14px 14px 14px 4px", padding: "11px 13px" }}>
+                    <p style={{ margin: 0, color: C.text, fontSize: 13.5, lineHeight: 1.6 }}>
+                      Hi, welcome to Orion Soft. What can we help you with today?
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {quickTopics.map(item => (
+                      <button key={item.label} type="button" onClick={() => setChat(current => ({ ...current, topic: item.topic, message: item.message }))} style={{
+                        background: chat.topic === item.topic ? C.accentDim : "rgba(255,255,255,0.055)",
+                        color: chat.topic === item.topic ? C.accent : C.text,
+                        border: `1px solid ${chat.topic === item.topic ? C.accent + "55" : C.border}`,
+                        borderRadius: 999,
+                        padding: "8px 11px",
+                        fontSize: 12.5,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}>{item.label}</button>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{ display: "grid", gap: 10 }}>
                   <input style={chatInput} value={chat.name} onChange={e => updateChat("name", e.target.value)} placeholder="Your name *" />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -2263,6 +2314,9 @@ function LiveChatFloat({ setCurrentPage }) {
                   <textarea style={{ ...chatInput, resize: "vertical" }} rows={4} value={chat.message} onChange={e => updateChat("message", e.target.value)} placeholder="Type your message here *" />
                 </div>
                 {error && <p style={{ fontSize: 12.5, color: C.rose, margin: "10px 0 0", lineHeight: 1.5 }}>{error}</p>}
+                <p style={{ margin: "10px 0 0", color: C.textMuted, fontSize: 11.5, lineHeight: 1.5 }}>
+                  This secure desk sends directly to Orion Soft. Add phone for the fastest response.
+                </p>
                 <button type="submit" disabled={submitting} style={{
                   width: "100%",
                   marginTop: 12,
@@ -2275,7 +2329,8 @@ function LiveChatFloat({ setCurrentPage }) {
                   fontWeight: 900,
                   cursor: submitting ? "wait" : "pointer",
                   opacity: submitting ? 0.72 : 1,
-                }}>{submitting ? "Sending..." : "Send Message"}</button>
+                  boxShadow: `0 12px 28px ${C.accentGlow}`,
+                }}>{submitting ? "Sending..." : "Send to Reception Desk"}</button>
               </form>
             )}
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
@@ -2294,24 +2349,37 @@ function LiveChatFloat({ setCurrentPage }) {
         </div>
       )}
       <button type="button" aria-label="Open Orion Soft live chat" aria-expanded={open} onClick={() => setOpen(current => !current)} style={{
-        minWidth: 58,
-        height: 58,
-        borderRadius: 999,
-        border: `2px solid ${C.white}`,
+        minWidth: 176,
+        height: 62,
+        borderRadius: 18,
+        border: `1px solid rgba(255,255,255,0.78)`,
         background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
         color: C.bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 9,
-        padding: "0 20px",
-        boxShadow: `0 16px 38px ${C.accentGlow}, 0 0 0 8px rgba(56,189,248,0.10)`,
+        gap: 11,
+        padding: "0 18px",
+        boxShadow: `0 18px 44px ${C.accentGlow}, 0 0 0 8px rgba(56,189,248,0.10)`,
         cursor: "pointer",
-        fontSize: 14,
+        fontSize: 13.5,
         fontWeight: 900,
       }}>
-        <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden="true">?</span>
-        <span>Live Chat</span>
+        <span style={{
+          width: 34,
+          height: 34,
+          borderRadius: 12,
+          background: "rgba(10,37,64,0.18)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 17,
+          lineHeight: 1,
+        }} aria-hidden="true">?</span>
+        <span style={{ display: "grid", textAlign: "left", lineHeight: 1.15 }}>
+          <span>Chat with us</span>
+          <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.75 }}>Orion Soft desk</span>
+        </span>
       </button>
     </div>
   );
