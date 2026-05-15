@@ -1276,10 +1276,10 @@ function CareCoreSection() {
 // ═══════════════════════════════════════
 function Pricing({ setCurrentPage }) {
   const tiers = [
-    { name: "Clinic", beds: "1-10 beds", onboard: "Starter quote", monthly: "Managed plan", color: C.mint, popular: false },
-    { name: "Small Hospital", beds: "11-50 beds", onboard: "Growth quote", monthly: "Managed plan", color: C.accent, popular: true },
-    { name: "Medium Hospital", beds: "51-150 beds", onboard: "Scale quote", monthly: "Managed plan", color: C.purple, popular: false },
-    { name: "Large Hospital", beds: "150+ beds", onboard: "Enterprise quote", monthly: "Enterprise SLA", color: C.amber, popular: false },
+    { name: "Clinic", beds: "1–10 beds", onboard: "₦350K – 500K", monthly: "₦30,000", color: C.mint, popular: false },
+    { name: "Small Hospital", beds: "11–50 beds", onboard: "₦500K – 800K", monthly: "₦60,000", color: C.accent, popular: true },
+    { name: "Medium Hospital", beds: "51–150 beds", onboard: "₦800K – 1.2M", monthly: "₦100,000", color: C.purple, popular: false },
+    { name: "Large Hospital", beds: "150+ beds", onboard: "₦1.2M – 2M", monthly: "₦150–250K", color: C.amber, popular: false },
   ];
 
   return (
