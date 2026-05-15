@@ -23,6 +23,7 @@ const C = {
   purpleDim: "rgba(196,181,253,0.12)",
   amber: "#FCD34D",
   amberDim: "rgba(252,211,77,0.12)",
+  gold: "#D6B56D",
   rose: "#FDA4AF",
   roseDim: "rgba(253,164,175,0.12)",
   success: "#2DD4BF",
@@ -236,27 +237,17 @@ function OrionLogo({ size = 32, gradientId = "orion-logo" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
       <defs>
-        <radialGradient id={`${gradientId}-space`} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(18 15) rotate(45) scale(62)">
-          <stop stopColor="#7DD3FC" />
-          <stop offset="0.38" stopColor="#00C8FF" />
-          <stop offset="0.68" stopColor="#A78BFA" />
-          <stop offset="1" stopColor="#34D399" />
-        </radialGradient>
-        <linearGradient id={`${gradientId}-orbit`} x1="14" y1="18" x2="51" y2="47" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#F8FAFC" />
-          <stop offset="0.5" stopColor="#BFEFFF" />
-          <stop offset="1" stopColor="#34D399" />
+        <linearGradient id={`${gradientId}-gold`} x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#F8E6B2" />
+          <stop offset="0.46" stopColor="#D6B56D" />
+          <stop offset="1" stopColor="#A77C33" />
         </linearGradient>
       </defs>
-      <rect x="3" y="3" width="58" height="58" rx="17" fill="#0A2540" />
-      <rect x="6" y="6" width="52" height="52" rx="15" fill={`url(#${gradientId}-space)`} />
-      <circle cx="46" cy="16" r="2.5" fill="#FBBF24" />
-      <circle cx="18" cy="46" r="2" fill="#F8FAFC" opacity="0.9" />
-      <circle cx="18" cy="18" r="1.4" fill="#F8FAFC" opacity="0.75" />
-      <path d="M20 34C20 25.163 27.163 18 36 18C44.837 18 52 25.163 52 34C52 42.837 44.837 50 36 50" stroke={`url(#${gradientId}-orbit)`} strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M14 37C20 29 31 24 47 22" stroke="#0A2540" strokeWidth="4" strokeLinecap="round" opacity="0.65" />
-      <circle cx="34" cy="34" r="6" fill="#0A2540" />
-      <circle cx="34" cy="34" r="2.4" fill="#00C8FF" />
+      <rect x="4" y="4" width="56" height="56" rx="18" fill="#070809" />
+      <circle cx="32" cy="32" r="24" stroke={`url(#${gradientId}-gold)`} strokeWidth="4" />
+      <circle cx="32" cy="32" r="14" stroke={`url(#${gradientId}-gold)`} strokeWidth="2.8" opacity="0.9" />
+      <path d="M43 30C43 37.2 38.4 42 31.6 42" stroke={`url(#${gradientId}-gold)`} strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="4.4" fill={`url(#${gradientId}-gold)`} />
     </svg>
   );
 }
@@ -312,7 +303,7 @@ function Nav({ currentPage, setCurrentPage }) {
              onClick={() => { setCurrentPage("home"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
           <OrionLogo size={32} gradientId="nav-orion-logo" />
           <span style={{ fontSize: 19, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.03em" }}>
-            Orion<span style={{ color: C.accent }}>Soft</span>
+            Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
         </div>
 
@@ -409,6 +400,7 @@ function Hero({ setCurrentPage }) {
         backgroundSize: "64px 64px" }} />
 
       <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", position: "relative", zIndex: 1 }}>
+        <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.95fr) minmax(340px, 0.75fr)", gap: "clamp(28px, 5vw, 70px)", alignItems: "center" }}>
         <div style={{ maxWidth: 760 }}>
           <Reveal>
             <div style={{
@@ -496,6 +488,56 @@ function Hero({ setCurrentPage }) {
           </Reveal>
         </div>
 
+        <Reveal delay={0.18}>
+          <div style={{
+            position: "relative",
+            minHeight: 520,
+            borderRadius: 22,
+            overflow: "hidden",
+            border: `1px solid ${C.border}`,
+            background: C.card,
+            boxShadow: "0 28px 90px rgba(0,0,0,0.28)",
+          }}>
+            <img
+              src="/assets/carecore-doctor-ai.jpeg"
+              alt="Doctor using digital healthcare software on a laptop"
+              loading="eager"
+              decoding="async"
+              style={{ width: "100%", height: "100%", minHeight: 520, objectFit: "cover", display: "block" }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,37,64,0.04), rgba(10,37,64,0.92))" }} />
+            <div style={{ position: "absolute", inset: 0, opacity: 0.18, backgroundImage: `linear-gradient(${C.mint} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "34px 34px" }} />
+            <div style={{
+              position: "absolute", left: 18, right: 18, bottom: 18,
+              display: "grid", gap: 12,
+            }}>
+              <div style={{
+                background: "rgba(7,8,9,0.72)", backdropFilter: "blur(18px)",
+                border: `1px solid rgba(214,181,109,0.38)`,
+                borderRadius: 16, padding: 18,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 14 }}>
+                  <span style={{ color: "#D6B56D", fontFamily: font, fontSize: 12, fontWeight: 900 }}>CARECORE LIVE VIEW</span>
+                  <span style={{ color: C.mint, fontFamily: font, fontSize: 12, fontWeight: 800 }}>Online</span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                  {[
+                    ["118", "API routes"],
+                    ["25+", "Modules"],
+                    ["2FA", "Access"],
+                  ].map(([value, label]) => (
+                    <div key={label} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.055)" }}>
+                      <div style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 900 }}>{value}</div>
+                      <div style={{ color: C.textMuted, fontFamily: font, fontSize: 11.5 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+        </div>
+
         {/* Trust indicators */}
         <Reveal delay={0.35}>
           <div style={{
@@ -513,6 +555,133 @@ function Hero({ setCurrentPage }) {
                 <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, fontWeight: 500, letterSpacing: "0.04em", marginTop: 2 }}>{s.label}</div>
               </div>
             ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function ExperiencePreview({ setCurrentPage }) {
+  const [active, setActive] = useState("clinical");
+  const views = {
+    clinical: {
+      label: "Clinical Flow",
+      title: "From triage to discharge without losing the patient story.",
+      body: "CareCore keeps registration, vitals, consultation, lab requests, pharmacy, billing, and discharge in one connected workflow.",
+      stats: [["NEWS2", "Early warning"], ["AI", "Clinical assist"], ["Audit", "Every action"]],
+      color: C.accent,
+    },
+    operations: {
+      label: "Hospital Ops",
+      title: "A control room for beds, stock, staff, appointments, and finance.",
+      body: "Owners and administrators get clean visibility into daily activity, bottlenecks, revenue, inventory, and staff movement.",
+      stats: [["Beds", "Ward view"], ["Stock", "Expiry alerts"], ["Revenue", "Live reports"]],
+      color: C.mint,
+    },
+    business: {
+      label: "Custom Builds",
+      title: "The same engineering standard for schools, stores, logistics, and teams.",
+      body: "For non-healthcare clients, Orion Soft turns messy manual processes into dashboards, portals, APIs, and workflow systems.",
+      stats: [["APIs", "Integration"], ["Dashboards", "Decision data"], ["Support", "Launch care"]],
+      color: C.gold,
+    },
+  };
+  const view = views[active];
+
+  return (
+    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div className="experience-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(320px, 1.1fr)", gap: 24, alignItems: "stretch" }}>
+            <article style={{
+              background: `linear-gradient(180deg, ${view.color}12, rgba(19,47,76,0.98) 180px)`,
+              border: `1px solid ${view.color}34`,
+              borderRadius: 18,
+              padding: "clamp(24px, 4vw, 38px)",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              minHeight: 420,
+            }}>
+              <div>
+                <span style={{ color: view.color, fontFamily: font, fontSize: 12, fontWeight: 900 }}>INTERACTIVE PREVIEW</span>
+                <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 900, lineHeight: 1.08, margin: "14px 0 16px" }}>
+                  Let visitors feel the system before they book a demo.
+                </h2>
+                <p style={{ color: C.text, fontFamily: font, fontSize: 15.5, lineHeight: 1.75, margin: 0 }}>
+                  Tap a view to see how Orion Soft thinks: not just websites, but practical operating systems for real teams.
+                </p>
+              </div>
+              <div style={{ display: "grid", gap: 10, marginTop: 30 }}>
+                {Object.entries(views).map(([key, item]) => (
+                  <button key={key} type="button" onClick={() => setActive(key)} style={{
+                    textAlign: "left",
+                    border: `1px solid ${active === key ? item.color + "66" : C.border}`,
+                    background: active === key ? `${item.color}16` : "rgba(255,255,255,0.04)",
+                    color: active === key ? item.color : C.text,
+                    borderRadius: 10,
+                    padding: "13px 14px",
+                    fontFamily: font,
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}>{item.label}</button>
+                ))}
+              </div>
+            </article>
+
+            <article style={{
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 18,
+              border: `1px solid ${C.border}`,
+              minHeight: 420,
+              background: C.card,
+            }}>
+              <img
+                src="/assets/carecore-network.jpeg"
+                alt="Connected healthcare technology network"
+                loading="lazy"
+                decoding="async"
+                style={{ width: "100%", height: "100%", minHeight: 420, objectFit: "cover", display: "block" }}
+              />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(10,37,64,0.96), rgba(10,37,64,0.38) 58%, rgba(10,37,64,0.82))" }} />
+              <div style={{ position: "absolute", inset: 0, opacity: 0.18, backgroundImage: `radial-gradient(circle at 18% 24%, ${view.color} 0 2px, transparent 3px), radial-gradient(circle at 74% 58%, ${C.mint} 0 2px, transparent 3px)`, backgroundSize: "46px 46px" }} />
+              <div style={{ position: "absolute", inset: "clamp(18px, 4vw, 34px)", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 18 }}>
+                <div style={{ maxWidth: 520 }}>
+                  <div style={{ color: view.color, fontFamily: font, fontSize: 12, fontWeight: 900, marginBottom: 12 }}>{view.label.toUpperCase()}</div>
+                  <h3 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(23px, 3vw, 34px)", lineHeight: 1.12, fontWeight: 900, marginBottom: 12 }}>{view.title}</h3>
+                  <p style={{ color: C.text, fontFamily: font, fontSize: 14.5, lineHeight: 1.7, maxWidth: 520 }}>{view.body}</p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                  {view.stats.map(([value, label]) => (
+                    <div key={label} style={{
+                      background: "rgba(255,255,255,0.08)",
+                      border: `1px solid ${view.color}32`,
+                      borderRadius: 12,
+                      padding: "14px 12px",
+                      backdropFilter: "blur(14px)",
+                    }}>
+                      <div style={{ color: view.color, fontFamily: font, fontSize: 19, fontWeight: 900 }}>{value}</div>
+                      <div style={{ color: C.text, fontFamily: font, fontSize: 12.5, marginTop: 3 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+                  alignSelf: "flex-start",
+                  border: "none",
+                  background: `linear-gradient(135deg, ${C.gold}, ${C.mint})`,
+                  color: "#070809",
+                  padding: "13px 18px",
+                  borderRadius: 10,
+                  fontFamily: font,
+                  fontSize: 14,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}>Build This Kind of System</button>
+              </div>
+            </article>
           </div>
         </Reveal>
       </div>
@@ -2002,7 +2171,7 @@ function FlyerShowcase({ setCurrentPage }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 34, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <OrionLogo size={38} gradientId="flyer-company-logo" />
-                    <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                    <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
                   </div>
                   <span style={{ fontSize: 11, color: C.accent, fontFamily: font, fontWeight: 800, background: C.accentDim, border: `1px solid ${C.accent}33`, borderRadius: 7, padding: "7px 12px" }}>SOFTWARE COMPANY</span>
                 </div>
@@ -2061,7 +2230,7 @@ function FlyerShowcase({ setCurrentPage }) {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 22 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <OrionLogo size={34} gradientId="flyer-hiring-logo" />
-                    <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
                   </div>
                   <span style={{ fontSize: 11, color: C.rose, fontFamily: font, fontWeight: 800, background: C.roseDim, border: `1px solid ${C.rose}33`, borderRadius: 7, padding: "7px 12px" }}>WE ARE HIRING</span>
                 </div>
@@ -2101,7 +2270,7 @@ function FlyerShowcase({ setCurrentPage }) {
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 32 }}>
                         <OrionLogo size={34} gradientId="business-card-logo" />
-                        <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
                       </div>
                       <div style={{ fontSize: 21, fontWeight: 900, color: C.heading, fontFamily: font, marginBottom: 4 }}>{FOUNDER_NAME}</div>
                       <div style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 800 }}>Founder & CEO</div>
@@ -2796,7 +2965,7 @@ function Footer({ setCurrentPage }) {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <OrionLogo size={28} gradientId="footer-orion-logo" />
-              <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.accent }}>Soft</span></span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250 }}>
               Building practical software for ambitious businesses. Founded by {FOUNDER_NAME}. Registration details available on request. Privacy-aware.
@@ -2914,6 +3083,9 @@ export default function App() {
         @media (max-width: 768px) {
           .nav-links { display: none !important; }
           .nav-burger { display: block !important; }
+          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-grid img { min-height: 360px !important; }
+          .experience-grid { grid-template-columns: 1fr !important; }
           .form-grid { grid-template-columns: 1fr !important; }
           .career-layout { grid-template-columns: 1fr !important; }
           .career-notes { grid-template-columns: 1fr !important; }
@@ -2939,6 +3111,7 @@ export default function App() {
         {currentPage === "home" && (
           <>
             <Hero setCurrentPage={setCurrentPage} />
+            <ExperiencePreview setCurrentPage={setCurrentPage} />
             <Products setCurrentPage={setCurrentPage} />
             <SystemsShowcase setCurrentPage={setCurrentPage} />
             <EngineeringStandards />
