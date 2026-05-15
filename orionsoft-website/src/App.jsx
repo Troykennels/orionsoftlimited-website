@@ -38,9 +38,7 @@ const C = {
 const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
 const COMPANY_EMAIL = "orionsoftlimited@gmail.com";
 const COMPANY_PHONE = "08165556805";
-const FOUNDER_NAME = "Famojuro Mathew";
 const COMPANY_RC = "9535128";
-const COMPANY_WEBSITE = "orionsoftlimited.com";
 const FORM_ENDPOINT = import.meta.env.VITE_ORIONSOFT_FORM_ENDPOINT || "";
 const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const TAWK_PROPERTY_ID = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
@@ -87,8 +85,8 @@ const CAREER_ROLES = [
     requirements: [
       "Experience managing business social media accounts",
       "Ability to create short video content (reels, demos)",
-      "Knowledge of Instagram, LinkedIn, Twitter/X, WhatsApp marketing",
-      "Basic graphic design (Canva or similar)",
+      "Knowledge of social media, short-form content, and campaign planning",
+      "Basic graphic design and content production skills",
       "Understanding of healthcare or B2B marketing is a plus",
     ],
     compensation: "Competitive — based on experience",
@@ -102,9 +100,9 @@ const CAREER_ROLES = [
     requirements: [
       "Proficiency in React (frontend) or Flask/Python (backend)",
       "Experience with REST APIs and database management",
-      "Portfolio or GitHub with previous work",
+      "Portfolio or code samples with previous work",
       "Ability to work independently and meet deadlines",
-      "Bonus: experience with healthcare systems or AI integration",
+      "Bonus: experience with healthcare systems, reporting, or workflow automation",
     ],
     compensation: "Competitive — based on experience and skill level",
   },
@@ -130,7 +128,7 @@ const formRows = (data) => Object.entries(data)
   .join("\n");
 
 const asPhoneLink = (phone) => `tel:+234${phone.replace(/^0/, "").replace(/\D/g, "")}`;
-const asWhatsAppLink = (phone) => `https://wa.me/234${phone.replace(/^0/, "").replace(/\D/g, "")}`;
+const asDirectMessageLink = (phone) => `https://wa.me/234${phone.replace(/^0/, "").replace(/\D/g, "")}`;
 
 function getPreferredFormEndpoint() {
   if (FORM_ENDPOINT) return FORM_ENDPOINT;
@@ -475,14 +473,14 @@ function Hero({ setCurrentPage }) {
                  onMouseLeave={e => { e.target.style.background = "rgba(0,200,255,0.04)"; }}>
                 Our Products
               </a>
-              <a href="#flyers" style={{
+              <a href="#trust" style={{
                 border: `1px solid rgba(45,212,191,0.28)`, color: C.mint,
                 padding: "15px 32px", borderRadius: 11, textDecoration: "none",
                 fontSize: 15, fontWeight: 700, fontFamily: font,
                 background: "rgba(45,212,191,0.06)", transition: "all 0.3s",
               }} onMouseEnter={e => { e.target.style.background = "rgba(45,212,191,0.12)"; }}
                  onMouseLeave={e => { e.target.style.background = "rgba(45,212,191,0.06)"; }}>
-                View Flyers
+                See Trust Layer
               </a>
             </div>
           </Reveal>
@@ -499,7 +497,7 @@ function Hero({ setCurrentPage }) {
             boxShadow: "0 28px 90px rgba(0,0,0,0.28)",
           }}>
             <img
-              src="/assets/carecore-doctor-ai.jpeg"
+              src="/assets/carecore-doctor-workstation.jpeg"
               alt="Doctor using digital healthcare software on a laptop"
               loading="eager"
               decoding="async"
@@ -569,7 +567,7 @@ function ExperiencePreview({ setCurrentPage }) {
       label: "Clinical Flow",
       title: "From triage to discharge without losing the patient story.",
       body: "CareCore keeps registration, vitals, consultation, lab requests, pharmacy, billing, and discharge in one connected workflow.",
-      stats: [["NEWS2", "Early warning"], ["AI", "Clinical assist"], ["Audit", "Every action"]],
+      stats: [["NEWS2", "Early warning"], ["Rules", "Clinical checks"], ["Audit", "Every action"]],
       color: C.accent,
     },
     operations: {
@@ -590,7 +588,7 @@ function ExperiencePreview({ setCurrentPage }) {
   const view = views[active];
 
   return (
-    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.bg }}>
+    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <div className="experience-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(320px, 1.1fr)", gap: 24, alignItems: "stretch" }}>
@@ -698,8 +696,8 @@ function Products({ setCurrentPage }) {
       name: "CareCore HMS",
       tag: "FLAGSHIP",
       tagColor: C.accent,
-      desc: "A complete hospital management system with 25+ integrated modules — patient records, AI diagnosis, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more.",
-      features: ["AI-Assisted Diagnosis", "NEWS2 Early Warning", "Drug Interaction Checker", "Real-Time Analytics", "Multi-Facility Support", "Full Audit Trail"],
+      desc: "A complete hospital management system with 25+ integrated modules — patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more.",
+      features: ["Clinical Decision Support", "NEWS2 Early Warning", "Drug Interaction Checker", "Real-Time Analytics", "Multi-Facility Support", "Full Audit Trail"],
       color: C.accent,
       icon: "🏥",
     },
@@ -724,7 +722,7 @@ function Products({ setCurrentPage }) {
   ];
 
   return (
-    <section id="products" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
+    <section id="products" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -732,7 +730,6 @@ function Products({ setCurrentPage }) {
             tagColor={C.accent}
             title="What We Build"
             subtitle="From healthcare management to custom enterprise software — we build systems that solve real problems for real businesses."
-            dark
           />
         </Reveal>
 
@@ -740,8 +737,8 @@ function Products({ setCurrentPage }) {
           {products.map((p, i) => (
             <Reveal key={i} delay={i * 0.1}>
               <div style={{
-                background: C.card, borderRadius: 16, padding: "clamp(24px, 3vw, 36px)",
-                border: `1px solid ${C.border}`, height: "100%",
+                background: C.lightCard, borderRadius: 16, padding: "clamp(24px, 3vw, 36px)",
+                border: `1px solid ${C.lightBorder}`, height: "100%",
                 transition: "all 0.35s ease", cursor: "default",
                 display: "flex", flexDirection: "column",
               }} onMouseEnter={e => {
@@ -749,7 +746,7 @@ function Products({ setCurrentPage }) {
                 e.currentTarget.style.transform = "translateY(-4px)";
                 e.currentTarget.style.boxShadow = `0 20px 48px rgba(0,0,0,0.25)`;
               }} onMouseLeave={e => {
-                e.currentTarget.style.borderColor = C.border;
+                e.currentTarget.style.borderColor = C.lightBorder;
                 e.currentTarget.style.transform = "translateY(0)";
                 e.currentTarget.style.boxShadow = "none";
               }}>
@@ -761,14 +758,14 @@ function Products({ setCurrentPage }) {
                     background: `${p.tagColor}15`, padding: "5px 12px", borderRadius: 6,
                   }}>{p.tag}</span>
                 </div>
-                <h3 style={{ fontSize: 22, fontWeight: 700, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 12 }}>{p.name}</h3>
-                <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 24, flex: 1 }}>{p.desc}</p>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: C.lightHeading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 12 }}>{p.name}</h3>
+                <p style={{ fontSize: 14.5, color: C.lightText, fontFamily: font, lineHeight: 1.7, marginBottom: 24, flex: 1 }}>{p.desc}</p>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
                   {p.features.map((f, fi) => (
                     <span key={fi} style={{
-                      fontSize: 12.5, color: C.text, fontFamily: font, fontWeight: 500,
-                      background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`,
+                      fontSize: 12.5, color: C.lightText, fontFamily: font, fontWeight: 500,
+                      background: `${p.color}0D`, border: `1px solid ${C.lightBorder}`,
                       borderRadius: 6, padding: "6px 12px",
                     }}>{f}</span>
                   ))}
@@ -1115,11 +1112,103 @@ function TrustSecurity() {
             <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0, flex: "1 1 320px" }}>
               Need to verify fit before booking a demo? Send your workflow, facility size, and current pain points.
             </p>
-            <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
+            <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
               color: C.bg, background: C.mint, textDecoration: "none",
               padding: "12px 16px", borderRadius: 9, fontSize: 13.5,
               fontWeight: 800, fontFamily: font,
-            }}>Ask on WhatsApp</a>
+            }}>Ask Directly</a>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function TechImmersion({ setCurrentPage }) {
+  const frames = [
+    {
+      image: "/assets/medical-practitioner-tech.jpg",
+      title: "Healthcare desks that feel current",
+      text: "Clean patient workflows, fast lookup, secure records, and practical screens for busy clinical teams.",
+      color: C.accent,
+    },
+    {
+      image: "/assets/developer-code-workstation.jpg",
+      title: "Engineering visible in the brand",
+      text: "Interfaces, APIs, dashboards, release checks, and support tooling are treated as one delivery system.",
+      color: C.gold,
+    },
+    {
+      image: "/assets/cloud-infrastructure-team.jpg",
+      title: "Infrastructure-ready thinking",
+      text: "Every build is planned around access, backups, uptime, monitoring, scaling, and maintainable deployment.",
+      color: C.mint,
+    },
+    {
+      image: "/assets/business-team-laptop.jpg",
+      title: "Designed for decision rooms",
+      text: "Owners, admins, and operators get clear views of work, progress, revenue, requests, and next actions.",
+      color: C.purple,
+    },
+  ];
+
+  return (
+    <section style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeader
+            tag="TECH EXPERIENCE"
+            tagColor={C.gold}
+            title="A Website That Feels Like the Product"
+            subtitle="Visitors should understand that Orion Soft builds operational software, not ordinary brochure pages. The visual system now moves through healthcare, code, infrastructure, and business command."
+          />
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(12, 1fr)", gap: 16, marginTop: 56 }} className="tech-mosaic">
+          {frames.map((frame, i) => (
+            <Reveal key={frame.title} delay={i * 0.08} style={{ gridColumn: i < 2 ? "span 6" : "span 3" }}>
+              <article className={i < 2 ? "tech-mosaic-wide" : ""} style={{
+                minHeight: i < 2 ? 390 : 320,
+                position: "relative",
+                overflow: "hidden",
+                borderRadius: 18,
+                border: `1px solid ${C.lightBorder}`,
+                boxShadow: "0 18px 54px rgba(15,23,42,0.09)",
+                background: C.lightCard,
+              }}>
+                <img
+                  src={frame.image}
+                  alt={frame.title}
+                  loading="lazy"
+                  decoding="async"
+                  style={{ width: "100%", height: "100%", minHeight: i < 2 ? 390 : 320, objectFit: "cover", display: "block" }}
+                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(7,8,9,0.04), rgba(7,8,9,0.82))" }} />
+                <div style={{ position: "absolute", inset: 0, opacity: 0.16, backgroundImage: `linear-gradient(${frame.color} 1px, transparent 1px), linear-gradient(90deg, ${frame.color} 1px, transparent 1px)`, backgroundSize: "32px 32px" }} />
+                <div style={{ position: "absolute", left: 18, right: 18, bottom: 18 }}>
+                  <div style={{ width: 46, height: 4, background: frame.color, borderRadius: 10, marginBottom: 14 }} />
+                  <h3 style={{ color: C.heading, fontFamily: font, fontSize: i < 2 ? 24 : 18, lineHeight: 1.15, fontWeight: 900, marginBottom: 8 }}>{frame.title}</h3>
+                  <p style={{ color: C.text, fontFamily: font, fontSize: 13.5, lineHeight: 1.65, margin: 0 }}>{frame.text}</p>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={0.3}>
+          <div style={{ textAlign: "center", marginTop: 34 }}>
+            <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+              border: "none",
+              background: `linear-gradient(135deg, ${C.gold}, ${C.mint})`,
+              color: "#070809",
+              padding: "14px 24px",
+              borderRadius: 10,
+              fontFamily: font,
+              fontSize: 14,
+              fontWeight: 900,
+              cursor: "pointer",
+              boxShadow: "0 12px 32px rgba(15,23,42,0.14)",
+            }}>Start a Serious Build</button>
           </div>
         </Reveal>
       </div>
@@ -1129,7 +1218,7 @@ function TrustSecurity() {
 
 function CareCoreSection() {
   const modules = [
-    { cat: "Clinical", color: C.accent, items: ["Patient Registration & Records", "Triage with Color Coding", "Vitals & NEWS2 Score", "AI-Assisted Diagnosis", "Prescriptions & Drug Interactions", "Discharge Summaries", "Referral System", "AI Clinical Assistant", "Body Scan Mapper"] },
+    { cat: "Clinical", color: C.accent, items: ["Patient Registration & Records", "Triage with Color Coding", "Vitals & NEWS2 Score", "Clinical Decision Support", "Prescriptions & Drug Interactions", "Discharge Summaries", "Referral System", "Clinical Workflow Assistant", "Body Scan Mapper"] },
     { cat: "Diagnostics", color: C.mint, items: ["Lab Order Management", "Result Entry & Delivery", "Drug Inventory & Dispensing", "Stock Alerts & Expiry", "Reference Ranges & Flags"] },
     { cat: "Financial", color: C.amber, items: ["Automated Billing", "Invoicing & Payments", "Price List Management", "Revenue Analytics", "Financial Reports & Export"] },
     { cat: "Operations", color: C.purple, items: ["Staff Management & 2FA", "Appointments", "Ward & Bed Tracking", "Analytics Dashboard", "Audit Logging", "Team Chat", "Notifications", "Multi-Facility"] },
@@ -1264,22 +1353,22 @@ function Pricing({ setCurrentPage }) {
 // ═══════════════════════════════════════
 function About() {
   return (
-    <section id="about" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.bg }}>
+    <section id="about" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 48, alignItems: "center" }}>
           <Reveal>
             <div>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.purple, fontFamily: font, letterSpacing: "0.08em" }}>ABOUT US</span>
-              <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em", margin: "12px 0 20px" }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.08em" }}>ABOUT US</span>
+              <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.lightHeading, letterSpacing: "-0.02em", margin: "12px 0 20px" }}>
                 Built with global standards.<br />Designed for real operations.
               </h2>
-              <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 20 }}>
+              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.75, marginBottom: 20 }}>
                 Orion Soft Limited builds practical, dependable software for healthcare providers
                 and ambitious businesses. We focus on secure systems, clear workflows, fast
                 interfaces, and implementation support that helps teams adopt technology with
                 confidence.
               </p>
-              <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 28 }}>
+              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.75, marginBottom: 28 }}>
                 Our team combines product thinking, engineering discipline, and close discovery
                 with each client. We study your workflow, map the operational gaps, and build
                 software that fits the way your organisation needs to work.
@@ -1292,11 +1381,11 @@ function About() {
                   { val: "SLA", label: "Support" },
                 ].map((s, i) => (
                   <div key={i} style={{
-                    background: C.card, borderRadius: 12, padding: "16px 24px",
-                    border: `1px solid ${C.border}`,
+                    background: C.lightCard, borderRadius: 12, padding: "16px 24px",
+                    border: `1px solid ${C.lightBorder}`,
                   }}>
                     <div style={{ fontSize: 20, fontWeight: 800, color: C.accent, fontFamily: font }}>{s.val}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 500, marginTop: 2 }}>{s.label}</div>
+                    <div style={{ fontSize: 12, color: C.lightMuted, fontFamily: font, fontWeight: 500, marginTop: 2 }}>{s.label}</div>
                   </div>
                 ))}
               </div>
@@ -1305,20 +1394,21 @@ function About() {
 
           <Reveal delay={0.15}>
             <div style={{
-              background: C.card, borderRadius: 20, padding: 36,
-              border: `1px solid ${C.border}`,
+              background: C.lightCard, borderRadius: 20, padding: 36,
+              border: `1px solid ${C.lightBorder}`,
+              boxShadow: "0 18px 54px rgba(15,23,42,0.08)",
             }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 24, letterSpacing: "-0.01em" }}>Our Values</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: C.lightHeading, fontFamily: font, marginBottom: 24, letterSpacing: "-0.01em" }}>Our Values</h3>
               {[
                 { title: "Integrity", desc: "We are honest about what our software can and cannot do. No overselling." },
                 { title: "Impact Over Activity", desc: "Success is measured by outcomes, not hours logged or meetings held." },
                 { title: "Speed", desc: "We respond fast, fix fast, deploy fast. Startups cannot afford to be slow." },
                 { title: "Respect for Users", desc: "We build for people who save lives and run businesses. Their time matters." },
-                { title: "Founder / CEO", desc: `${FOUNDER_NAME} leads Orion Soft Limited with a focus on practical software for healthcare and growing businesses.` },
+                { title: "Long-term Partnership", desc: "We stay close after launch with support, improvements, and clear communication." },
               ].map((v, i) => (
                 <div key={i} style={{ marginBottom: i < 4 ? 20 : 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 4 }}>{v.title}</div>
-                  <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6, margin: 0 }}>{v.desc}</p>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: C.lightHeading, fontFamily: font, marginBottom: 4 }}>{v.title}</div>
+                  <p style={{ fontSize: 13.5, color: C.lightText, fontFamily: font, lineHeight: 1.6, margin: 0 }}>{v.desc}</p>
                 </div>
               ))}
             </div>
@@ -1569,7 +1659,7 @@ function OnboardingPage({ setCurrentPage }) {
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.currentSystem} onChange={e => update("currentSystem", e.target.value)}>
                     <option value="">How do you currently manage records?</option>
                     <option>Paper-based</option>
-                    <option>Spreadsheets (Excel/Google Sheets)</option>
+                    <option>Spreadsheets</option>
                     <option>Another software system</option>
                     <option>Mix of paper and digital</option>
                   </select>
@@ -1660,7 +1750,7 @@ function OnboardingPage({ setCurrentPage }) {
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelSt}>Important features or integrations</label>
-                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={3} value={form.integrations} onChange={e => update("integrations", e.target.value)} placeholder="Payments, SMS, WhatsApp, accounting software, Excel import, existing database, barcode scanner..." />
+                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={3} value={form.integrations} onChange={e => update("integrations", e.target.value)} placeholder="Payments, SMS, accounting software, spreadsheet import, existing database, barcode scanner..." />
                 </div>
                 <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                   <div>
@@ -1717,7 +1807,7 @@ function OnboardingPage({ setCurrentPage }) {
                 <option value="">Select</option>
                 <option>Referral from another client</option>
                 <option>Social media</option>
-                <option>Google search</option>
+                <option>Search engine</option>
                 <option>Our sales team visited</option>
                 <option>Word of mouth</option>
                 <option>Other</option>
@@ -1832,7 +1922,7 @@ function CareersPage({ setCurrentPage }) {
   };
   const labelSt = { fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 6, display: "block" };
   const careerNotes = [
-    { title: "Low-data friendly", text: "The form is lightweight. If your network drops, use WhatsApp or email with your CV link." },
+    { title: "Low-data friendly", text: "The form is lightweight. If your network drops, use direct message or email with your CV link." },
     { title: "Human review", text: "Applications are reviewed for fit, reliability, communication, and practical skill." },
     { title: "Field-ready roles", text: "Client-facing roles focus on hospitals, clinics, demos, onboarding, and follow-up." },
   ];
@@ -1996,10 +2086,10 @@ function CareersPage({ setCurrentPage }) {
                   Slow network? Send your name, role, and CV link directly.
                 </p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
+                  <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
                     color: C.bg, background: C.mint, textDecoration: "none", padding: "10px 13px",
                     borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: font,
-                  }}>WhatsApp</a>
+                  }}>Direct Message</a>
                   <a href={`mailto:${COMPANY_EMAIL}`} style={{
                     color: C.accent, background: C.accentDim, textDecoration: "none", padding: "10px 13px",
                     borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: font,
@@ -2070,14 +2160,14 @@ function CareersPage({ setCurrentPage }) {
                 <input style={inputSt} value={form.cvLink} onChange={e => update("cvLink", e.target.value)} placeholder="https://drive.google.com/..." />
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div><label style={labelSt}>Portfolio / LinkedIn</label><input style={inputSt} value={form.portfolio} onChange={e => update("portfolio", e.target.value)} placeholder="https://linkedin.com/in/..." /></div>
+                <div><label style={labelSt}>Portfolio / Profile</label><input style={inputSt} value={form.portfolio} onChange={e => update("portfolio", e.target.value)} placeholder="https://your-portfolio.example" /></div>
                 <div><label style={labelSt}>How did you hear about us?</label>
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.referral} onChange={e => update("referral", e.target.value)}>
                     <option value="">Select</option>
                     <option>Social media</option>
                     <option>Friend/referral</option>
                     <option>Job board</option>
-                    <option>Google search</option>
+                    <option>Search engine</option>
                     <option>Our website</option>
                     <option>Other</option>
                   </select>
@@ -2098,194 +2188,6 @@ function CareersPage({ setCurrentPage }) {
               }}>{submitting ? "Submitting..." : `Apply for ${activeRole.type} Role`}</button>
             </form>
           </Reveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function FlyerShowcase({ setCurrentPage }) {
-  const [activeFlyer, setActiveFlyer] = useState("company");
-  const flyerStats = [
-    { val: "25+", label: "Modules" },
-    { val: "3-4 wks", label: "Go-live" },
-    { val: "99.5%", label: "Uptime target" },
-    { val: "NDPA", label: "Privacy aware" },
-  ];
-
-  const roles = [
-    "Health Liaison Officer",
-    "Business Development Officer (Marketing)",
-    "Digital Marketing Executive",
-    "Software Developer",
-  ];
-
-  return (
-    <section id="flyers" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        <Reveal>
-          <SectionHeader
-            tag="MEDIA KIT"
-            tagColor={C.accent}
-            title="Website Flyers and Business Identity"
-            subtitle="Share-ready Orion Soft flyer previews are now part of the website for demos, hiring, WhatsApp broadcasts, and quick company introductions."
-            dark
-          />
-        </Reveal>
-
-        <Reveal delay={0.04}>
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 30 }}>
-            {[
-              { id: "company", label: "Company Flyer" },
-              { id: "hiring", label: "Hiring Flyer" },
-            ].map(tab => (
-              <button key={tab.id} type="button" onClick={() => setActiveFlyer(tab.id)} style={{
-                border: `1px solid ${activeFlyer === tab.id ? C.accent + "66" : C.border}`,
-                background: activeFlyer === tab.id ? C.accentDim : "rgba(255,255,255,0.035)",
-                color: activeFlyer === tab.id ? C.accent : C.text,
-                borderRadius: 8,
-                padding: "11px 18px",
-                fontSize: 13.5,
-                fontWeight: 800,
-                fontFamily: font,
-                cursor: "pointer",
-              }}>{tab.label}</button>
-            ))}
-          </div>
-        </Reveal>
-
-        <div className="media-layout" style={{ display: "grid", gridTemplateColumns: "1.05fr 0.95fr", gap: 22, marginTop: 56, alignItems: "start" }}>
-          {activeFlyer === "company" && (
-          <Reveal delay={0.06}>
-            <article style={{
-              background: C.card,
-              border: `1px solid ${C.border}`,
-              borderRadius: 16,
-              padding: "clamp(22px, 3vw, 34px)",
-              minHeight: 560,
-              position: "relative",
-              overflow: "hidden",
-            }}>
-              <div style={{ position: "absolute", inset: 0, opacity: 0.04, backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "42px 42px" }} />
-              <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 34, flexWrap: "wrap" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <OrionLogo size={38} gradientId="flyer-company-logo" />
-                    <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
-                  </div>
-                  <span style={{ fontSize: 11, color: C.accent, fontFamily: font, fontWeight: 800, background: C.accentDim, border: `1px solid ${C.accent}33`, borderRadius: 7, padding: "7px 12px" }}>SOFTWARE COMPANY</span>
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: C.mint, fontFamily: font, marginBottom: 12 }}>COMPANY FLYER</div>
-
-                <h3 style={{ fontSize: "clamp(30px, 4.5vw, 48px)", fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.05, marginBottom: 14 }}>
-                  We Build Software That Powers <span style={{ color: C.mint }}>Hospitals</span>
-                </h3>
-                <p style={{ fontSize: 15, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 560, marginBottom: 26 }}>
-                  CareCore HMS brings patient records, AI-assisted diagnosis, billing, lab, pharmacy, maternal health, ward management, and analytics into one connected workflow.
-                </p>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 30 }}>
-                  {["Patient Records", "AI Diagnosis", "Billing", "Lab", "Pharmacy", "Analytics", "Ward Management", "Training"].map(item => (
-                    <span key={item} style={{ fontSize: 12.5, color: C.text, fontFamily: font, fontWeight: 700, background: "rgba(255,255,255,0.045)", border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 11px" }}>{item}</span>
-                  ))}
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 32 }}>
-                  {flyerStats.map(stat => (
-                    <div key={stat.label} style={{ border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.035)", borderRadius: 10, padding: "14px 10px", textAlign: "center" }}>
-                      <div style={{ fontSize: 21, fontWeight: 900, color: C.heading, fontFamily: font }}>{stat.val}</div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18, borderTop: `1px solid ${C.border}`, paddingTop: 24, flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>Book a Free Demo</div>
-                    <a href={`mailto:${COMPANY_EMAIL}`} style={{ display: "block", color: C.textMuted, textDecoration: "none", fontSize: 13, fontFamily: font }}>{COMPANY_EMAIL}</a>
-                    <a href={asPhoneLink(COMPANY_PHONE)} style={{ display: "block", color: C.textMuted, textDecoration: "none", fontSize: 13, fontFamily: font, marginTop: 2 }}>+234 816 555 6805</a>
-                    <div style={{ color: C.textMuted, fontSize: 12, fontFamily: font, marginTop: 4 }}>{COMPANY_WEBSITE}</div>
-                  </div>
-                  <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
-                    background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-                    color: C.bg,
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "13px 20px",
-                    fontSize: 14,
-                    fontWeight: 800,
-                    fontFamily: font,
-                    cursor: "pointer",
-                  }}>Request Demo</button>
-                </div>
-              </div>
-            </article>
-          </Reveal>
-          )}
-
-          <div style={{ display: "grid", gap: 18 }}>
-            {activeFlyer === "hiring" && (
-            <Reveal delay={0.12}>
-              <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 22 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <OrionLogo size={34} gradientId="flyer-hiring-logo" />
-                    <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
-                  </div>
-                  <span style={{ fontSize: 11, color: C.rose, fontFamily: font, fontWeight: 800, background: C.roseDim, border: `1px solid ${C.rose}33`, borderRadius: 7, padding: "7px 12px" }}>WE ARE HIRING</span>
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: C.mint, fontFamily: font, marginBottom: 12 }}>HIRING FLYER</div>
-                <h3 style={{ fontSize: 28, fontWeight: 900, color: C.heading, fontFamily: font, lineHeight: 1.08, marginBottom: 10 }}>Join Our Team. Build the Future.</h3>
-                <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 20 }}>We are building practical technology for Nigerian healthcare and growing businesses.</p>
-                <div style={{ display: "grid", gap: 9, marginBottom: 22 }}>
-                  {roles.map((role, index) => (
-                    <div key={role} style={{ border: `1px solid ${C.border}`, borderLeft: `3px solid ${[C.accent, C.mint, C.purple, C.amber][index]}`, background: "rgba(255,255,255,0.035)", borderRadius: 10, padding: "11px 13px" }}>
-                      <div style={{ fontSize: 13.5, color: C.heading, fontFamily: font, fontWeight: 800 }}>{role}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>{index < 2 ? "Lagos + commission" : "Lagos / Remote"}</div>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" onClick={() => setCurrentPage("careers")} style={{
-                  width: "100%",
-                  background: `${C.mint}12`,
-                  color: C.mint,
-                  border: `1px solid ${C.mint}33`,
-                  borderRadius: 10,
-                  padding: "12px 16px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  fontFamily: font,
-                  cursor: "pointer",
-                }}>View Open Roles</button>
-              </article>
-            </Reveal>
-            )}
-
-            <Reveal delay={0.18}>
-              <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 28 }}>
-                <span style={{ fontSize: 11, color: C.purple, fontFamily: font, fontWeight: 800, background: C.purpleDim, border: `1px solid ${C.purple}33`, borderRadius: 7, padding: "7px 12px" }}>BUSINESS CARD</span>
-                <div style={{ marginTop: 20, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, background: "#060B16", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", inset: 0, opacity: 0.06, backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "28px 28px" }} />
-                  <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 18 }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 32 }}>
-                        <OrionLogo size={34} gradientId="business-card-logo" />
-                        <span style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
-                      </div>
-                      <div style={{ fontSize: 21, fontWeight: 900, color: C.heading, fontFamily: font, marginBottom: 4 }}>{FOUNDER_NAME}</div>
-                      <div style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 800 }}>Founder & CEO</div>
-                    </div>
-                    <div style={{ textAlign: "right", fontSize: 12.5, color: C.textMuted, fontFamily: font, lineHeight: 1.8 }}>
-                      <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>+234 816 555 6805</a><br />
-                      <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
-                      {COMPANY_WEBSITE}<br />
-                      Lagos, Nigeria
-                    </div>
-                  </div>
-                </div>
-              </article>
-            </Reveal>
-          </div>
         </div>
       </div>
     </section>
@@ -2624,7 +2526,7 @@ function LiveChatFloat({ setCurrentPage }) {
     try {
       await sendWebsiteForm("live chat message", {
         ...chat,
-        preferredReply: chat.phone ? "Phone / WhatsApp" : "Email",
+        preferredReply: chat.phone ? "Phone / direct message" : "Email",
       });
       setSent(true);
       setChat({
@@ -2764,7 +2666,7 @@ function LiveChatFloat({ setCurrentPage }) {
                   <input style={chatInput} value={chat.name} onChange={e => updateChat("name", e.target.value)} placeholder="Your name *" />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <input type="email" style={chatInput} value={chat.email} onChange={e => updateChat("email", e.target.value)} placeholder="Email" />
-                    <input style={chatInput} value={chat.phone} onChange={e => updateChat("phone", e.target.value)} placeholder="Phone / WhatsApp" />
+                    <input style={chatInput} value={chat.phone} onChange={e => updateChat("phone", e.target.value)} placeholder="Phone / direct message" />
                   </div>
                   <select style={{ ...chatInput, cursor: "pointer" }} value={chat.topic} onChange={e => updateChat("topic", e.target.value)}>
                     <option>CareCore demo</option>
@@ -2968,12 +2870,12 @@ function Footer({ setCurrentPage }) {
               <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250 }}>
-              Building practical software for ambitious businesses. Founded by {FOUNDER_NAME}. Registration details available on request. Privacy-aware.
+              Building practical software for healthcare providers and ambitious businesses. Registered in Nigeria. Privacy-aware.
             </p>
           </div>
 
           {[
-            { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Flyers & Media Kit", a: "#flyers", onClick: goHomeAnchor("#flyers") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
+            { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
             { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
@@ -2983,8 +2885,8 @@ function Footer({ setCurrentPage }) {
                 <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 2 }}>
                   <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_PHONE}</a><br />
                   <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
-                  <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>WhatsApp Orion Soft</a><br />
-                  Founder/CEO: {FOUNDER_NAME}
+                  <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>Message Orion Soft</a><br />
+                  Lagos, Nigeria
                 </div>
               ) : col.links.map((link, li) => (
                 <a key={li} href={link.a} onClick={link.onClick} style={{
@@ -3086,10 +2988,11 @@ export default function App() {
           .hero-grid { grid-template-columns: 1fr !important; }
           .hero-grid img { min-height: 360px !important; }
           .experience-grid { grid-template-columns: 1fr !important; }
+          .tech-mosaic { grid-template-columns: 1fr !important; }
+          .tech-mosaic > div, .tech-mosaic-wide { grid-column: auto !important; }
           .form-grid { grid-template-columns: 1fr !important; }
           .career-layout { grid-template-columns: 1fr !important; }
           .career-notes { grid-template-columns: 1fr !important; }
-          .media-layout { grid-template-columns: 1fr !important; }
           .chat-label { display: none !important; }
         }
         @media (min-width: 769px) {
@@ -3116,10 +3019,10 @@ export default function App() {
             <SystemsShowcase setCurrentPage={setCurrentPage} />
             <EngineeringStandards />
             <TrustSecurity />
+            <TechImmersion setCurrentPage={setCurrentPage} />
             <Services setCurrentPage={setCurrentPage} />
             <CareCoreSection />
             <Pricing setCurrentPage={setCurrentPage} />
-            <FlyerShowcase setCurrentPage={setCurrentPage} />
             <About />
             <FAQSection setCurrentPage={setCurrentPage} />
             <CTABanner setCurrentPage={setCurrentPage} />
