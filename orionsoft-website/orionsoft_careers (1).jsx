@@ -22,20 +22,20 @@ const font = "'Instrument Sans', 'DM Sans', system-ui, sans-serif";
 
 const roles = [
   {
-    title: "Business Development Officer (Nurse)",
-    type: "Field Sales",
+    title: "Health Liaison Officer",
+    type: "Healthcare Growth",
     location: "Lagos",
     color: C.accent,
     icon: "🏥",
-    desc: "Visit hospitals, demo CareCore HMS, onboard new clients, and provide ongoing support. Nursing background required.",
+    desc: "Build trusted relationships with hospitals and clinics, demo CareCore HMS, support onboarding, and translate healthcare workflow needs for the Orion Soft team.",
     requirements: [
-      "Registered Nurse (RN) or Registered Midwife (RM)",
-      "Valid nursing/midwifery license",
+      "Healthcare background such as nursing, midwifery, public health, or clinical administration",
+      "Valid professional license or healthcare work experience is an advantage",
       "Comfortable using smartphones and computers",
       "Strong communication and presentation skills",
       "Willingness to travel within Lagos and environs",
     ],
-    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K per onboarding commission",
+    compensation: "NGN 25K-30K base + NGN 10K transport + NGN 5K data + NGN 30K-50K per onboarding commission",
   },
   {
     title: "Business Development Officer (Marketing)",
@@ -51,7 +51,7 @@ const roles = [
       "Strong negotiation and follow-up skills",
       "Own smartphone, comfortable with digital tools",
     ],
-    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K per onboarding commission",
+    compensation: "NGN 25K-30K base + NGN 10K transport + NGN 5K data + NGN 30K-50K per onboarding commission",
   },
   {
     title: "Digital Marketing Executive",
@@ -199,7 +199,7 @@ const FIELD_MAP = {
     try {
       // Prepare values — override any that don't match Google Form options
       const validRoles = [
-        "Business Development Officer (Nurse)",
+        "Health Liaison Officer",
         "Business Development Officer (Marketing)",
         "Digital Marketing Executive",
         "Software Developer (Frontend/Backend)",

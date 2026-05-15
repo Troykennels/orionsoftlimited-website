@@ -48,19 +48,19 @@ const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
 const CAREER_ROLES = [
   {
-    title: "Business Development Officer (Nurse)",
-    type: "Sales",
+    title: "Health Liaison Officer",
+    type: "Healthcare Growth",
     location: "Lagos",
     color: C.accent,
-    desc: "Visit hospitals, demo CareCore HMS, onboard new clients, and provide ongoing support. Nursing background required.",
+    desc: "Build trusted relationships with hospitals and clinics, demo CareCore HMS, support onboarding, and translate healthcare workflow needs for the Orion Soft team.",
     requirements: [
-      "Registered Nurse (RN) or Registered Midwife (RM)",
-      "Valid nursing/midwifery license",
+      "Healthcare background such as nursing, midwifery, public health, or clinical administration",
+      "Valid professional license or healthcare work experience is an advantage",
       "Strong communication and presentation skills",
       "Comfortable using smartphones and computers",
       "Willingness to travel within Lagos and environs",
     ],
-    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K commission per onboarding",
+    compensation: "NGN 25K-30K base + NGN 10K transport + NGN 5K data + NGN 30K-50K commission per onboarding",
   },
   {
     title: "Business Development Officer (Marketing)",
@@ -75,7 +75,7 @@ const CAREER_ROLES = [
       "Strong negotiation and follow-up skills",
       "Own smartphone, comfortable with digital tools",
     ],
-    compensation: "₦25K–30K base + ₦10K transport + ₦5K data + ₦30–50K commission per onboarding",
+    compensation: "NGN 25K-30K base + NGN 10K transport + NGN 5K data + NGN 30K-50K commission per onboarding",
   },
   {
     title: "Digital Marketing Executive",
@@ -212,6 +212,26 @@ function Reveal({ children, delay = 0, style = {} }) {
   );
 }
 
+function useDataSaver() {
+  const getPreference = () => {
+    if (typeof navigator === "undefined") return false;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return Boolean(connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType));
+  };
+  const [dataSaver, setDataSaver] = useState(getPreference);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!connection?.addEventListener) return;
+    const update = () => setDataSaver(getPreference());
+    connection.addEventListener("change", update);
+    return () => connection.removeEventListener("change", update);
+  }, []);
+
+  return dataSaver;
+}
+
 function OrionLogo({ size = 32, gradientId = "orion-logo" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
@@ -259,12 +279,11 @@ function Nav({ currentPage, setCurrentPage }) {
     { label: "Products", page: "home", anchor: "#products" },
     { label: "Systems", page: "home", anchor: "#systems" },
     { label: "Standards", page: "home", anchor: "#standards" },
+    { label: "Trust", page: "home", anchor: "#trust" },
     { label: "Services", page: "home", anchor: "#services" },
     { label: "Pricing", page: "home", anchor: "#pricing" },
-    { label: "Flyers", page: "home", anchor: "#flyers" },
     { label: "About", page: "home", anchor: "#about" },
     { label: "Careers", page: "careers" },
-    { label: "Feedback", page: "feedback" },
   ];
 
   const navigate = (link, event) => {
@@ -365,10 +384,12 @@ function Nav({ currentPage, setCurrentPage }) {
 // ═══════════════════════════════════════
 function Hero({ setCurrentPage }) {
   const [wordIdx, setWordIdx] = useState(0);
+  const dataSaver = useDataSaver();
   useEffect(() => {
+    if (dataSaver) return;
     const t = setInterval(() => setWordIdx(i => (i + 1) % HERO_WORDS.length), 2800);
     return () => clearInterval(t);
-  }, []);
+  }, [dataSaver]);
 
   return (
     <section style={{
@@ -427,6 +448,20 @@ function Hero({ setCurrentPage }) {
               helping hospitals and growing teams run with more clarity, speed, and control.
             </p>
           </Reveal>
+
+          {dataSaver && (
+            <Reveal delay={0.2}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                border: `1px solid ${C.mint}33`, background: `${C.mint}10`,
+                color: C.text, borderRadius: 10, padding: "10px 14px", marginBottom: 22,
+                fontFamily: font, fontSize: 13.5,
+              }}>
+                <strong style={{ color: C.mint }}>Low-data mode:</strong>
+                Animations are reduced and contact links remain available.
+              </div>
+            </Reveal>
+          )}
 
           <Reveal delay={0.24}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -814,6 +849,110 @@ function EngineeringStandards() {
             </Reveal>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustSecurity() {
+  const trustItems = [
+    {
+      title: "Healthcare-ready controls",
+      desc: "CareCore workflows are designed around staff roles, permission boundaries, audit trails, 2FA-ready access, and privacy-aware records handling.",
+      points: ["Role-based access", "Audit trail", "2FA-ready"],
+      color: C.mint,
+    },
+    {
+      title: "Launch without surprises",
+      desc: "Every deployment is planned around discovery, data preparation, staff training, pilot checks, go-live support, and post-launch fixes.",
+      points: ["Discovery", "Training", "Go-live support"],
+      color: C.accent,
+    },
+    {
+      title: "Works where teams work",
+      desc: "Interfaces are built for phones, tablets, laptops, and shared desks, with clear forms and direct contact fallbacks when networks are unstable.",
+      points: ["Responsive UI", "Low-data fallbacks", "Fast forms"],
+      color: C.amber,
+    },
+    {
+      title: "Transparent ownership",
+      desc: "Clients get clear communication on scope, timelines, support channels, release updates, and what is included before implementation begins.",
+      points: ["Clear scope", "Support channels", "Release updates"],
+      color: C.purple,
+    },
+  ];
+
+  return (
+    <section id="trust" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeader
+            tag="TRUST & DELIVERY"
+            tagColor={C.mint}
+            title="The Reassurance Buyers Look For"
+            subtitle="Professional healthcare and business software sites make security, implementation, support, and reliability easy to verify before a conversation starts."
+            dark
+          />
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 16, marginTop: 56 }}>
+          {trustItems.map((item, i) => (
+            <Reveal key={item.title} delay={i * 0.07}>
+              <article style={{
+                height: "100%",
+                background: `linear-gradient(180deg, ${item.color}10, rgba(19,47,76,0.96) 150px)`,
+                border: `1px solid ${item.color}26`,
+                borderRadius: 14,
+                padding: 26,
+                display: "flex",
+                flexDirection: "column",
+              }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, background: `${item.color}14`,
+                  border: `1px solid ${item.color}30`, marginBottom: 18,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ width: 14, height: 14, borderRadius: 4, background: item.color, display: "block" }} />
+                </div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 10 }}>{item.title}</h3>
+                <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 18, flex: 1 }}>{item.desc}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {item.points.map(point => (
+                    <span key={point} style={{
+                      fontSize: 12, color: item.color, fontFamily: font, fontWeight: 800,
+                      border: `1px solid ${item.color}24`, background: `${item.color}10`,
+                      borderRadius: 6, padding: "6px 10px",
+                    }}>{point}</span>
+                  ))}
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={0.28}>
+          <div style={{
+            marginTop: 24,
+            border: `1px solid ${C.border}`,
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: 14,
+            padding: "18px clamp(18px, 3vw, 26px)",
+            display: "flex",
+            gap: 14,
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+          }}>
+            <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0, flex: "1 1 320px" }}>
+              Need to verify fit before booking a demo? Send your workflow, facility size, and current pain points.
+            </p>
+            <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
+              color: C.bg, background: C.mint, textDecoration: "none",
+              padding: "12px 16px", borderRadius: 9, fontSize: 13.5,
+              fontWeight: 800, fontFamily: font,
+            }}>Ask on WhatsApp</a>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -1523,6 +1662,11 @@ function CareersPage({ setCurrentPage }) {
     fontSize: 14, fontFamily: font, outline: "none", transition: "border-color 0.2s",
   };
   const labelSt = { fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 6, display: "block" };
+  const careerNotes = [
+    { title: "Low-data friendly", text: "The form is lightweight. If your network drops, use WhatsApp or email with your CV link." },
+    { title: "Human review", text: "Applications are reviewed for fit, reliability, communication, and practical skill." },
+    { title: "Field-ready roles", text: "Client-facing roles focus on hospitals, clinics, demos, onboarding, and follow-up." },
+  ];
 
   if (submitted) {
     return (
@@ -1577,6 +1721,27 @@ function CareersPage({ setCurrentPage }) {
               We are looking for thoughtful, reliable people across product, engineering, marketing, and client growth.
               Choose a role, review the requirements, and submit your application below.
             </p>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.08}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 12,
+            marginBottom: 24,
+          }} className="career-notes">
+            {careerNotes.map(note => (
+              <article key={note.title} style={{
+                background: "rgba(255,255,255,0.045)",
+                border: `1px solid ${C.border}`,
+                borderRadius: 14,
+                padding: 16,
+              }}>
+                <h2 style={{ fontSize: 13.5, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 6 }}>{note.title}</h2>
+                <p style={{ fontSize: 12.8, color: C.textMuted, fontFamily: font, lineHeight: 1.55, margin: 0 }}>{note.text}</p>
+              </article>
+            ))}
           </div>
         </Reveal>
 
@@ -1646,14 +1811,41 @@ function CareersPage({ setCurrentPage }) {
                 <div style={{ fontSize: 11, fontWeight: 900, color: activeRole.color, fontFamily: font, marginBottom: 6 }}>ROLE SNAPSHOT</div>
                 <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{activeRole.desc}</p>
               </div>
+              <div style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                border: `1px solid ${C.border}`,
+                background: "rgba(10,37,64,0.42)",
+                borderRadius: 14,
+                padding: 14,
+                marginBottom: 22,
+              }}>
+                <p style={{ fontSize: 12.8, color: C.textMuted, fontFamily: font, lineHeight: 1.55, margin: 0, flex: "1 1 220px" }}>
+                  Slow network? Send your name, role, and CV link directly.
+                </p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <a href={asWhatsAppLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
+                    color: C.bg, background: C.mint, textDecoration: "none", padding: "10px 13px",
+                    borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: font,
+                  }}>WhatsApp</a>
+                  <a href={`mailto:${COMPANY_EMAIL}`} style={{
+                    color: C.accent, background: C.accentDim, textDecoration: "none", padding: "10px 13px",
+                    borderRadius: 9, fontSize: 12.5, fontWeight: 800, fontFamily: font,
+                    border: `1px solid ${C.accent}33`,
+                  }}>Email</a>
+                </div>
+              </div>
 
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div><label style={labelSt}>Full Name *</label><input style={inputSt} value={form.fullName} onChange={e => update("fullName", e.target.value)} placeholder="Your full name" /></div>
                 <div><label style={labelSt}>Email *</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="you@example.com" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+1 555 000 0000" /></div>
-                <div><label style={labelSt}>Country / Region *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, Country" /></div>
+                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+234 801 000 0000" /></div>
+                <div><label style={labelSt}>City / Region *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="Lagos, Nigeria" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div>
@@ -1753,7 +1945,7 @@ function FlyerShowcase({ setCurrentPage }) {
   ];
 
   const roles = [
-    "Business Development Officer (Nurse)",
+    "Health Liaison Officer",
     "Business Development Officer (Marketing)",
     "Digital Marketing Executive",
     "Software Developer",
@@ -2275,7 +2467,7 @@ function LiveChatFloat({ setCurrentPage }) {
         message: "",
         website: "",
       });
-    } catch (err) {
+    } catch {
       setError("Chat delivery is not available right now. Please use the project form or call us.");
     } finally {
       setSubmitting(false);
@@ -2683,7 +2875,6 @@ export default function App() {
   return (
     <div style={{ overflowX: "hidden", background: C.bg, minHeight: "100vh" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
         body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
@@ -2696,6 +2887,22 @@ export default function App() {
         }
         ::selection { background: ${C.accent}33; color: ${C.white}; }
         input:focus, textarea:focus, select:focus { border-color: ${C.accent} !important; box-shadow: 0 0 0 3px ${C.accentDim}; }
+        .skip-link {
+          position: fixed;
+          top: 12px;
+          left: 12px;
+          transform: translateY(-140%);
+          z-index: 2000;
+          background: ${C.white};
+          color: ${C.bg};
+          padding: 10px 14px;
+          border-radius: 8px;
+          font-family: ${font};
+          font-weight: 800;
+          text-decoration: none;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+        }
+        .skip-link:focus { transform: translateY(0); }
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after {
             animation-duration: 0.01ms !important;
@@ -2709,6 +2916,7 @@ export default function App() {
           .nav-burger { display: block !important; }
           .form-grid { grid-template-columns: 1fr !important; }
           .career-layout { grid-template-columns: 1fr !important; }
+          .career-notes { grid-template-columns: 1fr !important; }
           .media-layout { grid-template-columns: 1fr !important; }
           .chat-label { display: none !important; }
         }
@@ -2724,43 +2932,47 @@ export default function App() {
         }
       `}</style>
 
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} />
 
-      {currentPage === "home" && (
-        <>
-          <Hero setCurrentPage={setCurrentPage} />
-          <Products setCurrentPage={setCurrentPage} />
-          <SystemsShowcase setCurrentPage={setCurrentPage} />
-          <EngineeringStandards />
-          <Services setCurrentPage={setCurrentPage} />
-          <CareCoreSection />
-          <Pricing setCurrentPage={setCurrentPage} />
-          <FlyerShowcase setCurrentPage={setCurrentPage} />
-          <About />
-          <FAQSection setCurrentPage={setCurrentPage} />
-          <CTABanner setCurrentPage={setCurrentPage} />
-        </>
-      )}
+      <main id="main-content" tabIndex={-1}>
+        {currentPage === "home" && (
+          <>
+            <Hero setCurrentPage={setCurrentPage} />
+            <Products setCurrentPage={setCurrentPage} />
+            <SystemsShowcase setCurrentPage={setCurrentPage} />
+            <EngineeringStandards />
+            <TrustSecurity />
+            <Services setCurrentPage={setCurrentPage} />
+            <CareCoreSection />
+            <Pricing setCurrentPage={setCurrentPage} />
+            <FlyerShowcase setCurrentPage={setCurrentPage} />
+            <About />
+            <FAQSection setCurrentPage={setCurrentPage} />
+            <CTABanner setCurrentPage={setCurrentPage} />
+          </>
+        )}
 
-      {currentPage === "onboarding" && (
-        <OnboardingPage setCurrentPage={setCurrentPage} />
-      )}
+        {currentPage === "onboarding" && (
+          <OnboardingPage setCurrentPage={setCurrentPage} />
+        )}
 
-      {currentPage === "feedback" && (
-        <FeedbackPage setCurrentPage={setCurrentPage} />
-      )}
+        {currentPage === "feedback" && (
+          <FeedbackPage setCurrentPage={setCurrentPage} />
+        )}
 
-      {currentPage === "careers" && (
-        <CareersPage setCurrentPage={setCurrentPage} />
-      )}
+        {currentPage === "careers" && (
+          <CareersPage setCurrentPage={setCurrentPage} />
+        )}
 
-      {currentPage === "privacy" && (
-        <LegalPage type="privacy" setCurrentPage={setCurrentPage} />
-      )}
+        {currentPage === "privacy" && (
+          <LegalPage type="privacy" setCurrentPage={setCurrentPage} />
+        )}
 
-      {currentPage === "terms" && (
-        <LegalPage type="terms" setCurrentPage={setCurrentPage} />
-      )}
+        {currentPage === "terms" && (
+          <LegalPage type="terms" setCurrentPage={setCurrentPage} />
+        )}
+      </main>
 
       <Footer setCurrentPage={setCurrentPage} />
       {HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={setCurrentPage} />}
