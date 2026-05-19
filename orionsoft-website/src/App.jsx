@@ -45,11 +45,41 @@ const TAWK_PROPERTY_ID = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
 const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || "";
 const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
 const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
+const CARECORE_ASSETS = {
+  demo: "/assets/carecore/demo.mp4",
+  dashboard: "/assets/carecore/dashboard-overview.png",
+  quickActions: "/assets/carecore/quick-actions.png",
+  operations: "/assets/carecore/operations-view.png",
+  profile: "/assets/carecore/profile-settings.png",
+};
+
+const CARECORE_MEDIA = [
+  {
+    src: CARECORE_ASSETS.dashboard,
+    title: "Executive dashboard",
+    desc: "Facility metrics, visits, staff, stock alerts, appointments, and daily operations at a glance.",
+  },
+  {
+    src: CARECORE_ASSETS.quickActions,
+    title: "Fast clinical actions",
+    desc: "Common workflows such as registration, diagnosis, appointment booking, ward admission, prescriptions, lab requests, and invoicing.",
+  },
+  {
+    src: CARECORE_ASSETS.operations,
+    title: "Operations view",
+    desc: "A responsive command center for patient activity, finance, staff performance, pharmacy alerts, and reporting.",
+  },
+  {
+    src: CARECORE_ASSETS.profile,
+    title: "Staff profile and permissions",
+    desc: "Clear staff profile management and role-aware interface patterns for secure hospital administration.",
+  },
+];
 const CAREER_ROLES = [
   {
     title: "Health Liaison Officer",
     type: "Healthcare Growth",
-    location: "Lagos",
+    location: "Field / Remote",
     color: C.accent,
     desc: "Build trusted relationships with hospitals and clinics, demo CareCore HMS, support onboarding, and translate healthcare workflow needs for the Orion Soft team.",
     requirements: [
@@ -57,14 +87,14 @@ const CAREER_ROLES = [
       "Valid professional license or healthcare work experience is an advantage",
       "Strong communication and presentation skills",
       "Comfortable using smartphones and computers",
-      "Willingness to travel within Lagos and environs",
+      "Willingness to travel for client visits when required",
     ],
     compensation: "NGN 25K-30K base + NGN 10K transport + NGN 5K data + NGN 30K-50K commission per onboarding",
   },
   {
     title: "Business Development Officer (Marketing)",
     type: "Sales",
-    location: "Lagos",
+    location: "Field / Remote",
     color: C.mint,
     desc: "Drive CareCore adoption through hospital visits, relationship building, cold outreach, and closing deals. Marketing/sales background preferred.",
     requirements: [
@@ -79,7 +109,7 @@ const CAREER_ROLES = [
   {
     title: "Digital Marketing Executive",
     type: "Marketing",
-    location: "Lagos / Remote",
+    location: "Remote / Hybrid",
     color: C.purple,
     desc: "Manage Orion Soft's social media, create content showcasing CareCore, run campaigns, and generate inbound leads for the sales team.",
     requirements: [
@@ -109,7 +139,7 @@ const CAREER_ROLES = [
   {
     title: "General Application",
     type: "Open",
-    location: "Lagos / Remote",
+    location: "Remote / Hybrid",
     color: C.rose,
     desc: "Don't see a role that fits you? We're always looking for talented, driven people. If you believe you can add value to Orion Soft, tell us what you bring to the table.",
     requirements: [
@@ -266,6 +296,7 @@ function Nav({ currentPage, setCurrentPage }) {
   const links = [
     { label: "Home", page: "home" },
     { label: "Products", page: "home", anchor: "#products" },
+    { label: "Demo", page: "home", anchor: "#carecore-demo" },
     { label: "Systems", page: "home", anchor: "#systems" },
     { label: "Standards", page: "home", anchor: "#standards" },
     { label: "Trust", page: "home", anchor: "#trust" },
@@ -383,7 +414,7 @@ function Hero({ setCurrentPage }) {
   return (
     <section style={{
       minHeight: "100vh", display: "flex", alignItems: "center",
-      background: `linear-gradient(135deg, ${C.bg} 0%, ${C.surface} 54%, #17365A 100%)`,
+      background: `linear-gradient(135deg, ${C.bg} 0%, ${C.surface} 48%, #17365A 78%, #102A2E 100%)`,
       position: "relative", overflow: "hidden",
       padding: "100px clamp(16px, 4vw, 32px) 80px",
     }}>
@@ -391,7 +422,7 @@ function Hero({ setCurrentPage }) {
       <div style={{ position: "absolute", inset: 0, opacity: 0.72,
         background: `radial-gradient(ellipse 680px 520px at 22% 24%, rgba(56,189,248,0.14), transparent),
                      radial-gradient(ellipse 520px 420px at 78% 68%, rgba(45,212,191,0.10), transparent),
-                     radial-gradient(ellipse 760px 560px at 52% 52%, rgba(196,181,253,0.08), transparent)` }} />
+                     radial-gradient(ellipse 760px 560px at 52% 52%, rgba(214,181,109,0.08), transparent)` }} />
       {/* Grid */}
       <div style={{ position: "absolute", inset: 0, opacity: 0.025,
         backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`,
@@ -791,6 +822,138 @@ function Products({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // SERVICES
 // ═══════════════════════════════════════
+function CareCoreDemoSection({ setCurrentPage }) {
+  return (
+    <section id="carecore-demo" style={{
+      padding: "120px clamp(16px, 4vw, 32px)",
+      background: `linear-gradient(180deg, ${C.light} 0%, #EEF6F8 52%, ${C.light} 100%)`,
+    }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div className="carecore-proof-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.78fr) minmax(360px, 1.22fr)", gap: "clamp(28px, 5vw, 64px)", alignItems: "center" }}>
+            <div>
+              <span style={{ fontSize: 12.5, fontWeight: 900, color: C.mint, fontFamily: font, letterSpacing: "0.08em" }}>REAL CARECORE PRODUCT</span>
+              <h2 style={{
+                fontSize: "clamp(28px, 4vw, 48px)",
+                fontWeight: 900,
+                fontFamily: font,
+                color: C.lightHeading,
+                letterSpacing: "-0.03em",
+                lineHeight: 1.08,
+                margin: "12px 0 16px",
+              }}>
+                See the actual dashboard your team will use.
+              </h2>
+              <p style={{ fontSize: 16, color: C.lightText, fontFamily: font, lineHeight: 1.75, marginBottom: 24 }}>
+                These are real CareCore screens, placed here so hospital administrators, clinical teams, and international buyers can evaluate the product before booking a demo.
+              </p>
+              <div style={{ display: "grid", gap: 10, marginBottom: 28 }}>
+                {[
+                  "Dashboard metrics for daily decisions",
+                  "Quick actions for busy clinical teams",
+                  "Administration, billing, stock, and reporting visibility",
+                  "Modern interface that works across desktop and mobile workflows",
+                ].map((item) => (
+                  <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ color: C.mint, fontWeight: 900, fontSize: 15, marginTop: 1 }}>✓</span>
+                    <span style={{ color: C.lightText, fontFamily: font, fontSize: 14.5, lineHeight: 1.55 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+                  background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+                  color: C.bg,
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "13px 18px",
+                  fontSize: 14,
+                  fontWeight: 900,
+                  fontFamily: font,
+                  cursor: "pointer",
+                }}>Book a Live Demo</button>
+                <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{
+                  border: `1px solid ${C.lightBorder}`,
+                  color: C.lightHeading,
+                  background: C.lightCard,
+                  borderRadius: 10,
+                  padding: "13px 18px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  fontFamily: font,
+                  textDecoration: "none",
+                }}>Ask on WhatsApp</a>
+              </div>
+            </div>
+
+            <div className="carecore-device" style={{
+              borderRadius: 24,
+              background: "#0B1221",
+              border: "1px solid rgba(15,23,42,0.16)",
+              boxShadow: "0 34px 90px rgba(15,23,42,0.22)",
+              overflow: "hidden",
+            }}>
+              <div style={{
+                height: 38,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "0 16px",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+              }}>
+                {[C.rose, C.amber, C.mint].map(color => (
+                  <span key={color} style={{ width: 10, height: 10, borderRadius: "50%", background: color, display: "block" }} />
+                ))}
+                <span style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginLeft: 8 }}>carecore-demo.orionsoft</span>
+              </div>
+              <video
+                src={CARECORE_ASSETS.demo}
+                controls
+                muted
+                playsInline
+                preload="metadata"
+                poster={CARECORE_ASSETS.dashboard}
+                style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block", background: "#07111D" }}
+                aria-label="CareCore hospital management system demo video"
+              />
+            </div>
+          </div>
+        </Reveal>
+
+        <div className="carecore-gallery" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 34 }}>
+          {CARECORE_MEDIA.map((item, i) => (
+            <Reveal key={item.src} delay={i * 0.05}>
+              <article style={{
+                height: "100%",
+                background: C.lightCard,
+                border: `1px solid ${C.lightBorder}`,
+                borderRadius: 16,
+                overflow: "hidden",
+                boxShadow: "0 16px 42px rgba(15,23,42,0.08)",
+              }}>
+                <div style={{ background: "#0B1221", padding: 8 }}>
+                  <img
+                    src={item.src}
+                    alt={`CareCore ${item.title.toLowerCase()} screenshot`}
+                    loading="lazy"
+                    decoding="async"
+                    style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", objectPosition: "top left", borderRadius: 10, display: "block" }}
+                  />
+                </div>
+                <div style={{ padding: 16 }}>
+                  <h3 style={{ color: C.lightHeading, fontFamily: font, fontSize: 15.5, fontWeight: 900, marginBottom: 6 }}>{item.title}</h3>
+                  <p style={{ color: C.lightText, fontFamily: font, fontSize: 13, lineHeight: 1.6, margin: 0 }}>{item.desc}</p>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Services({ setCurrentPage }) {
   const services = [
     { icon: "💻", title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, price: "Custom quote" },
@@ -2103,8 +2266,8 @@ function CareersPage({ setCurrentPage }) {
                 <div><label style={labelSt}>Email *</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="you@example.com" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+234 801 000 0000" /></div>
-                <div><label style={labelSt}>City / Region *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="Lagos, Nigeria" /></div>
+                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+1 555 000 0000" /></div>
+                <div><label style={labelSt}>City / Country *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, Country" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div>
@@ -2870,7 +3033,7 @@ function Footer({ setCurrentPage }) {
               <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250 }}>
-              Building practical software for healthcare providers and ambitious businesses. Registered in Nigeria. Privacy-aware.
+              Building practical software for healthcare providers and ambitious businesses. Registered company. Privacy-aware.
             </p>
           </div>
 
@@ -2886,7 +3049,7 @@ function Footer({ setCurrentPage }) {
                   <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_PHONE}</a><br />
                   <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
                   <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>Message Orion Soft</a><br />
-                  Lagos, Nigeria
+                  Available for international projects
                 </div>
               ) : col.links.map((link, li) => (
                 <a key={li} href={link.a} onClick={link.onClick} style={{
@@ -2988,6 +3151,8 @@ export default function App() {
           .hero-grid { grid-template-columns: 1fr !important; }
           .hero-grid img { min-height: 360px !important; }
           .experience-grid { grid-template-columns: 1fr !important; }
+          .carecore-proof-grid { grid-template-columns: 1fr !important; }
+          .carecore-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .tech-mosaic { grid-template-columns: 1fr !important; }
           .tech-mosaic > div, .tech-mosaic-wide { grid-column: auto !important; }
           .form-grid { grid-template-columns: 1fr !important; }
@@ -3004,6 +3169,8 @@ export default function App() {
           button, a { max-width: 100%; }
           input, textarea, select { font-size: 16px !important; }
           .live-chat { right: 16px !important; bottom: 16px !important; }
+          .carecore-gallery { grid-template-columns: 1fr !important; }
+          .carecore-device { border-radius: 16px !important; }
         }
       `}</style>
 
@@ -3016,6 +3183,7 @@ export default function App() {
             <Hero setCurrentPage={setCurrentPage} />
             <ExperiencePreview setCurrentPage={setCurrentPage} />
             <Products setCurrentPage={setCurrentPage} />
+            <CareCoreDemoSection setCurrentPage={setCurrentPage} />
             <SystemsShowcase setCurrentPage={setCurrentPage} />
             <EngineeringStandards />
             <TrustSecurity />
