@@ -151,7 +151,7 @@ Open `src/App.jsx` in VS Code and update the constants near the top if needed:
 
 ```jsx
 const COMPANY_EMAIL = "orionsoftlimited@gmail.com";
-const COMPANY_PHONE = "08165556805";
+const COMPANY_PHONE = "08169577059";
 const FOUNDER_NAME = "Famojuro Mathew";
 const COMPANY_RC = "9535128";
 ```
