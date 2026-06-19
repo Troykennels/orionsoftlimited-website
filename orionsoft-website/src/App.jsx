@@ -3625,7 +3625,7 @@ function TrustSection({ portfolio = [] }) {
 function AnnouncementBar() {
   const cms = useContext(CMSContext);
   const ann = cms?.announcements;
-  const [dismissed, setDismissed] = React.useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   if (!ann?.active || !ann?.text || dismissed) return null;
 
