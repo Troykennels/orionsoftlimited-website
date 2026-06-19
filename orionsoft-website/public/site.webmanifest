@@ -1,17 +1,35 @@
 {
   "name": "Orion Soft Limited",
   "short_name": "Orion Soft",
-  "description": "Software for healthcare and business. Home of CareCore Hospital Management System.",
+  "description": "Hospital management systems and custom software for Nigerian healthcare and business. Home of CareCore HMS.",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#050A12",
-  "theme_color": "#050A12",
+  "theme_color": "#0A2540",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "categories": ["business", "health", "productivity"],
   "icons": [
     {
       "src": "/favicon.svg",
-      "sizes": "64x64",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/carecore/dashboard-overview.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "label": "CareCore HMS dashboard overview"
     }
   ]
 }

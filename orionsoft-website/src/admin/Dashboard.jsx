@@ -16,17 +16,24 @@ const font = "'Instrument Sans','DM Sans',system-ui,-apple-system,sans-serif";
 
 // ─── Storage keys ────────────────────────────────────────────────────────────
 const SK = {
-  products:    "orionsoft_products_v1",
-  portfolio:   "orionsoft_portfolio_v1",
-  blog:        "orionsoft_blog_v1",
-  testimonials:"orionsoft_testimonials_v1",
-  messages:    "orionsoft_messages_v1",
-  media:       "orionsoft_media_v1",
-  careers:     "orionsoft_careers_v1",
-  settings:    "orionsoft_settings_v1",
-  seo:         "orionsoft_seo_v1",
-  users:       "orionsoft_users_v1",
-  analytics:   "orionsoft_analytics_v1",
+  products:     "orionsoft_products_v1",
+  portfolio:    "orionsoft_portfolio_v1",
+  leads:        "orionsoft_leads_v1",
+  blog:         "orionsoft_blog_v1",
+  testimonials: "orionsoft_testimonials_v1",
+  messages:     "orionsoft_messages_v1",
+  media:        "orionsoft_media_v1",
+  careers:      "orionsoft_careers_v1",
+  settings:     "orionsoft_settings_v1",
+  seo:          "orionsoft_seo_v1",
+  users:        "orionsoft_users_v1",
+  analytics:    "orionsoft_analytics_v1",
+  faqs:         "orionsoft_faqs_v1",
+  homepage:     "orionsoft_homepage_v1",
+  clients:      "orionsoft_clients_v1",
+  menus:        "orionsoft_menus_v1",
+  team:         "orionsoft_team_v1",
+  announcements:"orionsoft_announce_v1",
 };
 
 // ─── Local storage helpers ───────────────────────────────────────────────────
@@ -41,7 +48,7 @@ function lsSet(key, val) {
 function uid() { return `i-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
-function Btn({ children, onClick, variant = "primary", small, disabled, style = {} }) {
+function Btn({ children, onClick, variant = "primary", small, disabled, style = {}, type }) {
   const base = {
     border: "none", borderRadius: 8, cursor: disabled ? "not-allowed" : "pointer",
     fontFamily: font, fontWeight: 600, fontSize: small ? 13 : 14,
@@ -55,7 +62,7 @@ function Btn({ children, onClick, variant = "primary", small, disabled, style = 
     danger:  { background: C.dangerDim, color: C.danger, border: `1px solid ${C.danger}33` },
     mint:    { background: C.mintDim, color: C.mint, border: `1px solid ${C.mint}33` },
   };
-  return <button style={{ ...base, ...variants[variant] }} onClick={onClick} disabled={disabled}>{children}</button>;
+  return <button type={type || "button"} style={{ ...base, ...variants[variant] }} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
 function Input({ label, value, onChange, placeholder, type = "text", rows, style = {} }) {
@@ -129,7 +136,7 @@ function Modal({ open, onClose, title, children, width = 520 }) {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
           <div style={{ color: C.heading, fontSize: 18, fontWeight: 700 }}>{title}</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 22, cursor: "pointer", lineHeight: 1 }}>×</button>
+          <button type="button" onClick={onClose} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 22, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
         {children}
       </div>
@@ -203,19 +210,26 @@ function Table({ cols, rows, emptyMsg = "No items yet." }) {
 
 // ─── Sidebar nav items ───────────────────────────────────────────────────────
 const NAV = [
-  { id: "overview",      label: "Overview",       icon: "🏠" },
-  { id: "analytics",     label: "Analytics",      icon: "📊" },
-  { id: "products",      label: "Products",       icon: "📦" },
-  { id: "portfolio",     label: "Portfolio",      icon: "🖼️" },
-  { id: "blog",          label: "Blog",           icon: "✍️" },
-  { id: "testimonials",  label: "Testimonials",   icon: "⭐" },
-  { id: "messages",      label: "Messages",       icon: "💬" },
-  { id: "media",         label: "Media Library",  icon: "🗂️" },
-  { id: "careers",       label: "Careers",        icon: "💼" },
-  { id: "settings",      label: "Settings",       icon: "⚙️" },
-  { id: "seo",           label: "SEO",            icon: "🔍" },
-  { id: "users",         label: "Users & Roles",  icon: "👤" },
-  { id: "backups",       label: "Backups",        icon: "💾" },
+  { id: "overview",       label: "Overview",        icon: "🏠" },
+  { id: "analytics",      label: "Analytics",       icon: "📊" },
+  { id: "leads",          label: "Leads",           icon: "📋" },
+  { id: "homepage",       label: "Homepage",        icon: "🏗️" },
+  { id: "announcements",  label: "Announcements",   icon: "📢" },
+  { id: "products",       label: "Products",        icon: "📦" },
+  { id: "portfolio",      label: "Portfolio",       icon: "🖼️" },
+  { id: "blog",           label: "Blog",            icon: "✍️" },
+  { id: "testimonials",   label: "Testimonials",    icon: "⭐" },
+  { id: "faqs",           label: "FAQs",            icon: "❓" },
+  { id: "clients",        label: "Clients",         icon: "🏢" },
+  { id: "team",           label: "Team",            icon: "👥" },
+  { id: "careers",        label: "Careers",         icon: "💼" },
+  { id: "menus",          label: "Navigation",      icon: "🔗" },
+  { id: "messages",       label: "Messages",        icon: "💬" },
+  { id: "media",          label: "Media Library",   icon: "🗂️" },
+  { id: "settings",       label: "Settings",        icon: "⚙️" },
+  { id: "seo",            label: "SEO",             icon: "🔍" },
+  { id: "users",          label: "Users & Roles",   icon: "👤" },
+  { id: "backups",        label: "Backups",         icon: "💾" },
 ];
 
 // ─── Shell ───────────────────────────────────────────────────────────────────
@@ -223,6 +237,7 @@ function DashboardShell({ section, setSection, onLogout, children }) {
   const [collapsed, setCollapsed] = useState(false);
   const W = collapsed ? 64 : 220;
   const unread = ls(SK.messages, []).filter(m => !m.read).length;
+  const newLeads = ls(SK.leads, []).filter(l => l.status === "New").length;
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: font, background: C.bg, overflow: "hidden" }}>
@@ -234,13 +249,13 @@ function DashboardShell({ section, setSection, onLogout, children }) {
       }}>
         <div style={{ padding: "18px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           {!collapsed && <span style={{ color: C.accent, fontWeight: 800, fontSize: 15, whiteSpace: "nowrap" }}>Orion Admin</span>}
-          <button onClick={() => setCollapsed(p => !p)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 18, lineHeight: 1, marginLeft: collapsed ? "auto" : 0 }}>{collapsed ? "→" : "←"}</button>
+          <button type="button" onClick={() => setCollapsed(p => !p)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 18, lineHeight: 1, marginLeft: collapsed ? "auto" : 0 }}>{collapsed ? "→" : "←"}</button>
         </div>
         <nav style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
           {NAV.map(n => {
             const active = section === n.id;
             return (
-              <button key={n.id} onClick={() => setSection(n.id)} style={{
+              <button type="button" key={n.id} onClick={() => setSection(n.id)} style={{
                 width: "100%", background: active ? C.accentDim : "transparent",
                 border: "none", borderLeft: active ? `3px solid ${C.accent}` : "3px solid transparent",
                 color: active ? C.accent : C.text, fontFamily: font, fontSize: 13, fontWeight: active ? 700 : 400,
@@ -252,12 +267,15 @@ function DashboardShell({ section, setSection, onLogout, children }) {
                 {!collapsed && n.id === "messages" && unread > 0 && (
                   <span style={{ background: C.rose, color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 800, padding: "1px 6px" }}>{unread}</span>
                 )}
+                {!collapsed && n.id === "leads" && newLeads > 0 && (
+                  <span style={{ background: C.accent, color: C.bg, borderRadius: 10, fontSize: 10, fontWeight: 800, padding: "1px 6px" }}>{newLeads}</span>
+                )}
               </button>
             );
           })}
         </nav>
         <div style={{ padding: 12, borderTop: `1px solid ${C.border}` }}>
-          <button onClick={onLogout} style={{
+          <button type="button" onClick={onLogout} style={{
             width: "100%", background: C.dangerDim, border: "none", borderRadius: 8,
             color: C.danger, fontFamily: font, fontSize: 12, fontWeight: 600,
             padding: collapsed ? "8px 0" : "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
@@ -294,13 +312,16 @@ function OverviewSection() {
   const portfolio   = ls(SK.portfolio, []);
   const blog        = ls(SK.blog, []);
   const testimonials= ls(SK.testimonials, []);
+  const leads       = ls(SK.leads, []);
   const unread      = messages.filter(m => !m.read).length;
+  const newLeads    = leads.filter(l => l.status === "New").length;
 
   const today = new Date().toDateString();
   const todayViews = analytics.filter(e => new Date(e.ts).toDateString() === today).length;
   const totalViews = analytics.length;
 
   const recentMsgs = messages.slice(0, 5);
+  const recentLeads = leads.slice(0, 5);
 
   return (
     <div>
@@ -312,6 +333,7 @@ function OverviewSection() {
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
         <StatCard label="Page Views Today" value={todayViews} color={C.accent} icon="📈" />
         <StatCard label="Total Views" value={totalViews} color={C.mint} icon="👁️" />
+        <StatCard label="New Leads" value={newLeads} color={newLeads ? C.accent : C.textMuted} icon="📋" />
         <StatCard label="Unread Messages" value={unread} color={unread ? C.rose : C.textMuted} icon="💬" />
         <StatCard label="Published Products" value={products.filter(p => p.published).length} color={C.purple} icon="📦" />
       </div>
@@ -348,6 +370,25 @@ function OverviewSection() {
               </div>
             ))}
         </div>
+      </div>
+
+      {/* Recent leads */}
+      <div style={{ background: C.card, borderRadius: 14, padding: 22, border: `1px solid ${C.border}` }}>
+        <div style={{ color: C.heading, fontWeight: 700, marginBottom: 16 }}>Recent Leads</div>
+        {recentLeads.length === 0
+          ? <div style={{ color: C.textMuted, fontSize: 14 }}>No leads yet. Website enquiries will appear here automatically.</div>
+          : recentLeads.map((l, i) => (
+            <div key={i} style={{ padding: "9px 0", borderBottom: `1px solid ${C.border}33`, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: LEAD_STATUS_COLORS[l.status] || C.accent, display: "inline-block", flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: C.text, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {l.contactName || "Anonymous"}{l.hospitalName ? ` · ${l.hospitalName}` : ""}
+                </div>
+                <div style={{ color: C.textMuted, fontSize: 11 }}>{l.interestedService} · {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : ""}</div>
+              </div>
+              <span style={{ fontSize: 11, color: LEAD_STATUS_COLORS[l.status] || C.textMuted, fontWeight: 700, flexShrink: 0 }}>{l.status}</span>
+            </div>
+          ))}
       </div>
     </div>
   );
@@ -501,7 +542,7 @@ function ProductsSection() {
       <Modal open={!!editing} onClose={close} title={editing === "new" ? "Add Product" : "Edit Product"} width={620}>
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           {["info", "features", "pricing", "screenshots"].map(t => (
-            <button key={t} style={tabStyle(t)} onClick={() => setTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
+            <button type="button" key={t} style={tabStyle(t)} onClick={() => setTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>
           ))}
         </div>
 
@@ -539,7 +580,7 @@ function ProductsSection() {
                 <span style={{ color: C.mint, fontSize: 14 }}>✓</span>
                 <input value={f} onChange={e => setForm(fr => ({ ...fr, features: fr.features.map((x, j) => j === i ? e.target.value : x) }))}
                   style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: font, fontSize: 13, padding: "7px 10px" }} />
-                <button onClick={() => setForm(fr => ({ ...fr, features: fr.features.filter((_, j) => j !== i) }))}
+                <button type="button" onClick={() => setForm(fr => ({ ...fr, features: fr.features.filter((_, j) => j !== i) }))}
                   style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 16 }}>×</button>
               </div>
             ))}
@@ -558,7 +599,7 @@ function ProductsSection() {
             <div key={tier.id} style={{ background: C.surface, borderRadius: 10, padding: 16, marginBottom: 12, border: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{ color: C.text, fontWeight: 600, fontSize: 14 }}>Tier {i + 1}</span>
-                <button onClick={() => setForm(f => ({ ...f, pricing: f.pricing.filter((_, j) => j !== i) }))}
+                <button type="button" onClick={() => setForm(f => ({ ...f, pricing: f.pricing.filter((_, j) => j !== i) }))}
                   style={{ background: "none", border: "none", color: C.danger, cursor: "pointer" }}>Remove</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -596,7 +637,7 @@ function ProductsSection() {
                   <input value={s.title} onChange={e => setForm(f => ({ ...f, screenshots: f.screenshots.map((x, j) => j === i ? { ...x, title: e.target.value } : x) }))}
                     placeholder="Title" style={{ width: "100%", background: "transparent", border: "none", color: C.text, fontFamily: font, fontSize: 12, marginBottom: 4, outline: "none" }} />
                   <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button onClick={() => setForm(f => ({ ...f, screenshots: f.screenshots.filter((_, j) => j !== i) }))}
+                    <button type="button" onClick={() => setForm(f => ({ ...f, screenshots: f.screenshots.filter((_, j) => j !== i) }))}
                       style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12 }}>Remove</button>
                   </div>
                 </div>
@@ -681,29 +722,724 @@ function CrudSection({ title, storageKey, fields, defaultItem, renderRow, emptyM
 }
 
 // ─── Portfolio ───────────────────────────────────────────────────────────────
+const PORTFOLIO_INDUSTRIES = ["Healthcare", "Education", "Retail", "Logistics", "Finance", "Government", "Technology", "Other"];
+const PORTFOLIO_STATUSES = ["Completed", "Ongoing", "Discovery", "Paused"];
+const PIND_COLORS = { Healthcare: "#38BDF8", Education: "#2DD4BF", Retail: "#FCD34D", Logistics: "#C4B5FD", Finance: "#FDA4AF", Government: "#D6B56D", Technology: "#A78BFA", Other: "#8DA2B8" };
+const PSTATUS_COLORS = { Completed: "#2DD4BF", Ongoing: "#38BDF8", Discovery: "#C4B5FD", Paused: "#8DA2B8" };
+
 function PortfolioSection() {
+  const [items, setItems] = useState(() => ls(SK.portfolio, []));
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({});
+  const [tab, setTab] = useState("info");
+  const [confirm, setConfirm] = useState(null);
+  const [filter, setFilter] = useState("All");
+  const [tagInput, setTagInput] = useState("");
+
+  const reload = useCallback(() => setItems(ls(SK.portfolio, [])), []);
+  useEffect(() => {
+    window.addEventListener("localstoreupdate", reload);
+    return () => window.removeEventListener("localstoreupdate", reload);
+  }, [reload]);
+
+  const emptyForm = () => ({
+    clientName: "", clientLogoUrl: "", projectTitle: "", tagline: "",
+    description: "", industry: "Healthcare", status: "Completed",
+    year: new Date().getFullYear().toString(), screenshots: [],
+    coverImage: "", tags: [], featured: false, featuredOrder: 0,
+    published: true, testimonial: { quote: "", name: "", title: "" },
+  });
+
+  const save = (list) => { lsSet(SK.portfolio, list); setItems(list); };
+
+  const openNew = () => { setForm(emptyForm()); setEditing("new"); setTab("info"); setTagInput(""); };
+  const openEdit = (item) => {
+    setForm({ ...emptyForm(), ...item, screenshots: item.screenshots || [], tags: item.tags || [], testimonial: item.testimonial || { quote: "", name: "", title: "" } });
+    setEditing(item.id); setTab("info"); setTagInput("");
+  };
+  const close = () => setEditing(null);
+
+  const submit = () => {
+    if (!form.projectTitle?.trim()) return;
+    const now = new Date().toISOString();
+    if (editing === "new") {
+      save([...items, { ...form, id: uid(), createdAt: now, updatedAt: now }]);
+    } else {
+      save(items.map(i => i.id === editing ? { ...form, updatedAt: now } : i));
+    }
+    close();
+  };
+
+  const toggleFeatured = (id) => save(items.map(i => i.id === id ? { ...i, featured: !i.featured } : i));
+
+  const readFile = (file) => new Promise(res => { const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(file); });
+
+  const uploadLogo = async (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 1.5 * 1024 * 1024) { alert("Logo must be under 1.5MB"); return; }
+    const url = await readFile(file);
+    setForm(f => ({ ...f, clientLogoUrl: url }));
+    e.target.value = "";
+  };
+
+  const uploadScreenshots = async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      if (file.size > 2 * 1024 * 1024) { alert(`${file.name} exceeds 2MB`); continue; }
+      const url = await readFile(file);
+      const s = { id: uid(), url, caption: file.name.replace(/\.[^.]+$/, "") };
+      setForm(f => ({ ...f, screenshots: [...(f.screenshots || []), s], coverImage: f.coverImage || url }));
+    }
+    e.target.value = "";
+  };
+
+  const addTag = () => {
+    const t = tagInput.trim(); if (!t) return;
+    if (!(form.tags || []).includes(t)) setForm(f => ({ ...f, tags: [...(f.tags || []), t] }));
+    setTagInput("");
+  };
+
+  const removeTag = (tag) => setForm(f => ({ ...f, tags: (f.tags || []).filter(t => t !== tag) }));
+  const setCover = (url) => setForm(f => ({ ...f, coverImage: url }));
+  const removeScreenshot = (sid) => setForm(f => {
+    const remaining = (f.screenshots || []).filter(s => s.id !== sid);
+    const removedUrl = (f.screenshots || []).find(s => s.id === sid)?.url;
+    return { ...f, screenshots: remaining, coverImage: f.coverImage === removedUrl ? (remaining[0]?.url || "") : f.coverImage };
+  });
+
+  const filtered = filter === "All" ? items : items.filter(i => i.industry === filter);
+  const featuredCount = items.filter(i => i.featured).length;
+  const publishedCount = items.filter(i => i.published !== false).length;
+  const activeIndustries = ["All", ...PORTFOLIO_INDUSTRIES.filter(ind => items.some(i => i.industry === ind))];
+
+  const tabBtn = (t, label) => (
+    <button type="button" key={t} onClick={() => setTab(t)} style={{
+      background: tab === t ? C.accentDim : "transparent",
+      border: tab === t ? `1px solid ${C.accent}44` : `1px solid ${C.border}`,
+      color: tab === t ? C.accent : C.textMuted,
+      borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600,
+    }}>{label}</button>
+  );
+
+  const uploadBtnSt = {
+    background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent,
+    borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, display: "inline-block",
+  };
+
   return (
-    <CrudSection
-      title="Portfolio"
-      storageKey={SK.portfolio}
-      defaultItem={{ title: "", client: "", category: "", year: "", desc: "", url: "", featured: false }}
-      emptyMsg="No portfolio items yet."
-      fields={[
-        { key: "title", label: "Project Title *", required: true, placeholder: "e.g. Hospital Management System" },
-        { key: "client", label: "Client", placeholder: "e.g. St. Mary's Hospital" },
-        { key: "category", label: "Category", placeholder: "e.g. Healthcare, Fintech, Logistics" },
-        { key: "year", label: "Year", placeholder: "e.g. 2025" },
-        { key: "desc", label: "Description", placeholder: "Brief project summary", rows: 3 },
-        { key: "url", label: "URL (optional)", placeholder: "https://..." },
-        { key: "featured", label: "Featured on Homepage", type: "toggle" },
-      ]}
-      renderRow={[
-        { key: "title", label: "Title", render: p => <span style={{ color: C.heading, fontWeight: 600 }}>{p.title}</span> },
-        { key: "client", label: "Client" },
-        { key: "category", label: "Category" },
-        { key: "featured", label: "Featured", render: p => p.featured ? <Badge color={C.mint}>Yes</Badge> : null },
-      ]}
-    />
+    <div>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
+        <StatCard label="Total Projects" value={items.length} color={C.accent} icon="🖼️" />
+        <StatCard label="Featured" value={featuredCount} color={C.mint} icon="⭐" />
+        <StatCard label="Published" value={publishedCount} color={C.purple} icon="✅" />
+      </div>
+
+      {/* Controls */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {activeIndustries.map(ind => (
+            <button type="button" key={ind} onClick={() => setFilter(ind)} style={{
+              background: filter === ind ? `${PIND_COLORS[ind] || C.accent}18` : "transparent",
+              border: `1px solid ${filter === ind ? (PIND_COLORS[ind] || C.accent) + "55" : C.border}`,
+              color: filter === ind ? (PIND_COLORS[ind] || C.accent) : C.textMuted,
+              borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontFamily: font, fontSize: 12, fontWeight: 600,
+            }}>{ind}</button>
+          ))}
+        </div>
+        <Btn onClick={openNew}>+ Add Project</Btn>
+      </div>
+
+      {/* Table */}
+      <div style={{ background: C.card, borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        {filtered.length === 0 ? (
+          <div style={{ color: C.textMuted, textAlign: "center", padding: "50px 20px", fontSize: 14 }}>
+            {items.length === 0 ? "No portfolio projects yet. Add your first." : "No projects in this industry."}
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["Cover", "Project", "Client", "Industry", "Status", "Year", "Featured", ""].map(h => (
+                    <th key={h} style={{ color: C.textMuted, fontSize: 12, fontWeight: 700, textAlign: "left", padding: "10px 14px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(item => (
+                  <tr key={item.id} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                    <td style={{ padding: "10px 14px" }}>
+                      {(item.coverImage || item.screenshots?.[0]?.url) ? (
+                        <img src={item.coverImage || item.screenshots[0].url} alt="" style={{ width: 52, height: 36, objectFit: "cover", borderRadius: 6, display: "block" }} />
+                      ) : (
+                        <div style={{ width: 52, height: 36, background: C.surface, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🖼️</div>
+                      )}
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <div style={{ color: C.heading, fontWeight: 600, fontSize: 14 }}>{item.projectTitle}</div>
+                      {item.tagline && <div style={{ color: C.textMuted, fontSize: 12 }}>{item.tagline}</div>}
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {item.clientLogoUrl && <img src={item.clientLogoUrl} alt="" style={{ width: 22, height: 22, objectFit: "contain", borderRadius: 3 }} />}
+                        <span style={{ color: C.text, fontSize: 13 }}>{item.clientName || "—"}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "10px 14px" }}><Badge color={PIND_COLORS[item.industry] || C.textMuted}>{item.industry}</Badge></td>
+                    <td style={{ padding: "10px 14px" }}><Badge color={PSTATUS_COLORS[item.status] || C.textMuted}>{item.status}</Badge></td>
+                    <td style={{ padding: "10px 14px", color: C.text, fontSize: 13 }}>{item.year || "—"}</td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <button type="button" onClick={() => toggleFeatured(item.id)} style={{
+                        background: item.featured ? C.mintDim : "transparent",
+                        border: `1px solid ${item.featured ? C.mint + "44" : C.border}`,
+                        color: item.featured ? C.mint : C.textMuted,
+                        borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: font, fontSize: 12, fontWeight: 700,
+                      }}>{item.featured ? "★ On" : "☆ Off"}</button>
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <Btn small variant="ghost" onClick={() => openEdit(item)}>Edit</Btn>
+                        <Btn small variant="danger" onClick={() => setConfirm(item.id)}>Delete</Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Add / Edit Modal */}
+      <Modal open={!!editing} onClose={close} title={editing === "new" ? "Add Portfolio Project" : "Edit Project"} width={720}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {tabBtn("info", "Project Info")}
+          {tabBtn("classify", "Classify")}
+          {tabBtn("screenshots", `Screenshots (${form.screenshots?.length || 0})`)}
+          {tabBtn("testimonial", "Testimonial")}
+        </div>
+
+        {tab === "info" && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Input label="Client Name" value={form.clientName || ""} onChange={v => setForm(f => ({ ...f, clientName: v }))} placeholder="e.g. St. Mary's Hospital" />
+              <Input label="Project Year" value={form.year || ""} onChange={v => setForm(f => ({ ...f, year: v }))} placeholder="2025" />
+            </div>
+            <Input label="Project Title *" value={form.projectTitle || ""} onChange={v => setForm(f => ({ ...f, projectTitle: v }))} placeholder="e.g. Hospital Management System" />
+            <Input label="Tagline (one-liner)" value={form.tagline || ""} onChange={v => setForm(f => ({ ...f, tagline: v }))} placeholder="e.g. Full HMS rollout in 3 weeks" />
+            <Input label="Project Description" value={form.description || ""} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="What was built, the problem it solved, measurable outcomes." rows={4} />
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ color: C.textMuted, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>Client Logo</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                {form.clientLogoUrl ? (
+                  <div style={{ position: "relative" }}>
+                    <img src={form.clientLogoUrl} alt="Logo" style={{ width: 68, height: 48, objectFit: "contain", background: "rgba(255,255,255,0.07)", borderRadius: 8, border: `1px solid ${C.border}`, padding: 4 }} />
+                    <button type="button" onClick={() => setForm(f => ({ ...f, clientLogoUrl: "" }))} style={{ position: "absolute", top: -6, right: -6, background: C.danger, border: "none", borderRadius: "50%", width: 18, height: 18, color: "#fff", cursor: "pointer", fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                  </div>
+                ) : (
+                  <div style={{ width: 68, height: 48, background: C.surface, borderRadius: 8, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🏢</div>
+                )}
+                <label style={uploadBtnSt}>
+                  Upload Logo (≤1.5MB)
+                  <input type="file" accept="image/*" onChange={uploadLogo} style={{ display: "none" }} />
+                </label>
+                <span style={{ color: C.textMuted, fontSize: 12 }}>PNG, SVG, WebP — transparent preferred</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "classify" && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Select label="Industry" value={form.industry || "Healthcare"} onChange={v => setForm(f => ({ ...f, industry: v }))} options={PORTFOLIO_INDUSTRIES.map(i => ({ value: i, label: i }))} />
+              <Select label="Project Status" value={form.status || "Completed"} onChange={v => setForm(f => ({ ...f, status: v }))} options={PORTFOLIO_STATUSES.map(s => ({ value: s, label: s }))} />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ color: C.textMuted, fontSize: 12, marginBottom: 8, fontWeight: 600 }}>Tech Stack / Tags</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8, minHeight: 28 }}>
+                {(form.tags || []).map(tag => (
+                  <span key={tag} style={{ background: C.accentDim, color: C.accent, border: `1px solid ${C.accent}33`, borderRadius: 6, fontSize: 12, padding: "4px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={tagInput} onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                  placeholder="e.g. React, PostgreSQL, CareCore…"
+                  style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: font, fontSize: 13, padding: "8px 12px", outline: "none" }} />
+                <Btn small onClick={addTag}>Add</Btn>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <Toggle checked={!!form.featured} onChange={v => setForm(f => ({ ...f, featured: v }))} label="Featured on Homepage" />
+              <Toggle checked={form.published !== false} onChange={v => setForm(f => ({ ...f, published: v }))} label="Published" />
+            </div>
+            {form.featured && (
+              <Input label="Featured Order (lower = shown first)" value={String(form.featuredOrder ?? 0)} type="number" onChange={v => setForm(f => ({ ...f, featuredOrder: parseInt(v) || 0 }))} placeholder="0" />
+            )}
+          </div>
+        )}
+
+        {tab === "screenshots" && (
+          <div>
+            <p style={{ color: C.textMuted, fontSize: 13, marginBottom: 14 }}>Upload screenshots (max 2MB each). Click "Set Cover" to use one as the card thumbnail.</p>
+            <label style={{ ...uploadBtnSt, marginBottom: 20 }}>
+              + Upload Screenshots
+              <input type="file" accept="image/*" multiple onChange={uploadScreenshots} style={{ display: "none" }} />
+            </label>
+            {(form.screenshots || []).length === 0 ? (
+              <div style={{ color: C.textMuted, textAlign: "center", padding: 32, background: C.surface, borderRadius: 10, fontSize: 14 }}>No screenshots yet.</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+                {(form.screenshots || []).map(s => (
+                  <div key={s.id} style={{ background: C.surface, borderRadius: 10, overflow: "hidden", border: `2px solid ${form.coverImage === s.url ? C.mint : C.border}` }}>
+                    <img src={s.url} alt={s.caption} style={{ width: "100%", height: 108, objectFit: "cover", display: "block" }} />
+                    <div style={{ padding: "8px 10px" }}>
+                      <input value={s.caption || ""} onChange={e => setForm(f => ({ ...f, screenshots: f.screenshots.map(x => x.id === s.id ? { ...x, caption: e.target.value } : x) }))}
+                        placeholder="Caption" style={{ width: "100%", background: "transparent", border: "none", borderBottom: `1px solid ${C.border}`, color: C.text, fontFamily: font, fontSize: 12, outline: "none", marginBottom: 8, paddingBottom: 4 }} />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button type="button" onClick={() => setCover(s.url)} style={{ background: form.coverImage === s.url ? C.mintDim : C.card, border: `1px solid ${form.coverImage === s.url ? C.mint + "55" : C.border}`, color: form.coverImage === s.url ? C.mint : C.textMuted, borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontFamily: font, fontSize: 11 }}>
+                          {form.coverImage === s.url ? "✓ Cover" : "Set Cover"}
+                        </button>
+                        <button type="button" onClick={() => removeScreenshot(s.id)} style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12, fontFamily: font }}>Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "testimonial" && (
+          <div>
+            <p style={{ color: C.textMuted, fontSize: 13, marginBottom: 16 }}>Optional client quote to display with this project card.</p>
+            <Input label="Quote" value={form.testimonial?.quote || ""} onChange={v => setForm(f => ({ ...f, testimonial: { ...f.testimonial, quote: v } }))} placeholder="Their exact words about the project…" rows={3} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Input label="Person's Name" value={form.testimonial?.name || ""} onChange={v => setForm(f => ({ ...f, testimonial: { ...f.testimonial, name: v } }))} placeholder="e.g. Dr. Amara Osei" />
+              <Input label="Title / Role" value={form.testimonial?.title || ""} onChange={v => setForm(f => ({ ...f, testimonial: { ...f.testimonial, title: v } }))} placeholder="e.g. Medical Director, Lagos" />
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+          <Btn variant="ghost" onClick={close}>Cancel</Btn>
+          <Btn onClick={submit} disabled={!form.projectTitle?.trim()}>{editing === "new" ? "Add Project" : "Save Changes"}</Btn>
+        </div>
+      </Modal>
+
+      <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)}
+        onConfirm={() => { save(items.filter(i => i.id !== confirm)); setConfirm(null); }}
+        message="Delete this project? This cannot be undone." />
+    </div>
+  );
+}
+
+// ─── Leads ───────────────────────────────────────────────────────────────────
+const LEAD_STATUSES = ["New", "Contacted", "Demo Scheduled", "Proposal Sent", "Won", "Lost", "On Hold"];
+const LEAD_STATUS_COLORS = { "New": "#38BDF8", "Contacted": "#C4B5FD", "Demo Scheduled": "#FCD34D", "Proposal Sent": "#FDA4AF", "Won": "#2DD4BF", "Lost": "#F87171", "On Hold": "#8DA2B8" };
+const LEAD_PRIORITIES = ["Low", "Medium", "High", "Urgent"];
+const LEAD_PRIORITY_COLORS = { Low: "#8DA2B8", Medium: "#FCD34D", High: "#FDA4AF", Urgent: "#F87171" };
+const LEAD_SERVICES = ["CareCore HMS", "Custom Software", "Consultation", "Website Feedback", "Other"];
+
+function LeadsSection() {
+  const [items, setItems] = useState(() => ls(SK.leads, []));
+  const [selectedId, setSelectedId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [serviceFilter, setServiceFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const [detailTab, setDetailTab] = useState("details");
+  const [editForm, setEditForm] = useState({});
+  const [noteInput, setNoteInput] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({});
+  const [confirm, setConfirm] = useState(null);
+
+  const selected = items.find(l => l.id === selectedId) || null;
+
+  const reload = useCallback(() => setItems(ls(SK.leads, [])), []);
+  useEffect(() => {
+    window.addEventListener("localstoreupdate", reload);
+    return () => window.removeEventListener("localstoreupdate", reload);
+  }, [reload]);
+
+  useEffect(() => {
+    if (selectedId) {
+      const found = items.find(l => l.id === selectedId);
+      if (found) setEditForm({ ...found });
+    }
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = (list) => { lsSet(SK.leads, list); setItems(list); };
+
+  const patchLead = (id, patch, histEntry) => {
+    const now = new Date().toISOString();
+    const updated = items.map(l => {
+      if (l.id !== id) return l;
+      const newHist = histEntry ? [...(l.history || []), { id: uid(), ...histEntry, ts: now }] : (l.history || []);
+      return { ...l, ...patch, history: newHist, updatedAt: now };
+    });
+    save(updated);
+    if (selectedId === id) setEditForm(prev => ({ ...prev, ...patch }));
+  };
+
+  const saveDetails = () => {
+    const now = new Date().toISOString();
+    const updated = items.map(l => l.id === selectedId
+      ? { ...l, ...editForm, history: [...(l.history || []), { id: uid(), type: "updated", message: "Lead details updated", by: "Admin", ts: now }], updatedAt: now }
+      : l
+    );
+    save(updated);
+  };
+
+  const savePipeline = () => {
+    const original = items.find(l => l.id === selectedId);
+    const demoChanged = original && original.demoDate !== editForm.demoDate && editForm.demoDate;
+    patchLead(selectedId,
+      { priority: editForm.priority, assignedTo: editForm.assignedTo, demoDate: editForm.demoDate, demoTime: editForm.demoTime, notes: editForm.notes },
+      demoChanged
+        ? { type: "demo", message: `Demo scheduled for ${editForm.demoDate}${editForm.demoTime ? ` at ${editForm.demoTime}` : ""}`, by: "Admin" }
+        : { type: "updated", message: "Pipeline updated", by: "Admin" }
+    );
+  };
+
+  const changeStatus = (id, status) => patchLead(id, { status }, { type: "status", message: `Status → ${status}`, by: "Admin" });
+
+  const addNote = () => {
+    if (!noteInput.trim() || !selectedId) return;
+    patchLead(selectedId, {}, { type: "note", message: noteInput.trim(), by: "Admin" });
+    setNoteInput("");
+  };
+
+  const emptyAddForm = () => ({
+    contactName: "", hospitalName: "", company: "", phone: "", email: "", location: "",
+    interestedService: "CareCore HMS", facilitySize: "", projectDesc: "",
+    status: "New", priority: "Medium", assignedTo: "", demoDate: "", demoTime: "", notes: "",
+  });
+
+  const submitAdd = () => {
+    if (!addForm.contactName?.trim() && !addForm.hospitalName?.trim()) return;
+    const now = new Date().toISOString();
+    const lead = { ...addForm, id: uid(), source: "Manual", history: [{ id: uid(), type: "created", message: "Lead added manually by admin", by: "Admin", ts: now }], createdAt: now, updatedAt: now };
+    save([lead, ...items]);
+    setShowAddModal(false);
+  };
+
+  const filtered = items.filter(l => {
+    if (statusFilter !== "All" && l.status !== statusFilter) return false;
+    if (serviceFilter !== "All" && l.interestedService !== serviceFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (![l.contactName, l.hospitalName, l.email, l.phone, l.company, l.location].some(f => (f || "").toLowerCase().includes(q))) return false;
+    }
+    return true;
+  });
+
+  const newCount = items.filter(l => l.status === "New").length;
+  const demoCount = items.filter(l => l.status === "Demo Scheduled").length;
+  const wonCount = items.filter(l => l.status === "Won").length;
+
+  const ef = editForm;
+  const pSt = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: font, fontSize: 13, padding: "8px 11px", width: "100%", boxSizing: "border-box", outline: "none" };
+  const lSt = { color: C.textMuted, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", marginBottom: 5, display: "block" };
+
+  return (
+    <div style={{ display: "flex", gap: 0, height: "100%", minHeight: 0, overflow: "hidden" }}>
+
+      {/* ── Main list panel ── */}
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingRight: 0 }}>
+        {/* Stats */}
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
+          <StatCard label="Total Leads" value={items.length} color={C.accent} icon="📋" />
+          <StatCard label="New" value={newCount} color="#38BDF8" icon="🔔" />
+          <StatCard label="Demo Scheduled" value={demoCount} color={C.amber} icon="📅" />
+          <StatCard label="Won" value={wonCount} color={C.mint} icon="🏆" />
+        </div>
+
+        {/* Search + service filter + add button */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍  Search name, org, email, phone…"
+            style={{ flex: "1 1 200px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: font, fontSize: 13, padding: "9px 14px", outline: "none" }} />
+          <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value)}
+            style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontFamily: font, fontSize: 13, padding: "9px 12px", cursor: "pointer", outline: "none" }}>
+            <option value="All">All Services</option>
+            {LEAD_SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <Btn onClick={() => { setAddForm(emptyAddForm()); setShowAddModal(true); }}>+ Add Lead</Btn>
+        </div>
+
+        {/* Status filter bar */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
+          {["All", ...LEAD_STATUSES].map(s => {
+            const cnt = s === "All" ? items.length : items.filter(l => l.status === s).length;
+            const col = LEAD_STATUS_COLORS[s] || C.accent;
+            return (
+              <button type="button" key={s} onClick={() => setStatusFilter(s)} style={{
+                background: statusFilter === s ? `${col}18` : "transparent",
+                border: `1px solid ${statusFilter === s ? col + "55" : C.border}`,
+                color: statusFilter === s ? col : C.textMuted,
+                borderRadius: 8, padding: "5px 11px", cursor: "pointer", fontFamily: font, fontSize: 12, fontWeight: 600,
+                display: "inline-flex", alignItems: "center", gap: 5,
+              }}>
+                {s} <span style={{ fontSize: 11, background: statusFilter === s ? col + "22" : "rgba(255,255,255,0.07)", borderRadius: 10, padding: "1px 6px" }}>{cnt}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Leads table */}
+        <div style={{ background: C.card, borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+          {filtered.length === 0 ? (
+            <div style={{ color: C.textMuted, textAlign: "center", padding: "50px 20px", fontSize: 14 }}>
+              {items.length === 0
+                ? "No leads yet. Enquiries from the website form are captured here automatically."
+                : "No leads match the current filters."}
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: C.surface }}>
+                    {["Contact", "Hospital / Org", "Phone", "Email", "Service", "Status", "Priority", "Assigned", "Demo", ""].map(h => (
+                      <th key={h} style={{ color: C.textMuted, fontSize: 10, fontWeight: 700, textAlign: "left", padding: "9px 12px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(lead => {
+                    const isSel = lead.id === selectedId;
+                    const sc = LEAD_STATUS_COLORS[lead.status] || C.text;
+                    return (
+                      <tr key={lead.id} onClick={() => { setSelectedId(isSel ? null : lead.id); setDetailTab("details"); }}
+                        style={{ borderBottom: `1px solid ${C.border}22`, cursor: "pointer", background: isSel ? C.accentDim : "transparent", transition: "background 0.12s" }}
+                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
+                        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = "transparent"; }}>
+                        <td style={{ padding: "11px 12px" }}>
+                          <div style={{ color: C.heading, fontWeight: 600, fontSize: 13.5 }}>{lead.contactName || "—"}</div>
+                          {lead.location && <div style={{ color: C.textMuted, fontSize: 11 }}>{lead.location}</div>}
+                        </td>
+                        <td style={{ padding: "11px 12px" }}>
+                          <div style={{ color: C.text, fontSize: 13 }}>{lead.hospitalName || "—"}</div>
+                          {lead.company && <div style={{ color: C.textMuted, fontSize: 11 }}>{lead.company}</div>}
+                        </td>
+                        <td style={{ padding: "11px 12px", color: C.text, fontSize: 13, whiteSpace: "nowrap" }}>{lead.phone || "—"}</td>
+                        <td style={{ padding: "11px 12px", color: C.text, fontSize: 13, maxWidth: 155, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.email || "—"}</td>
+                        <td style={{ padding: "11px 12px" }}>
+                          <Badge color={lead.interestedService === "CareCore HMS" ? C.accent : lead.interestedService === "Custom Software" ? C.mint : lead.interestedService === "Consultation" ? C.purple : C.textMuted}>
+                            {lead.interestedService || "—"}
+                          </Badge>
+                        </td>
+                        <td style={{ padding: "11px 12px" }} onClick={e => e.stopPropagation()}>
+                          <select value={lead.status} onChange={e => changeStatus(lead.id, e.target.value)}
+                            style={{ background: `${sc}18`, border: `1px solid ${sc}44`, color: sc, borderRadius: 6, padding: "4px 8px", fontFamily: font, fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none" }}>
+                            {LEAD_STATUSES.map(s => <option key={s} value={s} style={{ background: C.bg, color: C.text }}>{s}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: "11px 12px" }}>
+                          <Badge color={LEAD_PRIORITY_COLORS[lead.priority] || C.textMuted}>{lead.priority || "Medium"}</Badge>
+                        </td>
+                        <td style={{ padding: "11px 12px", color: lead.assignedTo ? C.text : C.textMuted, fontSize: 13 }}>{lead.assignedTo || "—"}</td>
+                        <td style={{ padding: "11px 12px", color: lead.demoDate ? C.amber : C.textMuted, fontSize: 13, whiteSpace: "nowrap" }}>
+                          {lead.demoDate ? `${lead.demoDate}${lead.demoTime ? ` ${lead.demoTime}` : ""}` : "—"}
+                        </td>
+                        <td style={{ padding: "11px 12px" }} onClick={e => e.stopPropagation()}>
+                          <Btn small variant="danger" onClick={() => setConfirm(lead.id)}>Del</Btn>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Detail side panel ── */}
+      {selected && (
+        <div style={{ width: 370, minWidth: 300, background: C.surface, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", overflowY: "auto", flexShrink: 0 }}>
+          {/* Header */}
+          <div style={{ padding: "16px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: C.heading, fontWeight: 800, fontSize: 15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.contactName || "Lead"}</div>
+              <div style={{ color: C.textMuted, fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.hospitalName || selected.company || "—"}</div>
+              <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Badge color={LEAD_STATUS_COLORS[selected.status] || C.accent}>{selected.status}</Badge>
+                <Badge color={LEAD_PRIORITY_COLORS[selected.priority] || C.textMuted}>{selected.priority || "Medium"}</Badge>
+              </div>
+            </div>
+            <button type="button" onClick={() => setSelectedId(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 0 0 12px", flexShrink: 0 }}>×</button>
+          </div>
+
+          {/* Quick-status rail */}
+          <div style={{ padding: "10px 18px", borderBottom: `1px solid ${C.border}`, display: "flex", gap: 5, flexWrap: "wrap", flexShrink: 0 }}>
+            {LEAD_STATUSES.map(s => (
+              <button type="button" key={s} onClick={() => changeStatus(selected.id, s)} style={{
+                background: selected.status === s ? `${LEAD_STATUS_COLORS[s]}22` : "transparent",
+                border: `1px solid ${selected.status === s ? LEAD_STATUS_COLORS[s] + "66" : C.border}`,
+                color: selected.status === s ? LEAD_STATUS_COLORS[s] : C.textMuted,
+                borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontFamily: font, fontSize: 10.5, fontWeight: 700,
+              }}>{s}</button>
+            ))}
+          </div>
+
+          {/* Tabs */}
+          <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+            {[["details", "Details"], ["pipeline", "Pipeline"], ["history", "History"]].map(([t, label]) => (
+              <button type="button" key={t} onClick={() => setDetailTab(t)} style={{
+                flex: 1, background: "none", border: "none",
+                borderBottom: detailTab === t ? `2px solid ${C.accent}` : "2px solid transparent",
+                color: detailTab === t ? C.accent : C.textMuted, fontFamily: font, fontSize: 12.5, fontWeight: 600,
+                padding: "10px 6px", cursor: "pointer",
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Tab body */}
+          <div style={{ padding: "16px 18px", flex: 1, overflowY: "auto" }}>
+
+            {/* ── Details tab ── */}
+            {detailTab === "details" && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                  <div><label style={lSt}>CONTACT NAME</label><input value={ef.contactName || ""} onChange={e => setEditForm(f => ({ ...f, contactName: e.target.value }))} style={pSt} /></div>
+                  <div><label style={lSt}>PHONE</label><input value={ef.phone || ""} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} style={pSt} /></div>
+                </div>
+                <div style={{ marginBottom: 10 }}><label style={lSt}>EMAIL</label><input value={ef.email || ""} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} style={pSt} /></div>
+                <div style={{ marginBottom: 10 }}><label style={lSt}>HOSPITAL / FACILITY</label><input value={ef.hospitalName || ""} onChange={e => setEditForm(f => ({ ...f, hospitalName: e.target.value }))} style={pSt} /></div>
+                <div style={{ marginBottom: 10 }}><label style={lSt}>COMPANY / GROUP</label><input value={ef.company || ""} onChange={e => setEditForm(f => ({ ...f, company: e.target.value }))} style={pSt} placeholder="Parent company (optional)" /></div>
+                <div style={{ marginBottom: 10 }}><label style={lSt}>LOCATION</label><input value={ef.location || ""} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} style={pSt} /></div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={lSt}>INTERESTED SERVICE</label>
+                  <select value={ef.interestedService || "CareCore HMS"} onChange={e => setEditForm(f => ({ ...f, interestedService: e.target.value }))} style={pSt}>
+                    {LEAD_SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                {ef.facilitySize && (
+                  <div style={{ marginBottom: 10 }}><label style={lSt}>FACILITY SIZE</label><input value={ef.facilitySize || ""} onChange={e => setEditForm(f => ({ ...f, facilitySize: e.target.value }))} style={pSt} /></div>
+                )}
+                {ef.projectDesc && (
+                  <div style={{ marginBottom: 10 }}><label style={lSt}>PROJECT DESCRIPTION</label><textarea value={ef.projectDesc || ""} onChange={e => setEditForm(f => ({ ...f, projectDesc: e.target.value }))} rows={3} style={{ ...pSt, resize: "vertical" }} /></div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                  <Btn onClick={saveDetails}>Save Details</Btn>
+                </div>
+                <div style={{ marginTop: 16, padding: "12px 14px", background: C.card, borderRadius: 8 }}>
+                  <div style={{ color: C.textMuted, fontSize: 11 }}><span style={{ color: C.text, fontWeight: 600 }}>Source:</span> {selected.source || "Website Form"}</div>
+                  <div style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}><span style={{ color: C.text, fontWeight: 600 }}>Created:</span> {new Date(selected.createdAt).toLocaleString()}</div>
+                  <div style={{ color: C.textMuted, fontSize: 11, marginTop: 4 }}><span style={{ color: C.text, fontWeight: 600 }}>Updated:</span> {new Date(selected.updatedAt).toLocaleString()}</div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Pipeline tab ── */}
+            {detailTab === "pipeline" && (
+              <div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={lSt}>PRIORITY</label>
+                  <select value={ef.priority || "Medium"} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))} style={pSt}>
+                    {LEAD_PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={lSt}>ASSIGN FOLLOW-UP TO</label>
+                  <input value={ef.assignedTo || ""} onChange={e => setEditForm(f => ({ ...f, assignedTo: e.target.value }))} style={pSt} placeholder="Team member name" />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                  <div>
+                    <label style={lSt}>DEMO DATE</label>
+                    <input type="date" value={ef.demoDate || ""} onChange={e => setEditForm(f => ({ ...f, demoDate: e.target.value }))} style={{ ...pSt, colorScheme: "dark" }} />
+                  </div>
+                  <div>
+                    <label style={lSt}>DEMO TIME</label>
+                    <input type="time" value={ef.demoTime || ""} onChange={e => setEditForm(f => ({ ...f, demoTime: e.target.value }))} style={{ ...pSt, colorScheme: "dark" }} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={lSt}>NOTES</label>
+                  <textarea value={ef.notes || ""} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} rows={4} style={{ ...pSt, resize: "vertical" }} placeholder="Follow-up notes, meeting details, next actions…" />
+                </div>
+                <Btn onClick={savePipeline}>Save Pipeline</Btn>
+              </div>
+            )}
+
+            {/* ── History tab ── */}
+            {detailTab === "history" && (
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={lSt}>ADD NOTE</label>
+                  <textarea value={noteInput} onChange={e => setNoteInput(e.target.value)} rows={2}
+                    placeholder="Call summary, next action, meeting notes…"
+                    style={{ ...pSt, resize: "vertical", marginBottom: 8 }} />
+                  <Btn small onClick={addNote}>Add Note</Btn>
+                </div>
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  {(selected.history || []).length === 0 ? (
+                    <div style={{ color: C.textMuted, fontSize: 13, textAlign: "center", padding: "20px 0" }}>No activity yet.</div>
+                  ) : (
+                    <div>
+                      {[...(selected.history || [])].reverse().map((h, i, arr) => {
+                        const iconMap = { note: "📝", status: "🔄", demo: "📅", created: "✅", updated: "✏️" };
+                        const dimMap = { note: C.purpleDim, status: C.accentDim, demo: C.amberDim, created: C.mintDim, updated: "rgba(255,255,255,0.06)" };
+                        return (
+                          <div key={h.id} style={{ display: "flex", gap: 10, paddingBottom: i < arr.length - 1 ? 14 : 0 }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: "50%", background: dimMap[h.type] || C.accentDim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
+                                {iconMap[h.type] || "•"}
+                              </div>
+                              {i < arr.length - 1 && <div style={{ width: 1, flex: 1, minHeight: 10, background: C.border, marginTop: 3 }} />}
+                            </div>
+                            <div style={{ paddingTop: 3, flex: 1 }}>
+                              <div style={{ color: C.text, fontSize: 13, lineHeight: 1.5 }}>{h.message}</div>
+                              <div style={{ color: C.textMuted, fontSize: 11, marginTop: 3 }}>{h.by} · {new Date(h.ts).toLocaleString()}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Lead Modal ── */}
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Lead Manually" width={580}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Input label="Contact Name" value={addForm.contactName || ""} onChange={v => setAddForm(f => ({ ...f, contactName: v }))} placeholder="Dr. Amara Osei" />
+          <Input label="Phone" value={addForm.phone || ""} onChange={v => setAddForm(f => ({ ...f, phone: v }))} placeholder="080xxxxxxxx" />
+        </div>
+        <Input label="Email" value={addForm.email || ""} onChange={v => setAddForm(f => ({ ...f, email: v }))} placeholder="name@hospital.ng" />
+        <Input label="Hospital / Facility *" value={addForm.hospitalName || ""} onChange={v => setAddForm(f => ({ ...f, hospitalName: v }))} placeholder="St. Mary's Hospital" />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Input label="Company / Group" value={addForm.company || ""} onChange={v => setAddForm(f => ({ ...f, company: v }))} placeholder="Parent company" />
+          <Input label="Location" value={addForm.location || ""} onChange={v => setAddForm(f => ({ ...f, location: v }))} placeholder="City, State" />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Select label="Interested Service" value={addForm.interestedService || "CareCore HMS"} onChange={v => setAddForm(f => ({ ...f, interestedService: v }))} options={LEAD_SERVICES.map(s => ({ value: s, label: s }))} />
+          <Select label="Status" value={addForm.status || "New"} onChange={v => setAddForm(f => ({ ...f, status: v }))} options={LEAD_STATUSES.map(s => ({ value: s, label: s }))} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Select label="Priority" value={addForm.priority || "Medium"} onChange={v => setAddForm(f => ({ ...f, priority: v }))} options={LEAD_PRIORITIES.map(p => ({ value: p, label: p }))} />
+          <Input label="Assign To" value={addForm.assignedTo || ""} onChange={v => setAddForm(f => ({ ...f, assignedTo: v }))} placeholder="Team member" />
+        </div>
+        <Input label="Notes" value={addForm.notes || ""} onChange={v => setAddForm(f => ({ ...f, notes: v }))} placeholder="Initial notes…" rows={2} />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+          <Btn variant="ghost" onClick={() => setShowAddModal(false)}>Cancel</Btn>
+          <Btn onClick={submitAdd} disabled={!addForm.contactName?.trim() && !addForm.hospitalName?.trim()}>Add Lead</Btn>
+        </div>
+      </Modal>
+
+      <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)}
+        onConfirm={() => { save(items.filter(l => l.id !== confirm)); if (selectedId === confirm) setSelectedId(null); setConfirm(null); }}
+        message="Delete this lead? This cannot be undone." />
+    </div>
   );
 }
 
@@ -859,7 +1595,7 @@ function MediaSection() {
               <div style={{ padding: "8px 10px" }}>
                 <div style={{ color: C.text, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
                 <div style={{ color: C.textMuted, fontSize: 11 }}>{(item.size / 1024).toFixed(0)} KB</div>
-                <button onClick={() => setConfirm(item.id)} style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 11, padding: 0, marginTop: 4 }}>Delete</button>
+                <button type="button" onClick={() => setConfirm(item.id)} style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 11, padding: 0, marginTop: 4 }}>Delete</button>
               </div>
             </div>
           ))}
@@ -982,7 +1718,7 @@ function SEOSection() {
       <SectionHeader title="SEO Settings" />
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {SEO_PAGES.map(p => (
-          <button key={p} onClick={() => setPage(p)} style={{
+          <button type="button" key={p} onClick={() => setPage(p)} style={{
             background: page === p ? C.accentDim : C.card, border: page === p ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
             color: page === p ? C.accent : C.text, borderRadius: 8, padding: "7px 14px",
             cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600, textTransform: "capitalize",
@@ -1144,28 +1880,309 @@ function BackupsSection() {
   );
 }
 
+// ─── FAQs ─────────────────────────────────────────────────────────────────────
+function FAQsSection() {
+  return (
+    <CrudSection
+      title="FAQs"
+      storageKey={SK.faqs}
+      defaultItem={{ question: "", answer: "", category: "General", order: 0, published: true }}
+      emptyMsg="No FAQs yet."
+      fields={[
+        { key: "question", label: "Question *", required: true, placeholder: "e.g. How long does implementation take?" },
+        { key: "answer", label: "Answer *", placeholder: "Your answer...", rows: 4 },
+        { key: "category", label: "Category", type: "select", options: [
+          { value: "General", label: "General" }, { value: "CareCore HMS", label: "CareCore HMS" },
+          { value: "Pricing", label: "Pricing" }, { value: "Support", label: "Support" },
+          { value: "Technical", label: "Technical" },
+        ]},
+        { key: "order", label: "Display Order", type: "number", placeholder: "0" },
+        { key: "published", label: "Published", type: "toggle" },
+      ]}
+      renderRow={[
+        { key: "question", label: "Question", render: f => <span style={{ color: C.heading, fontWeight: 600 }}>{f.question}</span> },
+        { key: "category", label: "Category" },
+        { key: "published", label: "Status", render: f => <Badge color={f.published ? C.mint : C.textMuted}>{f.published ? "Published" : "Draft"}</Badge> },
+      ]}
+    />
+  );
+}
+
+// ─── Clients ──────────────────────────────────────────────────────────────────
+function ClientsSection() {
+  return (
+    <CrudSection
+      title="Clients"
+      storageKey={SK.clients}
+      defaultItem={{ name: "", logoUrl: "", industry: "", website: "", featured: false, published: true }}
+      emptyMsg="No clients added yet."
+      fields={[
+        { key: "name", label: "Client Name *", required: true, placeholder: "e.g. Faith General Hospital" },
+        { key: "logoUrl", label: "Logo URL", placeholder: "https://... (optional)" },
+        { key: "industry", label: "Industry", placeholder: "e.g. Healthcare, Education" },
+        { key: "website", label: "Website", placeholder: "https://..." },
+        { key: "featured", label: "Featured on Homepage", type: "toggle" },
+        { key: "published", label: "Visible", type: "toggle" },
+      ]}
+      renderRow={[
+        { key: "name", label: "Name", render: c => <span style={{ color: C.heading, fontWeight: 600 }}>{c.name}</span> },
+        { key: "industry", label: "Industry" },
+        { key: "featured", label: "Featured", render: c => <Badge color={c.featured ? C.gold : C.textMuted}>{c.featured ? "Featured" : "—"}</Badge> },
+        { key: "published", label: "Status", render: c => <Badge color={c.published ? C.mint : C.textMuted}>{c.published ? "Visible" : "Hidden"}</Badge> },
+      ]}
+    />
+  );
+}
+
+// ─── Team ─────────────────────────────────────────────────────────────────────
+function TeamSection() {
+  return (
+    <CrudSection
+      title="Team"
+      storageKey={SK.team}
+      defaultItem={{ name: "", role: "", bio: "", photoUrl: "", linkedin: "", order: 0, published: true }}
+      emptyMsg="No team members yet."
+      fields={[
+        { key: "name", label: "Full Name *", required: true, placeholder: "e.g. Mathew Famojuro" },
+        { key: "role", label: "Role / Title *", placeholder: "e.g. Lead Engineer" },
+        { key: "bio", label: "Bio", placeholder: "Short biography...", rows: 3 },
+        { key: "photoUrl", label: "Photo URL", placeholder: "https://... (optional)" },
+        { key: "linkedin", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/..." },
+        { key: "order", label: "Display Order", type: "number", placeholder: "0" },
+        { key: "published", label: "Visible", type: "toggle" },
+      ]}
+      renderRow={[
+        { key: "name", label: "Name", render: m => <span style={{ color: C.heading, fontWeight: 600 }}>{m.name}</span> },
+        { key: "role", label: "Role" },
+        { key: "published", label: "Status", render: m => <Badge color={m.published ? C.mint : C.textMuted}>{m.published ? "Visible" : "Hidden"}</Badge> },
+      ]}
+    />
+  );
+}
+
+// ─── Menus ─────────────────────────────────────────────────────────────────────
+const DEFAULT_NAV_ITEMS = [
+  { id: "n1", label: "Products",  page: "products",  active: true, order: 1 },
+  { id: "n2", label: "Work",      page: "work",      active: true, order: 2 },
+  { id: "n3", label: "Services",  page: "services",  active: true, order: 3 },
+  { id: "n4", label: "About",     page: "about",     active: true, order: 4 },
+  { id: "n5", label: "Contact",   page: "contact",   active: true, order: 5 },
+];
+
+function MenusSection() {
+  const [items, setItems] = useState(() => ls(SK.menus, { main: DEFAULT_NAV_ITEMS }).main || DEFAULT_NAV_ITEMS);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({});
+  const [confirm, setConfirm] = useState(null);
+
+  const save = (list) => { lsSet(SK.menus, { main: list }); setItems(list); };
+  const openNew = () => { setForm({ label: "", page: "", active: true, order: items.length + 1 }); setEditing("new"); };
+  const openEdit = (item) => { setForm({ ...item }); setEditing(item.id); };
+  const close = () => setEditing(null);
+  const submit = () => {
+    if (!form.label?.trim() || !form.page?.trim()) return;
+    if (editing === "new") save([...items, { ...form, id: uid() }]);
+    else save(items.map(i => i.id === editing ? { ...form } : i));
+    close();
+  };
+
+  return (
+    <div>
+      <SectionHeader title="Navigation" action={<Btn onClick={openNew}>+ Add Link</Btn>} />
+      <p style={{ color: C.textMuted, fontSize: 13, marginBottom: 16 }}>Manage the main nav links. Leave empty to use default navigation.</p>
+      <div style={{ background: C.card, borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <Table
+          cols={[
+            { key: "label", label: "Label", render: m => <span style={{ color: C.heading, fontWeight: 600 }}>{m.label}</span> },
+            { key: "page", label: "Page key" },
+            { key: "order", label: "Order" },
+            { key: "active", label: "Status", render: m => <Badge color={m.active ? C.mint : C.textMuted}>{m.active ? "Visible" : "Hidden"}</Badge> },
+            { key: "_actions", label: "", render: item => (
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn small variant="ghost" onClick={() => openEdit(item)}>Edit</Btn>
+                <Btn small variant="danger" onClick={() => setConfirm(item.id)}>Delete</Btn>
+              </div>
+            )},
+          ]}
+          rows={items.sort((a, b) => (a.order || 0) - (b.order || 0))}
+          emptyMsg="No custom nav items. Default navigation is active."
+        />
+      </div>
+      <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+        <Btn variant="ghost" small onClick={() => save([])}>Reset to Default</Btn>
+      </div>
+      <Modal open={!!editing} onClose={close} title={editing === "new" ? "Add Nav Link" : "Edit Nav Link"}>
+        <Input label="Label *" value={form.label || ""} onChange={v => setForm(f => ({ ...f, label: v }))} placeholder="e.g. Products" />
+        <Input label="Page Key *" value={form.page || ""} onChange={v => setForm(f => ({ ...f, page: v }))} placeholder="e.g. products, work, blog, team" />
+        <Input label="Order" value={form.order || ""} onChange={v => setForm(f => ({ ...f, order: Number(v) || 0 }))} type="number" placeholder="1" />
+        <Toggle checked={!!form.active} onChange={v => setForm(f => ({ ...f, active: v }))} label="Visible" />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+          <Btn variant="ghost" onClick={close}>Cancel</Btn>
+          <Btn onClick={submit}>{editing === "new" ? "Add" : "Save"}</Btn>
+        </div>
+      </Modal>
+      <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)}
+        onConfirm={() => save(items.filter(i => i.id !== confirm))}
+        message="Delete this nav link? This cannot be undone." />
+    </div>
+  );
+}
+
+// ─── Announcements ─────────────────────────────────────────────────────────────
+function AnnouncementsSection() {
+  const [form, setForm] = useState(() => ls(SK.announcements, {
+    active: false, text: "", type: "info", link: "", linkText: "", dismissible: true,
+  }));
+  const [saved, setSaved] = useState(false);
+
+  const save = () => {
+    lsSet(SK.announcements, form);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const f = key => ({ value: form[key] || "", onChange: v => setForm(s => ({ ...s, [key]: v })) });
+
+  return (
+    <div>
+      <SectionHeader title="Announcement Bar" />
+      <div style={{ background: C.card, borderRadius: 14, padding: 28, border: `1px solid ${C.border}`, maxWidth: 680 }}>
+        <Toggle checked={!!form.active} onChange={v => setForm(s => ({ ...s, active: v }))} label="Show announcement bar" />
+        <div style={{ marginTop: 18 }}>
+          <Input label="Message *" placeholder="e.g. We're accepting new clients for Q3 2026." {...f("text")} rows={2} />
+          <Select label="Type" value={form.type || "info"} onChange={v => setForm(s => ({ ...s, type: v }))}
+            options={[{ value: "info", label: "Info (blue)" }, { value: "warning", label: "Warning (gold)" }, { value: "success", label: "Success (green)" }]} />
+          <Input label="Link URL (optional)" placeholder="https://..." {...f("link")} />
+          <Input label="Link Text (optional)" placeholder="e.g. Learn more →" {...f("linkText")} />
+          <Toggle checked={form.dismissible !== false} onChange={v => setForm(s => ({ ...s, dismissible: v }))} label="Allow users to dismiss" />
+        </div>
+        {form.active && form.text && (
+          <div style={{ margin: "18px 0", padding: "12px 16px", background: form.type === "warning" ? "#D6B56D18" : form.type === "success" ? "#2DD4BF18" : "#38BDF818", border: `1px solid ${form.type === "warning" ? "#D6B56D44" : form.type === "success" ? "#2DD4BF44" : "#38BDF844"}`, borderRadius: 8, fontSize: 13.5, color: C.text, fontFamily: font }}>
+            Preview: {form.text}{form.link && form.linkText && <span> · <u>{form.linkText}</u></span>}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 20, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+          <Btn onClick={save}>Save</Btn>
+          {saved && <span style={{ color: C.mint, fontSize: 14 }}>✓ Saved!</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Homepage Editor ──────────────────────────────────────────────────────────
+const DEFAULT_HP = {
+  hero: { badge: "", words: [], subheadline: "", ctaPrimary: "", ctaSecondary: "", trustItems: [] },
+  stats: [],
+  whyUs: [],
+  cta: { tag: "", headline: "", subtext: "", primaryText: "", secondaryText: "" },
+};
+
+function HomepageSection() {
+  const [data, setData] = useState(() => ls(SK.homepage, DEFAULT_HP));
+  const [tab, setTab] = useState("hero");
+  const [saved, setSaved] = useState(false);
+
+  const save = () => { lsSet(SK.homepage, data); setSaved(true); setTimeout(() => setSaved(false), 2500); };
+  const upd = (section, key, val) => setData(d => ({ ...d, [section]: { ...d[section], [key]: val } }));
+  const updList = (section, val) => setData(d => ({ ...d, [section]: val }));
+
+  const TABS = [{ id: "hero", label: "Hero" }, { id: "stats", label: "Stats" }, { id: "whyus", label: "Why Us" }, { id: "cta", label: "CTA" }];
+
+  return (
+    <div>
+      <SectionHeader title="Homepage Editor" />
+      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+        {TABS.map(t => (
+          <button type="button" key={t.id} onClick={() => setTab(t.id)} style={{
+            background: tab === t.id ? C.accentDim : C.card, border: `1px solid ${tab === t.id ? C.accent : C.border}`,
+            color: tab === t.id ? C.accent : C.text, borderRadius: 8, padding: "8px 18px",
+            fontFamily: font, fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === "hero" && (
+        <div style={{ background: C.card, borderRadius: 14, padding: 28, border: `1px solid ${C.border}`, maxWidth: 680 }}>
+          <Input label="Badge text" placeholder="e.g. Now Available" value={data.hero?.badge || ""} onChange={v => upd("hero", "badge", v)} />
+          <Input label="Hero words (comma separated)" placeholder="Hospitals, Clinics, Operations" value={(data.hero?.words || []).join(", ")} onChange={v => upd("hero", "words", v.split(",").map(s => s.trim()).filter(Boolean))} />
+          <Input label="Subheadline" placeholder="Supporting hero text..." value={data.hero?.subheadline || ""} onChange={v => upd("hero", "subheadline", v)} rows={2} />
+          <Input label="Primary CTA" placeholder="e.g. Start Your Project →" value={data.hero?.ctaPrimary || ""} onChange={v => upd("hero", "ctaPrimary", v)} />
+          <Input label="Secondary CTA" placeholder="e.g. See CareCore HMS" value={data.hero?.ctaSecondary || ""} onChange={v => upd("hero", "ctaSecondary", v)} />
+          <Input label="Trust items (comma separated)" placeholder="Free consultation, No commitment, 24h response" value={(data.hero?.trustItems || []).join(", ")} onChange={v => upd("hero", "trustItems", v.split(",").map(s => s.trim()).filter(Boolean))} />
+        </div>
+      )}
+
+      {tab === "stats" && (
+        <div style={{ background: C.card, borderRadius: 14, padding: 28, border: `1px solid ${C.border}`, maxWidth: 680 }}>
+          <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 18 }}>Enter stats as JSON array: <code style={{ background: C.surface, padding: "2px 6px", borderRadius: 4 }}>[{`{"value":"12+","label":"Clients"}`}]</code></p>
+          <Input label="Stats JSON" rows={8}
+            value={JSON.stringify(data.stats || [], null, 2)}
+            onChange={v => { try { updList("stats", JSON.parse(v)); } catch {} }}
+          />
+        </div>
+      )}
+
+      {tab === "whyus" && (
+        <div style={{ background: C.card, borderRadius: 14, padding: 28, border: `1px solid ${C.border}`, maxWidth: 680 }}>
+          <p style={{ color: C.textMuted, fontSize: 14, marginBottom: 18 }}>Enter items as JSON array: <code style={{ background: C.surface, padding: "2px 6px", borderRadius: 4 }}>[{`{"title":"Fast","desc":"We ship quickly."}`}]</code></p>
+          <Input label="Why Us JSON" rows={8}
+            value={JSON.stringify(data.whyUs || [], null, 2)}
+            onChange={v => { try { updList("whyUs", JSON.parse(v)); } catch {} }}
+          />
+        </div>
+      )}
+
+      {tab === "cta" && (
+        <div style={{ background: C.card, borderRadius: 14, padding: 28, border: `1px solid ${C.border}`, maxWidth: 680 }}>
+          <Input label="CTA Tag" placeholder="e.g. READY WHEN YOU ARE" value={data.cta?.tag || ""} onChange={v => upd("cta", "tag", v)} />
+          <Input label="CTA Headline" placeholder="e.g. Ship software your team will actually use." value={data.cta?.headline || ""} onChange={v => upd("cta", "headline", v)} />
+          <Input label="CTA Subtext" placeholder="Supporting paragraph..." value={data.cta?.subtext || ""} onChange={v => upd("cta", "subtext", v)} rows={3} />
+          <Input label="Primary Button Text" placeholder="e.g. Start Your Project →" value={data.cta?.primaryText || ""} onChange={v => upd("cta", "primaryText", v)} />
+          <Input label="Secondary Button Text" placeholder="e.g. See CareCore HMS" value={data.cta?.secondaryText || ""} onChange={v => upd("cta", "secondaryText", v)} />
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 24 }}>
+        <Btn onClick={save}>Save Homepage</Btn>
+        {saved && <span style={{ color: C.mint, fontSize: 14 }}>✓ Saved!</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ section }) {
   switch (section) {
-    case "overview":     return <OverviewSection />;
-    case "analytics":    return <AnalyticsSection />;
-    case "products":     return <ProductsSection />;
-    case "portfolio":    return <PortfolioSection />;
-    case "blog":         return <BlogSection />;
-    case "testimonials": return <TestimonialsSection />;
-    case "messages":     return <MessagesSection />;
-    case "media":        return <MediaSection />;
-    case "careers":      return <CareersSection />;
-    case "settings":     return <SettingsSection />;
-    case "seo":          return <SEOSection />;
-    case "users":        return <UsersSection />;
-    case "backups":      return <BackupsSection />;
-    default:             return <OverviewSection />;
+    case "overview":       return <OverviewSection />;
+    case "analytics":      return <AnalyticsSection />;
+    case "leads":          return <LeadsSection />;
+    case "homepage":       return <HomepageSection />;
+    case "announcements":  return <AnnouncementsSection />;
+    case "products":       return <ProductsSection />;
+    case "portfolio":      return <PortfolioSection />;
+    case "blog":           return <BlogSection />;
+    case "testimonials":   return <TestimonialsSection />;
+    case "faqs":           return <FAQsSection />;
+    case "clients":        return <ClientsSection />;
+    case "team":           return <TeamSection />;
+    case "careers":        return <CareersSection />;
+    case "menus":          return <MenusSection />;
+    case "messages":       return <MessagesSection />;
+    case "media":          return <MediaSection />;
+    case "settings":       return <SettingsSection />;
+    case "seo":            return <SEOSection />;
+    case "users":          return <UsersSection />;
+    case "backups":        return <BackupsSection />;
+    default:               return <OverviewSection />;
   }
 }
 
 // ─── Login ───────────────────────────────────────────────────────────────────
 const ADMIN_SESSION_KEY = "orionsoft_admin_v1";
+// WARNING: This is a client-side password check appropriate only for a lightweight CMS demo/prototype.
+// It does NOT provide real security — the password is visible in the JS bundle.
+// Before production use, replace with a proper server-side authentication endpoint.
 const ADMIN_PASSWORD = (typeof import.meta !== "undefined" && import.meta.env?.VITE_ADMIN_PASSWORD) || "orionsoft2026";
 
 function DashboardLogin({ onAuth }) {

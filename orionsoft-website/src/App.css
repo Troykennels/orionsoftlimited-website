@@ -1,0 +1,73 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
+button, a, input, textarea, select { font: inherit; }
+select option { color: #0F172A; background: #FFFFFF; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 3px solid #38BDF8;
+  outline-offset: 3px;
+}
+::selection { background: rgba(56,189,248,0.2); color: #FFFFFF; }
+input:focus, textarea:focus, select:focus { border-color: #38BDF8 !important; box-shadow: 0 0 0 3px rgba(56,189,248,0.14); }
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-140%);
+  z-index: 2000;
+  background: #FFFFFF;
+  color: #0A2540;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: 'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+}
+.skip-link:focus { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@media (max-width: 768px) {
+  .nav-links { display: none !important; }
+  .nav-burger { display: block !important; }
+  .hero-grid { grid-template-columns: 1fr !important; }
+  .hero-grid img { min-height: 360px !important; }
+  .experience-grid { grid-template-columns: 1fr !important; }
+  .carecore-proof-grid { grid-template-columns: 1fr !important; }
+  .carecore-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .tech-mosaic { grid-template-columns: 1fr !important; }
+  .tech-mosaic > div, .tech-mosaic-wide { grid-column: auto !important; }
+  .form-grid { grid-template-columns: 1fr !important; }
+  .career-layout { grid-template-columns: 1fr !important; }
+  .career-notes { grid-template-columns: 1fr !important; }
+  .chat-label { display: none !important; }
+  .stats-bar { justify-content: center !important; gap: 0 !important; }
+  .stats-bar > div { flex: 0 0 50% !important; padding: 10px 0 !important; }
+  .product-highlights-grid { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 769px) {
+  .nav-burger { display: none !important; }
+  .mobile-menu { display: none !important; }
+}
+@media (max-width: 560px) {
+  section { padding-left: 18px !important; padding-right: 18px !important; }
+  button, a { max-width: 100%; }
+  input, textarea, select { font-size: 16px !important; }
+  .live-chat { right: 16px !important; bottom: 16px !important; }
+  .carecore-gallery { grid-template-columns: 1fr !important; }
+  .carecore-device { border-radius: 16px !important; }
+  .stats-bar > div { padding: 8px 0 !important; }
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

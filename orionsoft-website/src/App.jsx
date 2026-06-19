@@ -1,5 +1,15 @@
-import { useState, useEffect, useRef } from "react";
-import AdminDashboard from "./admin/Dashboard";
+import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
+import "./App.css";
+
+// Admin dashboard loaded on demand — not part of the initial JS bundle
+const AdminDashboard = lazy(() => import("./admin/Dashboard"));
+
+// Credibility pages — all from one module so it loads once, split from main bundle
+const CaseStudiesPage = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.CaseStudiesPage })));
+const SecurityPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.SecurityPage })));
+const SupportPage     = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.SupportPage })));
+const PartnersPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.PartnersPage })));
+const TechStackPage   = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.TechStackPage })));
 
 // ═══════════════════════════════════════
 // DESIGN SYSTEM
@@ -76,12 +86,99 @@ const CARECORE_MEDIA = [
     desc: "Clear staff profile management and role-aware interface patterns for secure hospital administration.",
   },
 ];
+
+// ═══════════════════════════════════════
+// CMS DATA LAYER
+// ═══════════════════════════════════════
+const CMS_SK = {
+  settings:      "orionsoft_settings_v1",
+  homepage:      "orionsoft_homepage_v1",
+  testimonials:  "orionsoft_testimonials_v1",
+  faqs:          "orionsoft_faqs_v1",
+  blog:          "orionsoft_blog_v1",
+  careers:       "orionsoft_careers_v1",
+  clients:       "orionsoft_clients_v1",
+  menus:         "orionsoft_menus_v1",
+  team:          "orionsoft_team_v1",
+  seo:           "orionsoft_seo_v1",
+  announcements: "orionsoft_announce_v1",
+};
+function readCMS(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function buildCMSState() {
+  return {
+    settings:      readCMS(CMS_SK.settings,      null),
+    homepage:      readCMS(CMS_SK.homepage,       null),
+    testimonials:  readCMS(CMS_SK.testimonials,   null),
+    faqs:          readCMS(CMS_SK.faqs,           null),
+    blog:          readCMS(CMS_SK.blog,           []),
+    careers:       readCMS(CMS_SK.careers,        null),
+    clients:       readCMS(CMS_SK.clients,        []),
+    menus:         readCMS(CMS_SK.menus,          null),
+    team:          readCMS(CMS_SK.team,           []),
+    seo:           readCMS(CMS_SK.seo,            {}),
+    announcements: readCMS(CMS_SK.announcements,  null),
+  };
+}
+function useCMSData() {
+  const [cms, setCMS] = useState(buildCMSState);
+  useEffect(() => {
+    const h = () => setCMS(buildCMSState());
+    window.addEventListener("localstoreupdate", h);
+    return () => window.removeEventListener("localstoreupdate", h);
+  }, []);
+  return cms;
+}
+const CMSContext = createContext(null);
+
+// Default menu (matches current hardcoded Nav links)
+const DEFAULT_MAIN_MENU = [
+  { id: "m1", label: "Products", page: "products", active: true, order: 0 },
+  { id: "m2", label: "Services", page: "services", active: true, order: 1 },
+  { id: "m3", label: "Work",     page: "work",     active: true, order: 2 },
+  { id: "m4", label: "Careers",  page: "careers",  active: true, order: 3 },
+];
+// Default testimonials (matches current SocialProof hardcoded values)
+const DEFAULT_CMS_TESTIMONIALS = [
+  { id: "t1", name: "Dr. A. Emmanuel",  role: "Medical Director",  company: "",                 quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.", rating: 5, featured: true },
+  { id: "t2", name: "Mrs. C. Adeyemi", role: "Finance Manager",    company: "Regional Hospital", quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.", rating: 5, featured: true },
+  { id: "t3", name: "Nurse H. Oladele", role: "Head of Nursing",   company: "",                 quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.", rating: 5, featured: true },
+];
+// Default FAQs (matches current FAQSection hardcoded values)
+const DEFAULT_CMS_FAQS = [
+  { id: "f1", question: "Can Orion Soft deploy for small clinics as well as larger hospitals?", answer: "Yes. CareCore pricing and onboarding are based on facility size, while the system keeps the same core modules so smaller teams do not feel locked out of important features.", published: true, order: 0 },
+  { id: "f2", question: "Will the website and systems work on mobile phones and tablets?", answer: "Yes. The public website and the systems we build are designed responsively for phones, tablets, laptops, and desktop screens.", published: true, order: 1 },
+  { id: "f3", question: "How do project inquiries reach Orion Soft?", answer: `The site uses Orion Soft's built-in submission endpoint when deployed. If that service is unavailable, it opens a prepared email to ${COMPANY_EMAIL} so requests can still be sent.`, published: true, order: 2 },
+  { id: "f4", question: "Can you build something outside healthcare?", answer: "Yes. Healthcare is our flagship focus, but Orion Soft also builds dashboards, portals, inventory systems, school systems, integrations, and workflow tools for other businesses.", published: true, order: 3 },
+  { id: "f5", question: "What happens after a project is delivered?", answer: "Every deployment includes a handover, staff training, and a support period. Clients can extend with an ongoing monthly support plan that includes patches, updates, and priority response.", published: true, order: 4 },
+  { id: "f6", question: "How long does it take to deploy CareCore?", answer: "A typical CareCore deployment runs 2–6 weeks depending on facility size, data migration needs, and staff readiness. We provide a clear timeline after the discovery call.", published: true, order: 5 },
+];
+// Default Why Us reasons (title/desc editable from CMS, icons fixed by position)
+const DEFAULT_CMS_WHYUS = [
+  { id: "w1", title: "Healthcare-first, not adapted",      desc: "CareCore reflects how clinical teams actually operate. Every module — from triage to discharge to billing — was built around real hospital workflows, not retrofitted from a generic template." },
+  { id: "w2", title: "Production-grade from day one",      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build — not add-ons. Security isn't a feature tier; it's a baseline." },
+  { id: "w3", title: "We stay after launch",               desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment — not an extra cost added after you've already committed." },
+  { id: "w4", title: "International delivery standard",    desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments — the standard international buyers expect, at a price that makes sense." },
+];
+const DEFAULT_CMS_STATS = [
+  { id: "s1", value: "25+",   label: "Clinical modules" },
+  { id: "s2", value: "118",   label: "API endpoints" },
+  { id: "s3", value: "99.5%", label: "Uptime SLA" },
+  { id: "s4", value: "5",     label: "Module categories" },
+  { id: "s5", value: "2FA",   label: "Role-based access" },
+];
+
 // ═══════════════════════════════════════
 // ADMIN — CONSTANTS & PRODUCTS STORE
 // ═══════════════════════════════════════
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
 const PRODUCTS_STORAGE_KEY = "orionsoft_products_v1";
-const ADMIN_SESSION_KEY = "orionsoft_admin_v1";
+const PORTFOLIO_STORAGE_KEY = "orionsoft_portfolio_v1";
+const LEADS_STORAGE_KEY = "orionsoft_leads_v1";
+const PORTFOLIO_INDUSTRIES = ["Healthcare", "Education", "Retail", "Logistics", "Finance", "Government", "Technology", "Other"];
+const PORTFOLIO_INDUSTRY_COLORS = { Healthcare: "#38BDF8", Education: "#2DD4BF", Retail: "#FCD34D", Logistics: "#C4B5FD", Finance: "#FDA4AF", Government: "#D6B56D", Technology: "#A78BFA", Other: "#8DA2B8" };
+const PORTFOLIO_STATUS_COLORS = { Completed: "#2DD4BF", Ongoing: "#38BDF8", Discovery: "#C4B5FD", Paused: "#8DA2B8" };
 
 const PRODUCT_COLORS = [
   { name: "Sky", value: "#38BDF8" },
@@ -161,7 +258,7 @@ function useProducts() {
 
   const save = (list) => {
     try { localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(list)); }
-    catch (e) { console.warn("Products save failed:", e.message); }
+    catch {}
     return list;
   };
 
@@ -182,6 +279,58 @@ function useProducts() {
   const resetToDefaults = () => setProducts(save(DEFAULT_PRODUCTS));
 
   return { products, persist, addProduct, updateProduct, deleteProduct, resetToDefaults };
+}
+
+function usePortfolio() {
+  const [portfolio, setPortfolio] = useState(() => {
+    try { const r = localStorage.getItem(PORTFOLIO_STORAGE_KEY); return r ? JSON.parse(r) : []; }
+    catch { return []; }
+  });
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail?.key === PORTFOLIO_STORAGE_KEY) {
+        try { const r = localStorage.getItem(PORTFOLIO_STORAGE_KEY); setPortfolio(r ? JSON.parse(r) : []); }
+        catch {}
+      }
+    };
+    window.addEventListener("localstoreupdate", handleUpdate);
+    return () => window.removeEventListener("localstoreupdate", handleUpdate);
+  }, []);
+  return portfolio;
+}
+
+function captureLeadFromForm(formType, form) {
+  try {
+    const serviceMap = { carecore: "CareCore HMS", custom: "Custom Software", consult: "Consultation", feedback: "Website Feedback" };
+    const id = `lead-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const now = new Date().toISOString();
+    const lead = {
+      id,
+      contactName: form.name || "",
+      hospitalName: form.org || "",
+      company: "",
+      phone: form.phone || "",
+      email: form.email || "",
+      location: form.location || "",
+      interestedService: serviceMap[formType] || "Other",
+      facilitySize: form.facilitySize || "",
+      projectDesc: form.projectDesc || "",
+      status: "New",
+      priority: "Medium",
+      source: "Website Form",
+      assignedTo: "",
+      demoDate: "",
+      demoTime: "",
+      notes: form.message || "",
+      history: [{ id: `h-${Date.now()}`, type: "created", message: `Lead captured from website — ${serviceMap[formType] || formType} enquiry`, by: "Website", ts: now }],
+      createdAt: now,
+      updatedAt: now,
+    };
+    const existing = JSON.parse(localStorage.getItem(LEADS_STORAGE_KEY) || "[]");
+    existing.unshift(lead);
+    localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(existing));
+    window.dispatchEvent(new CustomEvent("localstoreupdate", { detail: { key: LEADS_STORAGE_KEY } }));
+  } catch {}
 }
 
 const CAREER_ROLES = [
@@ -350,8 +499,8 @@ function Reveal({ children, delay = 0, style = {} }) {
   return (
     <div ref={ref} style={{
       opacity: inView ? 1 : 0,
-      transform: inView ? "translateY(0)" : "translateY(32px)",
-      transition: `all 0.65s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+      transform: inView ? "translateY(0)" : "translateY(24px)",
+      transition: `opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
       ...style,
     }}>{children}</div>
   );
@@ -447,12 +596,17 @@ function Nav({ currentPage, setCurrentPage }) {
     return () => window.removeEventListener("scroll", h);
   }, []);
 
-  const links = [
-    { label: "Products", page: "products" },
-    { label: "Services", page: "services" },
-    { label: "Work", page: "work" },
-    { label: "Careers", page: "careers" },
-  ];
+  useEffect(() => {
+    const handleKey = (e) => { if (menuOpen && e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
+  const cms = useContext(CMSContext);
+  const links = ((cms?.menus?.main) || DEFAULT_MAIN_MENU)
+    .filter(l => l.active !== false)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+    .map(l => ({ label: l.label, page: l.page }));
 
   const navigate = (link, event) => {
     if (link.page !== currentPage || !link.anchor) event.preventDefault();
@@ -468,7 +622,7 @@ function Nav({ currentPage, setCurrentPage }) {
   };
 
   return (
-    <nav style={{
+    <nav aria-label="Main navigation" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
       background: scrolled ? "rgba(10,37,64,0.92)" : "transparent",
       backdropFilter: scrolled ? "blur(24px) saturate(1.2)" : "none",
@@ -476,40 +630,40 @@ function Nav({ currentPage, setCurrentPage }) {
       transition: "all 0.35s ease", padding: "0 clamp(16px, 4vw, 32px)",
     }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", height: 68 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-             onClick={() => { setCurrentPage("home"); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+        <button type="button" onClick={() => { setCurrentPage("home"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
           <OrionLogo size={32} gradientId="nav-orion-logo" />
           <span style={{ fontSize: 19, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.03em" }}>
             Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
-        </div>
+        </button>
 
         <div className="nav-links" style={{ display: "flex", gap: 28, alignItems: "center" }}>
           {links.map(l => {
             const isActive = currentPage === l.page;
             return (
-              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} style={{
+              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} aria-current={isActive ? "page" : undefined} style={{
                 color: isActive ? C.white : C.textMuted,
                 textDecoration: "none", fontSize: 13.5,
                 fontWeight: isActive ? 600 : 500,
                 fontFamily: font, transition: "color 0.2s",
                 letterSpacing: "0.01em",
                 position: "relative",
-              }} onMouseEnter={e => { if (!isActive) e.target.style.color = C.accent; }}
-                 onMouseLeave={e => { if (!isActive) e.target.style.color = C.textMuted; }}>
+              }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = C.accent; }}
+                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = C.textMuted; }}>
                 {l.label}
                 {isActive && <span style={{ position: "absolute", bottom: -4, left: 0, right: 0, height: 2, borderRadius: 1, background: `linear-gradient(90deg, ${C.accent}, ${C.mint})` }} />}
               </a>
             );
           })}
-          <button onClick={() => setCurrentPage("contact")} style={{
+          <button type="button" onClick={() => setCurrentPage("contact")} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
             color: C.bg, padding: "9px 22px", borderRadius: 8, border: "none",
             fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer",
             transition: "all 0.25s", boxShadow: `0 4px 16px ${C.accentGlow}`,
             letterSpacing: "0.01em",
-          }} onMouseEnter={e => { e.target.style.transform = "translateY(-1px)"; e.target.style.boxShadow = `0 8px 24px ${C.accentGlow}`; }}
-             onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 4px 16px ${C.accentGlow}`; }}>
+          }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 8px 24px ${C.accentGlow}`; }}
+             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 4px 16px ${C.accentGlow}`; }}>
             Get Started
           </button>
         </div>
@@ -535,7 +689,7 @@ function Nav({ currentPage, setCurrentPage }) {
       </div>
 
       {menuOpen && (
-        <div className="mobile-menu" style={{
+        <div className="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu" style={{
           position: "absolute", top: 68, left: 0, right: 0,
           background: "rgba(10,37,64,0.98)", backdropFilter: "blur(24px)",
           padding: "16px 24px 24px", borderBottom: `1px solid ${C.border}`,
@@ -546,7 +700,7 @@ function Nav({ currentPage, setCurrentPage }) {
               fontFamily: font, padding: "12px 0", borderBottom: `1px solid ${C.border}`,
             }}>{l.label}</a>
           ))}
-          <button onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }} style={{
+          <button type="button" onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }} style={{
             width: "100%", marginTop: 16, background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
             color: C.bg, padding: "14px", borderRadius: 10, border: "none",
             fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
@@ -563,11 +717,19 @@ function Nav({ currentPage, setCurrentPage }) {
 function Hero({ setCurrentPage }) {
   const [wordIdx, setWordIdx] = useState(0);
   const dataSaver = useDataSaver();
+  const cms = useContext(CMSContext);
+  const heroData   = cms?.homepage?.hero || {};
+  const heroWords  = (heroData.words && heroData.words.length > 0) ? heroData.words : HERO_WORDS;
+  const heroBadge  = heroData.badge || "LIVE HMS · CUSTOM SOFTWARE · GLOBAL DELIVERY";
+  const heroSub    = heroData.subheadline || "CareCore HMS is live in Nigerian hospitals — 25+ modules, real-time data, zero paper. We apply the same engineering standard to every custom system we ship.";
+  const heroCTAP   = heroData.ctaPrimary   || "Book a Free Demo →";
+  const heroCTAS   = heroData.ctaSecondary || "See CareCore";
+  const heroTrust  = (heroData.trustItems && heroData.trustItems.length > 0) ? heroData.trustItems : ["Free consultation", "No commitment", "24h response"];
   useEffect(() => {
     if (dataSaver) return;
-    const t = setInterval(() => setWordIdx(i => (i + 1) % HERO_WORDS.length), 2800);
+    const t = setInterval(() => setWordIdx(i => (i + 1) % heroWords.length), 2800);
     return () => clearInterval(t);
-  }, [dataSaver]);
+  }, [dataSaver, heroWords.length]);
 
   return (
     <section style={{
@@ -597,7 +759,7 @@ function Hero({ setCurrentPage }) {
             }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
               <span style={{ fontSize: 12.5, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>
-                LIVE HMS · CUSTOM SOFTWARE · GLOBAL DELIVERY
+                {heroBadge}
               </span>
             </div>
           </Reveal>
@@ -609,11 +771,11 @@ function Hero({ setCurrentPage }) {
             }}>
               We Build Software<br />
               That Powers{" "}
-              <span key={wordIdx} style={{
+              <span key={wordIdx} aria-live="polite" aria-atomic="true" style={{
                 background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
                 WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
                 display: "inline-block", transition: "opacity 0.3s",
-              }}>{HERO_WORDS[wordIdx]}</span>
+              }}>{heroWords[wordIdx] ?? heroWords[0]}</span>
             </h1>
           </Reveal>
 
@@ -622,8 +784,7 @@ function Hero({ setCurrentPage }) {
               fontSize: "clamp(16px, 1.8vw, 19px)", color: C.text, lineHeight: 1.75,
               fontFamily: font, maxWidth: 540, margin: "0 0 40px", fontWeight: 400,
             }}>
-              CareCore HMS is live in Nigerian hospitals — 25+ modules, real-time data, zero paper.
-              We apply the same engineering standard to every custom system we ship.
+              {heroSub}
             </p>
           </Reveal>
 
@@ -643,28 +804,28 @@ function Hero({ setCurrentPage }) {
 
           <Reveal delay={0.24}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <button onClick={() => setCurrentPage("contact")} style={{
+              <button type="button" onClick={() => setCurrentPage("contact")} style={{
                 background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
                 color: C.bg, padding: "15px 32px", borderRadius: 11, border: "none",
                 fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
                 boxShadow: `0 8px 30px ${C.accentGlow}`, transition: "all 0.3s",
                 letterSpacing: "0.01em",
-              }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
-                 onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
-                Book a Free Demo →
+              }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
+                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
+                {heroCTAP}
               </button>
-              <button onClick={() => setCurrentPage("products")} style={{
+              <button type="button" onClick={() => setCurrentPage("products")} style={{
                 border: `1px solid rgba(0,200,255,0.25)`, color: C.accent,
                 padding: "15px 32px", borderRadius: 11,
                 fontSize: 15, fontWeight: 600, fontFamily: font, cursor: "pointer",
                 background: "rgba(0,200,255,0.04)", transition: "all 0.3s",
               }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,200,255,0.1)"; }}
                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,200,255,0.04)"; }}>
-                See CareCore
+                {heroCTAS}
               </button>
             </div>
             <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 16 }}>
-              {["Free consultation", "No commitment", "24h response"].map((item) => (
+              {heroTrust.map((item) => (
                 <span key={item} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: C.textMuted, fontFamily: font }}>
                   <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke={C.mint} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="2 6 5 9 10 3"/></svg>
                   {item}
@@ -689,6 +850,7 @@ function Hero({ setCurrentPage }) {
               alt="Doctor using digital healthcare software on a laptop"
               loading="eager"
               decoding="async"
+              fetchpriority="high"
               style={{ width: "100%", height: "100%", minHeight: 520, objectFit: "cover", display: "block" }}
             />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,37,64,0.04), rgba(10,37,64,0.92))" }} />
@@ -966,12 +1128,12 @@ function Products({ setCurrentPage }) {
                   ))}
                 </div>
 
-                <button onClick={() => setCurrentPage(p.action)} style={{
+                <button type="button" onClick={() => setCurrentPage(p.action)} style={{
                   width: "100%", padding: "13px", borderRadius: 10, border: `1px solid ${p.color}33`,
                   background: `${p.color}10`, color: p.color, fontSize: 14, fontWeight: 700,
                   fontFamily: font, cursor: "pointer", transition: "all 0.25s",
-                }} onMouseEnter={e => { e.target.style.background = `${p.color}22`; }}
-                   onMouseLeave={e => { e.target.style.background = `${p.color}10`; }}>
+                }} onMouseEnter={e => { e.currentTarget.style.background = `${p.color}22`; }}
+                   onMouseLeave={e => { e.currentTarget.style.background = `${p.color}10`; }}>
                   {p.tag === "2026" ? "Join Waitlist" : "Learn More →"}
                 </button>
               </div>
@@ -1076,8 +1238,7 @@ function CareCoreDemoSection({ setCurrentPage }) {
                 controls
                 muted
                 playsInline
-                preload="metadata"
-                poster={CARECORE_ASSETS.dashboard}
+                preload="none"
                 style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block", background: "#07111D" }}
                 aria-label="CareCore hospital management system demo video"
               />
@@ -1138,10 +1299,11 @@ function Services({ setCurrentPage }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 16, marginTop: 56 }}>
           {services.map((s, i) => (
             <Reveal key={i} delay={i * 0.06}>
-              <div style={{
+              <button type="button" style={{
                 background: C.card, borderRadius: 14, padding: 28,
                 border: `1px solid ${C.border}`, transition: "all 0.3s", cursor: "pointer",
                 display: "flex", gap: 18, alignItems: "flex-start",
+                width: "100%", textAlign: "left",
               }} onClick={() => setCurrentPage("contact")}
                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}33`; e.currentTarget.style.transform = "translateY(-2px)"; }}
                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -1158,7 +1320,7 @@ function Services({ setCurrentPage }) {
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{s.title}</h3>
                   <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
                 </div>
-              </div>
+              </button>
             </Reveal>
           ))}
         </div>
@@ -1261,7 +1423,7 @@ function SystemsShowcase({ setCurrentPage }) {
 
         <Reveal delay={0.28}>
           <div style={{ textAlign: "center", marginTop: 42 }}>
-            <button onClick={() => setCurrentPage("contact")} style={{
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
               color: C.bg, padding: "14px 28px", borderRadius: 10, border: "none",
               fontSize: 14, fontWeight: 800, fontFamily: font, cursor: "pointer",
@@ -1589,8 +1751,8 @@ function CareCoreSection() {
                     fontSize: 13, color: C.text, fontFamily: font, fontWeight: 500,
                     background: `${m.color}08`, border: `1px solid ${m.color}18`,
                     borderRadius: 8, padding: "8px 16px", transition: "all 0.2s",
-                  }} onMouseEnter={e => { e.target.style.background = `${m.color}18`; e.target.style.borderColor = `${m.color}33`; e.target.style.color = m.color; }}
-                     onMouseLeave={e => { e.target.style.background = `${m.color}08`; e.target.style.borderColor = `${m.color}18`; e.target.style.color = C.text; }}>
+                  }} onMouseEnter={e => { e.currentTarget.style.background = `${m.color}18`; e.currentTarget.style.borderColor = `${m.color}33`; e.currentTarget.style.color = m.color; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = `${m.color}08`; e.currentTarget.style.borderColor = `${m.color}18`; e.currentTarget.style.color = C.text; }}>
                     {item}
                   </span>
                 ))}
@@ -1663,7 +1825,7 @@ function Pricing({ setCurrentPage, tiers: managedTiers }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setCurrentPage("contact")} style={{
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{
                   width: "100%", padding: "13px", borderRadius: 10, border: "none",
                   background: t.popular ? `linear-gradient(135deg, ${C.accent}, ${C.mint})` : `${t.color}12`,
                   color: t.popular ? C.bg : t.color, fontSize: 14, fontWeight: 700,
@@ -1803,10 +1965,12 @@ function ContactPage({ setCurrentPage }) {
     try {
       const result = await sendWebsiteForm(`request: ${formType}`, form);
       setDelivery(result);
+      captureLeadFromForm(formType, form);
       setSubmitted(true);
     } catch (err) {
       window.location.href = buildFallbackMailto(`request: ${formType}`, form);
       setDelivery("email-draft");
+      captureLeadFromForm(formType, form);
       setSubmitted(true);
       setError(err.message);
     } finally {
@@ -1831,7 +1995,7 @@ function ContactPage({ setCurrentPage }) {
               ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your request.`
               : "Thank you for reaching out to Orion Soft. Our team will review your submission and contact you within 24 hours to discuss next steps."}
           </p>
-          <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
+          <button type="button" onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
             color: C.bg, padding: "14px 32px", borderRadius: 10, border: "none",
             fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
@@ -1895,7 +2059,7 @@ function ContactPage({ setCurrentPage }) {
     <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         <Reveal>
-          <button onClick={() => setCurrentPage("home")} style={{
+          <button type="button" onClick={() => setCurrentPage("home")} style={{
             background: "none", border: "none", color: C.accent, fontSize: 14,
             fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600,
             display: "flex", alignItems: "center", gap: 6,
@@ -1920,7 +2084,7 @@ function ContactPage({ setCurrentPage }) {
               { id: "consult", label: "Consultation", desc: "General inquiry" },
               { id: "feedback", label: "Feedback", desc: "Website report" },
             ].map(tab => (
-              <button key={tab.id} onClick={() => setFormType(tab.id)} style={{
+              <button type="button" key={tab.id} onClick={() => setFormType(tab.id)} style={{
                 flex: 1, minWidth: 180, padding: "14px 16px", borderRadius: 12,
                 border: `1px solid ${formType === tab.id ? C.accent + "44" : C.border}`,
                 background: formType === tab.id ? C.accentDim : C.card,
@@ -2225,8 +2389,8 @@ function ContactPage({ setCurrentPage }) {
               cursor: submitting ? "wait" : "pointer", transition: "all 0.3s",
               opacity: submitting ? 0.75 : 1,
               boxShadow: `0 8px 28px ${C.accentGlow}`,
-            }} onMouseEnter={e => e.target.style.boxShadow = `0 12px 36px ${C.accentGlow}`}
-               onMouseLeave={e => e.target.style.boxShadow = `0 8px 28px ${C.accentGlow}`}>
+            }} onMouseEnter={e => e.currentTarget.style.boxShadow = `0 12px 36px ${C.accentGlow}`}
+               onMouseLeave={e => e.currentTarget.style.boxShadow = `0 8px 28px ${C.accentGlow}`}>
               {submitting ? "Sending..." : inquiryPurpose.button}
             </button>
 
@@ -2340,6 +2504,24 @@ function ProcessSection() {
 // CTA BANNER
 // ═══════════════════════════════════════
 function CareersPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const roles = (() => {
+    const cr = cms?.careers;
+    if (Array.isArray(cr) && cr.length > 0) {
+      return cr.filter(r => r.published !== false).map(r => ({
+        title: r.title || "Open Role",
+        type: r.type || "Full-time",
+        location: r.location || "Remote / Lagos",
+        department: r.department || "General",
+        summary: r.summary || "",
+        requirements: Array.isArray(r.requirements) ? r.requirements : [],
+        salary: r.salary || "",
+        tag: r.tag || "",
+        tagColor: r.tagColor || C.accent,
+      }));
+    }
+    return CAREER_ROLES;
+  })();
   const [selectedRole, setSelectedRole] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -2347,7 +2529,7 @@ function CareersPage({ setCurrentPage }) {
   const [delivery, setDelivery] = useState("");
   const [form, setForm] = useState({
     fullName: "", email: "", phone: "", location: "",
-    role: CAREER_ROLES[0].title, experience: "", qualification: "",
+    role: roles[0]?.title || "", experience: "", qualification: "",
     availability: "", cvLink: "", portfolio: "", referral: "",
     whyOrion: "", website: "",
   });
@@ -2361,7 +2543,7 @@ function CareersPage({ setCurrentPage }) {
 
   const selectRole = (index) => {
     setSelectedRole(index);
-    update("role", CAREER_ROLES[index].title);
+    update("role", roles[index]?.title || "");
   };
 
   const handleSubmit = async (event) => {
@@ -2400,13 +2582,13 @@ function CareersPage({ setCurrentPage }) {
     setSelectedRole(0);
     setForm({
       fullName: "", email: "", phone: "", location: "",
-      role: CAREER_ROLES[0].title, experience: "", qualification: "",
+      role: roles[0]?.title || "", experience: "", qualification: "",
       availability: "", cvLink: "", portfolio: "", referral: "",
       whyOrion: "", website: "",
     });
   };
 
-  const activeRole = CAREER_ROLES[selectedRole];
+  const activeRole = roles[selectedRole] || roles[0] || CAREER_ROLES[0];
   const inputSt = {
     width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 10,
     border: `1px solid ${C.border}`, background: C.card, color: C.heading,
@@ -2436,12 +2618,12 @@ function CareersPage({ setCurrentPage }) {
               : `Thank you for applying for ${form.role}. Our team will review your application and contact you if there is a match.`}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={resetForm} style={{
+            <button type="button" onClick={resetForm} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
               color: C.bg, padding: "14px 28px", borderRadius: 10, border: "none",
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
             }}>Apply for Another Role</button>
-            <button onClick={() => setCurrentPage("home")} style={{
+            <button type="button" onClick={() => setCurrentPage("home")} style={{
               background: `${C.accent}10`, color: C.accent, padding: "14px 28px",
               borderRadius: 10, border: `1px solid ${C.accent}33`,
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
@@ -2456,7 +2638,7 @@ function CareersPage({ setCurrentPage }) {
     <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto" }}>
         <Reveal>
-          <button onClick={() => setCurrentPage("home")} style={{
+          <button type="button" onClick={() => setCurrentPage("home")} style={{
             background: "none", border: "none", color: C.accent, fontSize: 14,
             fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 700,
           }}>Back to Home</button>
@@ -2499,7 +2681,7 @@ function CareersPage({ setCurrentPage }) {
         <div className="career-layout" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 0.9fr) minmax(320px, 1.1fr)", gap: 24, alignItems: "start" }}>
           <Reveal delay={0.1}>
             <div style={{ display: "grid", gap: 12 }}>
-              {CAREER_ROLES.map((role, index) => (
+              {roles.map((role, index) => (
                 <button key={role.title} type="button" onClick={() => selectRole(index)} style={{
                   textAlign: "left", background: selectedRole === index ? `${role.color}14` : C.card,
                   border: `1px solid ${selectedRole === index ? role.color + "55" : C.border}`,
@@ -2602,11 +2784,11 @@ function CareersPage({ setCurrentPage }) {
                 <div>
                   <label style={labelSt}>Role *</label>
                   <select style={{ ...inputSt, cursor: "pointer" }} value={form.role} onChange={e => {
-                    const nextIndex = CAREER_ROLES.findIndex(role => role.title === e.target.value);
+                    const nextIndex = roles.findIndex(role => role.title === e.target.value);
                     if (nextIndex >= 0) setSelectedRole(nextIndex);
                     update("role", e.target.value);
                   }}>
-                    {CAREER_ROLES.map(role => <option key={role.title}>{role.title}</option>)}
+                    {roles.map(role => <option key={role.title}>{role.title}</option>)}
                   </select>
                 </div>
                 <div>
@@ -2688,32 +2870,11 @@ function CareersPage({ setCurrentPage }) {
 
 function FAQSection({ setCurrentPage }) {
   const [openIdx, setOpenIdx] = useState(null);
-  const faqs = [
-    {
-      q: "Can Orion Soft deploy for small clinics as well as larger hospitals?",
-      a: "Yes. CareCore pricing and onboarding are based on facility size, while the system keeps the same core modules so smaller teams do not feel locked out of important features.",
-    },
-    {
-      q: "Will the website and systems work on mobile phones and tablets?",
-      a: "Yes. The public website and the systems we build are designed responsively for phones, tablets, laptops, and desktop screens.",
-    },
-    {
-      q: "How do project inquiries reach Orion Soft?",
-      a: `The site uses Orion Soft's built-in submission endpoint when deployed. If that service is unavailable, it opens a prepared email to ${COMPANY_EMAIL} so requests can still be sent.`,
-    },
-    {
-      q: "Can you build something outside healthcare?",
-      a: "Yes. Healthcare is our flagship focus, but Orion Soft also builds dashboards, portals, inventory systems, school systems, integrations, and workflow tools for other businesses.",
-    },
-    {
-      q: "What happens after a project is delivered?",
-      a: "Every deployment includes a handover, staff training, and a support period. Clients can extend with an ongoing monthly support plan that includes patches, updates, and priority response.",
-    },
-    {
-      q: "How long does it take to deploy CareCore?",
-      a: "A typical CareCore deployment runs 2–6 weeks depending on facility size, data migration needs, and staff readiness. We provide a clear timeline after the discovery call.",
-    },
-  ];
+  const cms = useContext(CMSContext);
+  const raw = (cms?.faqs && cms.faqs.filter(f => f.published !== false).length > 0)
+    ? cms.faqs.filter(f => f.published !== false).sort((a, b) => (a.order || 0) - (b.order || 0))
+    : DEFAULT_CMS_FAQS;
+  const faqs = raw.map(f => ({ q: f.question, a: f.answer }));
 
   return (
     <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.surface }}>
@@ -2742,6 +2903,7 @@ function FAQSection({ setCurrentPage }) {
                   type="button"
                   onClick={() => setOpenIdx(openIdx === i ? null : i)}
                   aria-expanded={openIdx === i}
+                  aria-controls={`faq-answer-${i}`}
                   style={{
                     width: "100%", padding: "20px clamp(18px, 3vw, 28px)",
                     display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16,
@@ -2757,7 +2919,7 @@ function FAQSection({ setCurrentPage }) {
                     display: "block",
                   }}>+</span>
                 </button>
-                <div style={{
+                <div id={`faq-answer-${i}`} style={{
                   maxHeight: openIdx === i ? 400 : 0,
                   overflow: "hidden",
                   transition: "max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -2788,6 +2950,14 @@ function FAQSection({ setCurrentPage }) {
 }
 
 function CTABanner({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const s = cms?.settings || {};
+  const cta = cms?.homepage?.cta || {};
+  const ctaTag  = cta.tag        || "READY WHEN YOU ARE";
+  const ctaHead = s.ctaHeadline  || cta.headline || "Ship software your team will actually use.";
+  const ctaSub  = s.ctaSubtext   || cta.subtext  || "CareCore HMS for healthcare facilities. Bespoke systems for every other operation. Both delivered with the same production-grade engineering, real training, and long-term support.";
+  const ctaP    = cta.primaryText   || "Start Your Project →";
+  const ctaS    = cta.secondaryText || "See CareCore HMS";
   return (
     <section style={{
       padding: "96px clamp(16px, 4vw, 32px)",
@@ -2805,34 +2975,33 @@ function CTABanner({ setCurrentPage }) {
             borderRadius: 100, padding: "7px 18px", marginBottom: 24,
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
-            <span style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>READY WHEN YOU ARE</span>
+            <span style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>{ctaTag}</span>
           </div>
           <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.15 }}>
-            Ship software your team<br />will actually use.
+            {ctaHead}
           </h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 32, maxWidth: 520, margin: "0 auto 32px" }}>
-            CareCore HMS for healthcare facilities. Bespoke systems for every other operation.
-            Both delivered with the same production-grade engineering, real training, and long-term support.
+            {ctaSub}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setCurrentPage("contact")} style={{
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
               color: C.bg, padding: "15px 34px", borderRadius: 10, border: "none",
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               boxShadow: `0 8px 28px ${C.accentGlow}`, transition: "all 0.3s",
               letterSpacing: "0.01em",
-            }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
-               onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 28px ${C.accentGlow}`; }}>
-              Start Your Project →
+            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
+               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 28px ${C.accentGlow}`; }}>
+              {ctaP}
             </button>
-            <button onClick={() => setCurrentPage("products")} style={{
+            <button type="button" onClick={() => setCurrentPage("products")} style={{
               border: `1px solid ${C.accent}44`, color: C.accent,
               padding: "15px 34px", borderRadius: 10,
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               background: `${C.accent}08`, transition: "all 0.3s",
             }} onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}18`; }}
                onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}08`; }}>
-              See CareCore HMS
+              {ctaS}
             </button>
           </div>
         </Reveal>
@@ -3227,6 +3396,14 @@ function LegalPage({ type, setCurrentPage }) {
 }
 
 function Footer({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const s = cms?.settings || {};
+  const fEmail = s.email || COMPANY_EMAIL;
+  const fPhone = s.phone || COMPANY_PHONE;
+  const fRC = s.rc || COMPANY_RC;
+  const fTagline = s.tagline || "Building production software for healthcare providers and ambitious businesses.";
+  const fLinkedin = s.linkedin || "https://linkedin.com/company/orionsoftlimited";
+
   const goHomeAnchor = (anchor) => (event) => {
     event.preventDefault();
     setCurrentPage("home");
@@ -3245,10 +3422,10 @@ function Footer({ setCurrentPage }) {
               <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250, marginBottom: 16 }}>
-              Building production software for healthcare providers and ambitious businesses. Registered · RC 9535128.
+              {fTagline} Registered · RC {fRC}.
             </p>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <a href="https://linkedin.com/company/orionsoftlimited" target="_blank" rel="noreferrer"
+              <a href={fLinkedin} target="_blank" rel="noreferrer"
                  aria-label="Orion Soft on LinkedIn"
                  style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
@@ -3259,7 +3436,7 @@ function Footer({ setCurrentPage }) {
                   <circle cx="4" cy="4" r="2"/>
                 </svg>
               </a>
-              <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer"
+              <a href={asDirectMessageLink(fPhone)} target="_blank" rel="noreferrer"
                  aria-label="Message Orion Soft on WhatsApp"
                  style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.mint + "44"; e.currentTarget.style.color = C.mint; }}
@@ -3268,7 +3445,7 @@ function Footer({ setCurrentPage }) {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
               </a>
-              <a href={`mailto:${COMPANY_EMAIL}`}
+              <a href={`mailto:${fEmail}`}
                  aria-label="Email Orion Soft"
                  style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
@@ -3285,13 +3462,27 @@ function Footer({ setCurrentPage }) {
             { title: "Products", links: [
               { l: "CareCore HMS", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); } },
               { l: "Pricing", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); window.setTimeout(() => document.querySelector("#pricing")?.scrollIntoView({ behavior: "smooth" }), 80); } },
-              { l: "What's Next", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
+              { l: "Case Studies", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
+              { l: "Tech Stack", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("tech"); } },
             ]},
             { title: "Company", links: [
               { l: "Services", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("services"); } },
-              { l: "Work", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("work"); } },
-              { l: "About Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("services"); window.setTimeout(() => document.querySelector("#about")?.scrollIntoView({ behavior: "smooth" }), 80); } },
+              { l: "Portfolio", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("work"); } },
+              { l: "Blog", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
+              { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
               { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
+              { l: "Partner Program", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
+            ]},
+            { title: "Support", links: [
+              { l: "Support Center", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "Documentation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "FAQs", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "Contact Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
+            ]},
+            { title: "Legal", links: [
+              { l: "Privacy Policy", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("privacy"); } },
+              { l: "Terms of Service", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("terms"); } },
+              { l: "Security", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
             ]},
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
@@ -3299,17 +3490,17 @@ function Footer({ setCurrentPage }) {
               <h4 style={{ fontSize: 12.5, fontWeight: 700, color: C.text, fontFamily: font, marginBottom: 14, letterSpacing: "0.06em" }}>{col.title}</h4>
               {col.isContact ? (
                 <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 2 }}>
-                  <a href={asPhoneLink(COMPANY_PHONE)} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_PHONE}</a><br />
-                  <a href={`mailto:${COMPANY_EMAIL}`} style={{ color: C.textMuted, textDecoration: "none" }}>{COMPANY_EMAIL}</a><br />
-                  <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>Message Orion Soft</a><br />
+                  <a href={asPhoneLink(fPhone)} style={{ color: C.textMuted, textDecoration: "none" }}>{fPhone}</a><br />
+                  <a href={`mailto:${fEmail}`} style={{ color: C.textMuted, textDecoration: "none" }}>{fEmail}</a><br />
+                  <a href={asDirectMessageLink(fPhone)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>Message Orion Soft</a><br />
                   Available for international projects
                 </div>
               ) : col.links.map((link, li) => (
                 <a key={li} href={link.a} onClick={link.onClick} style={{
                   display: "block", color: C.textMuted, textDecoration: "none",
                   fontSize: 13, fontFamily: font, marginBottom: 8, transition: "color 0.2s",
-                }} onMouseEnter={e => e.target.style.color = C.accent}
-                   onMouseLeave={e => e.target.style.color = C.textMuted}>{link.l}</a>
+                }} onMouseEnter={e => e.currentTarget.style.color = C.accent}
+                   onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{link.l}</a>
               ))}
             </div>
           ))}
@@ -3321,19 +3512,18 @@ function Footer({ setCurrentPage }) {
           flexWrap: "wrap", gap: 12,
         }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: 0 }}>
-            © 2026 Orion Soft Limited. RC: {COMPANY_RC} · Built in Nigeria. Available globally.
+            © 2026 Orion Soft Limited. RC: {fRC} · Built in Nigeria. Available globally.
           </p>
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-            <button type="button" onClick={() => setCurrentPage("privacy")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.accent}
-              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Privacy Policy</button>
-            <button type="button" onClick={() => setCurrentPage("terms")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.accent}
-              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Terms of Service</button>
-            <button type="button" onClick={() => setCurrentPage("products")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = C.accent}
-              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Pricing →</button>
-            <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: "transparent", fontSize: 11, fontFamily: font, cursor: "default", transition: "color 0.3s", userSelect: "none" }}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+            {[
+              { l: "Privacy", p: "privacy" }, { l: "Terms", p: "terms" },
+              { l: "Security", p: "security" }, { l: "Support", p: "support" },
+            ].map(({ l, p }) => (
+              <button key={p} type="button" onClick={() => setCurrentPage(p)} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s", padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.color = C.accent}
+                onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{l}</button>
+            ))}
+            <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: "transparent", fontSize: 11, fontFamily: font, cursor: "default", transition: "color 0.3s", userSelect: "none", padding: 0 }}
               onMouseEnter={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.cursor = "pointer"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "transparent"; e.currentTarget.style.cursor = "default"; }}>Admin</button>
           </div>
@@ -3366,14 +3556,256 @@ function SectionHeader({ tag, tagColor, title, subtitle, dark = false }) {
 // ═══════════════════════════════════════
 // HOME PAGE — STATS BAR
 // ═══════════════════════════════════════
-function StatsBar() {
-  const stats = [
-    { value: "25+", label: "Clinical modules" },
-    { value: "118", label: "API endpoints" },
-    { value: "99.5%", label: "Uptime SLA" },
-    { value: "5", label: "Module categories" },
-    { value: "2FA", label: "Role-based access" },
+// ═══════════════════════════════════════
+// HOME PAGE — TRUST BADGES + CUSTOMER LOGOS
+// ═══════════════════════════════════════
+function TrustSection({ portfolio = [] }) {
+  const cms = useContext(CMSContext);
+  const rc = cms?.settings?.rc || COMPANY_RC;
+  const badges = [
+    { icon: "🏛️", label: "CAC Registered", sub: `RC ${rc}`, color: C.gold },
+    { icon: "🔒", label: "NDPR Compliant", sub: "Nigeria Data Protection", color: C.accent },
+    { icon: "🔐", label: "SSL Secured", sub: "All data encrypted in transit", color: C.mint },
+    { icon: "🇳🇬", label: "Nigerian-owned", sub: "Built & supported locally", color: C.purple },
   ];
+
+  const cmsClients = (cms?.clients || [])
+    .filter(c => c.published !== false && c.name)
+    .map(c => c.name);
+
+  const portfolioClients = portfolio
+    .filter(p => p.published && p.clientName)
+    .map(p => p.clientName);
+
+  const clientNames = (cmsClients.length > 0 ? cmsClients : portfolioClients)
+    .filter((n, i, arr) => arr.indexOf(n) === i)
+    .slice(0, 8);
+
+  return (
+    <div style={{ background: C.bg, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "36px clamp(16px, 4vw, 32px)" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", alignItems: "stretch" }}>
+          {badges.map(b => (
+            <div key={b.label} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              background: b.color + "0D", border: `1px solid ${b.color}22`,
+              borderRadius: 10, padding: "10px 16px", flex: "1 1 auto", minWidth: 180,
+            }}>
+              <span style={{ fontSize: 20 }}>{b.icon}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.heading, fontFamily: font }}>{b.label}</div>
+                <div style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{b.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {clientNames.length > 0 && (
+          <div style={{ marginTop: 28, textAlign: "center" }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.08em", marginBottom: 16 }}>TRUSTED BY</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              {clientNames.map(name => (
+                <span key={name} style={{
+                  fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font,
+                  background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`,
+                  borderRadius: 8, padding: "8px 16px",
+                }}>{name}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// ANNOUNCEMENT BAR
+// ═══════════════════════════════════════
+function AnnouncementBar() {
+  const cms = useContext(CMSContext);
+  const ann = cms?.announcements;
+  const [dismissed, setDismissed] = React.useState(false);
+
+  if (!ann?.active || !ann?.text || dismissed) return null;
+
+  const typeColors = {
+    info:    { bg: C.accent + "18", border: C.accent + "44", text: C.accent },
+    warning: { bg: C.gold   + "18", border: C.gold   + "44", text: C.gold },
+    success: { bg: C.mint   + "18", border: C.mint   + "44", text: C.mint },
+  };
+  const tc = typeColors[ann.type] || typeColors.info;
+
+  return (
+    <div role="banner" style={{
+      background: tc.bg, borderBottom: `1px solid ${tc.border}`,
+      padding: "10px clamp(16px, 4vw, 32px)",
+      display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+      position: "relative",
+    }}>
+      <span style={{ fontSize: 13.5, fontFamily: font, color: tc.text, fontWeight: 500 }}>
+        {ann.text}
+        {ann.link && ann.linkText && (
+          <a href={ann.link} style={{ color: tc.text, fontWeight: 700, marginLeft: 8, textDecoration: "underline" }}
+             target={ann.link.startsWith("http") ? "_blank" : undefined}
+             rel={ann.link.startsWith("http") ? "noreferrer" : undefined}>
+            {ann.linkText}
+          </a>
+        )}
+      </span>
+      {ann.dismissible !== false && (
+        <button type="button" onClick={() => setDismissed(true)} aria-label="Dismiss announcement"
+          style={{ background: "none", border: "none", color: tc.text, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", position: "absolute", right: 16 }}>×</button>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// BLOG PAGE
+// ═══════════════════════════════════════
+function BlogPage({ setCurrentPage, postId, setPostId }) {
+  const cms = useContext(CMSContext);
+  const posts = (cms?.blog || []).filter(p => p.published !== false);
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [postId]);
+
+  if (postId) {
+    const post = posts.find(p => p.id === postId || p.slug === postId);
+    if (!post) {
+      return (
+        <section style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
+          <div style={{ textAlign: "center" }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 12 }}>Post not found</h2>
+            <button type="button" onClick={() => setPostId(null)} style={{ background: "none", border: `1px solid ${C.accent}`, color: C.accent, padding: "10px 24px", borderRadius: 8, fontFamily: font, fontSize: 14, cursor: "pointer" }}>← Back to Blog</button>
+          </div>
+        </section>
+      );
+    }
+    return (
+      <article style={{ background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px", maxWidth: 780, margin: "0 auto" }}>
+        <button type="button" onClick={() => setPostId(null)} style={{ background: "none", border: "none", color: C.accent, fontFamily: font, fontSize: 14, cursor: "pointer", marginBottom: 32, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          ← Back to Blog
+        </button>
+        {post.category && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em" }}>{post.category.toUpperCase()}</span>
+        )}
+        <h1 style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, marginTop: 8, marginBottom: 16, lineHeight: 1.2, letterSpacing: "-0.02em" }}>{post.title}</h1>
+        <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
+          {post.author && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{post.author}</span>}
+          {post.date && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {post.date}</span>}
+          {post.readTime && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {post.readTime}</span>}
+        </div>
+        {post.coverImage && (
+          <img src={post.coverImage} alt={post.title} style={{ width: "100%", borderRadius: 12, marginBottom: 32, objectFit: "cover", maxHeight: 400 }} loading="lazy" />
+        )}
+        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{post.body || post.excerpt || ""}</div>
+      </article>
+    );
+  }
+
+  return (
+    <section style={{ background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ marginBottom: 48, textAlign: "center" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>INSIGHTS</span>
+          <h1 style={{ fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 800, color: C.heading, fontFamily: font, marginTop: 10, marginBottom: 14, letterSpacing: "-0.025em", lineHeight: 1.15 }}>Blog</h1>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7 }}>Thoughts on healthcare software, engineering, and building in Nigeria.</p>
+        </div>
+
+        {posts.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <p style={{ fontSize: 16, color: C.textMuted, fontFamily: font }}>No posts published yet. Check back soon.</p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 28 }}>
+            {posts.map(post => (
+              <button type="button" key={post.id || post.slug || post.title} onClick={() => setPostId(post.id || post.slug || post.title)}
+                style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "24px", textAlign: "left", cursor: "pointer", transition: "all 0.25s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.transform = "translateY(-3px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                {post.coverImage && (
+                  <img src={post.coverImage} alt={post.title} style={{ width: "100%", borderRadius: 8, marginBottom: 16, objectFit: "cover", height: 160 }} loading="lazy" />
+                )}
+                {post.category && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>{post.category.toUpperCase()}</span>
+                )}
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 8, lineHeight: 1.35 }}>{post.title}</h3>
+                {post.excerpt && <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6, marginBottom: 12 }}>{post.excerpt}</p>}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {post.date && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{post.date}</span>}
+                  {post.readTime && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>·  {post.readTime}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
+// TEAM PAGE
+// ═══════════════════════════════════════
+const MKINI = (name) => name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+const TEAM_COLORS = [C.accent, C.mint, C.purple, C.gold, "#E84393", "#14B8A6"];
+
+function TeamPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const members = (cms?.team || []).filter(m => m.published !== false);
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+
+  return (
+    <section style={{ background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ marginBottom: 56, textAlign: "center" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>THE PEOPLE</span>
+          <h1 style={{ fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 800, color: C.heading, fontFamily: font, marginTop: 10, marginBottom: 14, letterSpacing: "-0.025em", lineHeight: 1.15 }}>Our Team</h1>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7 }}>The people building and supporting Orion Soft's products.</p>
+        </div>
+
+        {members.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <p style={{ fontSize: 16, color: C.textMuted, fontFamily: font }}>Team profiles coming soon.</p>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
+            {members.map((m, i) => {
+              const color = TEAM_COLORS[i % TEAM_COLORS.length];
+              return (
+                <div key={m.id || m.name} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 28, textAlign: "center", transition: "all 0.25s" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = color + "44"; e.currentTarget.style.transform = "translateY(-3px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  {m.photoUrl ? (
+                    <img src={m.photoUrl} alt={m.name} style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", marginBottom: 16, border: `2px solid ${color}44` }} loading="lazy" />
+                  ) : (
+                    <div style={{ width: 80, height: 80, borderRadius: "50%", background: `linear-gradient(135deg, ${color}20, ${color}40)`, border: `2px solid ${color}44`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 26, fontWeight: 800, color, fontFamily: font }}>
+                      {MKINI(m.name)}
+                    </div>
+                  )}
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 4 }}>{m.name}</h3>
+                  <p style={{ fontSize: 13, color, fontFamily: font, fontWeight: 600, marginBottom: 10 }}>{m.role}</p>
+                  {m.bio && <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6, marginBottom: 12 }}>{m.bio}</p>}
+                  {m.linkedin && (
+                    <a href={m.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: C.accent, fontFamily: font, textDecoration: "none" }}>LinkedIn →</a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function StatsBar() {
+  const cms = useContext(CMSContext);
+  const stats = (cms?.homepage?.stats && cms.homepage.stats.length > 0)
+    ? cms.homepage.stats
+    : DEFAULT_CMS_STATS;
   return (
     <div role="region" aria-label="Product metrics" style={{
       background: C.surface,
@@ -3474,7 +3906,7 @@ function ProductHighlights({ setCurrentPage, products: managedProducts }) {
                   ))}
                 </div>
                 <div style={{ padding: "0 32px 30px" }}>
-                  <button onClick={() => setCurrentPage(p.ctaAction)} style={{
+                  <button type="button" onClick={() => setCurrentPage(p.ctaAction)} style={{
                     width: "100%", padding: "13px 20px", borderRadius: 10,
                     background: p.primary ? `linear-gradient(135deg, ${C.accent}, ${C.mint})` : `${p.color}10`,
                     border: p.primary ? "none" : `1px solid ${p.color}28`,
@@ -3503,33 +3935,22 @@ function ProductHighlights({ setCurrentPage, products: managedProducts }) {
 // ═══════════════════════════════════════
 // HOME PAGE — WHY ORION SOFT
 // ═══════════════════════════════════════
+const WHYUS_ICON_COLORS = [C.accent, C.mint, C.gold, C.purple];
+const WHYUS_ICON_PATHS = [
+  "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+  "M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z",
+  "M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-5 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
+  "M3.055 11H5a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v2.945M8 3.935V5.5A2.5 2.5 0 0 0 10.5 8h.5a2 2 0 0 1 2 2 2 2 0 0 0 4 0 2 2 0 0 1 2-2h1.064M15 20.488V18a2 2 0 0 1 2-2h3.064",
+];
+
 function WhyUs() {
-  const reasons = [
-    {
-      color: C.accent,
-      icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-      title: "Healthcare-first, not adapted",
-      desc: "CareCore reflects how clinical teams actually operate. Every module — from triage to discharge to billing — was built around real hospital workflows, not retrofitted from a generic template.",
-    },
-    {
-      color: C.mint,
-      icon: "M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z",
-      title: "Production-grade from day one",
-      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build — not add-ons. Security isn't a feature tier; it's a baseline.",
-    },
-    {
-      color: C.gold,
-      icon: "M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-5 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
-      title: "We stay after launch",
-      desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment — not an extra cost added after you've already committed.",
-    },
-    {
-      color: C.purple,
-      icon: "M3.055 11H5a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v2.945M8 3.935V5.5A2.5 2.5 0 0 0 10.5 8h.5a2 2 0 0 1 2 2 2 2 0 0 0 4 0 2 2 0 0 1 2-2h1.064M15 20.488V18a2 2 0 0 1 2-2h3.064",
-      title: "International delivery standard",
-      desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments — the standard international buyers expect, at a price that makes sense.",
-    },
-  ];
+  const cms = useContext(CMSContext);
+  const cmsItems = cms?.homepage?.whyUs;
+  const reasons = ((cmsItems && cmsItems.length > 0) ? cmsItems : DEFAULT_CMS_WHYUS).map((r, i) => ({
+    title: r.title, desc: r.desc,
+    color: WHYUS_ICON_COLORS[i % 4],
+    icon:  WHYUS_ICON_PATHS[i % 4],
+  }));
 
   return (
     <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.bg }}>
@@ -3582,30 +4003,21 @@ function WhyUs() {
 // ═══════════════════════════════════════
 // HOME PAGE — SOCIAL PROOF
 // ═══════════════════════════════════════
+const TESTI_COLORS = [C.accent, C.mint, C.purple, C.amber, C.rose];
+function mkInitials(name) { return (name || "").split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase() || "?"; }
+
 function SocialProof({ setCurrentPage }) {
-  const testimonials = [
-    {
-      quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.",
-      name: "Dr. A. Emmanuel",
-      title: "Medical Director",
-      initials: "AE",
-      color: C.accent,
-    },
-    {
-      quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.",
-      name: "Mrs. C. Adeyemi",
-      title: "Finance Manager, Regional Hospital",
-      initials: "CA",
-      color: C.mint,
-    },
-    {
-      quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.",
-      name: "Nurse H. Oladele",
-      title: "Head of Nursing",
-      initials: "HO",
-      color: C.purple,
-    },
-  ];
+  const cms = useContext(CMSContext);
+  const raw = (cms?.testimonials && cms.testimonials.filter(t=>t.featured).length > 0)
+    ? cms.testimonials.filter(t => t.featured)
+    : DEFAULT_CMS_TESTIMONIALS;
+  const testimonials = raw.slice(0, 3).map((t, i) => ({
+    quote:    t.quote,
+    name:     t.name,
+    title:    [t.role, t.company].filter(Boolean).join(", "),
+    initials: mkInitials(t.name),
+    color:    TESTI_COLORS[i % TESTI_COLORS.length],
+  }));
 
 
   return (
@@ -4274,7 +4686,7 @@ function ProductsPage({ setCurrentPage, products }) {
       <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.surface} 0%, ${C.bg} 100%)` }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <Reveal>
-            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <button type="button" onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>PRODUCTS</span>
             <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
               Software built for real operations.
@@ -4304,7 +4716,7 @@ function ServicesPage({ setCurrentPage }) {
       <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.bg} 0%, ${C.surface} 100%)` }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <Reveal>
-            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <button type="button" onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: C.mint, fontFamily: font, letterSpacing: "0.1em" }}>SERVICES</span>
             <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
               What we can do for your organisation.
@@ -4324,42 +4736,252 @@ function ServicesPage({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════
+// FEATURED WORK (HOMEPAGE SECTION)
+// ═══════════════════════════════════════
+function FeaturedWork({ setCurrentPage, portfolio }) {
+  const featured = (portfolio || [])
+    .filter(p => p.featured && p.published !== false)
+    .sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0))
+    .slice(0, 4);
+  if (featured.length === 0) return null;
+
+  return (
+    <section style={{ padding: "88px clamp(16px, 4vw, 32px)", background: C.light }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.1em" }}>SELECTED WORK</span>
+              <h2 style={{ fontSize: "clamp(26px, 3.8vw, 40px)", fontWeight: 800, fontFamily: font, color: C.lightHeading, letterSpacing: "-0.025em", margin: "10px 0 0", lineHeight: 1.12 }}>
+                Projects we're proud of.
+              </h2>
+            </div>
+            <button type="button" onClick={() => setCurrentPage("work")} style={{ background: "none", border: `1px solid ${C.lightBorder}`, color: C.lightText, borderRadius: 8, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>
+              See all work →
+            </button>
+          </div>
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 20 }}>
+          {featured.map((item, i) => (
+            <Reveal key={item.id} delay={i * 0.08}>
+              <article style={{ background: C.lightCard, borderRadius: 16, overflow: "hidden", border: `1px solid ${C.lightBorder}`, transition: "all 0.3s", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 20px 50px rgba(0,0,0,0.10)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)"; }}>
+                <div style={{ height: 160, background: C.surface, overflow: "hidden", position: "relative" }}>
+                  {(item.coverImage || item.screenshots?.[0]?.url) ? (
+                    <img src={item.coverImage || item.screenshots[0].url} alt={item.projectTitle} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}22, transparent)`, fontSize: 40 }}>🖼️</div>
+                  )}
+                  <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 6 }}>
+                    <span style={{ background: `${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}EE`, color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "3px 8px" }}>{item.industry}</span>
+                    <span style={{ background: `${PORTFOLIO_STATUS_COLORS[item.status] || "#8DA2B8"}EE`, color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "3px 8px" }}>{item.status}</span>
+                  </div>
+                </div>
+                <div style={{ padding: "20px 22px 22px" }}>
+                  {(item.clientLogoUrl || item.clientName) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      {item.clientLogoUrl && <img src={item.clientLogoUrl} alt={item.clientName} style={{ width: 24, height: 24, objectFit: "contain", borderRadius: 4 }} />}
+                      {item.clientName && <span style={{ fontSize: 12.5, color: C.lightMuted, fontFamily: font, fontWeight: 600 }}>{item.clientName}</span>}
+                      {item.year && <span style={{ fontSize: 11.5, color: C.lightMuted, fontFamily: font, marginLeft: "auto" }}>{item.year}</span>}
+                    </div>
+                  )}
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: C.lightHeading, fontFamily: font, letterSpacing: "-0.01em", margin: "0 0 6px", lineHeight: 1.25 }}>{item.projectTitle}</h3>
+                  {item.tagline && <p style={{ fontSize: 13.5, color: C.lightMuted, fontFamily: font, margin: "0 0 10px", fontStyle: "italic" }}>{item.tagline}</p>}
+                  {item.description && <p style={{ fontSize: 13.5, color: C.lightText, fontFamily: font, lineHeight: 1.65, margin: "0 0 14px" }}>{item.description.slice(0, 120)}{item.description.length > 120 ? "…" : ""}</p>}
+                  {(item.tags || []).length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {item.tags.slice(0, 4).map(tag => (
+                        <span key={tag} style={{ fontSize: 11.5, color: C.lightMuted, background: C.lightBorder, borderRadius: 4, padding: "3px 8px", fontFamily: font }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
 // WORK PAGE
 // ═══════════════════════════════════════
-function WorkPage({ setCurrentPage }) {
+function WorkPage({ setCurrentPage, portfolio }) {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const [activeIndustry, setActiveIndustry] = useState("All");
+
+  const published = (portfolio || []).filter(p => p.published !== false);
+  const filtered = activeIndustry === "All" ? published : published.filter(p => p.industry === activeIndustry);
+
+  const industriesWithItems = PORTFOLIO_INDUSTRIES.filter(ind => published.some(p => p.industry === ind));
+  const filterOptions = ["All", ...industriesWithItems];
+
+  const countFor = (ind) => ind === "All" ? published.length : published.filter(p => p.industry === ind).length;
+
   return (
     <div style={{ background: C.bg, minHeight: "100vh" }}>
+      {/* Hero */}
       <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.surface} 0%, ${C.bg} 100%)` }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <Reveal>
-            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <button type="button" onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.1em" }}>WORK</span>
             <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
-              CareCore in the wild.
+              Software shipped for real clients.
             </h1>
             <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
-              Screenshots from the live CareCore HMS platform — real screens, real workflows, real data layouts built for healthcare teams.
+              From hospital systems to custom business tools — every project is built to production standard, delivered with training, and supported after launch.
             </p>
           </Reveal>
         </div>
       </div>
 
-      <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.bg }}>
+      {/* Portfolio grid */}
+      <section style={{ padding: "60px clamp(16px, 4vw, 32px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: 24 }}>
-            {CARECORE_MEDIA.map((item, i) => (
-              <Reveal key={i} delay={i * 0.08}>
-                <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.border}`, background: C.card }}>
-                  <img src={item.src} alt={item.title} loading="lazy" decoding="async" style={{ width: "100%", display: "block", aspectRatio: "16/9", objectFit: "cover" }} />
-                  <div style={{ padding: "20px 24px 24px" }}>
-                    <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{item.title}</h3>
-                    <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{item.desc}</p>
-                  </div>
+
+          {/* Industry filter — only shown when there are projects */}
+          {filterOptions.length > 1 && (
+            <Reveal>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 40, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                {filterOptions.map(ind => (
+                  <button key={ind} type="button" onClick={() => setActiveIndustry(ind)} style={{
+                    background: activeIndustry === ind ? `${PORTFOLIO_INDUSTRY_COLORS[ind] || C.accent}18` : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${activeIndustry === ind ? (PORTFOLIO_INDUSTRY_COLORS[ind] || C.accent) + "55" : C.border}`,
+                    color: activeIndustry === ind ? (PORTFOLIO_INDUSTRY_COLORS[ind] || C.accent) : C.textMuted,
+                    borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontFamily: font, fontSize: 13, fontWeight: 600,
+                    display: "inline-flex", alignItems: "center", gap: 6, transition: "all 0.2s",
+                  }}>
+                    {ind}
+                    <span style={{ fontSize: 11, background: activeIndustry === ind ? `${PORTFOLIO_INDUSTRY_COLORS[ind] || C.accent}28` : "rgba(255,255,255,0.08)", borderRadius: 10, padding: "1px 7px", fontWeight: 800 }}>{countFor(ind)}</span>
+                  </button>
+                ))}
+              </div>
+            </Reveal>
+          )}
+
+          {/* Empty states */}
+          {filtered.length === 0 && published.length === 0 && (
+            <Reveal>
+              <div style={{ textAlign: "center", padding: "80px 20px" }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🖼️</div>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 12 }}>No projects published yet</h3>
+                <p style={{ fontSize: 15, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 400, margin: "0 auto 28px" }}>
+                  Projects added in the admin dashboard will appear here once published.
+                </p>
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, border: "none", borderRadius: 10, padding: "13px 24px", fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
+                  Start a Project
+                </button>
+              </div>
+            </Reveal>
+          )}
+
+          {filtered.length === 0 && published.length > 0 && (
+            <Reveal>
+              <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                <div style={{ fontSize: 36, marginBottom: 14 }}>🔍</div>
+                <p style={{ fontSize: 15, color: C.textMuted, fontFamily: font, marginBottom: 12 }}>No projects in this category.</p>
+                <button type="button" onClick={() => setActiveIndustry("All")} style={{ background: "none", border: "none", color: C.accent, fontFamily: font, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Show all →</button>
+              </div>
+            </Reveal>
+          )}
+
+          {/* Project cards */}
+          {filtered.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))", gap: 24 }}>
+              {filtered.map((item, i) => (
+                <Reveal key={item.id} delay={Math.min(i * 0.06, 0.3)}>
+                  <article style={{ background: C.card, borderRadius: 18, overflow: "hidden", border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", transition: "all 0.3s" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}55`; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 20px 56px rgba(0,0,0,0.24)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                    {/* Cover */}
+                    <div style={{ height: 180, background: C.surface, overflow: "hidden", position: "relative", flexShrink: 0 }}>
+                      {(item.coverImage || item.screenshots?.[0]?.url) ? (
+                        <img src={item.coverImage || item.screenshots[0].url} alt={item.projectTitle} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}18, transparent)` }}>
+                          <span style={{ fontSize: 40, opacity: 0.5 }}>🖼️</span>
+                        </div>
+                      )}
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(10,37,64,0.7))" }} />
+                      <div style={{ position: "absolute", top: 12, left: 12, display: "flex", gap: 6 }}>
+                        <span style={{ background: `${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}EE`, color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "4px 9px" }}>{item.industry}</span>
+                        <span style={{ background: `${PORTFOLIO_STATUS_COLORS[item.status] || "#8DA2B8"}EE`, color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 700, padding: "4px 9px" }}>{item.status}</span>
+                      </div>
+                      {item.featured && (
+                        <div style={{ position: "absolute", top: 12, right: 12, background: "rgba(214,181,109,0.92)", color: "#fff", borderRadius: 6, fontSize: 11, fontWeight: 800, padding: "4px 8px" }}>★ Featured</div>
+                      )}
+                    </div>
+                    {/* Content */}
+                    <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        {item.clientLogoUrl ? (
+                          <img src={item.clientLogoUrl} alt={item.clientName} style={{ width: 26, height: 26, objectFit: "contain", borderRadius: 5, background: "rgba(255,255,255,0.1)", padding: 2 }} />
+                        ) : (
+                          <div style={{ width: 26, height: 26, borderRadius: 5, background: `${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🏢</div>
+                        )}
+                        <span style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, fontWeight: 500 }}>{item.clientName || "Client"}</span>
+                        {item.year && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginLeft: "auto" }}>{item.year}</span>}
+                      </div>
+                      <h3 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.01em", margin: "0 0 6px", lineHeight: 1.25 }}>{item.projectTitle}</h3>
+                      {item.tagline && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, margin: "0 0 10px", fontStyle: "italic" }}>{item.tagline}</p>}
+                      {item.description && <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.68, margin: "0 0 14px", flex: 1 }}>{item.description.slice(0, 150)}{item.description.length > 150 ? "…" : ""}</p>}
+                      {(item.tags || []).length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: item.testimonial?.quote ? 14 : 0 }}>
+                          {item.tags.slice(0, 5).map(tag => (
+                            <span key={tag} style={{ fontSize: 11.5, color: C.textMuted, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 4, padding: "3px 8px", fontFamily: font }}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                      {item.testimonial?.quote && (
+                        <div style={{ marginTop: 12, borderLeft: `3px solid ${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}`, paddingLeft: 12 }}>
+                          <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6, margin: "0 0 6px", fontStyle: "italic" }}>"{item.testimonial.quote.slice(0, 100)}{item.testimonial.quote.length > 100 ? "…" : ""}"</p>
+                          {item.testimonial.name && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 600 }}>— {item.testimonial.name}{item.testimonial.title ? `, ${item.testimonial.title}` : ""}</span>}
+                        </div>
+                      )}
+                      {(item.screenshots || []).length > 1 && (
+                        <div style={{ marginTop: 12, display: "flex", gap: 4, alignItems: "center" }}>
+                          {item.screenshots.slice(0, 5).map((s) => (
+                            <div key={s.id} style={{ width: 32, height: 22, borderRadius: 4, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0 }}>
+                              <img src={s.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            </div>
+                          ))}
+                          {item.screenshots.length > 5 && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>+{item.screenshots.length - 5}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          )}
+
+          {/* CareCore screenshots strip — shown when portfolio is empty as a fallback */}
+          {published.length === 0 && (
+            <div style={{ marginTop: 60 }}>
+              <Reveal>
+                <div style={{ marginBottom: 32 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em" }}>CARECORE HMS — LIVE SCREENSHOTS</span>
                 </div>
               </Reveal>
-            ))}
-          </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: 24 }}>
+                {CARECORE_MEDIA.map((item, i) => (
+                  <Reveal key={i} delay={i * 0.08}>
+                    <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.border}`, background: C.card }}>
+                      <img src={item.src} alt={item.title} loading="lazy" decoding="async" style={{ width: "100%", display: "block", aspectRatio: "16/9", objectFit: "cover" }} />
+                      <div style={{ padding: "20px 24px 24px" }}>
+                        <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{item.title}</h3>
+                        <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{item.desc}</p>
+                      </div>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -4371,11 +4993,28 @@ function WorkPage({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════
+// PAGE LOADER (Suspense fallback)
+// ═══════════════════════════════════════
+function PageLoader({ label = "Loading…" }) {
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 32, height: 32, border: `3px solid ${C.border}`, borderTopColor: C.accent, borderRadius: "50%", margin: "0 auto 16px", animation: "spin 0.8s linear infinite" }} />
+        <span style={{ color: C.textMuted, fontFamily: font, fontSize: 14 }}>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
 // APP
 // ═══════════════════════════════════════
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
+  const [blogPostId, setBlogPostId] = useState(null);
   const { products, addProduct, updateProduct, deleteProduct, resetToDefaults, persist } = useProducts();
+  const portfolio = usePortfolio();
+  const cms = useCMSData();
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -4396,130 +5035,133 @@ export default function App() {
     } catch {}
   }, [currentPage]);
 
-  return (
-    <div style={{ overflowX: "hidden", background: C.bg, minHeight: "100vh" }}>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
-        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
-        button, a, input, textarea, select { font: inherit; }
-        select option { color: #0F172A; background: #FFFFFF; }
-        button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
-          outline: 3px solid ${C.accent};
-          outline-offset: 3px;
-        }
-        ::selection { background: ${C.accent}33; color: ${C.white}; }
-        input:focus, textarea:focus, select:focus { border-color: ${C.accent} !important; box-shadow: 0 0 0 3px ${C.accentDim}; }
-        .skip-link {
-          position: fixed;
-          top: 12px;
-          left: 12px;
-          transform: translateY(-140%);
-          z-index: 2000;
-          background: ${C.white};
-          color: ${C.bg};
-          padding: 10px 14px;
-          border-radius: 8px;
-          font-family: ${font};
-          font-weight: 800;
-          text-decoration: none;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.22);
-        }
-        .skip-link:focus { transform: translateY(0); }
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            scroll-behavior: auto !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-        @media (max-width: 768px) {
-          .nav-links { display: none !important; }
-          .nav-burger { display: block !important; }
-          .hero-grid { grid-template-columns: 1fr !important; }
-          .hero-grid img { min-height: 360px !important; }
-          .experience-grid { grid-template-columns: 1fr !important; }
-          .carecore-proof-grid { grid-template-columns: 1fr !important; }
-          .carecore-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .tech-mosaic { grid-template-columns: 1fr !important; }
-          .tech-mosaic > div, .tech-mosaic-wide { grid-column: auto !important; }
-          .form-grid { grid-template-columns: 1fr !important; }
-          .career-layout { grid-template-columns: 1fr !important; }
-          .career-notes { grid-template-columns: 1fr !important; }
-          .chat-label { display: none !important; }
-          .stats-bar { justify-content: center !important; gap: 0 !important; }
-          .stats-bar > div { padding: 10px 0 !important; }
-          .product-highlights-grid { grid-template-columns: 1fr !important; }
-        }
-        @media (min-width: 769px) {
-          .nav-burger { display: none !important; }
-          .mobile-menu { display: none !important; }
-        }
-        @media (max-width: 560px) {
-          section { padding-left: 18px !important; padding-right: 18px !important; }
-          button, a { max-width: 100%; }
-          input, textarea, select { font-size: 16px !important; }
-          .live-chat { right: 16px !important; bottom: 16px !important; }
-          .carecore-gallery { grid-template-columns: 1fr !important; }
-          .carecore-device { border-radius: 16px !important; }
-          .stats-bar > div { padding: 8px 0 !important; }
-        }
-        @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
+  // Dynamic page titles from SEO settings
+  useEffect(() => {
+    const seoData = cms?.seo?.[currentPage];
+    if (seoData?.title) { document.title = seoData.title; return; }
+    const defaults = {
+      home: "Orion Soft Limited — Hospital Management System & Custom Software Nigeria",
+      products: "CareCore HMS — Products | Orion Soft Limited",
+      services: "Services — Custom Software | Orion Soft Limited",
+      work: "Our Work — Portfolio | Orion Soft Limited",
+      contact: "Contact — Orion Soft Limited",
+      careers: "Careers — Orion Soft Limited",
+      blog: "Blog — Orion Soft Limited",
+      team: "Team — Orion Soft Limited",
+    };
+    document.title = defaults[currentPage] || "Orion Soft Limited";
+  }, [currentPage, cms]);
 
+  const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); };
+
+  // Redirect /about to home and scroll to #about section
+  useEffect(() => {
+    if (currentPage === "about") {
+      setCurrentPage("home");
+      setTimeout(() => document.querySelector("#about")?.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, [currentPage]);
+
+  return (
+  <CMSContext.Provider value={cms}>
+    <div style={{ overflowX: "hidden", background: C.bg, minHeight: "100vh" }}>
+      {/* Global styles are in src/App.css */}
+
+      {currentPage !== "admin" && <AnnouncementBar />}
       {currentPage !== "admin" && <a className="skip-link" href="#main-content">Skip to main content</a>}
-      {currentPage !== "admin" && <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} />}
+      {currentPage !== "admin" && <Nav currentPage={currentPage} setCurrentPage={navSetPage} />}
 
       <main id="main-content" tabIndex={-1}>
         {currentPage === "home" && (
           <>
-            <Hero setCurrentPage={setCurrentPage} />
+            <Hero setCurrentPage={navSetPage} />
             <StatsBar />
-            <ProductHighlights setCurrentPage={setCurrentPage} products={products} />
+            <TrustSection portfolio={portfolio} />
+            <ProductHighlights setCurrentPage={navSetPage} products={products} />
             <WhyUs />
-            <SocialProof setCurrentPage={setCurrentPage} />
-            <FAQSection setCurrentPage={setCurrentPage} />
-            <CTABanner setCurrentPage={setCurrentPage} />
+            <FeaturedWork setCurrentPage={navSetPage} portfolio={portfolio} />
+            <SocialProof setCurrentPage={navSetPage} />
+            <FAQSection setCurrentPage={navSetPage} />
+            <CTABanner setCurrentPage={navSetPage} />
           </>
         )}
 
         {currentPage === "products" && (
-          <ProductsPage setCurrentPage={setCurrentPage} products={products} />
+          <ProductsPage setCurrentPage={navSetPage} products={products} />
         )}
 
         {currentPage === "services" && (
-          <ServicesPage setCurrentPage={setCurrentPage} />
+          <ServicesPage setCurrentPage={navSetPage} />
         )}
 
         {currentPage === "work" && (
-          <WorkPage setCurrentPage={setCurrentPage} />
+          <WorkPage setCurrentPage={navSetPage} portfolio={portfolio} />
         )}
 
         {currentPage === "contact" && (
-          <ContactPage setCurrentPage={setCurrentPage} />
+          <ContactPage setCurrentPage={navSetPage} />
         )}
 
         {currentPage === "careers" && (
-          <CareersPage setCurrentPage={setCurrentPage} />
+          <CareersPage setCurrentPage={navSetPage} />
         )}
 
         {currentPage === "privacy" && (
-          <LegalPage type="privacy" setCurrentPage={setCurrentPage} />
+          <LegalPage type="privacy" setCurrentPage={navSetPage} />
         )}
 
         {currentPage === "terms" && (
-          <LegalPage type="terms" setCurrentPage={setCurrentPage} />
+          <LegalPage type="terms" setCurrentPage={navSetPage} />
         )}
 
-        {currentPage === "admin" && <AdminDashboard />}
+        {currentPage === "case-studies" && (
+          <Suspense fallback={<PageLoader />}>
+            <CaseStudiesPage setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+
+        {currentPage === "security" && (
+          <Suspense fallback={<PageLoader />}>
+            <SecurityPage setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+
+        {currentPage === "support" && (
+          <Suspense fallback={<PageLoader />}>
+            <SupportPage setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+
+        {currentPage === "partners" && (
+          <Suspense fallback={<PageLoader />}>
+            <PartnersPage setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+
+        {currentPage === "tech" && (
+          <Suspense fallback={<PageLoader />}>
+            <TechStackPage setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+
+        {currentPage === "blog" && (
+          <BlogPage setCurrentPage={navSetPage} postId={blogPostId} setPostId={setBlogPostId} />
+        )}
+
+        {currentPage === "team" && (
+          <TeamPage setCurrentPage={navSetPage} />
+        )}
+
+        {currentPage === "admin" && (
+          <Suspense fallback={<PageLoader label="Loading admin…" />}>
+            <AdminDashboard />
+          </Suspense>
+        )}
       </main>
 
-      {currentPage !== "admin" && <Footer setCurrentPage={setCurrentPage} />}
-      {currentPage !== "admin" && (HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={setCurrentPage} />)}
+      {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
+      {currentPage !== "admin" && (HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={navSetPage} />)}
     </div>
+  </CMSContext.Provider>
   );
 }
