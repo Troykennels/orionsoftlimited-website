@@ -79,3 +79,4 @@ input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; bo
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }

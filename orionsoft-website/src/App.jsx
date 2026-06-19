@@ -137,7 +137,28 @@ const CMS_SK = {
   team:          "orionsoft_team_v1",
   seo:           "orionsoft_seo_v1",
   announcements: "orionsoft_announce_v1",
+  features:      "orionsoft_features_v1",
+  newsletter:    "orionsoft_newsletter_v1",
 };
+const ANALYTICS_SK = "orionsoft_analytics_v1";
+const HEARTBEAT_SK = "orionsoft_heartbeat_v1";
+
+function trackPageView(page) {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const raw = localStorage.getItem(ANALYTICS_SK);
+    const data = raw ? JSON.parse(raw) : {};
+    if (!data.daily) data.daily = {};
+    if (!data.totals) data.totals = {};
+    if (!data.daily[today]) data.daily[today] = {};
+    data.daily[today][page] = (data.daily[today][page] || 0) + 1;
+    data.totals[page] = (data.totals[page] || 0) + 1;
+    data.lastView = Date.now();
+    localStorage.setItem(ANALYTICS_SK, JSON.stringify(data));
+    localStorage.setItem(HEARTBEAT_SK, JSON.stringify({ ts: Date.now(), page }));
+  } catch { /* analytics is best-effort */ }
+}
+
 function readCMS(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch { return fallback; }
@@ -155,6 +176,8 @@ function buildCMSState() {
     team:          readCMS(CMS_SK.team,           []),
     seo:           readCMS(CMS_SK.seo,            {}),
     announcements: readCMS(CMS_SK.announcements,  null),
+    features:      readCMS(CMS_SK.features,       {}),
+    newsletter:    readCMS(CMS_SK.newsletter,     []),
   };
 }
 function useCMSData() {
@@ -3555,6 +3578,15 @@ function Footer({ setCurrentPage }) {
         }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: 0 }}>
             © 2026 Orion Soft Limited. RC: {fRC} · Built in Nigeria. Available globally.
+            <button type="button" onClick={() => setCurrentPage("admin")} style={{
+              background: "none", border: "none", color: "rgba(255,255,255,0.12)", fontSize: 11, fontFamily: font,
+              cursor: "pointer", padding: "2px 6px", marginLeft: 8, letterSpacing: "0.03em",
+              transition: "color 0.3s",
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = "rgba(255,255,255,0.35)"}
+            onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.12)"}>
+              Admin
+            </button>
           </p>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
             {[
@@ -5747,15 +5779,15 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
+  // Track initial page view on mount
+  useEffect(() => { trackPageView("home"); }, []);
+
+  // Heartbeat to keep "live visitor" tracking alive
   useEffect(() => {
-    if (currentPage === "admin") return;
-    try {
-      const key = "orionsoft_analytics_v1";
-      const existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push({ page: currentPage, ts: new Date().toISOString() });
-      if (existing.length > 5000) existing.splice(0, existing.length - 5000);
-      localStorage.setItem(key, JSON.stringify(existing));
-    } catch {}
+    const interval = setInterval(() => {
+      try { localStorage.setItem(HEARTBEAT_SK, JSON.stringify({ ts: Date.now(), page: currentPage })); } catch { /* best-effort */ }
+    }, 20000);
+    return () => clearInterval(interval);
   }, [currentPage]);
 
   // Dynamic page titles from SEO settings
@@ -5790,7 +5822,7 @@ export default function App() {
     document.title = defaults[currentPage] || "Orion Soft Limited";
   }, [currentPage, cms]);
 
-  const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); };
+  const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); trackPageView(page); };
 
   return (
   <CMSContext.Provider value={cms}>
