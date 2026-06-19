@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
 import "./App.css";
+import ChatBot from "./components/ChatBot";
 
 // Admin dashboard loaded on demand — not part of the initial JS bundle
 const AdminDashboard = lazy(() => import("./admin/Dashboard"));
@@ -126,6 +127,7 @@ const CMS_SK = {
   team:          "orionsoft_team_v1",
   seo:           "orionsoft_seo_v1",
   announcements: "orionsoft_announce_v1",
+  conversations: "orionsoft_conversations_v1",
 };
 function readCMS(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
@@ -5398,7 +5400,7 @@ export default function App() {
       </main>
 
       {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
-      {currentPage !== "admin" && (HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={navSetPage} />)}
+      {currentPage !== "admin" && <ChatBot setCurrentPage={navSetPage} />}
     </div>
   </CMSContext.Provider>
   );
