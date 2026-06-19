@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import AdminDashboard from "./admin/Dashboard";
 
 // ═══════════════════════════════════════
 // DESIGN SYSTEM
@@ -44,7 +45,7 @@ const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const TAWK_PROPERTY_ID = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
 const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || "";
 const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
-const HERO_WORDS = ["Hospitals", "Clinics", "Businesses", "Teams"];
+const HERO_WORDS = ["Hospitals", "Clinics", "Operations", "Teams"];
 const CARECORE_ASSETS = {
   demo: "/assets/carecore/demo.mp4",
   dashboard: "/assets/carecore/dashboard-overview.png",
@@ -75,6 +76,114 @@ const CARECORE_MEDIA = [
     desc: "Clear staff profile management and role-aware interface patterns for secure hospital administration.",
   },
 ];
+// ═══════════════════════════════════════
+// ADMIN — CONSTANTS & PRODUCTS STORE
+// ═══════════════════════════════════════
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
+const PRODUCTS_STORAGE_KEY = "orionsoft_products_v1";
+const ADMIN_SESSION_KEY = "orionsoft_admin_v1";
+
+const PRODUCT_COLORS = [
+  { name: "Sky", value: "#38BDF8" },
+  { name: "Mint", value: "#2DD4BF" },
+  { name: "Purple", value: "#C4B5FD" },
+  { name: "Amber", value: "#FCD34D" },
+  { name: "Gold", value: "#D6B56D" },
+  { name: "Rose", value: "#FDA4AF" },
+];
+
+const DEFAULT_PRODUCTS = [
+  {
+    id: "carecore-hms",
+    name: "CareCore HMS",
+    tag: "FLAGSHIP PRODUCT",
+    status: "live",
+    published: true,
+    primary: true,
+    headline: "The complete operating system for your hospital.",
+    desc: "Patient records, clinical workflows, billing, pharmacy, lab, and ward management — all connected, all real-time.",
+    features: [
+      "Triage → diagnosis → discharge without data loss",
+      "Real-time ward occupancy and bed management",
+      "Automated invoicing with itemised financial reports",
+      "Drug interaction checks and NEWS2 early warning",
+    ],
+    pricing: [
+      { id: "p1", name: "Clinic", beds: "1–10 beds", onboard: "₦350K – 500K", monthly: "₦30,000", popular: false },
+      { id: "p2", name: "Small Hospital", beds: "11–50 beds", onboard: "₦500K – 800K", monthly: "₦60,000", popular: true },
+      { id: "p3", name: "Medium Hospital", beds: "51–150 beds", onboard: "₦800K – 1.2M", monthly: "₦100,000", popular: false },
+      { id: "p4", name: "Large Hospital", beds: "150+ beds", onboard: "₦1.2M – 2M", monthly: "₦150–250K", popular: false },
+    ],
+    screenshots: [
+      { id: "s1", url: "/assets/carecore/dashboard-overview.png", title: "Executive Dashboard", desc: "Facility metrics at a glance." },
+      { id: "s2", url: "/assets/carecore/quick-actions.png", title: "Quick Actions", desc: "Fast clinical workflows." },
+    ],
+    ctaLabel: "Explore CareCore",
+    ctaAction: "products",
+    color: "#38BDF8",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "custom-software",
+    name: "Custom Software",
+    tag: "BESPOKE BUILDS",
+    status: "live",
+    published: true,
+    primary: false,
+    headline: "Software shaped around how your business actually works.",
+    desc: "We turn complex manual processes into dashboards, portals, APIs, and workflow systems built for your exact operation.",
+    features: [
+      "School systems, inventory, logistics, and CRMs",
+      "API integrations and automated data flows",
+      "Real-time management dashboards and reporting",
+      "Deployed with training, docs, and ongoing support",
+    ],
+    pricing: [],
+    screenshots: [],
+    ctaLabel: "Start a Build",
+    ctaAction: "contact",
+    color: "#C4B5FD",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+function useProducts() {
+  const [products, setProducts] = useState(() => {
+    try {
+      const raw = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS;
+    } catch {
+      return DEFAULT_PRODUCTS;
+    }
+  });
+
+  const save = (list) => {
+    try { localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(list)); }
+    catch (e) { console.warn("Products save failed:", e.message); }
+    return list;
+  };
+
+  const persist = (list) => setProducts(save(list));
+
+  const addProduct = (data) => {
+    const p = { ...data, id: `p-${Date.now()}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    setProducts(prev => save([...prev, p]));
+    return p;
+  };
+
+  const updateProduct = (id, data) =>
+    setProducts(prev => save(prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date().toISOString() } : p)));
+
+  const deleteProduct = (id) =>
+    setProducts(prev => save(prev.filter(p => p.id !== id)));
+
+  const resetToDefaults = () => setProducts(save(DEFAULT_PRODUCTS));
+
+  return { products, persist, addProduct, updateProduct, deleteProduct, resetToDefaults };
+}
+
 const CAREER_ROLES = [
   {
     title: "Health Liaison Officer",
@@ -199,6 +308,13 @@ async function sendWebsiteForm(type, data) {
     throw new Error(message);
   }
 
+  try {
+    const msgKey = "orionsoft_messages_v1";
+    const msgs = JSON.parse(localStorage.getItem(msgKey) || "[]");
+    msgs.unshift({ id: `msg-${Date.now()}`, ...payload, read: false, createdAt: new Date().toISOString() });
+    localStorage.setItem(msgKey, JSON.stringify(msgs));
+  } catch {}
+
   return result?.id ? `sent:${result.id}` : "sent";
 }
 
@@ -238,6 +354,44 @@ function Reveal({ children, delay = 0, style = {} }) {
       transition: `all 0.65s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
       ...style,
     }}>{children}</div>
+  );
+}
+
+function TrustStrip() {
+  const signals = [
+    { dot: C.mint, label: "Registered Company", sub: "RC 9535128" },
+    { dot: C.accent, label: "CareCore HMS", sub: "Live & Deployed" },
+    { dot: C.purple, label: "25+ Modules", sub: "All integrated" },
+    { dot: C.amber, label: "International", sub: "Global delivery" },
+    { dot: C.gold, label: "99.5% Uptime", sub: "SLA-backed" },
+  ];
+  return (
+    <section aria-label="Company credentials" style={{
+      background: C.surface,
+      borderTop: `1px solid ${C.border}`,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "20px clamp(16px, 4vw, 32px)",
+    }}>
+      <div style={{
+        maxWidth: 1280, margin: "0 auto",
+        display: "flex", gap: "clamp(20px, 4vw, 40px)",
+        alignItems: "center", justifyContent: "center",
+        flexWrap: "wrap",
+      }}>
+        {signals.map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%", flexShrink: 0, display: "block",
+              background: s.dot, boxShadow: `0 0 7px ${s.dot}88`,
+            }} />
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: font, display: "block", lineHeight: 1.2 }}>{s.label}</span>
+              <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, display: "block" }}>{s.sub}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -294,15 +448,9 @@ function Nav({ currentPage, setCurrentPage }) {
   }, []);
 
   const links = [
-    { label: "Home", page: "home" },
-    { label: "Products", page: "home", anchor: "#products" },
-    { label: "Demo", page: "home", anchor: "#carecore-demo" },
-    { label: "Systems", page: "home", anchor: "#systems" },
-    { label: "Standards", page: "home", anchor: "#standards" },
-    { label: "Trust", page: "home", anchor: "#trust" },
-    { label: "Services", page: "home", anchor: "#services" },
-    { label: "Pricing", page: "home", anchor: "#pricing" },
-    { label: "About", page: "home", anchor: "#about" },
+    { label: "Products", page: "products" },
+    { label: "Services", page: "services" },
+    { label: "Work", page: "work" },
     { label: "Careers", page: "careers" },
   ];
 
@@ -337,14 +485,24 @@ function Nav({ currentPage, setCurrentPage }) {
         </div>
 
         <div className="nav-links" style={{ display: "flex", gap: 28, alignItems: "center" }}>
-          {links.map(l => (
-            <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} style={{
-              color: C.textMuted, textDecoration: "none", fontSize: 13.5, fontWeight: 500,
-              fontFamily: font, transition: "color 0.2s", letterSpacing: "0.01em",
-            }} onMouseEnter={e => e.target.style.color = C.accent}
-               onMouseLeave={e => e.target.style.color = C.textMuted}>{l.label}</a>
-          ))}
-          <button onClick={() => setCurrentPage("onboarding")} style={{
+          {links.map(l => {
+            const isActive = currentPage === l.page;
+            return (
+              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} style={{
+                color: isActive ? C.white : C.textMuted,
+                textDecoration: "none", fontSize: 13.5,
+                fontWeight: isActive ? 600 : 500,
+                fontFamily: font, transition: "color 0.2s",
+                letterSpacing: "0.01em",
+                position: "relative",
+              }} onMouseEnter={e => { if (!isActive) e.target.style.color = C.accent; }}
+                 onMouseLeave={e => { if (!isActive) e.target.style.color = C.textMuted; }}>
+                {l.label}
+                {isActive && <span style={{ position: "absolute", bottom: -4, left: 0, right: 0, height: 2, borderRadius: 1, background: `linear-gradient(90deg, ${C.accent}, ${C.mint})` }} />}
+              </a>
+            );
+          })}
+          <button onClick={() => setCurrentPage("contact")} style={{
             background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
             color: C.bg, padding: "9px 22px", borderRadius: 8, border: "none",
             fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer",
@@ -388,7 +546,7 @@ function Nav({ currentPage, setCurrentPage }) {
               fontFamily: font, padding: "12px 0", borderBottom: `1px solid ${C.border}`,
             }}>{l.label}</a>
           ))}
-          <button onClick={() => { setCurrentPage("onboarding"); setMenuOpen(false); }} style={{
+          <button onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }} style={{
             width: "100%", marginTop: 16, background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
             color: C.bg, padding: "14px", borderRadius: 10, border: "none",
             fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
@@ -439,7 +597,7 @@ function Hero({ setCurrentPage }) {
             }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
               <span style={{ fontSize: 12.5, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>
-                GLOBAL SOFTWARE COMPANY
+                LIVE HMS · CUSTOM SOFTWARE · GLOBAL DELIVERY
               </span>
             </div>
           </Reveal>
@@ -462,11 +620,10 @@ function Hero({ setCurrentPage }) {
           <Reveal delay={0.16}>
             <p style={{
               fontSize: "clamp(16px, 1.8vw, 19px)", color: C.text, lineHeight: 1.75,
-              fontFamily: font, maxWidth: 560, margin: "0 0 40px", fontWeight: 400,
+              fontFamily: font, maxWidth: 540, margin: "0 0 40px", fontWeight: 400,
             }}>
-              Orion Soft Limited designs and deploys custom software solutions for healthcare,
-              operations, and business management. Our flagship product, CareCore, is already
-              helping hospitals and growing teams run with more clarity, speed, and control.
+              CareCore HMS is live in Nigerian hospitals — 25+ modules, real-time data, zero paper.
+              We apply the same engineering standard to every custom system we ship.
             </p>
           </Reveal>
 
@@ -486,33 +643,33 @@ function Hero({ setCurrentPage }) {
 
           <Reveal delay={0.24}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <button onClick={() => setCurrentPage("onboarding")} style={{
+              <button onClick={() => setCurrentPage("contact")} style={{
                 background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
                 color: C.bg, padding: "15px 32px", borderRadius: 11, border: "none",
                 fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
                 boxShadow: `0 8px 30px ${C.accentGlow}`, transition: "all 0.3s",
+                letterSpacing: "0.01em",
               }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
                  onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
-                Get Started →
+                Book a Free Demo →
               </button>
-              <a href="#products" style={{
+              <button onClick={() => setCurrentPage("products")} style={{
                 border: `1px solid rgba(0,200,255,0.25)`, color: C.accent,
-                padding: "15px 32px", borderRadius: 11, textDecoration: "none",
-                fontSize: 15, fontWeight: 600, fontFamily: font,
+                padding: "15px 32px", borderRadius: 11,
+                fontSize: 15, fontWeight: 600, fontFamily: font, cursor: "pointer",
                 background: "rgba(0,200,255,0.04)", transition: "all 0.3s",
-              }} onMouseEnter={e => { e.target.style.background = "rgba(0,200,255,0.1)"; }}
-                 onMouseLeave={e => { e.target.style.background = "rgba(0,200,255,0.04)"; }}>
-                Our Products
-              </a>
-              <a href="#trust" style={{
-                border: `1px solid rgba(45,212,191,0.28)`, color: C.mint,
-                padding: "15px 32px", borderRadius: 11, textDecoration: "none",
-                fontSize: 15, fontWeight: 700, fontFamily: font,
-                background: "rgba(45,212,191,0.06)", transition: "all 0.3s",
-              }} onMouseEnter={e => { e.target.style.background = "rgba(45,212,191,0.12)"; }}
-                 onMouseLeave={e => { e.target.style.background = "rgba(45,212,191,0.06)"; }}>
-                See Trust Layer
-              </a>
+              }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,200,255,0.1)"; }}
+                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,200,255,0.04)"; }}>
+                See CareCore
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 16 }}>
+              {["Free consultation", "No commitment", "24h response"].map((item) => (
+                <span key={item} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: C.textMuted, fontFamily: font }}>
+                  <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke={C.mint} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="2 6 5 9 10 3"/></svg>
+                  {item}
+                </span>
+              ))}
             </div>
           </Reveal>
         </div>
@@ -574,10 +731,10 @@ function Hero({ setCurrentPage }) {
             borderTop: `1px solid ${C.border}`, paddingTop: 32,
           }}>
             {[
-              { val: "25+", label: "Software Modules" },
+              { val: "25+", label: "Integrated Modules" },
               { val: "118", label: "API Endpoints" },
-              { val: "99.5%", label: "Uptime SLA" },
-              { val: "Secure", label: "Privacy-first" },
+              { val: "5", label: "Clinical Categories" },
+              { val: "2FA", label: "Access Control" },
             ].map((s, i) => (
               <div key={i}>
                 <div style={{ fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em" }}>{s.val}</div>
@@ -636,10 +793,10 @@ function ExperiencePreview({ setCurrentPage }) {
               <div>
                 <span style={{ color: view.color, fontFamily: font, fontSize: 12, fontWeight: 900 }}>INTERACTIVE PREVIEW</span>
                 <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 900, lineHeight: 1.08, margin: "14px 0 16px" }}>
-                  Let visitors feel the system before they book a demo.
+                  CareCore adapts to every workflow in your facility.
                 </h2>
                 <p style={{ color: C.text, fontFamily: font, fontSize: 15.5, lineHeight: 1.75, margin: 0 }}>
-                  Tap a view to see how Orion Soft thinks: not just websites, but practical operating systems for real teams.
+                  From clinical care to hospital operations to custom builds — explore the depth of what the platform handles.
                 </p>
               </div>
               <div style={{ display: "grid", gap: 10, marginTop: 30 }}>
@@ -697,7 +854,7 @@ function ExperiencePreview({ setCurrentPage }) {
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{
                   alignSelf: "flex-start",
                   border: "none",
                   background: `linear-gradient(135deg, ${C.gold}, ${C.mint})`,
@@ -727,28 +884,31 @@ function Products({ setCurrentPage }) {
       name: "CareCore HMS",
       tag: "FLAGSHIP",
       tagColor: C.accent,
-      desc: "A complete hospital management system with 25+ integrated modules — patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more.",
+      desc: "A complete hospital management system — patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more. All in one platform.",
       features: ["Clinical Decision Support", "NEWS2 Early Warning", "Drug Interaction Checker", "Real-Time Analytics", "Multi-Facility Support", "Full Audit Trail"],
       color: C.accent,
-      icon: "🏥",
+      action: "products",
+      iconPath: "M22 12h-4l-3 9L9 3l-3 9H2",
     },
     {
       name: "Custom Software",
       tag: "SERVICES",
       tagColor: C.purple,
-      desc: "Need a bespoke system for your business? We design, build, and deploy custom web applications, APIs, dashboards, and internal tools tailored to your exact requirements.",
+      desc: "We design, build, and deploy custom web applications, APIs, dashboards, and internal tools shaped precisely around your operations — not a template.",
       features: ["Web Applications", "API Development", "Dashboards & Analytics", "Business Automation", "Mobile-Responsive", "Ongoing Support"],
       color: C.purple,
-      icon: "⚙️",
+      action: "services",
+      iconPath: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
     },
     {
-      name: "Coming Soon",
+      name: "What's Next",
       tag: "2026",
       tagColor: C.mint,
-      desc: "We are building more products for growing businesses, including inventory management, school administration, and logistics platforms. Join the waitlist to be first in line.",
+      desc: "Inventory management, school administration, logistics, and more — all built to the same engineering standard as CareCore. Join the waitlist for early access.",
       features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale", "HR & Payroll", "More Coming"],
       color: C.mint,
-      icon: "🚀",
+      action: "contact",
+      iconPath: "M12 5v14M5 12l7 7 7-7",
     },
   ];
 
@@ -760,7 +920,7 @@ function Products({ setCurrentPage }) {
             tag="PRODUCTS"
             tagColor={C.accent}
             title="What We Build"
-            subtitle="From healthcare management to custom enterprise software — we build systems that solve real problems for real businesses."
+            subtitle="CareCore for healthcare. Custom systems for every other operation. Both shipped to the same production standard."
           />
         </Reveal>
 
@@ -782,7 +942,11 @@ function Products({ setCurrentPage }) {
                 e.currentTarget.style.boxShadow = "none";
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                  <span style={{ fontSize: 36 }}>{p.icon}</span>
+                  <div style={{ width: 48, height: 48, borderRadius: 14, background: `${p.color}14`, border: `1px solid ${p.color}26`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={p.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d={p.iconPath} />
+                    </svg>
+                  </div>
                   <span style={{
                     fontSize: 11, fontWeight: 700, color: p.tagColor,
                     fontFamily: font, letterSpacing: "0.08em",
@@ -802,7 +966,7 @@ function Products({ setCurrentPage }) {
                   ))}
                 </div>
 
-                <button onClick={() => setCurrentPage("onboarding")} style={{
+                <button onClick={() => setCurrentPage(p.action)} style={{
                   width: "100%", padding: "13px", borderRadius: 10, border: `1px solid ${p.color}33`,
                   background: `${p.color}10`, color: p.color, fontSize: 14, fontWeight: 700,
                   fontFamily: font, cursor: "pointer", transition: "all 0.25s",
@@ -861,7 +1025,7 @@ function CareCoreDemoSection({ setCurrentPage }) {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{
                   background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
                   color: C.bg,
                   border: "none",
@@ -956,12 +1120,12 @@ function CareCoreDemoSection({ setCurrentPage }) {
 
 function Services({ setCurrentPage }) {
   const services = [
-    { icon: "💻", title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, price: "Custom quote" },
-    { icon: "🏥", title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, price: "Deployment quote" },
-    { icon: "🔧", title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, price: "Scoped quote" },
-    { icon: "📊", title: "Data & Analytics", desc: "Custom dashboards and reporting tools for real-time business intelligence.", color: C.amber, price: "Custom quote" },
-    { icon: "🛡️", title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and digital transformation guidance.", color: C.rose, price: "Strategy quote" },
-    { icon: "🎓", title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, price: "Support quote" },
+    { title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, icon: "M16 18l6-6-6-6M8 6l-6 6 6 6" },
+    { title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
+    { title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, icon: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" },
+    { title: "Data & Analytics", desc: "Custom dashboards and reporting tools for real-time business intelligence.", color: C.amber, icon: "M18 20V10M12 20V4M6 20v-6" },
+    { title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and digital transformation guidance.", color: C.rose, icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
+    { title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
   ];
 
   return (
@@ -978,19 +1142,20 @@ function Services({ setCurrentPage }) {
                 background: C.card, borderRadius: 14, padding: 28,
                 border: `1px solid ${C.border}`, transition: "all 0.3s", cursor: "pointer",
                 display: "flex", gap: 18, alignItems: "flex-start",
-              }} onClick={() => setCurrentPage("onboarding")}
+              }} onClick={() => setCurrentPage("contact")}
                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}33`; e.currentTarget.style.transform = "translateY(-2px)"; }}
                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
                 <div style={{
                   width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-                  background: `${s.color}12`, display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: 24,
-                }}>{s.icon}</div>
+                  background: `${s.color}14`, border: `1px solid ${s.color}26`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d={s.icon} />
+                  </svg>
+                </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: 0 }}>{s.title}</h3>
-                    <span style={{ fontSize: 12, color: s.color, fontFamily: font, fontWeight: 600 }}>{s.price}</span>
-                  </div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{s.title}</h3>
                   <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
                 </div>
               </div>
@@ -1048,8 +1213,8 @@ function SystemsShowcase({ setCurrentPage }) {
           <SectionHeader
             tag="SYSTEMS & APPS"
             tagColor={C.mint}
-            title="A Place for Every New Product"
-            subtitle="As Orion Soft develops new systems, they can be added here so visitors always see what is available, in development, and coming next."
+            title="A Growing Product Suite"
+            subtitle="CareCore is live and ready. More systems are in development — built to the same standard for healthcare, retail, education, and logistics."
             dark
           />
         </Reveal>
@@ -1096,7 +1261,7 @@ function SystemsShowcase({ setCurrentPage }) {
 
         <Reveal delay={0.28}>
           <div style={{ textAlign: "center", marginTop: 42 }}>
-            <button onClick={() => setCurrentPage("onboarding")} style={{
+            <button onClick={() => setCurrentPage("contact")} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
               color: C.bg, padding: "14px 28px", borderRadius: 10, border: "none",
               fontSize: 14, fontWeight: 800, fontFamily: font, cursor: "pointer",
@@ -1147,7 +1312,7 @@ function EngineeringStandards() {
             tag="ENGINEERING STANDARD"
             tagColor={C.accent}
             title="Built for People Who Notice the Details"
-            subtitle="Tech-aware visitors should see more than a nice page. Orion Soft presents the engineering discipline, security thinking, and delivery process behind every system."
+            subtitle="Production architecture, role-based security, and go-live support — built into every system we deliver."
             dark
           />
         </Reveal>
@@ -1218,8 +1383,8 @@ function TrustSecurity() {
           <SectionHeader
             tag="TRUST & DELIVERY"
             tagColor={C.mint}
-            title="The Reassurance Buyers Look For"
-            subtitle="Professional healthcare and business software sites make security, implementation, support, and reliability easy to verify before a conversation starts."
+            title="Everything Buyers Need to Verify"
+            subtitle="Security, implementation quality, and post-launch support — confirmed before you commit."
             dark
           />
         </Reveal>
@@ -1320,10 +1485,10 @@ function TechImmersion({ setCurrentPage }) {
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
-            tag="TECH EXPERIENCE"
+            tag="BUILT FOR REAL WORK"
             tagColor={C.gold}
-            title="A Website That Feels Like the Product"
-            subtitle="Visitors should understand that Orion Soft builds operational software, not ordinary brochure pages. The visual system now moves through healthcare, code, infrastructure, and business command."
+            title="Software That Earns Its Place in Daily Operations"
+            subtitle="Healthcare desks, engineering teams, infrastructure, and decision rooms — Orion Soft builds for every context where software needs to perform."
           />
         </Reveal>
 
@@ -1360,7 +1525,7 @@ function TechImmersion({ setCurrentPage }) {
 
         <Reveal delay={0.3}>
           <div style={{ textAlign: "center", marginTop: 34 }}>
-            <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{
               border: "none",
               background: `linear-gradient(135deg, ${C.gold}, ${C.mint})`,
               color: "#070809",
@@ -1395,8 +1560,12 @@ function CareCoreSection() {
     }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <span style={{ fontSize: 28 }}>🏥</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: `${C.accent}18`, border: `1px solid ${C.accent}28`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+              </svg>
+            </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em" }}>CARECORE HMS — DEEP DIVE</span>
           </div>
           <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
@@ -1437,13 +1606,17 @@ function CareCoreSection() {
 // ═══════════════════════════════════════
 // PRICING
 // ═══════════════════════════════════════
-function Pricing({ setCurrentPage }) {
-  const tiers = [
+function Pricing({ setCurrentPage, tiers: managedTiers }) {
+  const tierColors = [C.mint, C.accent, C.purple, C.amber, C.gold, C.rose];
+  const defaultTiers = [
     { name: "Clinic", beds: "1–10 beds", onboard: "₦350K – 500K", monthly: "₦30,000", color: C.mint, popular: false },
     { name: "Small Hospital", beds: "11–50 beds", onboard: "₦500K – 800K", monthly: "₦60,000", color: C.accent, popular: true },
     { name: "Medium Hospital", beds: "51–150 beds", onboard: "₦800K – 1.2M", monthly: "₦100,000", color: C.purple, popular: false },
     { name: "Large Hospital", beds: "150+ beds", onboard: "₦1.2M – 2M", monthly: "₦150–250K", color: C.amber, popular: false },
   ];
+  const tiers = managedTiers && managedTiers.length
+    ? managedTiers.map((t, i) => ({ ...t, color: tierColors[i % tierColors.length] }))
+    : defaultTiers;
 
   return (
     <section id="pricing" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
@@ -1490,7 +1663,7 @@ function Pricing({ setCurrentPage }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setCurrentPage("onboarding")} style={{
+                <button onClick={() => setCurrentPage("contact")} style={{
                   width: "100%", padding: "13px", borderRadius: 10, border: "none",
                   background: t.popular ? `linear-gradient(135deg, ${C.accent}, ${C.mint})` : `${t.color}12`,
                   color: t.popular ? C.bg : t.color, fontSize: 14, fontWeight: 700,
@@ -1503,7 +1676,7 @@ function Pricing({ setCurrentPage }) {
 
         <Reveal delay={0.3}>
           <p style={{ textAlign: "center", marginTop: 40, fontSize: 14, color: C.lightMuted, fontFamily: font }}>
-            Need custom software instead? <span style={{ color: C.accent, cursor: "pointer", fontWeight: 600 }} onClick={() => setCurrentPage("onboarding")}>Contact us for a custom quote →</span>
+            Need custom software instead? <span style={{ color: C.accent, cursor: "pointer", fontWeight: 600 }} onClick={() => setCurrentPage("contact")}>Contact us for a custom quote →</span>
           </p>
         </Reveal>
       </div>
@@ -1583,9 +1756,9 @@ function About() {
 }
 
 // ═══════════════════════════════════════
-// ONBOARDING PAGE
+// CONTACT PAGE
 // ═══════════════════════════════════════
-function OnboardingPage({ setCurrentPage }) {
+function ContactPage({ setCurrentPage }) {
   const [formType, setFormType] = useState("carecore");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1597,6 +1770,7 @@ function OnboardingPage({ setCurrentPage }) {
     projectDesc: "", budget: "", timeline: "", service: "",
     systemType: "", users: "", workflow: "", platform: "", integrations: "", priority: "",
     hearAbout: "", message: "", website: "",
+    category: "Website feedback", rating: "5", pageVisited: "",
   });
 
   const update = (k, v) => {
@@ -1606,16 +1780,22 @@ function OnboardingPage({ setCurrentPage }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const missingCommon = ["name", "org", "email", "phone", "location"].find(key => !form[key].trim());
-    const missingSpecific =
-      formType === "carecore" && !form.facilitySize ? "facilitySize" :
-      formType === "custom" && (!form.systemType || !form.projectDesc.trim()) ? "custom" :
-      formType === "consult" && !form.service ? "service" :
-      "";
-
-    if (missingCommon || missingSpecific) {
-      setError("Please complete all required fields before submitting.");
-      return;
+    if (formType === "feedback") {
+      if (!form.message.trim()) {
+        setError("Please write your feedback before submitting.");
+        return;
+      }
+    } else {
+      const missingCommon = ["name", "org", "email", "phone", "location"].find(key => !form[key].trim());
+      const missingSpecific =
+        formType === "carecore" && !form.facilitySize ? "facilitySize" :
+        formType === "custom" && (!form.systemType || !form.projectDesc.trim()) ? "custom" :
+        formType === "consult" && !form.service ? "service" :
+        "";
+      if (missingCommon || missingSpecific) {
+        setError("Please complete all required fields before submitting.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -1693,6 +1873,14 @@ function OnboardingPage({ setCurrentPage }) {
       button: "Request Consultation",
       note: "Best for strategy, system reviews, data, training, and support questions.",
     },
+    feedback: {
+      tag: "WEBSITE FEEDBACK",
+      title: "Share feedback or report an issue",
+      copy: "Report bugs, broken pages, confusing content, product suggestions, or any visitor experience issues.",
+      accent: C.amber,
+      button: "Send Feedback",
+      note: "Use this for website bugs, UX feedback, product suggestions, or general reports.",
+    },
   }[formType];
   const systemPresets = [
     "School / LMS system",
@@ -1727,9 +1915,10 @@ function OnboardingPage({ setCurrentPage }) {
         <Reveal delay={0.1}>
           <div style={{ display: "flex", gap: 8, marginBottom: 32, flexWrap: "wrap" }}>
             {[
-              { id: "carecore", label: "🏥 CareCore HMS", desc: "Hospital onboarding" },
-              { id: "custom", label: "⚙️ Custom Software", desc: "Bespoke project" },
-              { id: "consult", label: "💬 Consultation", desc: "General inquiry" },
+              { id: "carecore", label: "CareCore HMS", desc: "Hospital onboarding" },
+              { id: "custom", label: "Custom Software", desc: "Bespoke project" },
+              { id: "consult", label: "Consultation", desc: "General inquiry" },
+              { id: "feedback", label: "Feedback", desc: "Website report" },
             ].map(tab => (
               <button key={tab.id} onClick={() => setFormType(tab.id)} style={{
                 flex: 1, minWidth: 180, padding: "14px 16px", borderRadius: 12,
@@ -1963,23 +2152,67 @@ function OnboardingPage({ setCurrentPage }) {
               </>
             )}
 
-            {/* Common bottom */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>How did you hear about us?</label>
-              <select style={{ ...inputSt, cursor: "pointer" }} value={form.hearAbout} onChange={e => update("hearAbout", e.target.value)}>
-                <option value="">Select</option>
-                <option>Referral from another client</option>
-                <option>Social media</option>
-                <option>Search engine</option>
-                <option>Our sales team visited</option>
-                <option>Word of mouth</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: 24 }}>
-              <label style={labelSt}>Additional Message</label>
-              <textarea style={{ ...inputSt, resize: "vertical" }} rows={3} value={form.message} onChange={e => update("message", e.target.value)} placeholder="Anything else you'd like us to know..." />
-            </div>
+            {/* Feedback specific */}
+            {formType === "feedback" && (
+              <>
+                <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  <div><label style={labelSt}>Name</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Optional" /></div>
+                  <div><label style={labelSt}>Email</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="Optional, for follow-up" /></div>
+                </div>
+                <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                  <div>
+                    <label style={labelSt}>Category</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.category} onChange={e => update("category", e.target.value)}>
+                      <option>Website feedback</option>
+                      <option>Bug report</option>
+                      <option>Product request</option>
+                      <option>CareCore inquiry</option>
+                      <option>Partnership</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelSt}>Experience Rating</label>
+                    <select style={{ ...inputSt, cursor: "pointer" }} value={form.rating} onChange={e => update("rating", e.target.value)}>
+                      <option value="5">5 - Excellent</option>
+                      <option value="4">4 - Good</option>
+                      <option value="3">3 - Okay</option>
+                      <option value="2">2 - Needs work</option>
+                      <option value="1">1 - Poor</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelSt}>Page or section involved</label>
+                  <input style={inputSt} value={form.pageVisited} onChange={e => update("pageVisited", e.target.value)} placeholder="e.g. Pricing, CareCore, Contact form" />
+                </div>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={labelSt}>Feedback / Report *</label>
+                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={6} value={form.message} onChange={e => update("message", e.target.value)} placeholder="Tell us what happened, what you need, or what should be improved..." />
+                </div>
+              </>
+            )}
+
+            {/* Common bottom — not shown for feedback */}
+            {formType !== "feedback" && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={labelSt}>How did you hear about us?</label>
+                  <select style={{ ...inputSt, cursor: "pointer" }} value={form.hearAbout} onChange={e => update("hearAbout", e.target.value)}>
+                    <option value="">Select</option>
+                    <option>Referral from another client</option>
+                    <option>Social media</option>
+                    <option>Search engine</option>
+                    <option>Our sales team visited</option>
+                    <option>Word of mouth</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={labelSt}>Additional Message</label>
+                  <textarea style={{ ...inputSt, resize: "vertical" }} rows={3} value={form.message} onChange={e => update("message", e.target.value)} placeholder="Anything else you'd like us to know..." />
+                </div>
+              </>
+            )}
 
             {error && (
               <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 14 }}>{error}</p>
@@ -2002,6 +2235,102 @@ function OnboardingPage({ setCurrentPage }) {
             </p>
           </form>
         </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
+// PROCESS SECTION
+// ═══════════════════════════════════════
+function ProcessSection() {
+  const steps = [
+    {
+      num: "01",
+      title: "Discovery",
+      desc: "We study your operations, map your workflows, and identify exactly what to build — before writing a line of code.",
+      detail: ["Workflow mapping", "Gap analysis", "Scope definition"],
+      color: C.accent,
+    },
+    {
+      num: "02",
+      title: "Design & Plan",
+      desc: "Clear UI patterns, role-appropriate screens, and a milestone plan so you know exactly what ships and when.",
+      detail: ["Role-based UI flows", "Delivery milestones", "Acceptance criteria"],
+      color: C.mint,
+    },
+    {
+      num: "03",
+      title: "Build",
+      desc: "Production code with audit trails, role permissions, API-first backends, and testing at every stage.",
+      detail: ["React frontends", "Secure APIs", "QA checklist"],
+      color: C.purple,
+    },
+    {
+      num: "04",
+      title: "Deploy & Support",
+      desc: "Staff training, go-live monitoring, monthly maintenance, and a clear channel for fixes and improvements.",
+      detail: ["Team training", "Go-live care", "SLA support"],
+      color: C.gold,
+    },
+  ];
+
+  return (
+    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <SectionHeader
+            tag="HOW WE WORK"
+            tagColor={C.mint}
+            title="From discovery to launch — and beyond."
+            subtitle="Every engagement follows the same proven process, so your team gets software that works on day one."
+            dark
+          />
+        </Reveal>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))",
+          gap: 2, marginTop: 56,
+          background: C.border, borderRadius: 18, overflow: "hidden",
+          border: `1px solid ${C.border}`,
+        }}>
+          {steps.map((step, i) => (
+            <Reveal key={step.num} delay={i * 0.07}>
+              <div style={{
+                background: C.card, padding: "32px 28px",
+                display: "flex", flexDirection: "column", height: "100%",
+                position: "relative", overflow: "hidden",
+              }}>
+                <div style={{
+                  position: "absolute", top: -8, right: 8,
+                  fontSize: 72, fontWeight: 900, color: step.color,
+                  opacity: 0.05, fontFamily: font, lineHeight: 1,
+                  pointerEvents: "none", userSelect: "none",
+                }}>{step.num}</div>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, marginBottom: 18,
+                  background: `${step.color}14`, border: `1px solid ${step.color}28`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <span style={{ fontSize: 12, fontWeight: 900, color: step.color, fontFamily: font, letterSpacing: "0.06em" }}>{step.num}</span>
+                </div>
+                <h3 style={{ fontSize: 19, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 10px", letterSpacing: "-0.01em" }}>{step.title}</h3>
+                <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.72, margin: "0 0 20px", flex: 1 }}>{step.desc}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {step.detail.map(d => (
+                    <span key={d} style={{
+                      fontSize: 11.5, color: step.color, fontFamily: font, fontWeight: 600,
+                      background: `${step.color}10`, border: `1px solid ${step.color}20`,
+                      borderRadius: 6, padding: "4px 9px",
+                    }}>{d}</span>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -2358,6 +2687,7 @@ function CareersPage({ setCurrentPage }) {
 }
 
 function FAQSection({ setCurrentPage }) {
+  const [openIdx, setOpenIdx] = useState(null);
   const faqs = [
     {
       q: "Can Orion Soft deploy for small clinics as well as larger hospitals?",
@@ -2375,30 +2705,65 @@ function FAQSection({ setCurrentPage }) {
       q: "Can you build something outside healthcare?",
       a: "Yes. Healthcare is our flagship focus, but Orion Soft also builds dashboards, portals, inventory systems, school systems, integrations, and workflow tools for other businesses.",
     },
+    {
+      q: "What happens after a project is delivered?",
+      a: "Every deployment includes a handover, staff training, and a support period. Clients can extend with an ongoing monthly support plan that includes patches, updates, and priority response.",
+    },
+    {
+      q: "How long does it take to deploy CareCore?",
+      a: "A typical CareCore deployment runs 2–6 weeks depending on facility size, data migration needs, and staff readiness. We provide a clear timeline after the discovery call.",
+    },
   ];
 
   return (
     <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.surface }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
-            tag="QUESTIONS"
+            tag="FAQ"
             tagColor={C.mint}
-            title="Clear Answers Before You Contact Us"
-            subtitle="A quick look at the practical things visitors usually want to confirm before starting a project."
+            title="Common Questions"
+            subtitle="Straight answers so you can evaluate Orion Soft before the first call."
             dark
           />
         </Reveal>
 
-        <div style={{ display: "grid", gap: 12, marginTop: 48 }}>
+        <div style={{ display: "grid", gap: 8, marginTop: 48 }}>
           {faqs.map((item, i) => (
-            <Reveal key={item.q} delay={i * 0.06}>
+            <Reveal key={item.q} delay={i * 0.04}>
               <div style={{
-                background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
-                padding: "22px clamp(18px, 3vw, 28px)",
+                background: C.card,
+                border: `1px solid ${openIdx === i ? C.accent + "40" : C.border}`,
+                borderRadius: 12,
+                overflow: "hidden",
+                transition: "border-color 0.22s ease",
               }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 8 }}>{item.q}</h3>
-                <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>{item.a}</p>
+                <button
+                  type="button"
+                  onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                  aria-expanded={openIdx === i}
+                  style={{
+                    width: "100%", padding: "20px clamp(18px, 3vw, 28px)",
+                    display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16,
+                    background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                  }}
+                >
+                  <h3 style={{ fontSize: 15.5, fontWeight: 700, color: openIdx === i ? C.heading : C.text, fontFamily: font, margin: 0, lineHeight: 1.4 }}>{item.q}</h3>
+                  <span style={{
+                    color: openIdx === i ? C.accent : C.textMuted,
+                    fontSize: 22, fontWeight: 300, lineHeight: 1, flexShrink: 0,
+                    transform: openIdx === i ? "rotate(45deg)" : "none",
+                    transition: "transform 0.25s ease, color 0.2s",
+                    display: "block",
+                  }}>+</span>
+                </button>
+                <div style={{
+                  maxHeight: openIdx === i ? 400 : 0,
+                  overflow: "hidden",
+                  transition: "max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}>
+                  <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.8, margin: 0, padding: "0 clamp(18px, 3vw, 28px) 22px" }}>{item.a}</p>
+                </div>
               </div>
             </Reveal>
           ))}
@@ -2406,11 +2771,15 @@ function FAQSection({ setCurrentPage }) {
 
         <Reveal delay={0.22}>
           <div style={{ textAlign: "center", marginTop: 34 }}>
-            <button type="button" onClick={() => setCurrentPage("onboarding")} style={{
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{
               background: `${C.accent}10`, border: `1px solid ${C.accent}33`,
               color: C.accent, padding: "13px 24px", borderRadius: 10,
-              fontSize: 14, fontWeight: 800, fontFamily: font, cursor: "pointer",
-            }}>Ask a Project Question</button>
+              fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer",
+              transition: "all 0.2s",
+            }} onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}20`; e.currentTarget.style.borderColor = `${C.accent}55`; }}
+               onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}10`; e.currentTarget.style.borderColor = `${C.accent}33`; }}>
+              Still have questions? Ask us directly →
+            </button>
           </div>
         </Reveal>
       </div>
@@ -2421,38 +2790,50 @@ function FAQSection({ setCurrentPage }) {
 function CTABanner({ setCurrentPage }) {
   return (
     <section style={{
-      padding: "80px clamp(16px, 4vw, 32px)",
-      background: `linear-gradient(135deg, ${C.accent}12, ${C.mint}08)`,
+      padding: "96px clamp(16px, 4vw, 32px)",
+      background: `linear-gradient(135deg, ${C.bg} 0%, rgba(16,42,67,0.96) 50%, ${C.bg} 100%)`,
       borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`,
+      position: "relative", overflow: "hidden",
     }}>
-      <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
+      <div style={{ position: "absolute", inset: 0, opacity: 0.06,
+        background: `radial-gradient(ellipse 600px 400px at 50% 50%, ${C.accent}, transparent)` }} />
+      <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", position: "relative" }}>
         <Reveal>
-          <h2 style={{ fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em", marginBottom: 12 }}>
-            Ready to Build Something?
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: C.accentDim, border: `1px solid rgba(0,200,255,0.15)`,
+            borderRadius: 100, padding: "7px 18px", marginBottom: 24,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
+            <span style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>READY WHEN YOU ARE</span>
+          </div>
+          <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.15 }}>
+            Ship software your team<br />will actually use.
           </h2>
-          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 28 }}>
-            Whether it is CareCore for your hospital or a custom system for your business,
-            we are ready to start the conversation.
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 32, maxWidth: 520, margin: "0 auto 32px" }}>
+            CareCore HMS for healthcare facilities. Bespoke systems for every other operation.
+            Both delivered with the same production-grade engineering, real training, and long-term support.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => setCurrentPage("onboarding")} style={{
+            <button onClick={() => setCurrentPage("contact")} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-              color: C.bg, padding: "14px 32px", borderRadius: 10, border: "none",
+              color: C.bg, padding: "15px 34px", borderRadius: 10, border: "none",
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
               boxShadow: `0 8px 28px ${C.accentGlow}`, transition: "all 0.3s",
-            }}>Start Your Project →</button>
-            <button onClick={() => setCurrentPage("careers")} style={{
-              border: `1px solid ${C.mint}44`, color: C.mint,
-              padding: "14px 32px", borderRadius: 10, textDecoration: "none",
+              letterSpacing: "0.01em",
+            }} onMouseEnter={e => { e.target.style.transform = "translateY(-2px)"; e.target.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
+               onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = `0 8px 28px ${C.accentGlow}`; }}>
+              Start Your Project →
+            </button>
+            <button onClick={() => setCurrentPage("products")} style={{
+              border: `1px solid ${C.accent}44`, color: C.accent,
+              padding: "15px 34px", borderRadius: 10,
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-              background: `${C.mint}10`, transition: "all 0.3s",
-            }}>View Careers</button>
-            <a href="#products" style={{
-              border: `1px solid ${C.accent}33`, color: C.accent,
-              padding: "14px 32px", borderRadius: 10, textDecoration: "none",
-              fontSize: 15, fontWeight: 600, fontFamily: font,
               background: `${C.accent}08`, transition: "all 0.3s",
-            }}>View Products</a>
+            }} onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}18`; }}
+               onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}08`; }}>
+              See CareCore HMS
+            </button>
           </div>
         </Reveal>
       </div>
@@ -2460,180 +2841,9 @@ function CTABanner({ setCurrentPage }) {
   );
 }
 
-// ═══════════════════════════════════════
-// FEEDBACK PAGE
-// ═══════════════════════════════════════
-function FeedbackPage({ setCurrentPage }) {
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [delivery, setDelivery] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    category: "Website feedback",
-    pageVisited: "",
-    rating: "5",
-    message: "",
-    website: "",
-  });
-
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
-
-  const update = (key, value) => {
-    setError("");
-    setForm(current => ({ ...current, [key]: value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!form.message.trim()) {
-      setError("Please write the feedback or report before submitting.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
-    try {
-      const result = await sendWebsiteForm("visitor feedback", form);
-      setDelivery(result);
-      setSubmitted(true);
-    } catch (err) {
-      window.location.href = buildFallbackMailto("visitor feedback", form);
-      setDelivery("email-draft");
-      setSubmitted(true);
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const inputSt = {
-    width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 10,
-    border: `1px solid ${C.border}`, background: C.card, color: C.heading,
-    fontSize: 14, fontFamily: font, outline: "none", transition: "border-color 0.2s",
-  };
-  const labelSt = { fontSize: 13, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 6, display: "block" };
-
-  if (submitted) {
-    return (
-      <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
-        <div style={{ textAlign: "center", maxWidth: 520 }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: 20, margin: "0 auto 24px",
-            background: `linear-gradient(135deg, ${C.accent}20, ${C.mint}20)`,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40,
-          }}>✓</div>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 12 }}>Feedback Received</h2>
-          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            {delivery === "email-draft"
-              ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your feedback.`
-              : "Thank you. Your report helps Orion Soft improve the website and product experience."}
-          </p>
-          <button onClick={() => { setCurrentPage("home"); setSubmitted(false); }} style={{
-            background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-            color: C.bg, padding: "14px 32px", borderRadius: 10, border: "none",
-            fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-          }}>Back to Home</button>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section style={{ minHeight: "100vh", background: C.bg, padding: "100px clamp(16px, 4vw, 32px) 80px" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <Reveal>
-          <button onClick={() => setCurrentPage("home")} style={{
-            background: "none", border: "none", color: C.accent, fontSize: 14,
-            fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600,
-          }}>← Back to Home</button>
-        </Reveal>
-
-        <Reveal delay={0.05}>
-          <h1 style={{ fontSize: "clamp(28px, 4vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", marginBottom: 8 }}>
-            Visitor Reports & Feedback
-          </h1>
-          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
-            Visitors can report website issues, request improvements, or share product feedback here.
-          </p>
-        </Reveal>
-
-        <Reveal delay={0.12}>
-          <form onSubmit={handleSubmit} style={{
-            background: `linear-gradient(180deg, ${C.amber}12, rgba(19,47,76,0.98) 190px)`,
-            borderRadius: 20,
-            padding: "clamp(24px, 4vw, 40px)",
-            border: `1px solid ${C.amber}40`,
-            boxShadow: `0 24px 70px ${C.amber}0F`,
-          }}>
-            <input
-              type="text"
-              tabIndex={-1}
-              autoComplete="off"
-              value={form.website}
-              onChange={e => update("website", e.target.value)}
-              style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0 }}
-              aria-hidden="true"
-            />
-            <div style={{ border: `1px solid ${C.amber}33`, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 18, marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 900, color: C.amber, fontFamily: font, marginBottom: 6 }}>WEBSITE FEEDBACK DESK</div>
-              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>
-                Use this form for bugs, broken pages, confusing content, product suggestions, and visitor experience reports.
-              </p>
-            </div>
-
-            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div><label style={labelSt}>Name</label><input style={inputSt} value={form.name} onChange={e => update("name", e.target.value)} placeholder="Optional" /></div>
-              <div><label style={labelSt}>Email</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="Optional, for follow-up" /></div>
-            </div>
-            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              <div>
-                <label style={labelSt}>Category</label>
-                <select style={{ ...inputSt, cursor: "pointer" }} value={form.category} onChange={e => update("category", e.target.value)}>
-                  <option>Website feedback</option>
-                  <option>Bug report</option>
-                  <option>Product request</option>
-                  <option>CareCore inquiry</option>
-                  <option>Partnership</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelSt}>Experience Rating</label>
-                <select style={{ ...inputSt, cursor: "pointer" }} value={form.rating} onChange={e => update("rating", e.target.value)}>
-                  <option value="5">5 - Excellent</option>
-                  <option value="4">4 - Good</option>
-                  <option value="3">3 - Okay</option>
-                  <option value="2">2 - Needs work</option>
-                  <option value="1">1 - Poor</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelSt}>Page or system involved</label>
-              <input style={inputSt} value={form.pageVisited} onChange={e => update("pageVisited", e.target.value)} placeholder="e.g. Pricing, CareCore, Contact form" />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label style={labelSt}>Feedback / Report *</label>
-              <textarea style={{ ...inputSt, resize: "vertical" }} rows={6} value={form.message} onChange={e => update("message", e.target.value)} placeholder="Tell us what happened, what you need, or what should be improved..." />
-            </div>
-            {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 14 }}>{error}</p>}
-            <button type="submit" disabled={submitting} style={{
-              width: "100%", padding: "15px", borderRadius: 12, border: "none",
-              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-              color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font,
-              cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.75 : 1,
-              boxShadow: `0 8px 28px ${C.accentGlow}`,
-            }}>{submitting ? "Sending..." : "Send Website Report"}</button>
-          </form>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
 
 // ═══════════════════════════════════════
-// FOOTER
+// TAWK LIVE CHAT
 // ═══════════════════════════════════════
 function TawkLiveChat() {
   useEffect(() => {
@@ -2886,7 +3096,7 @@ function LiveChatFloat({ setCurrentPage }) {
               </form>
             )}
             <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-              <button type="button" onClick={() => { setCurrentPage("onboarding"); setOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{
+              <button type="button" onClick={() => { setCurrentPage("contact"); setOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{
                 background: `${C.accent}10`,
                 border: `1px solid ${C.accent}33`,
                 color: C.accent,
@@ -2925,9 +3135,11 @@ function LiveChatFloat({ setCurrentPage }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 17,
-          lineHeight: 1,
-        }} aria-hidden="true">?</span>
+        }} aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </span>
         <span style={{ display: "grid", textAlign: "left", lineHeight: 1.15 }}>
           <span>Chat with us</span>
           <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.75 }}>Orion Soft desk</span>
@@ -3032,14 +3244,55 @@ function Footer({ setCurrentPage }) {
               <OrionLogo size={28} gradientId="footer-orion-logo" />
               <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
-            <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250 }}>
-              Building practical software for healthcare providers and ambitious businesses. Registered company. Privacy-aware.
+            <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250, marginBottom: 16 }}>
+              Building production software for healthcare providers and ambitious businesses. Registered · RC 9535128.
             </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <a href="https://linkedin.com/company/orionsoftlimited" target="_blank" rel="noreferrer"
+                 aria-label="Orion Soft on LinkedIn"
+                 style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
+                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
+                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+                  <rect x="2" y="9" width="4" height="12"/>
+                  <circle cx="4" cy="4" r="2"/>
+                </svg>
+              </a>
+              <a href={asDirectMessageLink(COMPANY_PHONE)} target="_blank" rel="noreferrer"
+                 aria-label="Message Orion Soft on WhatsApp"
+                 style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
+                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.mint + "44"; e.currentTarget.style.color = C.mint; }}
+                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </a>
+              <a href={`mailto:${COMPANY_EMAIL}`}
+                 aria-label="Email Orion Soft"
+                 style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
+                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
+                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/>
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+              </a>
+            </div>
           </div>
 
           {[
-            { title: "Products", links: [{ l: "CareCore HMS", a: "#products", onClick: goHomeAnchor("#products") }, { l: "Systems & Apps", a: "#systems", onClick: goHomeAnchor("#systems") }, { l: "Engineering Standard", a: "#standards", onClick: goHomeAnchor("#standards") }, { l: "Custom Software", a: "#services", onClick: goHomeAnchor("#services") }] },
-            { title: "Company", links: [{ l: "About Us", a: "#about", onClick: goHomeAnchor("#about") }, { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } }, { l: "Feedback", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("feedback"); } }, { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("onboarding"); } }] },
+            { title: "Products", links: [
+              { l: "CareCore HMS", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); } },
+              { l: "Pricing", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); window.setTimeout(() => document.querySelector("#pricing")?.scrollIntoView({ behavior: "smooth" }), 80); } },
+              { l: "What's Next", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
+            ]},
+            { title: "Company", links: [
+              { l: "Services", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("services"); } },
+              { l: "Work", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("work"); } },
+              { l: "About Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("services"); window.setTimeout(() => document.querySelector("#about")?.scrollIntoView({ behavior: "smooth" }), 80); } },
+              { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
+            ]},
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
             <div key={ci}>
@@ -3068,11 +3321,21 @@ function Footer({ setCurrentPage }) {
           flexWrap: "wrap", gap: 12,
         }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: 0 }}>
-            © 2026 Orion Soft Limited. All rights reserved. RC: {COMPANY_RC}
+            © 2026 Orion Soft Limited. RC: {COMPANY_RC} · Built in Nigeria. Available globally.
           </p>
-          <div style={{ display: "flex", gap: 20 }}>
-            <button type="button" onClick={() => setCurrentPage("privacy")} style={{ background: "none", border: "none", color: C.textMuted, textDecoration: "none", fontSize: 12, fontFamily: font, cursor: "pointer" }}>Privacy Policy</button>
-            <button type="button" onClick={() => setCurrentPage("terms")} style={{ background: "none", border: "none", color: C.textMuted, textDecoration: "none", fontSize: 12, fontFamily: font, cursor: "pointer" }}>Terms of Service</button>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => setCurrentPage("privacy")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.color = C.accent}
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Privacy Policy</button>
+            <button type="button" onClick={() => setCurrentPage("terms")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.color = C.accent}
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Terms of Service</button>
+            <button type="button" onClick={() => setCurrentPage("products")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 12, fontFamily: font, cursor: "pointer", transition: "color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.color = C.accent}
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>Pricing →</button>
+            <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: "transparent", fontSize: 11, fontFamily: font, cursor: "default", transition: "color 0.3s", userSelect: "none" }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.cursor = "pointer"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "transparent"; e.currentTarget.style.cursor = "default"; }}>Admin</button>
           </div>
         </div>
       </div>
@@ -3101,10 +3364,1037 @@ function SectionHeader({ tag, tagColor, title, subtitle, dark = false }) {
 }
 
 // ═══════════════════════════════════════
+// HOME PAGE — STATS BAR
+// ═══════════════════════════════════════
+function StatsBar() {
+  const stats = [
+    { value: "25+", label: "Clinical modules" },
+    { value: "118", label: "API endpoints" },
+    { value: "99.5%", label: "Uptime SLA" },
+    { value: "5", label: "Module categories" },
+    { value: "2FA", label: "Role-based access" },
+  ];
+  return (
+    <div role="region" aria-label="Product metrics" style={{
+      background: C.surface,
+      borderTop: `1px solid ${C.border}`,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "28px clamp(16px, 4vw, 32px)",
+    }}>
+      <div className="stats-bar" style={{
+        maxWidth: 1280, margin: "0 auto",
+        display: "flex", gap: 0,
+        justifyContent: "space-between", alignItems: "center",
+        flexWrap: "wrap",
+      }}>
+        {stats.map((stat, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center" }}>
+            {i > 0 && <div style={{ width: 1, height: 36, background: C.border, margin: "0 clamp(14px, 3vw, 40px)", flexShrink: 0 }} />}
+            <div style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{
+                fontSize: "clamp(22px, 2.8vw, 34px)", fontWeight: 800, color: C.heading,
+                fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1,
+              }}>{stat.value}</div>
+              <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 5, fontWeight: 500 }}>{stat.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// HOME PAGE — PRODUCT HIGHLIGHTS
+// ═══════════════════════════════════════
+function ProductHighlights({ setCurrentPage, products: managedProducts }) {
+  const products = (managedProducts || []).filter(p => p.published);
+
+  return (
+    <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.light }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>PRODUCTS</span>
+            <h2 style={{
+              fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font,
+              color: C.lightHeading, letterSpacing: "-0.025em",
+              margin: "10px 0 0", lineHeight: 1.12,
+            }}>One engineering standard. Two ways to deploy it.</h2>
+          </div>
+        </Reveal>
+        <div className="product-highlights-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 20 }}>
+          {products.map((p, i) => (
+            <Reveal key={i} delay={i * 0.1}>
+              <article style={{
+                background: C.lightCard, borderRadius: 20,
+                border: `1px solid ${C.lightBorder}`,
+                overflow: "hidden", display: "flex", flexDirection: "column",
+                transition: "all 0.3s ease",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+              }} onMouseEnter={e => {
+                e.currentTarget.style.transform = "translateY(-4px)";
+                e.currentTarget.style.boxShadow = `0 20px 50px rgba(0,0,0,0.1), 0 0 0 1px ${p.color}22`;
+              }} onMouseLeave={e => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+              }}>
+                <div style={{
+                  padding: "30px 32px 24px",
+                  background: `linear-gradient(135deg, ${p.color}10, transparent)`,
+                  borderBottom: `1px solid ${p.color}16`,
+                }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: p.color, fontFamily: font,
+                    letterSpacing: "0.08em", background: `${p.color}12`,
+                    border: `1px solid ${p.color}20`, borderRadius: 6,
+                    padding: "5px 10px", display: "inline-block", marginBottom: 16,
+                  }}>{p.tag}</span>
+                  <h3 style={{
+                    fontSize: "clamp(18px, 2.2vw, 24px)", fontWeight: 800,
+                    color: C.lightHeading, fontFamily: font,
+                    letterSpacing: "-0.02em", margin: "0 0 10px", lineHeight: 1.18,
+                  }}>{p.headline}</h3>
+                  <p style={{ fontSize: 14.5, color: C.lightMuted, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{p.desc}</p>
+                </div>
+                <div style={{ padding: "24px 32px", flex: 1 }}>
+                  {p.features.map((f, fi) => (
+                    <div key={fi} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: fi < p.features.length - 1 ? 14 : 0 }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 2,
+                        background: `${p.color}12`, border: `1px solid ${p.color}22`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={p.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="2 6 5 9 10 3"/>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: 14, color: C.lightText, fontFamily: font, lineHeight: 1.55 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "0 32px 30px" }}>
+                  <button onClick={() => setCurrentPage(p.ctaAction)} style={{
+                    width: "100%", padding: "13px 20px", borderRadius: 10,
+                    background: p.primary ? `linear-gradient(135deg, ${C.accent}, ${C.mint})` : `${p.color}10`,
+                    border: p.primary ? "none" : `1px solid ${p.color}28`,
+                    color: p.primary ? C.bg : p.color,
+                    fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer",
+                    transition: "all 0.25s", letterSpacing: "0.01em",
+                  }} onMouseEnter={e => {
+                    if (p.primary) { e.currentTarget.style.boxShadow = `0 8px 24px ${C.accentGlow}`; e.currentTarget.style.transform = "translateY(-1px)"; }
+                    else { e.currentTarget.style.background = `${p.color}20`; }
+                  }} onMouseLeave={e => {
+                    if (p.primary) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }
+                    else { e.currentTarget.style.background = `${p.color}10`; }
+                  }}>
+                    {p.ctaLabel} →
+                  </button>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
+// HOME PAGE — WHY ORION SOFT
+// ═══════════════════════════════════════
+function WhyUs() {
+  const reasons = [
+    {
+      color: C.accent,
+      icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+      title: "Healthcare-first, not adapted",
+      desc: "CareCore reflects how clinical teams actually operate. Every module — from triage to discharge to billing — was built around real hospital workflows, not retrofitted from a generic template.",
+    },
+    {
+      color: C.mint,
+      icon: "M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2zm10-10V7a4 4 0 0 0-8 0v4h8z",
+      title: "Production-grade from day one",
+      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build — not add-ons. Security isn't a feature tier; it's a baseline.",
+    },
+    {
+      color: C.gold,
+      icon: "M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-5 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
+      title: "We stay after launch",
+      desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment — not an extra cost added after you've already committed.",
+    },
+    {
+      color: C.purple,
+      icon: "M3.055 11H5a2 2 0 0 1 2 2v1a2 2 0 0 0 2 2 2 2 0 0 1 2 2v2.945M8 3.935V5.5A2.5 2.5 0 0 0 10.5 8h.5a2 2 0 0 1 2 2 2 2 0 0 0 4 0 2 2 0 0 1 2-2h1.064M15 20.488V18a2 2 0 0 1 2-2h3.064",
+      title: "International delivery standard",
+      desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments — the standard international buyers expect, at a price that makes sense.",
+    },
+  ];
+
+  return (
+    <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: 52 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.mint, fontFamily: font, letterSpacing: "0.1em" }}>WHY ORION SOFT</span>
+            <h2 style={{
+              fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font,
+              color: C.heading, letterSpacing: "-0.025em",
+              margin: "10px 0 0", lineHeight: 1.12,
+            }}>Built different. Deployed properly.</h2>
+          </div>
+        </Reveal>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
+          {reasons.map((r, i) => (
+            <Reveal key={i} delay={i * 0.1}>
+              <article style={{
+                background: C.card, borderRadius: 16,
+                border: `1px solid ${C.border}`,
+                padding: "32px 28px",
+                transition: "all 0.3s", height: "100%",
+              }} onMouseEnter={e => {
+                e.currentTarget.style.borderColor = `${r.color}44`;
+                e.currentTarget.style.transform = "translateY(-3px)";
+              }} onMouseLeave={e => {
+                e.currentTarget.style.borderColor = C.border;
+                e.currentTarget.style.transform = "translateY(0)";
+              }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 14, marginBottom: 22,
+                  background: `${r.color}14`, border: `1px solid ${r.color}28`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={r.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d={r.icon}/>
+                  </svg>
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.01em", margin: "0 0 10px" }}>{r.title}</h3>
+                <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.72, margin: 0 }}>{r.desc}</p>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
+// HOME PAGE — SOCIAL PROOF
+// ═══════════════════════════════════════
+function SocialProof({ setCurrentPage }) {
+  const testimonials = [
+    {
+      quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.",
+      name: "Dr. A. Emmanuel",
+      title: "Medical Director",
+      initials: "AE",
+      color: C.accent,
+    },
+    {
+      quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.",
+      name: "Mrs. C. Adeyemi",
+      title: "Finance Manager, Regional Hospital",
+      initials: "CA",
+      color: C.mint,
+    },
+    {
+      quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.",
+      name: "Nurse H. Oladele",
+      title: "Head of Nursing",
+      initials: "HO",
+      color: C.purple,
+    },
+  ];
+
+
+  return (
+    <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.surface }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: 52 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>TRUSTED BY TEAMS</span>
+            <h2 style={{
+              fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font,
+              color: C.heading, letterSpacing: "-0.025em",
+              margin: "10px 0 0", lineHeight: 1.12,
+            }}>Trusted by the teams who use it every day.</h2>
+          </div>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 16, marginBottom: 24 }}>
+          {testimonials.map((t, i) => (
+            <Reveal key={i} delay={i * 0.08}>
+              <article style={{
+                background: C.card, borderRadius: 16,
+                border: `1px solid ${C.border}`,
+                padding: "28px",
+                display: "flex", flexDirection: "column", height: "100%",
+              }}>
+                <div style={{ display: "flex", gap: 3, marginBottom: 18 }}>
+                  {[...Array(5)].map((_, si) => (
+                    <svg key={si} width="14" height="14" viewBox="0 0 24 24" fill={C.amber} stroke="none" aria-hidden="true">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                  ))}
+                </div>
+                <p style={{
+                  fontSize: 14.5, color: C.text, fontFamily: font,
+                  lineHeight: 1.78, margin: "0 0 20px", flex: 1,
+                }}>"{t.quote}"</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                    background: `linear-gradient(135deg, ${t.color}33, ${t.color}18)`,
+                    border: `1px solid ${t.color}33`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: t.color, fontSize: 13, fontWeight: 900, fontFamily: font,
+                  }}>{t.initials}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.heading, fontFamily: font }}>{t.name}</div>
+                    <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 2 }}>{t.title}</div>
+                  </div>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={0.2}>
+          <div style={{
+            background: `linear-gradient(135deg, ${C.accent}12, ${C.mint}06)`,
+            border: `1px solid ${C.accent}28`,
+            borderRadius: 14,
+            padding: "26px clamp(18px, 3vw, 32px)",
+            display: "flex", gap: 24, flexWrap: "wrap",
+            alignItems: "center", justifyContent: "space-between",
+          }}>
+            <div style={{ flex: "1 1 320px" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: C.accent, fontFamily: font, letterSpacing: "0.1em", marginBottom: 10 }}>DEPLOYMENT SPOTLIGHT</div>
+              <h3 style={{ fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.01em", margin: "0 0 8px" }}>
+                25+ modules. 8 departments. Under 4 weeks.
+              </h3>
+              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 16px" }}>
+                A mid-size hospital replaced paper records and spreadsheets with CareCore — full go-live with all clinical, billing, and ward modules active.
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[["< 4 weeks", "Full deployment"], ["8", "Departments live"], ["40+", "Staff trained"]].map(([val, lbl]) => (
+                  <div key={lbl} style={{
+                    background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`,
+                    borderRadius: 8, padding: "8px 14px", whiteSpace: "nowrap",
+                  }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em" }}>{val}</div>
+                    <div style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{lbl}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button type="button" onClick={() => setCurrentPage("products")} style={{
+              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
+              color: C.bg, border: "none", borderRadius: 10,
+              padding: "13px 22px", fontSize: 14, fontWeight: 700,
+              fontFamily: font, cursor: "pointer", whiteSpace: "nowrap",
+              flexShrink: 0, transition: "all 0.25s",
+              letterSpacing: "0.01em",
+            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 10px 28px ${C.accentGlow}`; }}
+               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+              See Full Product →
+            </button>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
+// ADMIN — LOGIN
+// ═══════════════════════════════════════
+function AdminLogin({ onLogin }) {
+  const [pwd, setPwd] = useState("");
+  const [error, setError] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pwd === ADMIN_PASSWORD) {
+      try { sessionStorage.setItem(ADMIN_SESSION_KEY, "yes"); } catch {}
+      onLogin();
+    } else {
+      setError("Incorrect password.");
+      setPwd("");
+    }
+  };
+
+  const inp = {
+    width: "100%", boxSizing: "border-box", padding: "13px 16px",
+    borderRadius: 10, border: `1px solid ${C.border}`,
+    background: C.card, color: C.heading, fontSize: 15,
+    fontFamily: font, outline: "none",
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "24px" }}>
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
+        </div>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "36px 32px", boxShadow: "0 24px 70px rgba(0,0,0,0.28)" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>Product Manager</h1>
+          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font, margin: "0 0 28px" }}>Enter your admin password to continue.</p>
+          <form onSubmit={handleSubmit}>
+            <label style={{ fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font, display: "block", marginBottom: 6 }}>Password</label>
+            <div style={{ position: "relative", marginBottom: 20 }}>
+              <input
+                type={showPwd ? "text" : "password"}
+                style={{ ...inp, paddingRight: 50 }}
+                value={pwd}
+                onChange={e => { setPwd(e.target.value); setError(""); }}
+                placeholder="Admin password"
+                autoFocus
+              />
+              <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+                {showPwd
+                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
+            {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 16 }}>{error}</p>}
+            <button type="submit" style={{ width: "100%", padding: "14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>Sign In</button>
+          </form>
+        </div>
+        <p style={{ textAlign: "center", fontSize: 11.5, color: C.textMuted, fontFamily: font, marginTop: 16 }}>
+          Set VITE_ADMIN_PASSWORD in .env to change the password.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// ADMIN — PRODUCT FORM (SLIDE PANEL)
+// ═══════════════════════════════════════
+const EMPTY_PRODUCT = {
+  name: "", tag: "", status: "live", published: true, primary: false,
+  headline: "", desc: "", features: [""], pricing: [], screenshots: [],
+  ctaLabel: "", ctaAction: "contact", color: "#38BDF8",
+};
+
+function AdminProductForm({ product, onSave, onCancel }) {
+  const isEdit = Boolean(product?.id);
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_PRODUCT,
+    ...(product || {}),
+    features: product?.features?.length ? [...product.features] : [""],
+    pricing: product?.pricing?.length ? product.pricing.map(t => ({ ...t })) : [],
+    screenshots: product?.screenshots?.length ? product.screenshots.map(s => ({ ...s })) : [],
+  }));
+  const [tab, setTab] = useState("info");
+  const [errors, setErrors] = useState({});
+  const [ssUrl, setSsUrl] = useState("");
+  const [ssTitle, setSsTitle] = useState("");
+  const [ssDsc, setSsDsc] = useState("");
+  const [ssErr, setSsErr] = useState("");
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const validate = () => {
+    const e = {};
+    if (!form.name.trim()) e.name = "Required";
+    if (!form.headline.trim()) e.headline = "Required";
+    if (!form.desc.trim()) e.desc = "Required";
+    setErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  const handleSave = () => {
+    if (!validate()) { setTab("info"); return; }
+    onSave({ ...form, features: form.features.filter(f => f.trim()) });
+  };
+
+  const addFeature = () => set("features", [...form.features, ""]);
+  const setFeature = (i, v) => set("features", form.features.map((f, fi) => fi === i ? v : f));
+  const removeFeature = (i) => set("features", form.features.filter((_, fi) => fi !== i));
+  const moveFeature = (i, d) => {
+    const arr = [...form.features];
+    const j = i + d;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    set("features", arr);
+  };
+
+  const addPricing = () => set("pricing", [...form.pricing, { id: `pt-${Date.now()}`, name: "", beds: "", onboard: "", monthly: "", popular: false }]);
+  const setPricing = (i, k, v) => set("pricing", form.pricing.map((t, ti) => ti === i ? { ...t, [k]: v } : t));
+  const removePricing = (i) => set("pricing", form.pricing.filter((_, ti) => ti !== i));
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setSsErr("Max 2MB per image"); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => { setSsUrl(ev.target.result); setSsErr(""); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const addScreenshot = () => {
+    if (!ssUrl.trim()) { setSsErr("Paste a URL or upload a file"); return; }
+    set("screenshots", [...form.screenshots, { id: `ss-${Date.now()}`, url: ssUrl.trim(), title: ssTitle.trim(), desc: ssDsc.trim() }]);
+    setSsUrl(""); setSsTitle(""); setSsDsc(""); setSsErr("");
+  };
+  const removeScreenshot = (i) => set("screenshots", form.screenshots.filter((_, si) => si !== i));
+
+  const inp = {
+    width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 9,
+    border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.heading,
+    fontSize: 14, fontFamily: font, outline: "none",
+  };
+  const lbl = { fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 5, display: "block" };
+  const tabs = [
+    { id: "info", label: "Info" },
+    { id: "features", label: `Features (${form.features.filter(f => f.trim()).length})` },
+    { id: "screenshots", label: `Screenshots (${form.screenshots.length})` },
+    { id: "pricing", label: `Pricing (${form.pricing.length})` },
+  ];
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 9100, background: "rgba(4,12,24,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "stretch", justifyContent: "flex-end" }}
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div style={{ width: "min(640px, 100vw)", background: C.bg, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", animation: "slideInRight 0.24s ease", overflow: "hidden" }}>
+        <div style={{ padding: "18px 24px", borderBottom: `1px solid ${C.border}`, background: C.surface, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: 0 }}>{isEdit ? `Edit: ${product.name}` : "Add New Product"}</h2>
+            <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: "3px 0 0" }}>Changes apply immediately.</p>
+          </div>
+          <button type="button" onClick={onCancel} style={{ background: "rgba(255,255,255,0.07)", border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div style={{ display: "flex", padding: "0 24px", borderBottom: `1px solid ${C.border}`, background: C.surface, flexShrink: 0, overflowX: "auto" }}>
+          {tabs.map(t => (
+            <button key={t.id} type="button" onClick={() => setTab(t.id)} style={{ padding: "12px 14px", background: "none", border: "none", borderBottom: `2px solid ${tab === t.id ? C.accent : "transparent"}`, color: tab === t.id ? C.accent : C.textMuted, fontSize: 13, fontWeight: 700, fontFamily: font, cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s" }}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+          {tab === "info" && (
+            <div style={{ display: "grid", gap: 18 }}>
+              <div>
+                <label style={lbl}>Product name *</label>
+                <input style={{ ...inp, borderColor: errors.name ? C.rose : C.border }} value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. CareCore HMS" />
+                {errors.name && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.name}</p>}
+              </div>
+              <div>
+                <label style={lbl}>Tag label</label>
+                <input style={inp} value={form.tag} onChange={e => set("tag", e.target.value)} placeholder="e.g. FLAGSHIP PRODUCT, BETA, NEW" />
+              </div>
+              <div>
+                <label style={lbl}>Headline *</label>
+                <input style={{ ...inp, borderColor: errors.headline ? C.rose : C.border }} value={form.headline} onChange={e => set("headline", e.target.value)} placeholder="Short, powerful headline for the product card" />
+                {errors.headline && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.headline}</p>}
+              </div>
+              <div>
+                <label style={lbl}>Description *</label>
+                <textarea style={{ ...inp, resize: "vertical" }} rows={3} value={form.desc} onChange={e => set("desc", e.target.value)} placeholder="1–2 sentences about what this product does" />
+                {errors.desc && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.desc}</p>}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={lbl}>Status</label>
+                  <select style={{ ...inp, cursor: "pointer" }} value={form.status} onChange={e => set("status", e.target.value)}>
+                    <option value="live">Live</option>
+                    <option value="beta">Beta</option>
+                    <option value="coming-soon">Coming Soon</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>CTA links to</label>
+                  <select style={{ ...inp, cursor: "pointer" }} value={form.ctaAction} onChange={e => set("ctaAction", e.target.value)}>
+                    <option value="products">Products page</option>
+                    <option value="contact">Contact / Book Demo</option>
+                    <option value="services">Services page</option>
+                    <option value="work">Work / Portfolio</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>CTA button label</label>
+                <input style={inp} value={form.ctaLabel} onChange={e => set("ctaLabel", e.target.value)} placeholder="e.g. Explore CareCore, Join Waitlist, Start a Build" />
+              </div>
+              <div>
+                <label style={lbl}>Accent colour</label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {PRODUCT_COLORS.map(c => (
+                    <button key={c.value} type="button" onClick={() => set("color", c.value)} title={c.name} style={{ width: 34, height: 34, borderRadius: 9, background: c.value, border: "none", cursor: "pointer", boxShadow: form.color === c.value ? `0 0 0 3px ${C.bg}, 0 0 0 5px ${c.value}` : "none", transition: "box-shadow 0.18s" }} />
+                  ))}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input type="color" value={form.color} onChange={e => set("color", e.target.value)} style={{ width: 34, height: 34, border: "none", borderRadius: 9, cursor: "pointer", padding: 0, background: "none" }} />
+                    <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>Custom</span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <button type="button" onClick={() => set("published", !form.published)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: form.published ? C.mint : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
+                    <span style={{ position: "absolute", top: 3, left: form.published ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: C.white, transition: "left 0.2s" }} />
+                  </button>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text, fontFamily: font }}>{form.published ? "Published" : "Hidden"}</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                  <button type="button" onClick={() => set("primary", !form.primary)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: form.primary ? C.accent : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
+                    <span style={{ position: "absolute", top: 3, left: form.primary ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: C.white, transition: "left 0.2s" }} />
+                  </button>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text, fontFamily: font }}>Primary product</span>
+                </label>
+              </div>
+            </div>
+          )}
+          {tab === "features" && (
+            <div>
+              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Key selling points shown on the product card. Use arrows to reorder.</p>
+              <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+                {form.features.map((f, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <button type="button" onClick={() => moveFeature(i, -1)} disabled={i === 0} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, width: 22, height: 20, cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>▲</button>
+                      <button type="button" onClick={() => moveFeature(i, 1)} disabled={i === form.features.length - 1} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, width: 22, height: 20, cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>▼</button>
+                    </div>
+                    <input style={{ ...inp, flex: 1 }} value={f} onChange={e => setFeature(i, e.target.value)} placeholder={`Feature ${i + 1}`} />
+                    <button type="button" onClick={() => removeFeature(i)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 34, height: 34, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addFeature} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Feature</button>
+            </div>
+          )}
+          {tab === "screenshots" && (
+            <div>
+              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Screenshots for the product gallery. Paste a URL or upload an image (max 2MB each).</p>
+              {form.screenshots.length > 0 && (
+                <div style={{ display: "grid", gap: 10, marginBottom: 24 }}>
+                  {form.screenshots.map((s, i) => (
+                    <div key={s.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", display: "flex", gap: 12, alignItems: "center" }}>
+                      <div style={{ width: 80, height: 56, flexShrink: 0, background: C.surface, overflow: "hidden" }}>
+                        <img src={s.url} alt={s.title || ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Untitled"}</div>
+                        <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.desc || s.url}</div>
+                      </div>
+                      <button type="button" onClick={() => removeScreenshot(i)} style={{ marginRight: 12, background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 30, height: 30, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
+                <h3 style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 14px" }}>Add Screenshot</h3>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div>
+                    <label style={lbl}>Image URL or file upload</label>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input style={{ ...inp, flex: 1 }} value={ssUrl} onChange={e => { setSsUrl(e.target.value); setSsErr(""); }} placeholder="https://..." />
+                      <label style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: "0 14px", fontSize: 13, fontFamily: font, cursor: "pointer", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
+                        Upload <input type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
+                      </label>
+                    </div>
+                    {ssErr && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 4 }}>{ssErr}</p>}
+                  </div>
+                  <input style={inp} value={ssTitle} onChange={e => setSsTitle(e.target.value)} placeholder="Title (optional)" />
+                  <input style={inp} value={ssDsc} onChange={e => setSsDsc(e.target.value)} placeholder="Short description (optional)" />
+                  <button type="button" onClick={addScreenshot} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Screenshot</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {tab === "pricing" && (
+            <div>
+              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Add pricing tiers. Leave empty for custom / quote-based pricing.</p>
+              {form.pricing.map((tier, i) => (
+                <div key={tier.id || i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: C.heading, fontFamily: font, margin: 0 }}>Tier {i + 1}{tier.name ? `: ${tier.name}` : ""}</h3>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button type="button" onClick={() => setPricing(i, "popular", !tier.popular)} style={{ fontSize: 12, fontWeight: 700, fontFamily: font, cursor: "pointer", borderRadius: 6, padding: "5px 10px", background: tier.popular ? C.accentDim : "rgba(255,255,255,0.05)", border: `1px solid ${tier.popular ? C.accent + "44" : C.border}`, color: tier.popular ? C.accent : C.textMuted }}>
+                        {tier.popular ? "★ Most Popular" : "Mark Popular"}
+                      </button>
+                      <button type="button" onClick={() => removePricing(i)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div><label style={lbl}>Tier name</label><input style={inp} value={tier.name} onChange={e => setPricing(i, "name", e.target.value)} placeholder="e.g. Clinic" /></div>
+                    <div><label style={lbl}>Size / subtitle</label><input style={inp} value={tier.beds} onChange={e => setPricing(i, "beds", e.target.value)} placeholder="e.g. 1–10 beds" /></div>
+                    <div><label style={lbl}>Onboarding price</label><input style={inp} value={tier.onboard} onChange={e => setPricing(i, "onboard", e.target.value)} placeholder="₦350K – 500K" /></div>
+                    <div><label style={lbl}>Monthly support</label><input style={inp} value={tier.monthly} onChange={e => setPricing(i, "monthly", e.target.value)} placeholder="₦30,000" /></div>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addPricing} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Pricing Tier</button>
+              {!form.pricing.length && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 10 }}>No tiers set — visitors will see a "Contact Us" CTA.</p>}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.border}`, background: C.surface, display: "flex", gap: 10, flexShrink: 0 }}>
+          <button type="button" onClick={handleSave} style={{ flex: 1, padding: "13px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>{isEdit ? "Save Changes" : "Add Product"}</button>
+          <button type="button" onClick={onCancel} style={{ padding: "13px 20px", borderRadius: 10, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.text, fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// ADMIN — DASHBOARD
+// ═══════════════════════════════════════
+function AdminPanel({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
+  const [editing, setEditing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [toast, setToast] = useState("");
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2800); };
+
+  const handleSave = (data) => {
+    if (editing === "new") { addProduct(data); showToast("Product added"); }
+    else { updateProduct(editing.id, data); showToast("Changes saved"); }
+    setEditing(null);
+  };
+
+  const handleDelete = () => {
+    deleteProduct(confirmDelete.id);
+    setConfirmDelete(null);
+    showToast("Product deleted");
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(products, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `orionsoft-products-${Date.now()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error("not array");
+        importProducts(data);
+        showToast("Products imported");
+      } catch { showToast("Import failed — invalid file"); }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const STATUS = {
+    live: { label: "Live", color: C.mint, bg: C.mintDim },
+    beta: { label: "Beta", color: C.amber, bg: C.amberDim },
+    "coming-soon": { label: "Coming Soon", color: C.purple, bg: C.purpleDim },
+  };
+
+  const btnBase = {
+    background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`,
+    borderRadius: 8, color: C.text, padding: "7px 14px",
+    fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer",
+    display: "flex", alignItems: "center", gap: 6,
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 200, background: "rgba(10,37,64,0.96)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}`, padding: "0 clamp(16px, 3vw, 32px)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", height: 62, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button type="button" onClick={() => setCurrentPage("home")} style={{ ...btnBase, padding: "6px 12px" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back to site
+            </button>
+            <div style={{ width: 1, height: 18, background: C.border }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>Product Manager</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {toast && (
+              <div style={{ background: C.mintDim, border: `1px solid ${C.mint}33`, borderRadius: 8, color: C.mint, padding: "6px 12px", fontSize: 12.5, fontFamily: font, fontWeight: 700 }}>{toast}</div>
+            )}
+            <label style={{ ...btnBase, cursor: "pointer" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import
+              <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
+            </label>
+            <button type="button" style={btnBase} onClick={handleExport}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+            <button type="button" onClick={() => setEditing("new")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, border: "none", borderRadius: 8, color: C.bg, padding: "8px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
+              + Add Product
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px clamp(16px, 3vw, 32px)" }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 6px" }}>Products</h1>
+          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>{products.length} product{products.length !== 1 ? "s" : ""} · {products.filter(p => p.published).length} published · {products.filter(p => !p.published).length} hidden</p>
+        </div>
+
+        {products.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "80px 24px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 16 }}>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.accentDim, border: `1px solid ${C.accent}33`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 8 }}>No products yet</h2>
+            <p style={{ fontSize: 14.5, color: C.textMuted, fontFamily: font, marginBottom: 24 }}>Add your first product to get started.</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button type="button" onClick={() => setEditing("new")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, border: "none", borderRadius: 10, color: C.bg, padding: "12px 20px", fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Product</button>
+              <button type="button" onClick={resetToDefaults} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Restore Defaults</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {products.map((p) => {
+              const sc = STATUS[p.status] || STATUS.live;
+              return (
+                <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", transition: "border-color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = `${p.color || C.accent}33`}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+                >
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: p.color || C.accent, flexShrink: 0, boxShadow: `0 0 6px ${p.color || C.accent}66` }} />
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font }}>{p.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: sc.bg, color: sc.color }}>{sc.label}</span>
+                      {!p.published && <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", color: C.textMuted }}>Hidden</span>}
+                      {p.primary && <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: `${C.gold}18`, color: C.gold }}>Primary</span>}
+                    </div>
+                    <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, margin: 0, lineHeight: 1.4 }}>{(p.desc || "").slice(0, 88)}{(p.desc || "").length > 88 ? "…" : ""}</p>
+                    <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
+                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.features?.length || 0} features</span>
+                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.screenshots?.length || 0} screenshots</span>
+                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.pricing?.length || 0} pricing tiers</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 7, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => { updateProduct(p.id, { published: !p.published }); showToast(p.published ? "Product hidden" : "Product published"); }} style={{ background: p.published ? C.mintDim : "rgba(255,255,255,0.05)", border: `1px solid ${p.published ? C.mint + "33" : C.border}`, borderRadius: 8, color: p.published ? C.mint : C.textMuted, padding: "7px 12px", fontSize: 12.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
+                      {p.published ? "Published" : "Hidden"}
+                    </button>
+                    <button type="button" onClick={() => setEditing(p)} style={btnBase}>Edit</button>
+                    <button type="button" onClick={() => setConfirmDelete(p)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, padding: "7px 12px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Delete</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {products.length > 0 && (
+          <div style={{ marginTop: 40, padding: "18px 22px", border: `1px dashed ${C.border}`, borderRadius: 12, display: "flex", gap: 16, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 3px" }}>Reset to defaults</p>
+              <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: 0 }}>Restore the original CareCore HMS and Custom Software products. This overwrites all changes.</p>
+            </div>
+            <button type="button" onClick={() => { if (window.confirm("Reset all products to defaults? This cannot be undone.")) { resetToDefaults(); showToast("Reset to defaults"); } }} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 9, color: C.textMuted, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Reset</button>
+          </div>
+        )}
+      </div>
+
+      {confirmDelete && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(4,12,24,0.9)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={e => { if (e.target === e.currentTarget) setConfirmDelete(null); }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "32px 28px", maxWidth: 420, width: "100%", boxShadow: "0 24px 70px rgba(0,0,0,0.4)" }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: C.roseDim, border: `1px solid ${C.rose}28`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.rose} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 8px" }}>Delete "{confirmDelete.name}"?</h2>
+            <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 24px" }}>This permanently removes the product and cannot be undone.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button type="button" onClick={handleDelete} style={{ flex: 1, padding: "13px", borderRadius: 10, border: "none", background: C.rose, color: C.white, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>Delete</button>
+              <button type="button" onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: "13px", borderRadius: 10, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.text, fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <AdminProductForm
+          product={editing === "new" ? null : editing}
+          onSave={handleSave}
+          onCancel={() => setEditing(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// ADMIN — GATE (AUTH WRAPPER)
+// ═══════════════════════════════════════
+function AdminGate({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
+  const [authed, setAuthed] = useState(() => {
+    try { return sessionStorage.getItem(ADMIN_SESSION_KEY) === "yes"; }
+    catch { return false; }
+  });
+
+  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
+
+  return (
+    <AdminPanel
+      products={products}
+      addProduct={addProduct}
+      updateProduct={updateProduct}
+      deleteProduct={deleteProduct}
+      resetToDefaults={resetToDefaults}
+      importProducts={importProducts}
+      setCurrentPage={setCurrentPage}
+    />
+  );
+}
+
+// ═══════════════════════════════════════
+// PRODUCTS PAGE
+// ═══════════════════════════════════════
+function ProductsPage({ setCurrentPage, products }) {
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const careCoreProduct = (products || []).find(p => p.id === "carecore-hms");
+  const managedPricing = careCoreProduct?.pricing?.length ? careCoreProduct.pricing : null;
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh" }}>
+      <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.surface} 0%, ${C.bg} 100%)` }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <Reveal>
+            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>PRODUCTS</span>
+            <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
+              Software built for real operations.
+            </h1>
+            <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
+              CareCore HMS is live and serving healthcare facilities. More products are in development — all built to the same standard.
+            </p>
+          </Reveal>
+        </div>
+      </div>
+      <CareCoreSection />
+      <CareCoreDemoSection setCurrentPage={setCurrentPage} />
+      <Pricing setCurrentPage={setCurrentPage} tiers={managedPricing} />
+      <SystemsShowcase setCurrentPage={setCurrentPage} />
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// SERVICES PAGE
+// ═══════════════════════════════════════
+function ServicesPage({ setCurrentPage }) {
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  return (
+    <div style={{ background: C.light, minHeight: "100vh" }}>
+      <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.bg} 0%, ${C.surface} 100%)` }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <Reveal>
+            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.mint, fontFamily: font, letterSpacing: "0.1em" }}>SERVICES</span>
+            <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
+              What we can do for your organisation.
+            </h1>
+            <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
+              From full product builds to technical consulting — we have the expertise to solve real problems end-to-end.
+            </p>
+          </Reveal>
+        </div>
+      </div>
+      <Services setCurrentPage={setCurrentPage} />
+      <ProcessSection />
+      <About />
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// WORK PAGE
+// ═══════════════════════════════════════
+function WorkPage({ setCurrentPage }) {
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh" }}>
+      <div style={{ padding: "120px clamp(16px, 4vw, 32px) 60px", background: `linear-gradient(180deg, ${C.surface} 0%, ${C.bg} 100%)` }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <Reveal>
+            <button onClick={() => setCurrentPage("home")} style={{ background: "none", border: "none", color: C.accent, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 24, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>← Back</button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.1em" }}>WORK</span>
+            <h1 style={{ fontSize: "clamp(32px, 5vw, 56px)", fontWeight: 900, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "12px 0 16px", lineHeight: 1.05 }}>
+              CareCore in the wild.
+            </h1>
+            <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
+              Screenshots from the live CareCore HMS platform — real screens, real workflows, real data layouts built for healthcare teams.
+            </p>
+          </Reveal>
+        </div>
+      </div>
+
+      <section style={{ padding: "80px clamp(16px, 4vw, 32px)", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: 24 }}>
+            {CARECORE_MEDIA.map((item, i) => (
+              <Reveal key={i} delay={i * 0.08}>
+                <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${C.border}`, background: C.card }}>
+                  <img src={item.src} alt={item.title} loading="lazy" decoding="async" style={{ width: "100%", display: "block", aspectRatio: "16/9", objectFit: "cover" }} />
+                  <div style={{ padding: "20px 24px 24px" }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{item.title}</h3>
+                    <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{item.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <ExperiencePreview setCurrentPage={setCurrentPage} />
+      <TechImmersion setCurrentPage={setCurrentPage} />
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
 // APP
 // ═══════════════════════════════════════
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
+  const { products, addProduct, updateProduct, deleteProduct, resetToDefaults, persist } = useProducts();
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "A") { e.preventDefault(); setCurrentPage("admin"); }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  useEffect(() => {
+    if (currentPage === "admin") return;
+    try {
+      const key = "orionsoft_analytics_v1";
+      const existing = JSON.parse(localStorage.getItem(key) || "[]");
+      existing.push({ page: currentPage, ts: new Date().toISOString() });
+      if (existing.length > 5000) existing.splice(0, existing.length - 5000);
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch {}
+  }, [currentPage]);
 
   return (
     <div style={{ overflowX: "hidden", background: C.bg, minHeight: "100vh" }}>
@@ -3112,7 +4402,6 @@ export default function App() {
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
         body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
-        * { letter-spacing: 0 !important; }
         button, a, input, textarea, select { font: inherit; }
         select option { color: #0F172A; background: #FFFFFF; }
         button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
@@ -3159,6 +4448,9 @@ export default function App() {
           .career-layout { grid-template-columns: 1fr !important; }
           .career-notes { grid-template-columns: 1fr !important; }
           .chat-label { display: none !important; }
+          .stats-bar { justify-content: center !important; gap: 0 !important; }
+          .stats-bar > div { padding: 10px 0 !important; }
+          .product-highlights-grid { grid-template-columns: 1fr !important; }
         }
         @media (min-width: 769px) {
           .nav-burger { display: none !important; }
@@ -3171,38 +4463,44 @@ export default function App() {
           .live-chat { right: 16px !important; bottom: 16px !important; }
           .carecore-gallery { grid-template-columns: 1fr !important; }
           .carecore-device { border-radius: 16px !important; }
+          .stats-bar > div { padding: 8px 0 !important; }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
 
-      <a className="skip-link" href="#main-content">Skip to main content</a>
-      <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      {currentPage !== "admin" && <a className="skip-link" href="#main-content">Skip to main content</a>}
+      {currentPage !== "admin" && <Nav currentPage={currentPage} setCurrentPage={setCurrentPage} />}
 
       <main id="main-content" tabIndex={-1}>
         {currentPage === "home" && (
           <>
             <Hero setCurrentPage={setCurrentPage} />
-            <ExperiencePreview setCurrentPage={setCurrentPage} />
-            <Products setCurrentPage={setCurrentPage} />
-            <CareCoreDemoSection setCurrentPage={setCurrentPage} />
-            <SystemsShowcase setCurrentPage={setCurrentPage} />
-            <EngineeringStandards />
-            <TrustSecurity />
-            <TechImmersion setCurrentPage={setCurrentPage} />
-            <Services setCurrentPage={setCurrentPage} />
-            <CareCoreSection />
-            <Pricing setCurrentPage={setCurrentPage} />
-            <About />
+            <StatsBar />
+            <ProductHighlights setCurrentPage={setCurrentPage} products={products} />
+            <WhyUs />
+            <SocialProof setCurrentPage={setCurrentPage} />
             <FAQSection setCurrentPage={setCurrentPage} />
             <CTABanner setCurrentPage={setCurrentPage} />
           </>
         )}
 
-        {currentPage === "onboarding" && (
-          <OnboardingPage setCurrentPage={setCurrentPage} />
+        {currentPage === "products" && (
+          <ProductsPage setCurrentPage={setCurrentPage} products={products} />
         )}
 
-        {currentPage === "feedback" && (
-          <FeedbackPage setCurrentPage={setCurrentPage} />
+        {currentPage === "services" && (
+          <ServicesPage setCurrentPage={setCurrentPage} />
+        )}
+
+        {currentPage === "work" && (
+          <WorkPage setCurrentPage={setCurrentPage} />
+        )}
+
+        {currentPage === "contact" && (
+          <ContactPage setCurrentPage={setCurrentPage} />
         )}
 
         {currentPage === "careers" && (
@@ -3216,10 +4514,12 @@ export default function App() {
         {currentPage === "terms" && (
           <LegalPage type="terms" setCurrentPage={setCurrentPage} />
         )}
+
+        {currentPage === "admin" && <AdminDashboard />}
       </main>
 
-      <Footer setCurrentPage={setCurrentPage} />
-      {HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={setCurrentPage} />}
+      {currentPage !== "admin" && <Footer setCurrentPage={setCurrentPage} />}
+      {currentPage !== "admin" && (HAS_TAWK_LIVE_CHAT ? <TawkLiveChat /> : <LiveChatFloat setCurrentPage={setCurrentPage} />)}
     </div>
   );
 }
