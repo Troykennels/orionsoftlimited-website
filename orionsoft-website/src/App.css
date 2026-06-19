@@ -4,11 +4,11 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
 button, a, input, textarea, select { font: inherit; }
 select option { color: #0F172A; background: #FFFFFF; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
-  outline: 3px solid #38BDF8;
+  outline: 3px solid #C8A850;
   outline-offset: 3px;
 }
-::selection { background: rgba(56,189,248,0.2); color: #FFFFFF; }
-input:focus, textarea:focus, select:focus { border-color: #38BDF8 !important; box-shadow: 0 0 0 3px rgba(56,189,248,0.14); }
+::selection { background: rgba(200,168,80,0.22); color: #FFFFFF; }
+input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; box-shadow: 0 0 0 3px rgba(79,142,247,0.14); }
 .skip-link {
   position: fixed;
   top: 12px;
@@ -63,6 +63,13 @@ input:focus, textarea:focus, select:focus { border-color: #38BDF8 !important; bo
   .carecore-gallery { grid-template-columns: 1fr !important; }
   .carecore-device { border-radius: 16px !important; }
   .stats-bar > div { padding: 8px 0 !important; }
+}
+@media (max-width: 768px) {
+  .diff-grid { grid-template-columns: 1fr !important; }
+  .diff-grid > div:last-child { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 640px) {
+  .stats-row-inner { grid-template-columns: repeat(2, 1fr) !important; }
 }
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }

@@ -15,35 +15,59 @@ const TechStackPage   = lazy(() => import("./pages/CredibilityPages").then(m => 
 // DESIGN SYSTEM
 // ═══════════════════════════════════════
 const C = {
-  bg: "#0A2540",
-  surface: "#102A43",
-  card: "#132F4C",
-  cardHover: "#173B60",
-  border: "rgba(255,255,255,0.09)",
-  borderHover: "rgba(45,212,191,0.25)",
-  white: "#FFFFFF",
-  text: "#D7E3EF",
-  textMuted: "#8DA2B8",
-  heading: "#F8FBFF",
-  accent: "#38BDF8",
-  accentDim: "rgba(56,189,248,0.14)",
-  accentGlow: "rgba(56,189,248,0.24)",
-  mint: "#2DD4BF",
-  mintDim: "rgba(45,212,191,0.13)",
-  purple: "#C4B5FD",
-  purpleDim: "rgba(196,181,253,0.12)",
-  amber: "#FCD34D",
-  amberDim: "rgba(252,211,77,0.12)",
-  gold: "#D6B56D",
-  rose: "#FDA4AF",
-  roseDim: "rgba(253,164,175,0.12)",
-  success: "#2DD4BF",
-  light: "#F8FAFC",
-  lightCard: "#FFFFFF",
-  lightBorder: "#E2E8F0",
-  lightText: "#334155",
+  // Backgrounds — near-black, dark luxury
+  bg:         "#060810",
+  surface:    "#0B1120",
+  card:       "#0F1828",
+  cardHover:  "#141E30",
+
+  // Borders
+  border:     "rgba(255,255,255,0.07)",
+  borderHover:"rgba(200,168,80,0.35)",
+
+  // Text
+  white:      "#FFFFFF",
+  heading:    "#F2F6FF",
+  text:       "#C8D0E0",
+  textMuted:  "#6B7A96",
+
+  // Gold — primary brand accent (replace sky blue as dominant color)
+  gold:       "#C8A850",
+  goldLight:  "#E8C96A",
+  goldDim:    "rgba(200,168,80,0.12)",
+  goldGlow:   "rgba(200,168,80,0.22)",
+
+  // Blue — for interactive/CTA elements
+  blue:       "#4F8EF7",
+  blueDim:    "rgba(79,142,247,0.12)",
+  blueGlow:   "rgba(79,142,247,0.22)",
+
+  // Product colors
+  mint:       "#10B981",
+  mintDim:    "rgba(16,185,129,0.12)",
+  purple:     "#8B5CF6",
+  purpleDim:  "rgba(139,92,246,0.12)",
+  amber:      "#F59E0B",
+  amberDim:   "rgba(245,158,11,0.12)",
+  rose:       "#F43F5E",
+  roseDim:    "rgba(244,63,94,0.12)",
+
+  // Aliases (keep these for compatibility with existing non-homepage components)
+  accent:     "#4F8EF7",
+  accentDim:  "rgba(79,142,247,0.12)",
+  accentGlow: "rgba(79,142,247,0.22)",
+
+  // Light sections
+  light:      "#F8FAFC",
+  lightCard:  "#FFFFFF",
+  lightBorder:"#E2E8F0",
+  lightText:  "#334155",
   lightMuted: "#94A3B8",
-  lightHeading: "#0F172A",
+  lightHeading:"#0F172A",
+
+  // Status
+  success:    "#10B981",
+  danger:     "#F43F5E",
 };
 
 const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
@@ -55,7 +79,7 @@ const BUILT_IN_FORM_ENDPOINT = "/api/forms";
 const TAWK_PROPERTY_ID = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
 const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || "";
 const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
-const HERO_WORDS = ["Hospitals", "Clinics", "Operations", "Teams"];
+const HERO_WORDS = ["Healthcare", "Businesses", "Operations", "Teams"];
 const CARECORE_ASSETS = {
   demo: "/assets/carecore/demo.mp4",
   dashboard: "/assets/carecore/dashboard-overview.png",
@@ -591,7 +615,7 @@ function Nav({ currentPage, setCurrentPage }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40);
+    const h = () => setScrolled(window.scrollY > 48);
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
   }, []);
@@ -606,7 +630,7 @@ function Nav({ currentPage, setCurrentPage }) {
   const links = ((cms?.menus?.main) || DEFAULT_MAIN_MENU)
     .filter(l => l.active !== false)
     .sort((a, b) => (a.order || 0) - (b.order || 0))
-    .map(l => ({ label: l.label, page: l.page }));
+    .map(l => ({ label: l.label, page: l.page, anchor: l.anchor }));
 
   const navigate = (link, event) => {
     if (link.page !== currentPage || !link.anchor) event.preventDefault();
@@ -624,87 +648,83 @@ function Nav({ currentPage, setCurrentPage }) {
   return (
     <nav aria-label="Main navigation" style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-      background: scrolled ? "rgba(10,37,64,0.92)" : "transparent",
-      backdropFilter: scrolled ? "blur(24px) saturate(1.2)" : "none",
-      borderBottom: scrolled ? `1px solid ${C.border}` : "none",
-      transition: "all 0.35s ease", padding: "0 clamp(16px, 4vw, 32px)",
+      background: scrolled ? "rgba(6,8,16,0.88)" : "transparent",
+      backdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
+      borderBottom: scrolled ? `1px solid rgba(255,255,255,0.06)` : "none",
+      transition: "all 0.4s ease",
     }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", height: 68 }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 clamp(20px, 4vw, 40px)", display: "flex", justifyContent: "space-between", alignItems: "center", height: 70 }}>
+        {/* Logo */}
         <button type="button" onClick={() => { setCurrentPage("home"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-          style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", background: "none", border: "none", padding: 0 }}>
-          <OrionLogo size={32} gradientId="nav-orion-logo" />
-          <span style={{ fontSize: 19, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.03em" }}>
+          style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+          <OrionLogo size={30} gradientId="nav-logo" />
+          <span style={{ fontSize: 18, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.02em" }}>
             Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
         </button>
 
-        <div className="nav-links" style={{ display: "flex", gap: 28, alignItems: "center" }}>
+        {/* Desktop links */}
+        <div className="nav-links" style={{ display: "flex", gap: 32, alignItems: "center" }}>
           {links.map(l => {
-            const isActive = currentPage === l.page;
+            const active = currentPage === l.page;
             return (
-              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} aria-current={isActive ? "page" : undefined} style={{
-                color: isActive ? C.white : C.textMuted,
-                textDecoration: "none", fontSize: 13.5,
-                fontWeight: isActive ? 600 : 500,
-                fontFamily: font, transition: "color 0.2s",
-                letterSpacing: "0.01em",
-                position: "relative",
-              }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = C.accent; }}
-                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = C.textMuted; }}>
+              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)}
+                aria-current={active ? "page" : undefined}
+                style={{
+                  color: active ? C.white : C.textMuted, textDecoration: "none",
+                  fontSize: 14, fontWeight: active ? 600 : 400, fontFamily: font,
+                  transition: "color 0.2s", letterSpacing: "0.01em", position: "relative",
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.color = C.white; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.color = C.textMuted; }}>
                 {l.label}
-                {isActive && <span style={{ position: "absolute", bottom: -4, left: 0, right: 0, height: 2, borderRadius: 1, background: `linear-gradient(90deg, ${C.accent}, ${C.mint})` }} />}
+                {active && <span style={{ position: "absolute", bottom: -6, left: 0, right: 0, height: 1.5, background: C.gold, borderRadius: 1 }} />}
               </a>
             );
           })}
           <button type="button" onClick={() => setCurrentPage("contact")} style={{
-            background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-            color: C.bg, padding: "9px 22px", borderRadius: 8, border: "none",
-            fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer",
-            transition: "all 0.25s", boxShadow: `0 4px 16px ${C.accentGlow}`,
-            letterSpacing: "0.01em",
-          }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 8px 24px ${C.accentGlow}`; }}
-             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 4px 16px ${C.accentGlow}`; }}>
-            Get Started
+            background: "transparent", border: `1px solid rgba(200,168,80,0.4)`,
+            color: C.gold, padding: "9px 20px", borderRadius: 8,
+            fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer",
+            transition: "all 0.25s", letterSpacing: "0.01em",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.goldDim; e.currentTarget.style.borderColor = C.gold; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(200,168,80,0.4)"; }}>
+            Get in touch
           </button>
         </div>
 
-        <button
-          className="nav-burger"
-          type="button"
+        {/* Burger */}
+        <button className="nav-burger" type="button"
           aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
-          style={{
-          display: "none", background: "none", border: "none", cursor: "pointer", padding: 8, zIndex: 10,
-        }}>
-          {[0, 1, 2].map(i => (
+          style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 8 }}>
+          {[0,1,2].map(i => (
             <div key={i} style={{
-              width: 22, height: 2, background: C.white, marginBottom: i < 2 ? 5 : 0,
+              width: 22, height: 1.5, background: C.white, marginBottom: i < 2 ? 6 : 0,
               transition: "all 0.3s",
-              transform: menuOpen ? (i === 0 ? "rotate(45deg) translate(4px, 4px)" : i === 1 ? "scaleX(0)" : "rotate(-45deg) translate(5px, -5px)") : "none",
-              opacity: menuOpen && i === 1 ? 0 : 1,
+              transform: menuOpen ? (i===0 ? "rotate(45deg) translate(5px,5px)" : i===1 ? "scaleX(0)" : "rotate(-45deg) translate(5px,-5px)") : "none",
+              opacity: menuOpen && i===1 ? 0 : 1,
             }} />
           ))}
         </button>
       </div>
 
+      {/* Mobile menu */}
       {menuOpen && (
-        <div className="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu" style={{
-          position: "absolute", top: 68, left: 0, right: 0,
-          background: "rgba(10,37,64,0.98)", backdropFilter: "blur(24px)",
-          padding: "16px 24px 24px", borderBottom: `1px solid ${C.border}`,
-        }}>
+        <div className="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu"
+          style={{ background: "rgba(6,8,16,0.98)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}`, padding: "16px 24px 28px" }}>
           {links.map(l => (
-            <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)} style={{
-              display: "block", color: C.text, textDecoration: "none", fontSize: 15,
-              fontFamily: font, padding: "12px 0", borderBottom: `1px solid ${C.border}`,
-            }}>{l.label}</a>
+            <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)}
+              style={{ display: "block", color: C.text, textDecoration: "none", fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+              {l.label}
+            </a>
           ))}
-          <button type="button" onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }} style={{
-            width: "100%", marginTop: 16, background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-            color: C.bg, padding: "14px", borderRadius: 10, border: "none",
-            fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-          }}>Get Started</button>
+          <button type="button" onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }}
+            style={{ width: "100%", marginTop: 20, background: C.gold, color: "#060810", padding: "14px", borderRadius: 10, border: "none", fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
+            Get in touch
+          </button>
         </div>
       )}
     </nav>
@@ -715,192 +735,94 @@ function Nav({ currentPage, setCurrentPage }) {
 // HERO
 // ═══════════════════════════════════════
 function Hero({ setCurrentPage }) {
-  const [wordIdx, setWordIdx] = useState(0);
-  const dataSaver = useDataSaver();
   const cms = useContext(CMSContext);
-  const heroData   = cms?.homepage?.hero || {};
-  const heroWords  = (heroData.words && heroData.words.length > 0) ? heroData.words : HERO_WORDS;
-  const heroBadge  = heroData.badge || "LIVE HMS · CUSTOM SOFTWARE · GLOBAL DELIVERY";
-  const heroSub    = heroData.subheadline || "CareCore HMS is live in Nigerian hospitals — 25+ modules, real-time data, zero paper. We apply the same engineering standard to every custom system we ship.";
-  const heroCTAP   = heroData.ctaPrimary   || "Book a Free Demo →";
-  const heroCTAS   = heroData.ctaSecondary || "See CareCore";
-  const heroTrust  = (heroData.trustItems && heroData.trustItems.length > 0) ? heroData.trustItems : ["Free consultation", "No commitment", "24h response"];
-  useEffect(() => {
-    if (dataSaver) return;
-    const t = setInterval(() => setWordIdx(i => (i + 1) % heroWords.length), 2800);
-    return () => clearInterval(t);
-  }, [dataSaver, heroWords.length]);
+  const heroData = cms?.homepage?.hero || {};
+  const heroBadge = heroData.badge || "SOFTWARE COMPANY · NIGERIA & GLOBAL";
+  const heroSub = heroData.subheadline || "We design, build, and deploy production-grade software for healthcare providers, enterprises, and ambitious businesses — from Nigeria to the world.";
+  const heroCTAP = heroData.ctaPrimary || "See what we build →";
+  const heroCTAS = heroData.ctaSecondary || "Talk to us";
 
   return (
     <section style={{
-      minHeight: "100vh", display: "flex", alignItems: "center",
-      background: `linear-gradient(135deg, ${C.bg} 0%, ${C.surface} 48%, #17365A 78%, #102A2E 100%)`,
-      position: "relative", overflow: "hidden",
-      padding: "100px clamp(16px, 4vw, 32px) 80px",
+      minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      background: C.bg, position: "relative", overflow: "hidden",
+      padding: "140px clamp(20px, 5vw, 60px) 100px", textAlign: "center",
     }}>
-      {/* Mesh gradients */}
-      <div style={{ position: "absolute", inset: 0, opacity: 0.72,
-        background: `radial-gradient(ellipse 680px 520px at 22% 24%, rgba(56,189,248,0.14), transparent),
-                     radial-gradient(ellipse 520px 420px at 78% 68%, rgba(45,212,191,0.10), transparent),
-                     radial-gradient(ellipse 760px 560px at 52% 52%, rgba(214,181,109,0.08), transparent)` }} />
-      {/* Grid */}
-      <div style={{ position: "absolute", inset: 0, opacity: 0.025,
-        backgroundImage: `linear-gradient(${C.accent} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`,
-        backgroundSize: "64px 64px" }} />
+      {/* Background grain + glow */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)", width: 800, height: 800, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(200,168,80,0.07) 0%, transparent 70%)", filter: "blur(40px)" }} />
+        <div style={{ position: "absolute", top: "30%", left: "20%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(79,142,247,0.05) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        <div style={{ position: "absolute", top: "20%", right: "15%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(139,92,246,0.04) 0%, transparent 70%)", filter: "blur(60px)" }} />
+        {/* Grid overlay */}
+        <div style={{ position: "absolute", inset: 0, opacity: 0.03, backgroundImage: `linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)`, backgroundSize: "72px 72px" }} />
+      </div>
 
-      <div style={{ maxWidth: 1280, margin: "0 auto", width: "100%", position: "relative", zIndex: 1 }}>
-        <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.95fr) minmax(340px, 0.75fr)", gap: "clamp(28px, 5vw, 70px)", alignItems: "center" }}>
-        <div style={{ maxWidth: 760 }}>
-          <Reveal>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: C.accentDim, border: `1px solid rgba(0,200,255,0.15)`,
-              borderRadius: 100, padding: "7px 18px", marginBottom: 28,
-            }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
-              <span style={{ fontSize: 12.5, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>
-                {heroBadge}
-              </span>
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.08}>
-            <h1 style={{
-              fontSize: "clamp(38px, 6.5vw, 74px)", fontWeight: 800, lineHeight: 1.04,
-              fontFamily: font, color: C.heading, letterSpacing: "-0.035em", margin: "0 0 20px",
-            }}>
-              We Build Software<br />
-              That Powers{" "}
-              <span key={wordIdx} aria-live="polite" aria-atomic="true" style={{
-                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                display: "inline-block", transition: "opacity 0.3s",
-              }}>{heroWords[wordIdx] ?? heroWords[0]}</span>
-            </h1>
-          </Reveal>
-
-          <Reveal delay={0.16}>
-            <p style={{
-              fontSize: "clamp(16px, 1.8vw, 19px)", color: C.text, lineHeight: 1.75,
-              fontFamily: font, maxWidth: 540, margin: "0 0 40px", fontWeight: 400,
-            }}>
-              {heroSub}
-            </p>
-          </Reveal>
-
-          {dataSaver && (
-            <Reveal delay={0.2}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-                border: `1px solid ${C.mint}33`, background: `${C.mint}10`,
-                color: C.text, borderRadius: 10, padding: "10px 14px", marginBottom: 22,
-                fontFamily: font, fontSize: 13.5,
-              }}>
-                <strong style={{ color: C.mint }}>Low-data mode:</strong>
-                Animations are reduced and contact links remain available.
-              </div>
-            </Reveal>
-          )}
-
-          <Reveal delay={0.24}>
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setCurrentPage("contact")} style={{
-                background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-                color: C.bg, padding: "15px 32px", borderRadius: 11, border: "none",
-                fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-                boxShadow: `0 8px 30px ${C.accentGlow}`, transition: "all 0.3s",
-                letterSpacing: "0.01em",
-              }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
-                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 30px ${C.accentGlow}`; }}>
-                {heroCTAP}
-              </button>
-              <button type="button" onClick={() => setCurrentPage("products")} style={{
-                border: `1px solid rgba(0,200,255,0.25)`, color: C.accent,
-                padding: "15px 32px", borderRadius: 11,
-                fontSize: 15, fontWeight: 600, fontFamily: font, cursor: "pointer",
-                background: "rgba(0,200,255,0.04)", transition: "all 0.3s",
-              }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,200,255,0.1)"; }}
-                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,200,255,0.04)"; }}>
-                {heroCTAS}
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 16 }}>
-              {heroTrust.map((item) => (
-                <span key={item} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: C.textMuted, fontFamily: font }}>
-                  <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke={C.mint} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="2 6 5 9 10 3"/></svg>
-                  {item}
-                </span>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-
-        <Reveal delay={0.18}>
-          <div style={{
-            position: "relative",
-            minHeight: 520,
-            borderRadius: 22,
-            overflow: "hidden",
-            border: `1px solid ${C.border}`,
-            background: C.card,
-            boxShadow: "0 28px 90px rgba(0,0,0,0.28)",
-          }}>
-            <img
-              src="/assets/carecore-doctor-workstation.jpeg"
-              alt="Doctor using digital healthcare software on a laptop"
-              loading="eager"
-              decoding="async"
-              fetchpriority="high"
-              style={{ width: "100%", height: "100%", minHeight: 520, objectFit: "cover", display: "block" }}
-            />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(10,37,64,0.04), rgba(10,37,64,0.92))" }} />
-            <div style={{ position: "absolute", inset: 0, opacity: 0.18, backgroundImage: `linear-gradient(${C.mint} 1px, transparent 1px), linear-gradient(90deg, ${C.accent} 1px, transparent 1px)`, backgroundSize: "34px 34px" }} />
-            <div style={{
-              position: "absolute", left: 18, right: 18, bottom: 18,
-              display: "grid", gap: 12,
-            }}>
-              <div style={{
-                background: "rgba(7,8,9,0.72)", backdropFilter: "blur(18px)",
-                border: `1px solid rgba(214,181,109,0.38)`,
-                borderRadius: 16, padding: 18,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 14 }}>
-                  <span style={{ color: "#D6B56D", fontFamily: font, fontSize: 12, fontWeight: 900 }}>CARECORE LIVE VIEW</span>
-                  <span style={{ color: C.mint, fontFamily: font, fontSize: 12, fontWeight: 800 }}>Online</span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                  {[
-                    ["118", "API routes"],
-                    ["25+", "Modules"],
-                    ["2FA", "Access"],
-                  ].map(([value, label]) => (
-                    <div key={label} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, background: "rgba(255,255,255,0.055)" }}>
-                      <div style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 900 }}>{value}</div>
-                      <div style={{ color: C.textMuted, fontFamily: font, fontSize: 11.5 }}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 32 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.gold, boxShadow: `0 0 10px ${C.gold}` }} />
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.14em" }}>
+              {heroBadge}
+            </span>
           </div>
         </Reveal>
-        </div>
 
-        {/* Trust indicators */}
-        <Reveal delay={0.35}>
-          <div style={{
-            display: "flex", gap: "clamp(32px, 5vw, 64px)", marginTop: 72, flexWrap: "wrap",
-            borderTop: `1px solid ${C.border}`, paddingTop: 32,
+        <Reveal delay={0.06}>
+          <h1 style={{
+            fontSize: "clamp(44px, 7vw, 88px)", fontWeight: 800, lineHeight: 1.04,
+            fontFamily: font, color: C.heading, letterSpacing: "-0.04em", margin: "0 0 28px",
           }}>
+            Software that powers<br />
+            <span style={{ color: C.gold }}>real businesses.</span>
+          </h1>
+        </Reveal>
+
+        <Reveal delay={0.12}>
+          <p style={{
+            fontSize: "clamp(17px, 2vw, 21px)", color: C.text, lineHeight: 1.72,
+            fontFamily: font, maxWidth: 640, margin: "0 auto 48px", fontWeight: 400,
+          }}>
+            {heroSub}
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.18}>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+            <button type="button" onClick={() => setCurrentPage("products")} style={{
+              background: C.gold, color: "#060810",
+              padding: "15px 32px", borderRadius: 10, border: "none",
+              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+              transition: "all 0.25s", letterSpacing: "0.01em",
+              boxShadow: `0 8px 32px ${C.goldGlow}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.goldGlow}`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 32px ${C.goldGlow}`; }}>
+              {heroCTAP}
+            </button>
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{
+              background: "transparent", border: `1px solid ${C.border}`, color: C.text,
+              padding: "15px 32px", borderRadius: 10,
+              fontSize: 15, fontWeight: 500, fontFamily: font, cursor: "pointer",
+              transition: "all 0.25s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.white; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}>
+              {heroCTAS}
+            </button>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.26}>
+          <div style={{ display: "flex", gap: 32, justifyContent: "center", flexWrap: "wrap", marginTop: 64, paddingTop: 48, borderTop: `1px solid ${C.border}` }}>
             {[
-              { val: "25+", label: "Integrated Modules" },
-              { val: "118", label: "API Endpoints" },
-              { val: "5", label: "Clinical Categories" },
-              { val: "2FA", label: "Access Control" },
+              { val: "25+", label: "Clinical modules" },
+              { val: "118", label: "API endpoints" },
+              { val: "99.5%", label: "Uptime SLA" },
+              { val: "3+", label: "Active deployments" },
             ].map((s, i) => (
-              <div key={i}>
-                <div style={{ fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em" }}>{s.val}</div>
-                <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, fontWeight: 500, letterSpacing: "0.04em", marginTop: 2 }}>{s.label}</div>
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.val}</div>
+                <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 6, letterSpacing: "0.04em", fontWeight: 500 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -4003,7 +3925,7 @@ function WhyUs() {
 // ═══════════════════════════════════════
 // HOME PAGE — SOCIAL PROOF
 // ═══════════════════════════════════════
-const TESTI_COLORS = [C.accent, C.mint, C.purple, C.amber, C.rose];
+const TESTI_COLORS = [C.blue, C.gold, C.mint];
 function mkInitials(name) { return (name || "").split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase() || "?"; }
 
 function SocialProof({ setCurrentPage }) {
@@ -4993,6 +4915,322 @@ function WorkPage({ setCurrentPage, portfolio }) {
 }
 
 // ═══════════════════════════════════════
+// HOMEPAGE — REDESIGNED COMPONENTS
+// ═══════════════════════════════════════
+function ClientStrip({ portfolio = [] }) {
+  const cms = useContext(CMSContext);
+  const rc = cms?.settings?.rc || COMPANY_RC;
+
+  const cmsClients = (cms?.clients || []).filter(c => c.published !== false && c.name).map(c => c.name);
+  const portfolioClients = portfolio.filter(p => p.published && p.clientName).map(p => p.clientName);
+  const names = (cmsClients.length > 0 ? cmsClients : portfolioClients)
+    .filter((n, i, a) => a.indexOf(n) === i).slice(0, 6);
+
+  return (
+    <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "20px clamp(20px, 4vw, 40px)" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: "clamp(24px, 4vw, 48px)", justifyContent: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, fontFamily: font, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>TRUSTED BY</span>
+        {names.length > 0
+          ? names.map(n => (
+              <span key={n} style={{ fontSize: 13.5, fontWeight: 600, color: C.text, fontFamily: font, opacity: 0.7 }}>{n}</span>
+            ))
+          : (
+            <span style={{ fontSize: 13.5, color: C.text, fontFamily: font, opacity: 0.6 }}>Healthcare facilities and businesses across Nigeria</span>
+          )}
+        <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginLeft: "auto" }}>RC {rc} · NDPR Compliant</span>
+      </div>
+    </div>
+  );
+}
+
+function ProductShowcase({ setCurrentPage, products }) {
+  const cms = useContext(CMSContext);
+  const stored = (cms?.products && Array.isArray(cms.products) && cms.products.length > 0)
+    ? cms.products.filter(p => p.published !== false)
+    : null;
+
+  const cards = [
+    {
+      tag: "HMS PLATFORM",
+      name: "CareCore",
+      headline: "Hospital management, reimagined.",
+      desc: "A complete operating system for Nigerian hospitals and clinics — patient records, clinical workflows, billing, pharmacy, lab, ward management, and real-time analytics. 25+ modules. Production-ready.",
+      color: C.blue,
+      colorDim: C.blueDim,
+      action: "products",
+      icon: "M22 12h-4l-3 9L9 3l-3 9H2",
+      features: ["Electronic Health Records", "Clinical Decision Support", "Pharmacy & Lab Management", "Real-time Analytics"],
+      cta: "Explore CareCore",
+    },
+    {
+      tag: "BESPOKE BUILDS",
+      name: "Custom Software",
+      headline: "Built around how you actually work.",
+      desc: "We design and ship custom web applications, dashboards, APIs, business portals, and automation systems — precisely shaped to your workflows, not adapted from a generic template.",
+      color: C.gold,
+      colorDim: C.goldDim,
+      action: "services",
+      icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+      features: ["Web Applications & Portals", "API Development & Integration", "Business Process Automation", "Dashboards & Reporting"],
+      cta: "Start a project",
+    },
+    {
+      tag: "COMING 2026",
+      name: "What's Next",
+      headline: "More products in the pipeline.",
+      desc: "Inventory management, school administration software, logistics and fleet systems, point of sale — all built to the same engineering standard as CareCore.",
+      color: C.purple,
+      colorDim: C.purpleDim,
+      action: "contact",
+      icon: "M12 5v14M5 12l7 7 7-7",
+      features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale"],
+      cta: "Join the waitlist",
+    },
+  ];
+
+  return (
+    <section id="products" style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>WHAT WE BUILD</span>
+            <h2 style={{ fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 18px", lineHeight: 1.1 }}>
+              Software for every scale.
+            </h2>
+            <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 560, margin: "0 auto" }}>
+              Whether you need a flagship healthcare platform or a bespoke business tool, we ship to the same production standard.
+            </p>
+          </div>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
+          {cards.map((card, i) => (
+            <Reveal key={i} delay={i * 0.08}>
+              <article style={{
+                background: `linear-gradient(160deg, ${card.colorDim} 0%, rgba(15,24,40,0) 40%)`,
+                border: `1px solid ${C.border}`,
+                borderTop: `2px solid ${card.color}`,
+                borderRadius: 16, padding: "36px 32px",
+                display: "flex", flexDirection: "column", height: "100%",
+                transition: "all 0.3s ease",
+                backdropFilter: "blur(4px)",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = `${card.color}44`; e.currentTarget.style.borderTopColor = card.color; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 24px 60px rgba(0,0,0,0.3), 0 0 0 1px ${card.color}14`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.borderTopColor = card.color; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: card.color, fontFamily: font, letterSpacing: "0.1em", background: `${card.color}14`, padding: "5px 10px", borderRadius: 6 }}>
+                      {card.tag}
+                    </span>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: `${card.color}12`, border: `1px solid ${card.color}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={card.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d={card.icon} />
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 style={{ fontSize: 26, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 10px", lineHeight: 1.1 }}>{card.name}</h3>
+                  <p style={{ fontSize: 15, color: card.color, fontFamily: font, fontWeight: 600, margin: "0 0 16px", lineHeight: 1.3 }}>{card.headline}</p>
+                  <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.72, margin: 0 }}>{card.desc}</p>
+                </div>
+
+                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
+                  {card.features.map(f => (
+                    <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: C.text, fontFamily: font, padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke={card.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="2 6 5 9 10 3"/></svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <button type="button" onClick={() => setCurrentPage(card.action)} style={{
+                  width: "100%", padding: "13px", borderRadius: 10,
+                  border: `1px solid ${card.color}33`, background: `${card.color}0D`,
+                  color: card.color, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer",
+                  transition: "all 0.25s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = `${card.color}1A`; e.currentTarget.style.borderColor = `${card.color}55`; }}
+                onMouseLeave={e => { e.currentTarget.style.background = `${card.color}0D`; e.currentTarget.style.borderColor = `${card.color}33`; }}>
+                  {card.cta} →
+                </button>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const DIFF_ITEMS = [
+  {
+    icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+    title: "Production-grade, always",
+    desc: "Role permissions, audit logs, 2FA, and secure deployments are built in from day one — not optional extras.",
+    color: C.blue,
+  },
+  {
+    icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+    title: "Built for how you actually work",
+    desc: "We map real workflows before writing a line of code. No retrofitting generic templates onto your operations.",
+    color: C.gold,
+  },
+  {
+    icon: "M13 10V3L4 14h7v7l9-11h-7z",
+    title: "Fast delivery, no shortcuts",
+    desc: "Most CareCore deployments go live in under 4 weeks. Custom projects ship on timeline with proper documentation.",
+    color: C.mint,
+  },
+  {
+    icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+    title: "We stay after launch",
+    desc: "Training, go-live support, and SLA-backed maintenance are included — not charged extra after you've already committed.",
+    color: C.purple,
+  },
+];
+
+function Differentiators() {
+  const cms = useContext(CMSContext);
+  const cmsItems = cms?.homepage?.whyUs;
+  const items = (cmsItems && cmsItems.length > 0) ? cmsItems.map((r, i) => ({ ...DIFF_ITEMS[i % DIFF_ITEMS.length], title: r.title, desc: r.desc })) : DIFF_ITEMS;
+
+  return (
+    <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.surface }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div className="diff-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.4fr)", gap: "clamp(40px, 6vw, 100px)", alignItems: "center" }}>
+          <Reveal>
+            <div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>THE STANDARD WE WORK TO</span>
+              <h2 style={{ fontSize: "clamp(30px, 4vw, 48px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "16px 0 20px", lineHeight: 1.1 }}>
+                Why teams choose Orion Soft.
+              </h2>
+              <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 36 }}>
+                We're not a consultancy that disappears after delivery, or a software shop that sells you something almost right. Every engagement is measured by whether it still works six months later.
+              </p>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ padding: "10px 18px", background: C.goldDim, border: `1px solid ${C.gold}33`, borderRadius: 8, fontSize: 13, color: C.gold, fontFamily: font, fontWeight: 600 }}>RC {COMPANY_RC}</div>
+                <div style={{ padding: "10px 18px", background: C.blueDim, border: `1px solid ${C.blue}33`, borderRadius: 8, fontSize: 13, color: C.blue, fontFamily: font, fontWeight: 600 }}>NDPR Compliant</div>
+                <div style={{ padding: "10px 18px", background: `${C.mint}12`, border: `1px solid ${C.mint}33`, borderRadius: 8, fontSize: 13, color: C.mint, fontFamily: font, fontWeight: 600 }}>SSL Secured</div>
+              </div>
+            </div>
+          </Reveal>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            {items.map((item, i) => (
+              <Reveal key={i} delay={i * 0.07}>
+                <div style={{
+                  background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
+                  padding: "24px 22px", transition: "all 0.3s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${item.color}33`; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${item.color}12`, border: `1px solid ${item.color}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={item.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d={item.icon} />
+                    </svg>
+                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 8px", lineHeight: 1.3 }}>{item.title}</h3>
+                  <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{item.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const DEFAULT_TESTIMONIALS_DATA = [
+  { quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.", name: "Dr. A. Emmanuel", title: "Medical Director", company: "Faith General Hospital" },
+  { quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.", name: "Mrs. C. Adeyemi", title: "Finance Manager", company: "Regional Hospital" },
+  { quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.", name: "Nurse H. Oladele", title: "Head of Nursing", company: "" },
+];
+
+function Testimonials({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const raw = (cms?.testimonials && cms.testimonials.length > 0)
+    ? cms.testimonials.filter(t => t.featured !== false)
+    : DEFAULT_TESTIMONIALS_DATA;
+  const items = raw.map(t => ({
+    quote: t.quote,
+    name: t.name,
+    title: t.role || t.title,
+    company: t.company || "",
+  }));
+
+  return (
+    <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>WHAT CLIENTS SAY</span>
+            <h2 style={{ fontSize: "clamp(30px, 4vw, 48px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
+              Built for the people using it daily.
+            </h2>
+          </div>
+        </Reveal>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 20 }}>
+          {items.slice(0, 3).map((t, i) => {
+            const color = TESTI_COLORS[i % TESTI_COLORS.length];
+            return (
+              <Reveal key={i} delay={i * 0.08}>
+                <article style={{
+                  background: C.card, border: `1px solid ${C.border}`, borderRadius: 16,
+                  padding: "36px 32px", display: "flex", flexDirection: "column", height: "100%",
+                  transition: "all 0.3s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${color}33`; e.currentTarget.style.transform = "translateY(-3px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ fontSize: 52, lineHeight: 1, color: color, fontFamily: "Georgia, serif", marginBottom: 20, opacity: 0.5 }}>"</div>
+                  <blockquote style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.78, margin: "0 0 28px", flex: 1, fontStyle: "normal" }}>
+                    {t.quote}
+                  </blockquote>
+                  <footer>
+                    <div style={{ width: 32, height: 2, background: color, borderRadius: 1, marginBottom: 14 }} />
+                    <cite style={{ fontStyle: "normal" }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{t.name}</div>
+                      <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 3 }}>{t.title}{t.company ? ` · ${t.company}` : ""}</div>
+                    </cite>
+                  </footer>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatsRow() {
+  const cms = useContext(CMSContext);
+  const stats = (cms?.homepage?.stats && cms.homepage.stats.length > 0)
+    ? cms.homepage.stats
+    : DEFAULT_CMS_STATS;
+
+  return (
+    <section style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "72px clamp(20px, 4vw, 40px)" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div className="stats-row-inner" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(stats.length, 5)}, 1fr)`, gap: 0 }}>
+            {stats.map((s, i) => (
+              <div key={i} style={{
+                textAlign: "center", padding: "0 20px",
+                borderRight: i < stats.length - 1 ? `1px solid ${C.border}` : "none",
+              }}>
+                <div style={{ fontSize: "clamp(32px, 4vw, 52px)", fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 10, fontWeight: 500, letterSpacing: "0.04em" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
 // PAGE LOADER (Suspense fallback)
 // ═══════════════════════════════════════
 function PageLoader({ label = "Loading…" }) {
@@ -5075,12 +5313,12 @@ export default function App() {
         {currentPage === "home" && (
           <>
             <Hero setCurrentPage={navSetPage} />
-            <StatsBar />
-            <TrustSection portfolio={portfolio} />
-            <ProductHighlights setCurrentPage={navSetPage} products={products} />
-            <WhyUs />
+            <ClientStrip portfolio={portfolio} />
+            <ProductShowcase setCurrentPage={navSetPage} products={products} />
+            <Differentiators />
             <FeaturedWork setCurrentPage={navSetPage} portfolio={portfolio} />
-            <SocialProof setCurrentPage={navSetPage} />
+            <Testimonials setCurrentPage={navSetPage} />
+            <StatsRow />
             <FAQSection setCurrentPage={navSetPage} />
             <CTABanner setCurrentPage={navSetPage} />
           </>
