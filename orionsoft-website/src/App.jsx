@@ -11,6 +11,17 @@ const SupportPage     = lazy(() => import("./pages/CredibilityPages").then(m => 
 const PartnersPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.PartnersPage })));
 const TechStackPage   = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.TechStackPage })));
 
+// Product landing pages — one module, lazily loaded as a separate chunk
+const CareCorePage       = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.CareCorePage })));
+const SchoolCorePage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.SchoolCorePage })));
+const ComplianceCorePage = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.ComplianceCorePage })));
+const InventoryCorePage  = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.InventoryCorePage })));
+const FinanceCorePage    = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.FinanceCorePage })));
+const HRCorePage         = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.HRCorePage })));
+const ChurchCorePage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.ChurchCorePage })));
+const FleetCorePage      = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.FleetCorePage })));
+const TeleHealthPage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.TeleHealthPage })));
+
 // ═══════════════════════════════════════
 // DESIGN SYSTEM
 // ═══════════════════════════════════════
@@ -163,6 +174,31 @@ const DEFAULT_MAIN_MENU = [
   { id: "m2", label: "Services", page: "services", active: true, order: 1 },
   { id: "m3", label: "Work",     page: "work",     active: true, order: 2 },
   { id: "m4", label: "Careers",  page: "careers",  active: true, order: 3 },
+];
+
+// Product suite — used by Nav mega-menu, ProductsOverviewPage, LoginPage, etc.
+const ALL_PRODUCTS = [
+  { id: "carecore",        name: "CareCore",       tag: "Hospital Management",   color: "#4F8EF7" },
+  { id: "schoolcore",      name: "SchoolCore",      tag: "School Management",     color: "#10B981" },
+  { id: "compliancecore",  name: "ComplianceCore",  tag: "Compliance & Risk",     color: "#F59E0B" },
+  { id: "inventorycore",   name: "InventoryCore",   tag: "Inventory & Supply",    color: "#8B5CF6" },
+  { id: "financecore",     name: "FinanceCore",     tag: "Finance & Accounting",  color: "#C8A850" },
+  { id: "hrcore",          name: "HRCore",          tag: "Human Resources",       color: "#F43F5E" },
+  { id: "churchcore",      name: "ChurchCore",      tag: "Faith Organisations",   color: "#7C3AED" },
+  { id: "fleetcore",       name: "FleetCore",       tag: "Fleet Management",      color: "#06B6D4" },
+  { id: "telehealth",      name: "TeleHealth",      tag: "Telemedicine · Soon",   color: "#4F8EF7", soon: true },
+];
+
+// Top-level desktop nav (fixed structure — no longer CMS-driven)
+const TOP_NAV = [
+  { label: "Products",    page: "products",   hasMenu: true },
+  { label: "Industries",  page: "industries" },
+  { label: "Solutions",   page: "solutions" },
+  { label: "Pricing",     page: "pricing" },
+  { label: "About",       page: "about" },
+  { label: "Resources",   page: "resources" },
+  { label: "Partners",    page: "partners" },
+  { label: "Contact",     page: "contact" },
 ];
 // Default testimonials (matches current SocialProof hardcoded values)
 const DEFAULT_CMS_TESTIMONIALS = [
@@ -613,6 +649,8 @@ function OrionLogo({ size = 32, gradientId = "orion-logo" }) {
 function Nav({ currentPage, setCurrentPage }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [mobileProducts, setMobileProducts] = useState(false);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 48);
@@ -621,41 +659,33 @@ function Nav({ currentPage, setCurrentPage }) {
   }, []);
 
   useEffect(() => {
-    const handleKey = (e) => { if (menuOpen && e.key === "Escape") setMenuOpen(false); };
+    const handleKey = (e) => { if (e.key === "Escape") { setMenuOpen(false); setMegaOpen(false); } };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [menuOpen]);
+  }, []);
 
-  const cms = useContext(CMSContext);
-  const links = ((cms?.menus?.main) || DEFAULT_MAIN_MENU)
-    .filter(l => l.active !== false)
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
-    .map(l => ({ label: l.label, page: l.page, anchor: l.anchor }));
-
-  const navigate = (link, event) => {
-    if (link.page !== currentPage || !link.anchor) event.preventDefault();
+  const go = (page) => {
     setMenuOpen(false);
-    if (link.page !== currentPage) setCurrentPage(link.page);
-    if (link.anchor) {
-      window.setTimeout(() => {
-        document.querySelector(link.anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, link.page !== currentPage ? 80 : 0);
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    setMegaOpen(false);
+    setMobileProducts(false);
+    setCurrentPage(page);
   };
 
+  const isProductPage = ALL_PRODUCTS.some(p => p.id === currentPage) || currentPage === "products";
+
   return (
-    <nav aria-label="Main navigation" style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-      background: scrolled ? "rgba(6,8,16,0.88)" : "transparent",
-      backdropFilter: scrolled ? "blur(20px) saturate(1.4)" : "none",
-      borderBottom: scrolled ? `1px solid rgba(255,255,255,0.06)` : "none",
-      transition: "all 0.4s ease",
-    }}>
+    <nav aria-label="Main navigation"
+      onMouseLeave={() => setMegaOpen(false)}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
+        background: (scrolled || megaOpen) ? "rgba(6,8,16,0.92)" : "transparent",
+        backdropFilter: (scrolled || megaOpen) ? "blur(20px) saturate(1.4)" : "none",
+        borderBottom: (scrolled || megaOpen) ? `1px solid rgba(255,255,255,0.06)` : "none",
+        transition: "all 0.4s ease",
+      }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 clamp(20px, 4vw, 40px)", display: "flex", justifyContent: "space-between", alignItems: "center", height: 70 }}>
         {/* Logo */}
-        <button type="button" onClick={() => { setCurrentPage("home"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        <button type="button" onClick={() => go("home")}
           style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <OrionLogo size={30} gradientId="nav-logo" />
           <span style={{ fontSize: 18, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.02em" }}>
@@ -664,25 +694,44 @@ function Nav({ currentPage, setCurrentPage }) {
         </button>
 
         {/* Desktop links */}
-        <div className="nav-links" style={{ display: "flex", gap: 32, alignItems: "center" }}>
-          {links.map(l => {
-            const active = currentPage === l.page;
+        <div className="nav-links" style={{ display: "flex", gap: 28, alignItems: "center" }}>
+          {TOP_NAV.map(l => {
+            const active = l.hasMenu ? isProductPage : currentPage === l.page;
             return (
-              <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)}
-                aria-current={active ? "page" : undefined}
-                style={{
-                  color: active ? C.white : C.textMuted, textDecoration: "none",
-                  fontSize: 14, fontWeight: active ? 600 : 400, fontFamily: font,
-                  transition: "color 0.2s", letterSpacing: "0.01em", position: "relative",
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.color = C.white; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.color = C.textMuted; }}>
-                {l.label}
-                {active && <span style={{ position: "absolute", bottom: -6, left: 0, right: 0, height: 1.5, background: C.gold, borderRadius: 1 }} />}
-              </a>
+              <div key={l.label}
+                onMouseEnter={() => setMegaOpen(l.hasMenu ? true : false)}
+                style={{ position: "relative" }}>
+                <button type="button" onClick={() => go(l.page)}
+                  aria-current={active ? "page" : undefined}
+                  aria-haspopup={l.hasMenu ? "true" : undefined}
+                  aria-expanded={l.hasMenu ? megaOpen : undefined}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer", padding: "6px 0",
+                    color: active ? C.white : C.textMuted,
+                    fontSize: 14, fontWeight: active ? 600 : 400, fontFamily: font,
+                    transition: "color 0.2s", letterSpacing: "0.01em", position: "relative",
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                  }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = C.white; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = C.textMuted; }}>
+                  {l.label}
+                  {l.hasMenu && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: megaOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", opacity: 0.7 }}><polyline points="6 9 12 15 18 9" /></svg>
+                  )}
+                  {active && <span style={{ position: "absolute", bottom: -4, left: 0, right: l.hasMenu ? 15 : 0, height: 1.5, background: C.gold, borderRadius: 1 }} />}
+                </button>
+              </div>
             );
           })}
-          <button type="button" onClick={() => setCurrentPage("contact")} style={{
+          <button type="button" onClick={() => go("login")} style={{
+            background: "none", border: "none", cursor: "pointer", padding: "6px 0",
+            color: currentPage === "login" ? C.white : C.textMuted, fontSize: 14, fontWeight: 400, fontFamily: font, transition: "color 0.2s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = C.white; }}
+          onMouseLeave={e => { e.currentTarget.style.color = currentPage === "login" ? C.white : C.textMuted; }}>
+            Login
+          </button>
+          <button type="button" onClick={() => go("contact")} style={{
             background: "transparent", border: `1px solid rgba(200,168,80,0.4)`,
             color: C.gold, padding: "9px 20px", borderRadius: 8,
             fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer",
@@ -711,17 +760,81 @@ function Nav({ currentPage, setCurrentPage }) {
         </button>
       </div>
 
+      {/* Desktop products mega-menu */}
+      {megaOpen && (
+        <div className="nav-megamenu" onMouseEnter={() => setMegaOpen(true)}
+          style={{ borderTop: `1px solid ${C.border}`, background: "rgba(6,8,16,0.96)", backdropFilter: "blur(20px)" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px clamp(20px, 4vw, 40px) 32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 18 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>OUR PRODUCTS</span>
+              <button type="button" onClick={() => go("products")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, fontFamily: font, cursor: "pointer", fontWeight: 600 }}
+                onMouseEnter={e => e.currentTarget.style.color = C.white} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+                See all products →
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              {ALL_PRODUCTS.map(p => (
+                <button key={p.id} type="button" onClick={() => go(p.id)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14, textAlign: "left",
+                    background: "transparent", border: `1px solid transparent`, borderRadius: 12,
+                    padding: "12px 14px", cursor: "pointer", transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = C.card; e.currentTarget.style.borderColor = `${p.color}33`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: `${p.color}1a`, border: `1px solid ${p.color}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, boxShadow: `0 0 8px ${p.color}` }} />
+                  </span>
+                  <span>
+                    <span style={{ display: "block", fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font, letterSpacing: "-0.01em" }}>
+                      {p.name}{p.soon && <span style={{ fontSize: 10, fontWeight: 700, color: p.color, marginLeft: 8, letterSpacing: "0.05em" }}>SOON</span>}
+                    </span>
+                    <span style={{ display: "block", fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 1 }}>{p.tag.replace(" · Soon", "")}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile menu */}
       {menuOpen && (
         <div className="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu"
-          style={{ background: "rgba(6,8,16,0.98)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}`, padding: "16px 24px 28px" }}>
-          {links.map(l => (
-            <a key={l.label} href={l.anchor || "#"} onClick={(e) => navigate(l, e)}
-              style={{ display: "block", color: C.text, textDecoration: "none", fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+          style={{ background: "rgba(6,8,16,0.98)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}`, padding: "16px 24px 28px", maxHeight: "calc(100vh - 70px)", overflowY: "auto" }}>
+          {/* Products accordion */}
+          <button type="button" onClick={() => setMobileProducts(!mobileProducts)}
+            aria-expanded={mobileProducts}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", color: C.text, fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
+            Products
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: mobileProducts ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}><polyline points="6 9 12 15 18 9" /></svg>
+          </button>
+          {mobileProducts && (
+            <div style={{ padding: "8px 0 8px 8px", borderBottom: `1px solid ${C.border}` }}>
+              <button type="button" onClick={() => go("products")}
+                style={{ display: "block", width: "100%", textAlign: "left", color: C.gold, background: "none", border: "none", fontSize: 14, fontFamily: font, padding: "10px 0", cursor: "pointer", fontWeight: 600 }}>
+                All products →
+              </button>
+              {ALL_PRODUCTS.map(p => (
+                <button key={p.id} type="button" onClick={() => go(p.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", color: C.text, background: "none", border: "none", fontSize: 14.5, fontFamily: font, padding: "10px 0", cursor: "pointer" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
+                  {p.name}{p.soon && <span style={{ fontSize: 10, color: p.color, fontWeight: 700 }}>SOON</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {TOP_NAV.filter(l => !l.hasMenu).map(l => (
+            <button key={l.label} type="button" onClick={() => go(l.page)}
+              style={{ display: "block", width: "100%", textAlign: "left", color: C.text, background: "none", border: "none", textDecoration: "none", fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
               {l.label}
-            </a>
+            </button>
           ))}
-          <button type="button" onClick={() => { setCurrentPage("contact"); setMenuOpen(false); }}
+          <button type="button" onClick={() => go("login")}
+            style={{ display: "block", width: "100%", textAlign: "left", color: C.text, background: "none", border: "none", fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
+            Login
+          </button>
+          <button type="button" onClick={() => go("contact")}
             style={{ width: "100%", marginTop: 20, background: C.gold, color: "#060810", padding: "14px", borderRadius: 10, border: "none", fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
             Get in touch
           </button>
@@ -3381,30 +3494,33 @@ function Footer({ setCurrentPage }) {
           </div>
 
           {[
-            { title: "Products", links: [
-              { l: "CareCore HMS", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); } },
-              { l: "Pricing", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("products"); window.setTimeout(() => document.querySelector("#pricing")?.scrollIntoView({ behavior: "smooth" }), 80); } },
-              { l: "Case Studies", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
-              { l: "Tech Stack", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("tech"); } },
+            { title: "Products", twoCol: true, links: [
+              { l: "CareCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("carecore"); } },
+              { l: "SchoolCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("schoolcore"); } },
+              { l: "FinanceCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("financecore"); } },
+              { l: "HRCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("hrcore"); } },
+              { l: "InventoryCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("inventorycore"); } },
+              { l: "ComplianceCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("compliancecore"); } },
+              { l: "ChurchCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("churchcore"); } },
+              { l: "FleetCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
             ]},
             { title: "Company", links: [
-              { l: "Services", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("services"); } },
-              { l: "Portfolio", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("work"); } },
+              { l: "Home", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("home"); } },
+              { l: "About", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
+              { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
               { l: "Blog", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
               { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
-              { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
-              { l: "Partner Program", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
             ]},
-            { title: "Support", links: [
-              { l: "Support Center", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
-              { l: "Documentation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
-              { l: "FAQs", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
-              { l: "Contact Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
+            { title: "Solutions", links: [
+              { l: "Industries", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
+              { l: "Solutions", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
+              { l: "Partners", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
+              { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
               { l: "Privacy Policy", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("privacy"); } },
               { l: "Terms of Service", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("terms"); } },
-              { l: "Security", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
+              { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
             ]},
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
@@ -3417,13 +3533,17 @@ function Footer({ setCurrentPage }) {
                   <a href={asDirectMessageLink(fPhone)} target="_blank" rel="noreferrer" style={{ color: C.textMuted, textDecoration: "none" }}>Message Orion Soft</a><br />
                   Available for international projects
                 </div>
-              ) : col.links.map((link, li) => (
-                <a key={li} href={link.a} onClick={link.onClick} style={{
-                  display: "block", color: C.textMuted, textDecoration: "none",
-                  fontSize: 13, fontFamily: font, marginBottom: 8, transition: "color 0.2s",
-                }} onMouseEnter={e => e.currentTarget.style.color = C.accent}
-                   onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{link.l}</a>
-              ))}
+              ) : (
+                <div style={col.twoCol ? { display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 16 } : undefined}>
+                  {col.links.map((link, li) => (
+                    <a key={li} href={link.a} onClick={link.onClick} style={{
+                      display: "block", color: C.textMuted, textDecoration: "none",
+                      fontSize: 13, fontFamily: font, marginBottom: 8, transition: "color 0.2s",
+                    }} onMouseEnter={e => e.currentTarget.style.color = C.accent}
+                       onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>{link.l}</a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -4943,119 +5063,55 @@ function ClientStrip({ portfolio = [] }) {
   );
 }
 
-function ProductShowcase({ setCurrentPage, products }) {
-  const cms = useContext(CMSContext);
-  const stored = (cms?.products && Array.isArray(cms.products) && cms.products.length > 0)
-    ? cms.products.filter(p => p.published !== false)
-    : null;
-
-  const cards = [
-    {
-      tag: "HMS PLATFORM",
-      name: "CareCore",
-      headline: "Hospital management, reimagined.",
-      desc: "A complete operating system for Nigerian hospitals and clinics — patient records, clinical workflows, billing, pharmacy, lab, ward management, and real-time analytics. 25+ modules. Production-ready.",
-      color: C.blue,
-      colorDim: C.blueDim,
-      action: "products",
-      icon: "M22 12h-4l-3 9L9 3l-3 9H2",
-      features: ["Electronic Health Records", "Clinical Decision Support", "Pharmacy & Lab Management", "Real-time Analytics"],
-      cta: "Explore CareCore",
-    },
-    {
-      tag: "BESPOKE BUILDS",
-      name: "Custom Software",
-      headline: "Built around how you actually work.",
-      desc: "We design and ship custom web applications, dashboards, APIs, business portals, and automation systems — precisely shaped to your workflows, not adapted from a generic template.",
-      color: C.gold,
-      colorDim: C.goldDim,
-      action: "services",
-      icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
-      features: ["Web Applications & Portals", "API Development & Integration", "Business Process Automation", "Dashboards & Reporting"],
-      cta: "Start a project",
-    },
-    {
-      tag: "COMING 2026",
-      name: "What's Next",
-      headline: "More products in the pipeline.",
-      desc: "Inventory management, school administration software, logistics and fleet systems, point of sale — all built to the same engineering standard as CareCore.",
-      color: C.purple,
-      colorDim: C.purpleDim,
-      action: "contact",
-      icon: "M12 5v14M5 12l7 7 7-7",
-      features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale"],
-      cta: "Join the waitlist",
-    },
-  ];
-
+function ProductShowcase({ setCurrentPage }) {
   return (
     <section id="products" style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.bg }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
         <Reveal>
-          <div style={{ textAlign: "center", marginBottom: 72 }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>WHAT WE BUILD</span>
-            <h2 style={{ fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 18px", lineHeight: 1.1 }}>
-              Software for every scale.
-            </h2>
-            <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 560, margin: "0 auto" }}>
-              Whether you need a flagship healthcare platform or a bespoke business tool, we ship to the same production standard.
-            </p>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>OUR PRODUCTS</span>
+          <h2 style={{ fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 18px", lineHeight: 1.1 }}>
+            Nine products. One standard of quality.
+          </h2>
+          <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 620, margin: "0 auto 44px" }}>
+            From hospitals to schools, churches to fleets — Orion Soft products are built for the way Nigerian organisations actually operate.
+          </p>
+        </Reveal>
+
+        <Reveal delay={0.08}>
+          <div className="product-chip-row" style={{
+            display: "flex", gap: 12, overflowX: "auto", padding: "4px 4px 16px",
+            justifyContent: "flex-start", scrollSnapType: "x proximity",
+          }}>
+            {ALL_PRODUCTS.map(p => (
+              <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 9, flexShrink: 0,
+                  background: C.card, border: `1px solid ${C.border}`, borderRadius: 999,
+                  padding: "10px 18px", cursor: "pointer", transition: "all 0.25s", scrollSnapAlign: "start",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}55`; e.currentTarget.style.background = C.cardHover; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, boxShadow: `0 0 8px ${p.color}`, flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: C.heading, fontFamily: font, whiteSpace: "nowrap" }}>
+                  {p.name}{p.soon && <span style={{ fontSize: 10, color: p.color, fontWeight: 700, marginLeft: 6 }}>SOON</span>}
+                </span>
+              </button>
+            ))}
           </div>
         </Reveal>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
-          {cards.map((card, i) => (
-            <Reveal key={i} delay={i * 0.08}>
-              <article style={{
-                background: `linear-gradient(160deg, ${card.colorDim} 0%, rgba(15,24,40,0) 40%)`,
-                border: `1px solid ${C.border}`,
-                borderTop: `2px solid ${card.color}`,
-                borderRadius: 16, padding: "36px 32px",
-                display: "flex", flexDirection: "column", height: "100%",
-                transition: "all 0.3s ease",
-                backdropFilter: "blur(4px)",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = `${card.color}44`; e.currentTarget.style.borderTopColor = card.color; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 24px 60px rgba(0,0,0,0.3), 0 0 0 1px ${card.color}14`; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.borderTopColor = card.color; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-                <div style={{ marginBottom: 28 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: card.color, fontFamily: font, letterSpacing: "0.1em", background: `${card.color}14`, padding: "5px 10px", borderRadius: 6 }}>
-                      {card.tag}
-                    </span>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: `${card.color}12`, border: `1px solid ${card.color}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={card.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d={card.icon} />
-                      </svg>
-                    </div>
-                  </div>
-                  <h3 style={{ fontSize: 26, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 10px", lineHeight: 1.1 }}>{card.name}</h3>
-                  <p style={{ fontSize: 15, color: card.color, fontFamily: font, fontWeight: 600, margin: "0 0 16px", lineHeight: 1.3 }}>{card.headline}</p>
-                  <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.72, margin: 0 }}>{card.desc}</p>
-                </div>
-
-                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", flex: 1 }}>
-                  {card.features.map(f => (
-                    <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: C.text, fontFamily: font, padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
-                      <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke={card.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="2 6 5 9 10 3"/></svg>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <button type="button" onClick={() => setCurrentPage(card.action)} style={{
-                  width: "100%", padding: "13px", borderRadius: 10,
-                  border: `1px solid ${card.color}33`, background: `${card.color}0D`,
-                  color: card.color, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer",
-                  transition: "all 0.25s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = `${card.color}1A`; e.currentTarget.style.borderColor = `${card.color}55`; }}
-                onMouseLeave={e => { e.currentTarget.style.background = `${card.color}0D`; e.currentTarget.style.borderColor = `${card.color}33`; }}>
-                  {card.cta} →
-                </button>
-              </article>
-            </Reveal>
-          ))}
-        </div>
+        <Reveal delay={0.16}>
+          <button type="button" onClick={() => setCurrentPage("products")} style={{
+            marginTop: 28, background: C.gold, color: "#060810",
+            padding: "15px 34px", borderRadius: 10, border: "none",
+            fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+            transition: "all 0.25s", boxShadow: `0 8px 32px ${C.goldGlow}`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = "translateY(0)"; }}>
+            Explore our products →
+          </button>
+        </Reveal>
       </div>
     </section>
   );
@@ -5231,6 +5287,435 @@ function StatsRow() {
 }
 
 // ═══════════════════════════════════════
+// NEW PAGES — Products, Industries, Solutions, Pricing, About, Resources, Login
+// ═══════════════════════════════════════
+function PageHero({ label, title, subtitle, color = C.gold }) {
+  return (
+    <section style={{ background: C.bg, padding: "150px clamp(20px, 5vw, 60px) 70px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", top: "0", left: "50%", transform: "translateX(-50%)", width: 800, height: 500, borderRadius: "50%", background: `radial-gradient(ellipse, ${color}14 0%, transparent 70%)`, filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", zIndex: 1, maxWidth: 760, margin: "0 auto" }}>
+        <Reveal>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color, fontFamily: font, letterSpacing: "0.14em" }}>{label}</span>
+          <h1 style={{ fontSize: "clamp(38px, 5.5vw, 64px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.04em", margin: "16px 0 20px", lineHeight: 1.06 }}>{title}</h1>
+          {subtitle && <p style={{ fontSize: "clamp(16px, 2vw, 20px)", color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 620, margin: "0 auto" }}>{subtitle}</p>}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function ProductsOverviewPage({ setCurrentPage }) {
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="PRODUCTS" title="Everything you need to run your business." subtitle="Nine production-grade software products, built and supported by one company. Pick the one that fits — or run several together." />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
+            {ALL_PRODUCTS.map((p, i) => (
+              <Reveal key={p.id} delay={Math.min(i * 0.05, 0.3)}>
+                <button type="button" onClick={() => setCurrentPage(p.id)} style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  background: `linear-gradient(160deg, ${p.color}12 0%, rgba(15,24,40,0) 45%)`,
+                  border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`,
+                  borderRadius: 16, padding: "30px 28px", height: "100%",
+                  display: "flex", flexDirection: "column", transition: "all 0.3s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}44`; e.currentTarget.style.borderTopColor = p.color; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 24px 60px rgba(0,0,0,0.3)`; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.borderTopColor = p.color; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <span style={{ width: 44, height: 44, borderRadius: 12, background: `${p.color}1a`, border: `1px solid ${p.color}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ width: 11, height: 11, borderRadius: "50%", background: p.color, boxShadow: `0 0 10px ${p.color}` }} />
+                    </span>
+                    {p.soon && <span style={{ fontSize: 10, fontWeight: 700, color: p.color, fontFamily: font, letterSpacing: "0.08em", background: `${p.color}14`, padding: "4px 9px", borderRadius: 6 }}>COMING SOON</span>}
+                  </div>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 6px" }}>{p.name}</h3>
+                  <p style={{ fontSize: 14, color: p.color, fontFamily: font, fontWeight: 600, margin: "0 0 auto" }}>{p.tag.replace(" · Soon", "")}</p>
+                  <span style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, fontWeight: 600, marginTop: 22, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    Learn more →
+                  </span>
+                </button>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+const INDUSTRIES = [
+  { name: "Healthcare", icon: "M22 12h-4l-3 9L9 3l-3 9H2", color: C.blue, products: [["carecore","CareCore"],["telehealth","TeleHealth"],["inventorycore","InventoryCore"]],
+    desc: "Hospitals and clinics still lose hours to paper files, fragmented billing, and stockouts in the pharmacy. Orion Soft connects every clinical and administrative workflow into one system — so your team can focus on patients, not paperwork." },
+  { name: "Education", icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5", color: C.mint, products: [["schoolcore","SchoolCore"],["hrcore","HRCore"],["financecore","FinanceCore"]],
+    desc: "Admissions, results, fees, and parent communication shouldn't live in a dozen spreadsheets. We give schools and tertiary institutions one platform for academics, staff, and finance — with a parent portal that keeps families in the loop." },
+  { name: "Financial Services", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10", color: C.gold, products: [["financecore","FinanceCore"],["compliancecore","ComplianceCore"],["hrcore","HRCore"]],
+    desc: "Regulated institutions face constant pressure from CBN, NDPR, and audit requirements. Orion Soft keeps your books accurate, your filings on time, and your evidence trails audit-ready — without slowing the business down." },
+  { name: "Faith Organisations", icon: "M12 2v20M5 9h14", color: C.purple, products: [["churchcore","ChurchCore"],["financecore","FinanceCore"]],
+    desc: "Ministries grow faster than their record-keeping. We help churches track members, cell groups, giving, and events in one place — so leaders can shepherd people instead of chasing data." },
+  { name: "Logistics & Fleet", icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7 M5.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z M18.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z", color: "#06B6D4", products: [["fleetcore","FleetCore"],["inventorycore","InventoryCore"]],
+    desc: "Unplanned breakdowns, fuel leakage, and expired vehicle documents quietly erode fleet margins. Orion Soft tracks every vehicle, driver, and trip — with maintenance schedules and compliance alerts that prevent costly surprises." },
+  { name: "Manufacturing & Retail", icon: "M2 20h20 M4 20V8l5-3 5 3v12 M14 20V11l4-2 4 2v9", color: C.amber, products: [["inventorycore","InventoryCore"],["financecore","FinanceCore"],["hrcore","HRCore"]],
+    desc: "Stock visibility, accurate costing, and a reliable workforce are the difference between profit and loss. We connect inventory, finance, and HR so you always know what you have, what it cost, and who's running the floor." },
+  { name: "Government & NGOs", icon: "M3 21h18 M5 21V7l7-4 7 4v14 M9 9h.01 M15 9h.01 M9 13h.01 M15 13h.01", color: C.rose, products: [["compliancecore","ComplianceCore"],["hrcore","HRCore"],["financecore","FinanceCore"]],
+    desc: "Public-sector and donor-funded organisations live and die by accountability. Orion Soft delivers transparent finance, clean compliance records, and proper HR governance — the documentation your stakeholders and auditors expect." },
+];
+
+function IndustriesPage({ setCurrentPage }) {
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="INDUSTRIES" title="Software shaped to your sector." subtitle="Every industry has its own workflows, regulations, and pressures. Here's how Orion Soft products solve the problems specific to yours." color={C.blue} />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+          {INDUSTRIES.map((ind, i) => (
+            <Reveal key={ind.name} delay={Math.min(i * 0.04, 0.24)}>
+              <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "clamp(26px, 4vw, 40px)", display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)", gap: 32, alignItems: "center" }} className="industry-row">
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <span style={{ width: 46, height: 46, borderRadius: 12, background: `${ind.color}1a`, border: `1px solid ${ind.color}33`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ind.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ind.icon} /></svg>
+                    </span>
+                    <h2 style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: 0 }}>{ind.name}</h2>
+                  </div>
+                  <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>{ind.desc}</p>
+                </div>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em", display: "block", marginBottom: 12 }}>RELEVANT PRODUCTS</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+                    {ind.products.map(([id, name]) => {
+                      const meta = ALL_PRODUCTS.find(p => p.id === id);
+                      return (
+                        <button key={id} type="button" onClick={() => setCurrentPage(id)} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", cursor: "pointer", transition: "all 0.2s", textAlign: "left" }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = `${meta?.color || ind.color}55`; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta?.color || ind.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 14, fontWeight: 600, color: C.heading, fontFamily: font }}>{name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: "none", color: ind.color, fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer", padding: 0 }}>
+                    Talk to us about {ind.name} →
+                  </button>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+const SOLUTIONS = [
+  { name: "Go Paperless", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M9 13h6 M9 17h6", color: C.mint,
+    desc: "Replace paper files, registers, and forms with secure digital records your whole team can access instantly — searchable, backed up, and audit-tracked.", products: ["carecore","schoolcore","churchcore"] },
+  { name: "Process Automation", icon: "M12 2v4 M12 18v4 M4.93 4.93l2.83 2.83 M16.24 16.24l2.83 2.83 M2 12h4 M18 12h4 M4.93 19.07l2.83-2.83 M16.24 7.76l2.83-2.83", color: C.blue,
+    desc: "Eliminate repetitive manual work with automated workflows — approvals, reminders, reorder triggers, and notifications that run themselves.", products: ["inventorycore","hrcore","financecore"] },
+  { name: "Data & Reporting", icon: "M3 3v18h18 M7 16l4-6 4 3 5-7", color: C.purple,
+    desc: "Turn day-to-day operations into clear dashboards and reports, so leaders make decisions on real numbers — not gut feel.", products: ["financecore","carecore","fleetcore"] },
+  { name: "Compliance & Audit", icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z", color: C.amber,
+    desc: "Stay regulation-aware and audit-ready year round, with policy management, evidence trails, and a live compliance health score.", products: ["compliancecore","financecore","hrcore"] },
+  { name: "Enterprise Integration", icon: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5", color: C.gold,
+    desc: "Connect Orion Soft products with each other and with the systems you already run — APIs, data sync, and single sign-on built in.", products: ["financecore","hrcore","carecore"] },
+  { name: "Training & Adoption", icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5", color: C.rose,
+    desc: "Software only works if people use it. Every deployment includes hands-on onboarding, staff training, and long-term support.", products: ["carecore","schoolcore","churchcore"] },
+];
+
+function SolutionsPage({ setCurrentPage }) {
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve — going paperless, tightening compliance, or making sense of your data — there's an Orion Soft path to get you there." color={C.mint} />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
+            {SOLUTIONS.map((sol, i) => (
+              <Reveal key={sol.name} delay={Math.min(i * 0.05, 0.3)}>
+                <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", height: "100%", display: "flex", flexDirection: "column", transition: "all 0.3s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${sol.color}44`; e.currentTarget.style.transform = "translateY(-4px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <span style={{ width: 46, height: 46, borderRadius: 12, background: `${sol.color}1a`, border: `1px solid ${sol.color}33`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sol.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={sol.icon} /></svg>
+                  </span>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 10px" }}>{sol.name}</h3>
+                  <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 20px", flex: 1 }}>{sol.desc}</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {sol.products.map(id => {
+                      const meta = ALL_PRODUCTS.find(p => p.id === id);
+                      return (
+                        <button key={id} type="button" onClick={() => setCurrentPage(id)} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = `${meta?.color}55`; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta?.color }} />
+                          <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font }}>{meta?.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+function PricingPage({ setCurrentPage }) {
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="PRICING" title="Straightforward pricing. No surprises." subtitle="All Orion Soft products are priced based on organisation size and modules selected. Contact us for a tailored quote." color={C.gold} />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 20 }}>
+            {ALL_PRODUCTS.map((p, i) => (
+              <Reveal key={p.id} delay={Math.min(i * 0.04, 0.28)}>
+                <article style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`, borderRadius: 16, padding: "30px 28px", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: "50%", background: p.color, boxShadow: `0 0 10px ${p.color}`, flexShrink: 0 }} />
+                    <h3 style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: 0 }}>{p.name}</h3>
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, margin: "0 0 18px" }}>{p.tag.replace(" · Soon", "")}</p>
+                  <div style={{ marginBottom: 18 }}>
+                    <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 600 }}>Starting from</span>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: p.color, fontFamily: font, letterSpacing: "-0.02em", marginTop: 2 }}>{p.soon ? "Coming 2026" : "Contact for pricing"}</div>
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 22px", flex: 1 }}>
+                    Includes onboarding, training, and 12-month support.
+                  </p>
+                  <button type="button" onClick={() => setCurrentPage(p.soon ? p.id : "contact")} style={{
+                    width: "100%", padding: "13px", borderRadius: 10, border: `1px solid ${p.color}33`, background: `${p.color}0D`,
+                    color: p.color, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer", transition: "all 0.25s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = `${p.color}1A`; e.currentTarget.style.borderColor = `${p.color}55`; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = `${p.color}0D`; e.currentTarget.style.borderColor = `${p.color}33`; }}>
+                    {p.soon ? "Learn more →" : "Request a quote →"}
+                  </button>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section style={{ padding: "0 clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
+        <Reveal>
+          <div style={{ maxWidth: 820, margin: "0 auto", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: "clamp(32px, 5vw, 48px)" }}>
+            <h2 style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 14px" }}>Why no public pricing?</h2>
+            <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
+              Our products are deployed for organisations of different sizes. A 10-bed clinic and a 300-bed hospital have different needs. We price fairly based on what you actually use — so you never pay for capacity or modules you don't need.
+            </p>
+          </div>
+        </Reveal>
+      </section>
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+function AboutPage({ setCurrentPage }) {
+  const values = [
+    { name: "Quality", desc: "Production-grade from day one. Security, audit logs, and proper architecture are baseline, not extras." },
+    { name: "Honesty", desc: "Clear pricing, realistic timelines, and straight answers — even when they're not what you hoped to hear." },
+    { name: "Speed", desc: "We move fast and deploy in weeks, not quarters, without cutting the corners that matter." },
+    { name: "Long-term Partnership", desc: "We stay after launch — training, support, and updates that keep your systems healthy for years." },
+  ];
+  const timeline = [
+    { year: "2022", title: "Founded", desc: "Orion Soft Limited established to close the gap in affordable, production-quality software for Nigerian organisations." },
+    { year: "2023", title: "CareCore v1", desc: "First release of our flagship hospital management system." },
+    { year: "2024", title: "First hospital live", desc: "CareCore deployed and running in a live clinical environment." },
+    { year: "2025", title: "Suite expansion", desc: "Product family grew across education, finance, HR, compliance, and more." },
+    { year: "2026", title: "TeleHealth", desc: "Telemedicine platform in development, extending care beyond the hospital walls." },
+  ];
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="ABOUT US" title="Software that makes Nigerian organisations more capable." subtitle="Orion Soft Limited builds production-grade software for healthcare, education, finance, and beyond — engineered to international standards, priced for the local market." />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 32 }}>
+          <Reveal>
+            <div>
+              <h2 style={{ fontSize: "clamp(24px, 3.4vw, 34px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "0 0 16px" }}>Our story</h2>
+              <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, margin: "0 0 14px" }}>
+                Orion Soft Limited was founded to address a clear gap: Nigerian businesses needed software that was both affordable and built to production quality — not cheap tools that break, nor expensive foreign systems that don't fit local realities.
+              </p>
+              <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, margin: 0 }}>
+                Headquartered in Nigeria and delivering globally, we build a growing suite of products that organisations actually rely on every day.
+              </p>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "28px 26px" }}>
+              <h3 style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.1em", margin: "0 0 16px" }}>COMPANY FACTS</h3>
+              {[["Headquarters", "Nigeria"], ["Registration", `RC ${COMPANY_RC}`], ["Compliance", "NDPR Compliant"], ["Delivery", "Local & Global"]].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+                  <span style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>{k}</span>
+                  <span style={{ fontSize: 14, color: C.heading, fontFamily: font, fontWeight: 600 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+      <section style={{ padding: "0 clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
+        <Reveal>
+          <div style={{ maxWidth: 900, margin: "0 auto", background: `linear-gradient(160deg, ${C.goldDim} 0%, ${C.card} 60%)`, border: `1px solid ${C.gold}33`, borderRadius: 20, padding: "clamp(32px, 5vw, 48px)", textAlign: "center" }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em" }}>OUR MISSION</span>
+            <p style={{ fontSize: "clamp(20px, 2.8vw, 28px)", color: C.heading, fontFamily: font, fontWeight: 700, lineHeight: 1.45, letterSpacing: "-0.02em", margin: "16px auto 0", maxWidth: 640 }}>
+              "Build software that makes Nigerian organisations more efficient, more competitive, and more capable."
+            </p>
+          </div>
+        </Reveal>
+      </section>
+      <section style={{ padding: "0 clamp(20px, 4vw, 40px) 100px", background: C.bg }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <Reveal><h2 style={{ fontSize: "clamp(24px, 3.4vw, 36px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", textAlign: "center", margin: "0 0 40px" }}>What we value</h2></Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 18 }}>
+            {values.map((v, i) => (
+              <Reveal key={v.name} delay={Math.min(i * 0.06, 0.24)}>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "26px 24px", height: "100%" }}>
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 8px" }}>{v.name}</h3>
+                  <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{v.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section style={{ padding: "0 clamp(20px, 4vw, 40px) 100px", background: C.bg }}>
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
+          <Reveal><h2 style={{ fontSize: "clamp(24px, 3.4vw, 36px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", textAlign: "center", margin: "0 0 44px" }}>Our journey</h2></Reveal>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {timeline.map((t, i) => (
+              <Reveal key={t.year} delay={Math.min(i * 0.06, 0.3)}>
+                <div style={{ display: "flex", gap: 24, paddingBottom: i === timeline.length - 1 ? 0 : 28 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: C.gold, fontFamily: font, width: 52, textAlign: "right" }}>{t.year}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: "50%", background: C.gold, marginTop: 4, flexShrink: 0 }} />
+                    {i !== timeline.length - 1 && <span style={{ width: 2, flex: 1, background: C.border, marginTop: 4 }} />}
+                  </div>
+                  <div style={{ paddingBottom: 8 }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 5px" }}>{t.title}</h3>
+                    <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{t.desc}</p>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal>
+            <div style={{ textAlign: "center", marginTop: 48 }}>
+              <button type="button" onClick={() => setCurrentPage("team")} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.text, padding: "13px 28px", borderRadius: 10, fontSize: 14.5, fontWeight: 600, fontFamily: font, cursor: "pointer", transition: "all 0.25s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.white; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}>
+                Meet the team →
+              </button>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
+function ResourcesPage({ setCurrentPage }) {
+  const resources = [
+    { name: "Blog", label: "Insights & Articles", icon: "M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h5", color: C.blue, action: () => setCurrentPage("blog"), cta: "Read the blog", soon: false },
+    { name: "Case Studies", label: "Real deployments. Real results.", icon: "M9 12l2 2 4-4 M21 12a9 9 0 11-18 0 9 9 0 0118 0z", color: C.mint, action: () => setCurrentPage("case-studies"), cta: "View case studies", soon: false },
+    { name: "Documentation", label: "Technical Docs", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6", color: C.purple, action: null, cta: "Coming soon", soon: true,
+      desc: "Detailed product documentation, API references, and integration guides for developers and administrators." },
+    { name: "Support Centre", label: "Help when you need it", icon: "M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", color: C.gold, action: () => setCurrentPage("support"), cta: "Get support", soon: false },
+    { name: "Webinars", label: "Live & on-demand sessions", icon: "M23 7l-7 5 7 5z M1 5h15v14H1z", color: C.rose, action: null, cta: "Coming soon", soon: true,
+      desc: "Product walkthroughs, training sessions, and industry deep-dives — live and recorded." },
+  ];
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="RESOURCES" title="Learn, explore, get support." subtitle="Everything you need to get the most out of Orion Soft — from articles and case studies to documentation and live support." color={C.blue} />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
+            {resources.map((r, i) => (
+              <Reveal key={r.name} delay={Math.min(i * 0.05, 0.3)}>
+                <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", height: "100%", display: "flex", flexDirection: "column", opacity: r.soon ? 0.85 : 1, transition: "all 0.3s ease" }}
+                  onMouseEnter={e => { if (!r.soon) { e.currentTarget.style.borderColor = `${r.color}44`; e.currentTarget.style.transform = "translateY(-4px)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <span style={{ width: 46, height: 46, borderRadius: 12, background: `${r.color}1a`, border: `1px solid ${r.color}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={r.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={r.icon} /></svg>
+                    </span>
+                    {r.soon && <span style={{ fontSize: 10, fontWeight: 700, color: r.color, fontFamily: font, letterSpacing: "0.08em", background: `${r.color}14`, padding: "4px 9px", borderRadius: 6 }}>COMING SOON</span>}
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 8px" }}>{r.name}</h3>
+                  <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 22px", flex: 1 }}>{r.soon ? r.desc : r.label}</p>
+                  <button type="button" disabled={r.soon} onClick={() => r.action && r.action()} style={{
+                    width: "100%", padding: "13px", borderRadius: 10, border: `1px solid ${r.color}33`,
+                    background: r.soon ? "transparent" : `${r.color}0D`, color: r.soon ? C.textMuted : r.color,
+                    fontSize: 14, fontWeight: 700, fontFamily: font, cursor: r.soon ? "default" : "pointer", transition: "all 0.25s",
+                  }}
+                  onMouseEnter={e => { if (!r.soon) { e.currentTarget.style.background = `${r.color}1A`; } }}
+                  onMouseLeave={e => { if (!r.soon) { e.currentTarget.style.background = `${r.color}0D`; } }}>
+                    {r.soon ? "Coming soon" : `${r.cta} →`}
+                  </button>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function LoginPage({ setCurrentPage }) {
+  return (
+    <div style={{ background: C.bg }}>
+      <PageHero label="LOGIN" title="Access your Orion Soft product." subtitle="Select your product below to sign in. Don't have credentials yet? Contact support to get started." color={C.blue} />
+      <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 18 }}>
+            {ALL_PRODUCTS.map((p, i) => (
+              <Reveal key={p.id} delay={Math.min(i * 0.04, 0.28)}>
+                <article style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`, borderRadius: 16, padding: "28px 26px", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: "50%", background: p.color, boxShadow: `0 0 10px ${p.color}`, flexShrink: 0 }} />
+                    <h3 style={{ fontSize: 19, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: 0 }}>{p.name}</h3>
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, lineHeight: 1.6, margin: "0 0 22px", flex: 1 }}>
+                    {p.soon ? "Coming in 2026." : "Contact support to receive your login credentials."}
+                  </p>
+                  <button type="button" disabled={p.soon} onClick={() => !p.soon && setCurrentPage("contact")} style={{
+                    width: "100%", padding: "13px", borderRadius: 10, border: `1px solid ${p.color}33`,
+                    background: p.soon ? "transparent" : `${p.color}0D`, color: p.soon ? C.textMuted : p.color,
+                    fontSize: 14, fontWeight: 700, fontFamily: font, cursor: p.soon ? "default" : "pointer", transition: "all 0.25s",
+                  }}
+                  onMouseEnter={e => { if (!p.soon) { e.currentTarget.style.background = `${p.color}1A`; e.currentTarget.style.borderColor = `${p.color}55`; } }}
+                  onMouseLeave={e => { if (!p.soon) { e.currentTarget.style.background = `${p.color}0D`; e.currentTarget.style.borderColor = `${p.color}33`; } }}>
+                    {p.soon ? "Coming in 2026" : `Login to ${p.name}`}
+                  </button>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal>
+            <div style={{ textAlign: "center", marginTop: 48 }}>
+              <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, margin: "0 0 12px" }}>Are you Orion Soft staff?</p>
+              <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13.5, fontFamily: font, cursor: "pointer", fontWeight: 600, padding: 0, textDecoration: "underline", textUnderlineOffset: 4 }}
+                onMouseEnter={e => e.currentTarget.style.color = C.gold}
+                onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+                Staff admin login →
+              </button>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
 // PAGE LOADER (Suspense fallback)
 // ═══════════════════════════════════════
 function PageLoader({ label = "Loading…" }) {
@@ -5278,9 +5763,24 @@ export default function App() {
     const seoData = cms?.seo?.[currentPage];
     if (seoData?.title) { document.title = seoData.title; return; }
     const defaults = {
-      home: "Orion Soft Limited — Hospital Management System & Custom Software Nigeria",
-      products: "CareCore HMS — Products | Orion Soft Limited",
-      services: "Services — Custom Software | Orion Soft Limited",
+      home: "Orion Soft Limited — Software for Nigerian Organisations",
+      products: "Products — Orion Soft Limited",
+      carecore: "CareCore — Hospital Management System | Orion Soft Limited",
+      schoolcore: "SchoolCore — School Management | Orion Soft Limited",
+      compliancecore: "ComplianceCore — Compliance & Risk | Orion Soft Limited",
+      inventorycore: "InventoryCore — Inventory Management | Orion Soft Limited",
+      financecore: "FinanceCore — Finance & Accounting | Orion Soft Limited",
+      hrcore: "HRCore — Human Resources | Orion Soft Limited",
+      churchcore: "ChurchCore — Faith Organisations | Orion Soft Limited",
+      fleetcore: "FleetCore — Fleet Management | Orion Soft Limited",
+      telehealth: "TeleHealth — Telemedicine | Orion Soft Limited",
+      industries: "Industries — Orion Soft Limited",
+      solutions: "Solutions — Orion Soft Limited",
+      services: "Solutions — Orion Soft Limited",
+      pricing: "Pricing — Orion Soft Limited",
+      about: "About — Orion Soft Limited",
+      resources: "Resources — Orion Soft Limited",
+      login: "Login — Orion Soft Limited",
       work: "Our Work — Portfolio | Orion Soft Limited",
       contact: "Contact — Orion Soft Limited",
       careers: "Careers — Orion Soft Limited",
@@ -5291,14 +5791,6 @@ export default function App() {
   }, [currentPage, cms]);
 
   const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); };
-
-  // Redirect /about to home and scroll to #about section
-  useEffect(() => {
-    if (currentPage === "about") {
-      setCurrentPage("home");
-      setTimeout(() => document.querySelector("#about")?.scrollIntoView({ behavior: "smooth" }), 100);
-    }
-  }, [currentPage]);
 
   return (
   <CMSContext.Provider value={cms}>
@@ -5314,7 +5806,7 @@ export default function App() {
           <>
             <Hero setCurrentPage={navSetPage} />
             <ClientStrip portfolio={portfolio} />
-            <ProductShowcase setCurrentPage={navSetPage} products={products} />
+            <ProductShowcase setCurrentPage={navSetPage} />
             <Differentiators />
             <FeaturedWork setCurrentPage={navSetPage} portfolio={portfolio} />
             <Testimonials setCurrentPage={navSetPage} />
@@ -5325,11 +5817,57 @@ export default function App() {
         )}
 
         {currentPage === "products" && (
-          <ProductsPage setCurrentPage={navSetPage} products={products} />
+          <ProductsOverviewPage setCurrentPage={navSetPage} />
         )}
 
+        {currentPage === "carecore" && (
+          <Suspense fallback={<PageLoader />}><CareCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "schoolcore" && (
+          <Suspense fallback={<PageLoader />}><SchoolCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "compliancecore" && (
+          <Suspense fallback={<PageLoader />}><ComplianceCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "inventorycore" && (
+          <Suspense fallback={<PageLoader />}><InventoryCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "financecore" && (
+          <Suspense fallback={<PageLoader />}><FinanceCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "hrcore" && (
+          <Suspense fallback={<PageLoader />}><HRCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "churchcore" && (
+          <Suspense fallback={<PageLoader />}><ChurchCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "fleetcore" && (
+          <Suspense fallback={<PageLoader />}><FleetCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "telehealth" && (
+          <Suspense fallback={<PageLoader />}><TeleHealthPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+
+        {currentPage === "industries" && (
+          <IndustriesPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "solutions" && (
+          <SolutionsPage setCurrentPage={navSetPage} />
+        )}
         {currentPage === "services" && (
-          <ServicesPage setCurrentPage={navSetPage} />
+          <SolutionsPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "pricing" && (
+          <PricingPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "about" && (
+          <AboutPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "resources" && (
+          <ResourcesPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "login" && (
+          <LoginPage setCurrentPage={navSetPage} />
         )}
 
         {currentPage === "work" && (
