@@ -93,7 +93,7 @@ const TAWK_WIDGET_ID = import.meta.env.VITE_TAWK_WIDGET_ID || "";
 const HAS_TAWK_LIVE_CHAT = Boolean(TAWK_PROPERTY_ID && TAWK_WIDGET_ID);
 const HERO_WORDS = ["Healthcare", "Businesses", "Operations", "Teams"];
 const CARECORE_ASSETS = {
-  demo: "/assets/carecore/demo.mp4",
+  demo: "/assets/carecore/demo-premium-website.mp4",
   dashboard: "/assets/carecore/dashboard-overview.png",
   quickActions: "/assets/carecore/quick-actions.png",
   operations: "/assets/carecore/operations-view.png",
@@ -5766,6 +5766,250 @@ function PageLoader({ label = "Loading…" }) {
 // ═══════════════════════════════════════
 // APP
 // ═══════════════════════════════════════
+const ORION_HOME_STATS = [
+  ["9", "Product lines"],
+  ["25+", "Operational modules"],
+  ["118", "API endpoints"],
+  ["2FA", "Secure access"],
+];
+
+const ORION_MARKETS = ["Healthcare", "Education", "Finance", "Inventory", "HR", "Fleet", "Faith", "Telemedicine"];
+
+function OrionHero({ setCurrentPage }) {
+  return (
+    <section className="orion-hero" style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      position: "relative",
+      overflow: "hidden",
+      background: `radial-gradient(circle at 72% 20%, ${C.blueGlow}, transparent 34%), radial-gradient(circle at 18% 18%, ${C.goldGlow}, transparent 30%), linear-gradient(180deg, #04060C 0%, ${C.bg} 72%, ${C.surface} 100%)`,
+      padding: "150px clamp(20px, 5vw, 60px) 92px",
+    }}>
+      <div className="orion-grid-bg" aria-hidden="true" />
+      <div className="orion-hero-shell" style={{ width: "100%", maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 0.95fr) minmax(420px, 1.05fr)", gap: "clamp(36px, 6vw, 84px)", alignItems: "center", position: "relative", zIndex: 1 }}>
+        <Reveal>
+          <div>
+            <div className="orion-eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 999, border: `1px solid ${C.gold}33`, background: "rgba(255,255,255,0.045)", backdropFilter: "blur(18px)", marginBottom: 28 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.gold, boxShadow: `0 0 16px ${C.gold}` }} />
+              <span style={{ color: C.gold, fontFamily: font, fontSize: 11.5, fontWeight: 800, letterSpacing: "0.14em" }}>ORION SOFT LIMITED</span>
+            </div>
+            <h1 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(46px, 7vw, 86px)", lineHeight: 0.98, letterSpacing: "-0.045em", fontWeight: 900, margin: "0 0 26px" }}>
+              Enterprise software for modern operators.
+            </h1>
+            <p style={{ color: C.text, fontFamily: font, fontSize: "clamp(17px, 2vw, 21px)", lineHeight: 1.7, maxWidth: 660, margin: "0 0 36px" }}>
+              Orion Soft Limited designs, builds, and supports a growing suite of SaaS products for organisations that need secure workflows, clean data, and dependable operations.
+            </p>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 44 }}>
+              <button type="button" onClick={() => setCurrentPage("products")} className="orion-primary-btn" style={{ background: C.gold, color: "#05070A", border: "none", borderRadius: 10, padding: "15px 24px", fontFamily: font, fontSize: 15, fontWeight: 900, cursor: "pointer", boxShadow: `0 16px 44px ${C.goldGlow}` }}>
+                Explore Products
+              </button>
+              <button type="button" onClick={() => setCurrentPage("contact")} className="orion-secondary-btn" style={{ background: "rgba(255,255,255,0.055)", color: C.heading, border: `1px solid ${C.border}`, borderRadius: 10, padding: "15px 24px", fontFamily: font, fontSize: 15, fontWeight: 800, cursor: "pointer", backdropFilter: "blur(14px)" }}>
+                Book a Consultation
+              </button>
+            </div>
+            <div className="orion-hero-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, maxWidth: 650 }}>
+              {ORION_HOME_STATS.map(([value, label]) => (
+                <div key={label} style={{ border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "16px 14px", backdropFilter: "blur(14px)" }}>
+                  <div style={{ color: C.heading, fontFamily: font, fontSize: 25, fontWeight: 900, letterSpacing: "-0.03em" }}>{value}</div>
+                  <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginTop: 4 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div className="orion-command" style={{ position: "relative" }}>
+            <div style={{ position: "absolute", inset: "-22px", borderRadius: 28, background: `linear-gradient(135deg, ${C.gold}1F, ${C.blue}18)`, filter: "blur(26px)", opacity: 0.75 }} />
+            <div style={{ position: "relative", border: `1px solid rgba(255,255,255,0.14)`, borderRadius: 24, background: "linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.045))", boxShadow: "0 34px 100px rgba(0,0,0,0.42)", backdropFilter: "blur(26px)", overflow: "hidden" }}>
+              <div style={{ height: 46, display: "flex", alignItems: "center", gap: 8, padding: "0 18px", borderBottom: `1px solid ${C.border}` }}>
+                {[C.rose, C.gold, C.mint].map(color => <span key={color} style={{ width: 10, height: 10, borderRadius: "50%", background: color }} />)}
+                <span style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginLeft: 8 }}>orion-suite.cloud</span>
+              </div>
+              <div style={{ padding: "22px", display: "grid", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, fontWeight: 800, letterSpacing: "0.1em" }}>PRODUCT CLOUD</div>
+                    <h2 style={{ color: C.heading, fontFamily: font, fontSize: 28, letterSpacing: "-0.03em", margin: "8px 0 0" }}>One company. Multiple operating systems.</h2>
+                  </div>
+                  <div style={{ color: C.mint, background: C.mintDim, border: `1px solid ${C.mint}33`, borderRadius: 999, padding: "8px 11px", fontFamily: font, fontSize: 12, fontWeight: 900 }}>LIVE</div>
+                </div>
+                <div className="orion-product-matrix" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                  {ALL_PRODUCTS.map((p, i) => (
+                    <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)} className="orion-matrix-card" style={{ minHeight: 92, textAlign: "left", border: `1px solid ${p.color}30`, background: "rgba(5,8,16,0.58)", borderRadius: 14, padding: 14, cursor: "pointer", animation: `floatSoft ${5 + (i % 3)}s ease-in-out ${i * 0.12}s infinite` }}>
+                      <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, display: "block", boxShadow: `0 0 12px ${p.color}`, marginBottom: 11 }} />
+                      <span style={{ color: C.heading, fontFamily: font, fontSize: 14, fontWeight: 900, display: "block" }}>{p.name}</span>
+                      <span style={{ color: C.textMuted, fontFamily: font, fontSize: 11.5, display: "block", marginTop: 4 }}>{p.tag}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="orion-flow-row" style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 12 }}>
+                  <div style={{ border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16 }}>
+                    <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, fontWeight: 800, marginBottom: 12 }}>WORKFLOW HEALTH</div>
+                    {[78, 64, 91].map((w, i) => (
+                      <div key={i} style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: i < 2 ? 10 : 0 }}>
+                        <div style={{ width: `${w}%`, height: "100%", borderRadius: 999, background: i === 1 ? C.blue : i === 2 ? C.mint : C.gold }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16 }}>
+                    <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, fontWeight: 800 }}>DEPLOYMENT</div>
+                    <div style={{ color: C.heading, fontFamily: font, fontSize: 30, fontWeight: 900, marginTop: 8 }}>Global-ready</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function OrionTrustStrip({ portfolio = [] }) {
+  const cms = useContext(CMSContext);
+  const rc = cms?.settings?.rc || COMPANY_RC;
+  const cmsClients = (cms?.clients || []).filter(c => c.published !== false && c.name).map(c => c.name);
+  const portfolioClients = portfolio.filter(p => p.published && p.clientName).map(p => p.clientName);
+  const names = (cmsClients.length > 0 ? cmsClients : portfolioClients).filter((n, i, a) => a.indexOf(n) === i).slice(0, 5);
+
+  return (
+    <section aria-label="Company trust signals" style={{ background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, padding: "24px clamp(20px, 4vw, 40px)" }}>
+      <div className="orion-trust-strip" style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ color: C.textMuted, fontFamily: font, fontSize: 12, fontWeight: 900, letterSpacing: "0.12em" }}>BUILT FOR OPERATORS IN</span>
+          {ORION_MARKETS.slice(0, 5).map(market => (
+            <span key={market} style={{ color: C.text, fontFamily: font, fontSize: 13, fontWeight: 700, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.035)", borderRadius: 999, padding: "7px 12px" }}>{market}</span>
+          ))}
+        </div>
+        <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12.5 }}>
+          {names.length > 0 ? `Trusted by ${names.join(", ")}` : `CAC RC ${rc} | NDPR-aware delivery | Nigeria to global markets`}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrionProductSuite({ setCurrentPage }) {
+  return (
+    <section id="products" style={{ background: C.bg, padding: "118px clamp(20px, 4vw, 40px)" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.85fr) minmax(0, 1.15fr)", gap: "clamp(28px, 5vw, 72px)", alignItems: "end", marginBottom: 44 }} className="orion-section-head">
+            <div>
+              <span style={{ color: C.gold, fontFamily: font, fontSize: 11.5, fontWeight: 900, letterSpacing: "0.14em" }}>PRODUCT SUITE</span>
+              <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(34px, 5vw, 58px)", lineHeight: 1.03, letterSpacing: "-0.04em", margin: "14px 0 0" }}>
+                Orion Soft is the company. CareCore is one product.
+              </h2>
+            </div>
+            <p style={{ color: C.text, fontFamily: font, fontSize: 16.5, lineHeight: 1.75, margin: 0 }}>
+              We build focused operating systems for different sectors, each with the same design standard: fast onboarding, role-aware workflows, management visibility, and long-term support.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="orion-products-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
+          {ALL_PRODUCTS.map((p, i) => (
+            <Reveal key={p.id} delay={Math.min(i * 0.04, 0.24)}>
+              <button type="button" onClick={() => setCurrentPage(p.id)} className="orion-product-card" style={{ width: "100%", minHeight: 220, textAlign: "left", border: `1px solid ${C.border}`, borderRadius: 18, background: "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.028))", padding: 24, cursor: "pointer", position: "relative", overflow: "hidden", backdropFilter: "blur(16px)" }}>
+                <span aria-hidden="true" style={{ position: "absolute", inset: "auto -60px -80px auto", width: 170, height: 170, borderRadius: "50%", background: `${p.color}20`, filter: "blur(24px)" }} />
+                <span style={{ width: 44, height: 44, borderRadius: 13, background: `${p.color}16`, border: `1px solid ${p.color}30`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 22 }}>
+                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: p.color, boxShadow: `0 0 18px ${p.color}` }} />
+                </span>
+                <span style={{ color: p.color, fontFamily: font, fontSize: 11, fontWeight: 900, letterSpacing: "0.1em" }}>{p.soon ? "COMING SOON" : "PRODUCT"}</span>
+                <h3 style={{ color: C.heading, fontFamily: font, fontSize: 24, fontWeight: 900, letterSpacing: "-0.025em", margin: "9px 0 8px" }}>{p.name}</h3>
+                <p style={{ color: C.text, fontFamily: font, fontSize: 14.5, lineHeight: 1.62, margin: 0 }}>{p.tag}</p>
+              </button>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrionPlatformSection({ setCurrentPage }) {
+  const pillars = [
+    ["Design", "Interfaces that feel calm, efficient, and professional across desktop and mobile.", C.gold],
+    ["Engineering", "Modern web apps, APIs, dashboards, permissions, audit trails, and deployment pipelines.", C.blue],
+    ["Adoption", "Onboarding, documentation, training, and support so software becomes part of daily work.", C.mint],
+  ];
+
+  return (
+    <section style={{ background: C.surface, padding: "118px clamp(20px, 4vw, 40px)" }}>
+      <div className="orion-platform-grid" style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "clamp(30px, 5vw, 72px)", alignItems: "center" }}>
+        <Reveal>
+          <div>
+            <span style={{ color: C.blue, fontFamily: font, fontSize: 11.5, fontWeight: 900, letterSpacing: "0.14em" }}>HOW WE BUILD</span>
+            <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(32px, 4.6vw, 54px)", lineHeight: 1.05, letterSpacing: "-0.04em", margin: "14px 0 18px" }}>
+              Premium software without enterprise drag.
+            </h2>
+            <p style={{ color: C.text, fontFamily: font, fontSize: 16.5, lineHeight: 1.75, margin: "0 0 30px" }}>
+              Orion Soft combines product design, full-stack engineering, and deployment support into one delivery motion, so organisations get software that is elegant enough to adopt and strong enough to rely on.
+            </p>
+            <button type="button" onClick={() => setCurrentPage("solutions")} style={{ background: "rgba(255,255,255,0.055)", color: C.heading, border: `1px solid ${C.border}`, borderRadius: 10, padding: "13px 18px", fontFamily: font, fontSize: 14, fontWeight: 900, cursor: "pointer" }}>
+              View Solutions
+            </button>
+          </div>
+        </Reveal>
+        <div style={{ display: "grid", gap: 14 }}>
+          {pillars.map(([title, desc, color], i) => (
+            <Reveal key={title} delay={i * 0.07}>
+              <article style={{ display: "grid", gridTemplateColumns: "54px 1fr", gap: 18, alignItems: "start", border: `1px solid ${color}24`, background: "rgba(255,255,255,0.045)", borderRadius: 16, padding: 22, backdropFilter: "blur(16px)" }}>
+                <div style={{ width: 54, height: 54, borderRadius: 15, background: `${color}14`, border: `1px solid ${color}30`, display: "flex", alignItems: "center", justifyContent: "center", color, fontFamily: font, fontWeight: 900 }}>{String(i + 1).padStart(2, "0")}</div>
+                <div>
+                  <h3 style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 900, margin: "0 0 7px" }}>{title}</h3>
+                  <p style={{ color: C.text, fontFamily: font, fontSize: 14.5, lineHeight: 1.65, margin: 0 }}>{desc}</p>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OrionProofSection({ setCurrentPage }) {
+  return (
+    <section style={{ background: C.bg, padding: "112px clamp(20px, 4vw, 40px)" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <Reveal>
+          <div className="orion-proof-card" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)", gap: "clamp(28px, 5vw, 60px)", alignItems: "center", border: `1px solid ${C.border}`, borderRadius: 24, padding: "clamp(24px, 5vw, 56px)", background: `linear-gradient(135deg, ${C.gold}12, rgba(255,255,255,0.035) 42%, ${C.blue}10)`, overflow: "hidden" }}>
+            <div>
+              <span style={{ color: C.gold, fontFamily: font, fontSize: 11.5, fontWeight: 900, letterSpacing: "0.14em" }}>FEATURED PRODUCT</span>
+              <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(30px, 4.5vw, 52px)", lineHeight: 1.05, letterSpacing: "-0.04em", margin: "14px 0 18px" }}>CareCore shows the standard. The suite extends it.</h2>
+              <p style={{ color: C.text, fontFamily: font, fontSize: 16, lineHeight: 1.75, margin: "0 0 28px" }}>
+                CareCore is the live healthcare product in the Orion Soft portfolio. The same product discipline powers SchoolCore, FinanceCore, HRCore, FleetCore, InventoryCore, ComplianceCore, ChurchCore, and TeleHealth.
+              </p>
+              <button type="button" onClick={() => setCurrentPage("carecore")} style={{ background: C.gold, color: "#05070A", border: "none", borderRadius: 10, padding: "14px 20px", fontFamily: font, fontWeight: 900, cursor: "pointer" }}>Explore CareCore</button>
+            </div>
+            <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 18, overflow: "hidden", background: "#07101D", boxShadow: "0 24px 80px rgba(0,0,0,0.35)" }}>
+              <video src={CARECORE_ASSETS.demo} controls muted playsInline preload="none" style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block" }} aria-label="CareCore product demo" />
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function OrionHome({ setCurrentPage, portfolio }) {
+  return (
+    <>
+      <OrionHero setCurrentPage={setCurrentPage} />
+      <OrionTrustStrip portfolio={portfolio} />
+      <OrionProductSuite setCurrentPage={setCurrentPage} />
+      <OrionPlatformSection setCurrentPage={setCurrentPage} />
+      <OrionProofSection setCurrentPage={setCurrentPage} />
+      <StatsRow />
+      <FAQSection setCurrentPage={setCurrentPage} />
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </>
+  );
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
   const [blogPostId, setBlogPostId] = useState(null);
@@ -5837,17 +6081,7 @@ export default function App() {
 
       <main id="main-content" tabIndex={-1}>
         {currentPage === "home" && (
-          <>
-            <Hero setCurrentPage={navSetPage} />
-            <ClientStrip portfolio={portfolio} />
-            <ProductShowcase setCurrentPage={navSetPage} />
-            <Differentiators />
-            <FeaturedWork setCurrentPage={navSetPage} portfolio={portfolio} />
-            <Testimonials setCurrentPage={navSetPage} />
-            <StatsRow />
-            <FAQSection setCurrentPage={navSetPage} />
-            <CTABanner setCurrentPage={navSetPage} />
-          </>
+          <OrionHome setCurrentPage={navSetPage} portfolio={portfolio} />
         )}
 
         {currentPage === "products" && (
