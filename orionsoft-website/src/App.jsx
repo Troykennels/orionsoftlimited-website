@@ -1316,14 +1316,15 @@ function CareCoreDemoSection({ setCurrentPage }) {
                 <span style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginLeft: 8 }}>carecore-demo.orionsoft</span>
               </div>
               <video
-                src={CARECORE_ASSETS.demo}
                 controls
                 muted
                 playsInline
                 preload="none"
                 style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block", background: "#07111D" }}
                 aria-label="CareCore hospital management system demo video"
-              />
+              >
+                <source src={CARECORE_ASSETS.demo} type="video/mp4" />
+              </video>
             </div>
           </div>
         </Reveal>
@@ -5527,7 +5528,9 @@ function OrionProofSection({ setCurrentPage }) {
               <button type="button" onClick={() => setCurrentPage("carecore")} style={{ background: C.gold, color: "#05070A", border: "none", borderRadius: 10, padding: "14px 20px", fontFamily: font, fontWeight: 900, cursor: "pointer" }}>Explore CareCore</button>
             </div>
             <div style={{ border: "1px solid rgba(255,255,255,0.14)", borderRadius: 18, overflow: "hidden", background: "#07101D", boxShadow: "0 24px 80px rgba(0,0,0,0.35)" }}>
-              <video src={CARECORE_ASSETS.demo} controls muted playsInline preload="none" style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block" }} aria-label="CareCore product demo" />
+              <video controls muted playsInline preload="none" style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", display: "block" }} aria-label="CareCore product demo">
+                <source src={CARECORE_ASSETS.demo} type="video/mp4" />
+              </video>
             </div>
           </div>
         </Reveal>
