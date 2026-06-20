@@ -41,6 +41,7 @@ const SK = {
   media:        "orionsoft_media_v1",
   session:      "orionsoft_admin_session_v1",
   lockout:      "orionsoft_admin_lockout_v1",
+  conversations:"orionsoft_conversations_v1",
 };
 
 // ─── Security Layer ──────────────────────────────────────────────────────────
@@ -217,55 +218,104 @@ function StatCard({ label, value, sub, color = C.gold, icon }) {
   );
 }
 
+function ConfirmDialog({ open, onClose, onConfirm, message }) {
+  return (
+    <Modal open={open} onClose={onClose} title="Confirm" width={380}>
+      <p style={{ color: C.text, marginBottom: 22 }}>{message}</p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <Btn variant="ghost" small onClick={onClose}>Cancel</Btn>
+        <Btn variant="danger" small onClick={() => { onConfirm(); onClose(); }}>Delete</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+function SectionHeader({ title, action }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+      <h2 style={{ color: C.heading, fontSize: 22, fontWeight: 700, margin: 0 }}>{title}</h2>
+      {action}
+    </div>
+  );
+}
+
+function Table({ cols, rows, emptyMsg = "No items yet." }) {
+  if (!rows.length) return <div style={{ color: C.textMuted, textAlign: "center", padding: "40px 0", fontSize: 14 }}>{emptyMsg}</div>;
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {cols.map(c => (
+              <th key={c.key} style={{ color: C.textMuted, fontSize: 12, fontWeight: 700, textAlign: "left", padding: "8px 12px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} style={{ borderBottom: `1px solid ${C.border}33` }}>
+              {cols.map(c => (
+                <td key={c.key} style={{ padding: "11px 12px", color: C.text, fontSize: 14, verticalAlign: "middle" }}>
+                  {c.render ? c.render(row) : row[c.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Sidebar nav structure ───────────────────────────────────────────────────
 const NAV_GROUPS = [
   {
     label: "OVERVIEW",
     items: [
-      { id: "dashboard",    label: "Dashboard",      icon: "📊" },
-      { id: "analytics",    label: "Analytics",      icon: "📈" },
-      { id: "live",         label: "Live Visitors",  icon: "🟢" },
+      { id: "dashboard",    label: "Dashboard",        icon: "📊" },
+      { id: "analytics",    label: "Analytics",        icon: "📈" },
+      { id: "live",         label: "Live Visitors",    icon: "🟢" },
     ],
   },
   {
     label: "COMMUNICATIONS",
     items: [
-      { id: "leads",        label: "Contact Forms",  icon: "📬" },
-      { id: "newsletter",   label: "Newsletter",     icon: "📰" },
-      { id: "chat",         label: "Chat",           icon: "💬" },
+      { id: "leads",        label: "Contact Forms",    icon: "📬" },
+      { id: "newsletter",   label: "Newsletter",       icon: "📰" },
+      { id: "chat",         label: "AI Conversations", icon: "🤖" },
     ],
   },
   {
     label: "CONTENT",
     items: [
-      { id: "homepage",     label: "Homepage",       icon: "🏠" },
-      { id: "announcements",label: "Announcements",  icon: "📢" },
-      { id: "products",     label: "Products",       icon: "📦" },
-      { id: "blog",         label: "Blog",           icon: "📝" },
-      { id: "portfolio",    label: "Case Studies",   icon: "💼" },
-      { id: "testimonials", label: "Testimonials",   icon: "⭐" },
-      { id: "faqs",         label: "FAQs",           icon: "❓" },
-      { id: "team",         label: "Team",           icon: "👥" },
-      { id: "careers",      label: "Careers",        icon: "🎯" },
+      { id: "homepage",     label: "Homepage",         icon: "🏠" },
+      { id: "announcements",label: "Announcements",    icon: "📢" },
+      { id: "products",     label: "Products",         icon: "📦" },
+      { id: "blog",         label: "Blog",             icon: "📝" },
+      { id: "portfolio",    label: "Case Studies",     icon: "💼" },
+      { id: "testimonials", label: "Testimonials",     icon: "⭐" },
+      { id: "faqs",         label: "FAQs",             icon: "❓" },
+      { id: "team",         label: "Team",             icon: "👥" },
+      { id: "careers",      label: "Careers",          icon: "🎯" },
     ],
   },
   {
     label: "SETTINGS",
     items: [
-      { id: "seo",          label: "SEO",            icon: "🔍" },
-      { id: "features",     label: "Feature Flags",  icon: "🚩" },
-      { id: "clients",      label: "Clients",        icon: "🏢" },
-      { id: "menus",        label: "Navigation",     icon: "🔗" },
-      { id: "settings",     label: "Site Settings",  icon: "⚙️" },
+      { id: "seo",          label: "SEO",              icon: "🔍" },
+      { id: "features",     label: "Feature Flags",    icon: "🚩" },
+      { id: "clients",      label: "Clients",          icon: "🏢" },
+      { id: "menus",        label: "Navigation",       icon: "🔗" },
+      { id: "settings",     label: "Site Settings",    icon: "⚙️" },
     ],
   },
   {
     label: "SYSTEM",
     items: [
-      { id: "users",        label: "Users & Roles",  icon: "👤" },
-      { id: "audit",        label: "Audit Logs",     icon: "📋" },
-      { id: "media",        label: "Media Library",  icon: "🖼️" },
-      { id: "backups",      label: "Backups",        icon: "💾" },
+      { id: "users",        label: "Users & Roles",    icon: "👤" },
+      { id: "audit",        label: "Audit Logs",       icon: "📋" },
+      { id: "media",        label: "Media Library",    icon: "🖼️" },
+      { id: "backups",      label: "Backups",          icon: "💾" },
     ],
   },
 ];
@@ -1877,6 +1927,161 @@ function BackupsSection() {
   );
 }
 
+// ─── AI Conversations (Ori chatbot) ──────────────────────────────────────────
+// ─── AI Conversations (Ori chatbot) ──────────────────────────────────────────
+function ConversationsSection() {
+  const [convs, setConvs] = useState(() => ls(SK.conversations, []));
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    const handler = () => setConvs(ls(SK.conversations, []));
+    window.addEventListener("localstoreupdate", handler);
+    return () => window.removeEventListener("localstoreupdate", handler);
+  }, []);
+
+  const filtered = filter === "leads" ? convs.filter(c => c.lead)
+    : filter === "escalated" ? convs.filter(c => c.escalated)
+    : convs;
+
+  function deleteConv(id) {
+    const updated = convs.filter(c => c.id !== id);
+    setConvs(updated);
+    lsSet(SK.conversations, updated);
+    if (selected?.id === id) setSelected(null);
+  }
+
+  function exportCSV() {
+    const rows = [
+      ["Started", "Status", "Name", "Email", "Phone", "Org", "Messages", "Demo Slot", "Escalated"],
+      ...convs.map(c => [
+        c.startedAt ? new Date(c.startedAt).toLocaleString("en-NG") : "",
+        c.status || "active",
+        c.lead?.name || "", c.lead?.email || "", c.lead?.phone || "", c.lead?.org || "",
+        (c.messages || []).length,
+        c.lead?.demoSlot || "",
+        c.escalated ? "Yes" : "No",
+      ]),
+    ];
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `conversations-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+  }
+
+  const leadsCount = convs.filter(c => c.lead).length;
+  const escalatedCount = convs.filter(c => c.escalated).length;
+
+  return (
+    <div>
+      <SectionHeader title="AI Conversations" action={<Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn>} />
+
+      <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
+        <StatCard label="Total Conversations" value={convs.length}    color={C.accent} icon="💬" />
+        <StatCard label="With Lead Data"       value={leadsCount}      color={C.amber}  icon="🎯" />
+        <StatCard label="Escalated"            value={escalatedCount}  color={C.rose}   icon="🚨" />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[["all", `All (${convs.length})`], ["leads", `Leads (${leadsCount})`], ["escalated", `Escalated (${escalatedCount})`]].map(([f, l]) => (
+          <button key={f} type="button" onClick={() => setFilter(f)} style={{
+            padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer", border: "none",
+            background: filter === f ? C.amber : C.card, color: filter === f ? C.bg : C.textMuted,
+          }}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 1fr" : "1fr", gap: 20 }}>
+        <div>
+          {filtered.length === 0 && (
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
+              <p style={{ color: C.textMuted, fontSize: 14, fontFamily: font, margin: 0 }}>No conversations yet. The Ori AI assistant will log conversations here.</p>
+            </div>
+          )}
+          {filtered.map((conv, i) => {
+            const lastMsg = (conv.messages || []).filter(m => m.role === "user").pop();
+            const isSelected = selected?.id === conv.id;
+            return (
+              <div key={conv.id || i} onClick={() => setSelected(conv)}
+                style={{ background: isSelected ? C.amberDim : C.card, border: `1px solid ${isSelected ? C.amber + "44" : C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 10, cursor: "pointer", transition: "all 0.2s" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {conv.lead?.name
+                      ? <span style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{conv.lead.name}</span>
+                      : <span style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>Anonymous visitor</span>
+                    }
+                    {conv.escalated && <Badge color={C.rose}>Escalated</Badge>}
+                    {conv.lead && !conv.escalated && <Badge color={C.amber}>Lead</Badge>}
+                  </div>
+                  <button type="button" onClick={e => { e.stopPropagation(); deleteConv(conv.id); }} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 16 }}>×</button>
+                </div>
+                {conv.lead?.email && <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font }}>{conv.lead.email} {conv.lead.org ? `· ${conv.lead.org}` : ""}</div>}
+                {lastMsg && <div style={{ fontSize: 13, color: C.text, fontFamily: font, marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>"{lastMsg.content}"</div>}
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                  <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>
+                    {conv.startedAt ? new Date(conv.startedAt).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                  </span>
+                  <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{(conv.messages || []).length} messages</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {selected && (
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, position: "sticky", top: 20, maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ color: C.heading, fontSize: 18, fontWeight: 700, margin: 0 }}>{selected.lead?.name || "Conversation"}</h3>
+              <button type="button" onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 20 }}>×</button>
+            </div>
+
+            {selected.lead && (
+              <div style={{ background: C.surface, borderRadius: 10, padding: "12px 14px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.amber, fontFamily: font, letterSpacing: "0.08em", marginBottom: 10 }}>LEAD DETAILS</div>
+                {[["Name", selected.lead.name], ["Email", selected.lead.email], ["Phone", selected.lead.phone], ["Organisation", selected.lead.org], ["Demo Slot", selected.lead.demoSlot], ["Product Interest", selected.lead.demoProduct]].filter(([, v]) => v).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, minWidth: 100 }}>{k}</span>
+                    <span style={{ fontSize: 12.5, color: C.text, fontFamily: font, fontWeight: 500 }}>{v}</span>
+                  </div>
+                ))}
+                {selected.lead?.email && (
+                  <a href={`mailto:${selected.lead.email}?subject=Following up on your Orion Soft enquiry`}
+                    style={{ display: "inline-block", marginTop: 10, padding: "8px 16px", background: C.amber, color: C.bg, borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 700, fontFamily: font }}>
+                    Reply by Email →
+                  </a>
+                )}
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.08em", marginBottom: 10 }}>CONVERSATION</div>
+            {(selected.messages || []).map((msg, i) => (
+              <div key={i} style={{
+                marginBottom: 10, padding: "10px 14px", borderRadius: 10,
+                background: msg.role === "user" ? C.amberDim : C.surface,
+                border: `1px solid ${msg.role === "user" ? C.amber + "33" : C.border}`,
+              }}>
+                <div style={{ fontSize: 11, color: msg.role === "user" ? C.amber : C.textMuted, fontFamily: font, fontWeight: 600, marginBottom: 4 }}>
+                  {msg.role === "user" ? "VISITOR" : "ORI (AI)"}
+                  {msg.ts && <span style={{ fontWeight: 400, marginLeft: 8 }}>{new Date(msg.ts).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{msg.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginTop: 20 }}>
+        <h3 style={{ color: C.heading, fontSize: 16, fontWeight: 700, margin: 0 }}>Legacy Tawk.to (Deprecated)</h3>
+        <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 8, lineHeight: 1.6 }}>
+          The site now uses the built-in Ori AI assistant. If you previously used Tawk.to, remove the VITE_TAWK_PROPERTY_ID and VITE_TAWK_WIDGET_ID environment variables from Vercel to disable it.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ active, session }) {
   switch (active) {
@@ -1885,7 +2090,7 @@ function DashboardContent({ active, session }) {
     case "live":          return <LiveVisitorsSection />;
     case "leads":         return <LeadsSection />;
     case "newsletter":    return <NewsletterSection />;
-    case "chat":          return <ChatSection />;
+    case "chat":          return <ConversationsSection />;
     case "homepage":      return <HomepageSection />;
     case "announcements": return <AnnouncementsSection />;
     case "products":      return <ProductsSection />;
