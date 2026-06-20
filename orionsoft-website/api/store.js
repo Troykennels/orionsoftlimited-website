@@ -1,9 +1,9 @@
-// Upstash Redis REST API helper
-// Env vars needed: UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
-// Free tier: upstash.com — no credit card, 10,000 commands/day
+// Redis REST API helper — works with Vercel KV or direct Upstash
+// Vercel KV (easier): add from Vercel dashboard → Storage → Create KV
+// Direct Upstash: set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 
-const BASE  = process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const BASE  = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 
 async function u(method, path, body) {
   if (!BASE || !TOKEN) return null;
