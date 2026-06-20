@@ -1,3 +1,5 @@
+import { push } from "./store.js";
+
 const rateMap = new Map();
 const RATE_LIMIT = 10;
 const RATE_WINDOW = 15 * 60 * 1000;
@@ -163,6 +165,23 @@ export default async function handler(req, res) {
 
   const ref = body.ref || `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
   const emailData = { ...body, ref };
+
+  // Store lead server-side (Upstash) — visible in admin panel from any device
+  const lead = {
+    id: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    ref, type: body.type, status: "new",
+    source: body.source === "chatbot" ? "Ori AI Chat" : "Website Form",
+    submittedAt: new Date().toISOString(),
+    contactName: body.name || "", email: body.email || "",
+    phone: body.phone || "", company: body.company || body.org || "",
+    interestedService: body.product || body.role || body.type,
+    priority: body.priority || "Medium",
+    message: body.message || body.description || "",
+    ...Object.fromEntries(Object.entries(body).filter(([k]) =>
+      !["honeypot","timing","source","ref"].includes(k)
+    )),
+  };
+  await push("orionsoft:leads", lead);
 
   // Send confirmation to the user (best-effort)
   if (body.email && body.type !== "newsletter") {

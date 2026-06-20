@@ -121,6 +121,34 @@ function lsGet(key, fallback = null) {
 
 function uid() { return `i-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
+// Server sync — fetches live data from Upstash via /api/admin/data
+// Merges server records into localStorage so admin sees ALL visitors' data
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
+
+async function fetchServerData(resource = "all") {
+  try {
+    const r = await fetch(`/api/admin/data?resource=${resource}`, {
+      headers: { "x-admin-key": ADMIN_KEY },
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function mergeById(serverArr = [], localArr = []) {
+  const map = new Map();
+  // Local first (has status updates, edits)
+  localArr.forEach(item => { if (item.id || item.ref) map.set(item.id || item.ref, item); });
+  // Server fills in items not in local (from other devices)
+  serverArr.forEach(item => {
+    const key = item.id || item.ref;
+    if (!map.has(key)) map.set(key, item);
+  });
+  return Array.from(map.values()).sort((a, b) =>
+    new Date(b.submittedAt || b.startedAt || 0) - new Date(a.submittedAt || a.startedAt || 0)
+  );
+}
+
 // ─── Shared UI components ────────────────────────────────────────────────────
 function Btn({ children, onClick, type = "button", variant = "primary", small = false, danger = false, disabled = false }) {
   const bg = danger ? C.roseDim : variant === "primary" ? C.gold : variant === "ghost" ? "transparent" : C.card;
@@ -633,9 +661,26 @@ function LeadsSection() {
   const [selected, setSelected] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
   const reload = useCallback(() => setLeads(lsGet(SK.leads, [])), []);
   useEffect(() => { window.addEventListener("localstoreupdate", reload); return () => window.removeEventListener("localstoreupdate", reload); }, [reload]);
+
+  const syncFromServer = useCallback(async () => {
+    setSyncing(true);
+    const data = await fetchServerData("leads");
+    setSyncing(false);
+    if (data?.leads?.length) {
+      const merged = mergeById(data.leads, lsGet(SK.leads, []));
+      setLeads(merged);
+      lsSet(SK.leads, merged);
+      setLastSync(new Date().toLocaleTimeString("en-NG"));
+    }
+  }, []);
+
+  // Auto-sync on mount
+  useEffect(() => { syncFromServer(); }, [syncFromServer]);
 
   const norm = (l) => ({
     ...l,
@@ -696,6 +741,18 @@ function LeadsSection() {
 
   return (
     <div>
+      {/* Header + sync */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <span style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font }}>Leads</span>
+          {lastSync && <span style={{ fontSize: 11, color: C.mint, fontFamily: font, marginLeft: 10 }}>✓ Synced {lastSync}</span>}
+        </div>
+        <button type="button" onClick={syncFromServer} disabled={syncing} style={{
+          background: C.card, border: `1px solid ${C.border}`, color: syncing ? C.textMuted : C.gold,
+          padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: font, cursor: syncing ? "wait" : "pointer",
+        }}>{syncing ? "⟳ Syncing…" : "⟳ Sync from server"}</button>
+      </div>
+
       {/* Stats */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
         <StatCard label="Total Leads" value={all.length} color={C.accent} icon="📋" />
@@ -2025,15 +2082,31 @@ function BackupsSection() {
 // ─── AI Conversations (Ori chatbot) ──────────────────────────────────────────
 // ─── AI Conversations (Ori chatbot) ──────────────────────────────────────────
 function ConversationsSection() {
-  const [convs, setConvs] = useState(() => ls(SK.conversations, []));
+  const [convs, setConvs] = useState(() => lsGet(SK.conversations, []));
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
   useEffect(() => {
-    const handler = () => setConvs(ls(SK.conversations, []));
+    const handler = () => setConvs(lsGet(SK.conversations, []));
     window.addEventListener("localstoreupdate", handler);
     return () => window.removeEventListener("localstoreupdate", handler);
   }, []);
+
+  const syncFromServer = useCallback(async () => {
+    setSyncing(true);
+    const data = await fetchServerData("conversations");
+    setSyncing(false);
+    if (data?.conversations?.length) {
+      const merged = mergeById(data.conversations, lsGet(SK.conversations, []));
+      setConvs(merged);
+      lsSet(SK.conversations, merged);
+      setLastSync(new Date().toLocaleTimeString("en-NG"));
+    }
+  }, []);
+
+  useEffect(() => { syncFromServer(); }, [syncFromServer]);
 
   const filtered = filter === "leads" ? convs.filter(c => c.lead)
     : filter === "escalated" ? convs.filter(c => c.escalated)
@@ -2070,7 +2143,16 @@ function ConversationsSection() {
 
   return (
     <div>
-      <SectionHeader title="AI Conversations" action={<Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn>} />
+      <SectionHeader title="AI Conversations" action={
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {lastSync && <span style={{ fontSize: 11, color: C.mint, fontFamily: font }}>✓ {lastSync}</span>}
+          <button type="button" onClick={syncFromServer} disabled={syncing} style={{
+            background: C.card, border: `1px solid ${C.border}`, color: syncing ? C.textMuted : C.gold,
+            padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: font, cursor: syncing ? "wait" : "pointer",
+          }}>{syncing ? "⟳ Syncing…" : "⟳ Sync"}</button>
+          <Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn>
+        </div>
+      } />
 
       <div style={{ display: "flex", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
         <StatCard label="Total Conversations" value={convs.length}    color={C.accent} icon="💬" />

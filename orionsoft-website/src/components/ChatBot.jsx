@@ -13,6 +13,7 @@ const HIST_SK = "orionsoft_chat_history_v1";
 const LEADS_SK = "orionsoft_leads_v1";
 const API_URL = "/api/chat";
 const CONTACT_URL = "/api/contact";
+const CONV_URL = "/api/conversation";
 
 const QUICK_REPLIES = [
   "What products do you offer?",
@@ -76,6 +77,16 @@ function saveChatLead(leadData, ref) {
     existing.unshift(lead);
     localStorage.setItem(LEADS_SK, JSON.stringify(existing.slice(0, 500)));
     window.dispatchEvent(new CustomEvent("localstoreupdate"));
+  } catch {}
+}
+
+async function saveConvServer(session) {
+  try {
+    await fetch(CONV_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    });
   } catch {}
 }
 
@@ -199,15 +210,19 @@ export default function ChatBot({ setCurrentPage }) {
     setLoading(false);
   }
 
-  function persistConversation(msgs) {
+  function persistConversation(msgs, forceLead = null) {
+    const resolvedLead = forceLead || (Object.keys(lead).length > 0 ? lead : null);
+    const isDone = flowState === "ESCALATE" || flowState === "DONE";
     const session = {
       id: sessionId, startedAt: sessionStart, updatedAt: new Date().toISOString(),
-      status: flowState === "ESCALATE" || flowState === "DONE" ? "completed" : "active",
+      status: isDone ? "completed" : "active",
       messages: msgs.map(m => ({ role: m.role, content: m.content, ts: m.ts || new Date().toISOString() })),
-      lead: Object.keys(lead).length > 0 ? lead : null,
+      lead: resolvedLead,
       escalated: flowState === "ESCALATE",
     };
     saveConversation(session);
+    // Push to server when conversation has lead data or is done
+    if (isDone || resolvedLead) saveConvServer(session);
   }
 
   function handleSend(text) {

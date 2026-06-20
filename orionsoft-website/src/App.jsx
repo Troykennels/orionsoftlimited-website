@@ -167,7 +167,15 @@ function trackPageView(page) {
     data.lastView = Date.now();
     localStorage.setItem(ANALYTICS_SK, JSON.stringify(data));
     localStorage.setItem(HEARTBEAT_SK, JSON.stringify({ ts: Date.now(), page }));
-  } catch { /* analytics is best-effort */ }
+  } catch { /* local analytics is best-effort */ }
+  // Also track server-side so admin sees ALL visitors, not just same-device
+  try {
+    fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ page, event: "pageview", referrer: document.referrer }),
+    }).catch(() => {});
+  } catch {}
 }
 
 function readCMS(key, fallback) {
