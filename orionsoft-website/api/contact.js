@@ -5,7 +5,7 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW = 15 * 60 * 1000;
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
-const FROM = "Orion Soft <onboarding@resend.dev>";
+const RESEND_FROM = process.env.RESEND_FROM_EMAIL || "Orion Soft <onboarding@resend.dev>";
 
 const TYPE_LABELS = {
   demo: "Demo Booking", contact: "General Contact", quote: "Quote Request",
@@ -14,12 +14,12 @@ const TYPE_LABELS = {
 };
 
 const NEXT_STEPS = {
-  demo: "Our team will review your request and confirm a time within 1 business day.",
+  demo: "Your demo booking has been received and confirmed ✅ Our team will contact you within 1 business day to confirm the exact time and send you a meeting link. Please check your phone and email.",
   contact: "A member of our team will get back to you within 1–2 business days.",
-  quote: "Our sales team will prepare a tailored quote within 1 business day.",
-  support: "Our support team will pick up your ticket within 4 business hours.",
+  quote: "Your quote request has been received ✅ Our sales team will prepare a tailored proposal and reach out within 1 business day.",
+  support: "Your support ticket has been logged ✅ Our support team will pick it up within 4 business hours.",
   partnership: "Our business development team will be in touch within 3 business days.",
-  career: "Our HR team will review your application within 5 business days.",
+  career: "Your application has been received ✅ Our HR team will review it and respond within 5 business days.",
   newsletter: "You're now subscribed! You'll receive our next update shortly.",
 };
 
@@ -111,7 +111,7 @@ async function sendViaResend(to, subject, html, apiKey) {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+      body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
     });
     return r.ok;
   } catch { return false; }
@@ -129,10 +129,16 @@ async function sendViaGmail(to, subject, html) {
   } catch { return false; }
 }
 
+// Gmail first — works for ANY recipient email address.
+// Resend with onboarding@resend.dev is restricted to the account owner only,
+// so it silently fails for client emails. Gmail has no such restriction.
 async function sendEmail(to, subject, html) {
+  if (process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_USER) {
+    const ok = await sendViaGmail(to, subject, html);
+    if (ok) return true;
+  }
   const resendKey = process.env.RESEND_API_KEY;
   if (resendKey) return sendViaResend(to, subject, html, resendKey);
-  if (process.env.GMAIL_APP_PASSWORD) return sendViaGmail(to, subject, html);
   return false;
 }
 

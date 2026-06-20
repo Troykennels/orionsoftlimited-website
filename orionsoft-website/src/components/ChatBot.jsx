@@ -92,11 +92,12 @@ async function saveConvServer(session) {
 
 async function notifyAdminByEmail(leadData, ref) {
   try {
+    const isDemoBooking = Boolean(leadData.demoSlot);
     await fetch(CONTACT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type: leadData.demoSlot ? "demo" : "contact",
+        type: isDemoBooking ? "demo" : "contact",
         source: "chatbot",
         ref,
         name: leadData.name || "Chat Lead",
@@ -104,9 +105,10 @@ async function notifyAdminByEmail(leadData, ref) {
         phone: leadData.phone || "",
         company: leadData.org || "",
         product: leadData.demoProduct || "",
-        message: leadData.demoSlot
-          ? `Demo slot requested: ${leadData.demoSlot}`
-          : "Lead collected via Ori AI chat",
+        demoSlot: leadData.demoSlot || "",
+        message: isDemoBooking
+          ? `Demo booking confirmed. Preferred slot: ${leadData.demoSlot}. Product interest: ${leadData.demoProduct || "general"}.`
+          : leadData.message || "Lead collected via Ori AI chat",
         honeypot: "",
         timing: 99999,
       }),
