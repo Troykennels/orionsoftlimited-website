@@ -1,0 +1,44 @@
+1
+00:00:03,600 --> 00:00:15,400
+Welcome to CareCore HMS by Orion Soft Limited: a connected hospital management platform for teams that need clarity, speed, and control.
+
+2
+00:00:16,200 --> 00:00:28,800
+From the dashboard, administrators can see key hospital activity in real time, including patients, appointments, pharmacy stock, revenue, and operational alerts.
+
+3
+00:00:30,000 --> 00:00:42,500
+Registration teams can create patient records quickly, keep demographics organized, and make sure every department works from one accurate profile.
+
+4
+00:00:44,000 --> 00:00:57,000
+During consultation, clinicians can review history, capture notes, manage diagnoses, request tests, and keep care decisions attached to the patient record.
+
+5
+00:00:58,500 --> 00:01:11,000
+Pharmacy workflows connect prescriptions, dispensing, stock visibility, and billing, reducing manual hand-offs and helping teams avoid preventable delays.
+
+6
+00:01:12,500 --> 00:01:25,000
+Laboratory requests and results stay connected to clinical records, so doctors can move from ordering to review without chasing paper forms.
+
+7
+00:01:26,500 --> 00:01:39,000
+Billing turns clinical and operational activity into clear charges, receipts, balances, and finance reports for stronger revenue control.
+
+8
+00:01:40,500 --> 00:01:55,000
+Admissions and nursing workflows support ward movement, bedside updates, vitals, treatment notes, and handovers across the patient journey.
+
+9
+00:01:56,500 --> 00:02:13,000
+Role-based modules keep each department focused: registration, consultation, pharmacy, laboratory, billing, admissions, nursing, reports, and dashboard analytics.
+
+10
+00:02:14,500 --> 00:02:32,000
+Managers get reports that reveal trends across patients, services, payments, stock, and departmental performance, with less spreadsheet cleanup.
+
+11
+00:02:33,500 --> 00:02:49,200
+CareCore helps healthcare facilities move from fragmented paper processes to a modern, auditable, real-time operating system for care delivery.
+
