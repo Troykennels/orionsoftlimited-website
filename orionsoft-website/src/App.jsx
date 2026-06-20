@@ -83,6 +83,12 @@ const C = {
   // Status
   success:    "#10B981",
   danger:     "#F43F5E",
+
+  // Shadows
+  shadow:     "0 4px 24px rgba(0,0,0,0.18)",
+  shadowLg:   "0 12px 48px rgba(0,0,0,0.28)",
+  shadowGold: "0 8px 28px rgba(200,168,80,0.28)",
+  shadowBlue: "0 8px 28px rgba(79,142,247,0.22)",
 };
 
 const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
@@ -716,7 +722,7 @@ function Nav({ currentPage, setCurrentPage }) {
         <button type="button" onClick={() => go("home")}
           style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <OrionLogo size={30} gradientId="nav-logo" />
-          <span style={{ fontSize: 18, fontWeight: 700, color: C.white, fontFamily: font, letterSpacing: "-0.02em" }}>
+          <span style={{ fontSize: 18, fontWeight: 800, color: C.white, fontFamily: font, letterSpacing: "-0.04em" }}>
             Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
         </button>
@@ -760,13 +766,14 @@ function Nav({ currentPage, setCurrentPage }) {
             Login
           </button>
           <button type="button" onClick={() => go("contact")} style={{
-            background: "transparent", border: `1px solid rgba(200,168,80,0.4)`,
-            color: C.gold, padding: "9px 20px", borderRadius: 8,
-            fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer",
-            transition: "all 0.25s", letterSpacing: "0.01em",
+            background: C.gold, border: "none",
+            color: "#05070A", padding: "10px 22px", borderRadius: 10,
+            fontSize: 14, fontWeight: 900, fontFamily: font, cursor: "pointer",
+            transition: "all 0.22s ease", letterSpacing: "0.01em",
+            boxShadow: C.shadowGold,
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.goldDim; e.currentTarget.style.borderColor = C.gold; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(200,168,80,0.4)"; }}>
+          onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadowGold; }}>
             Get in touch
           </button>
         </div>
@@ -884,10 +891,10 @@ function Hero({ setCurrentPage }) {
   const heroCTAS = heroData.ctaSecondary || "Talk to us";
 
   return (
-    <section style={{
+    <section role="region" aria-label="Hero" style={{
       minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       background: C.bg, position: "relative", overflow: "hidden",
-      padding: "140px clamp(20px, 5vw, 60px) 100px", textAlign: "center",
+      padding: "140px clamp(20px, 5vw, 60px) 120px", textAlign: "center",
     }}>
       {/* Background grain + glow */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
@@ -902,7 +909,7 @@ function Hero({ setCurrentPage }) {
         <Reveal>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 32 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.gold, boxShadow: `0 0 10px ${C.gold}` }} />
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.14em" }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "0.13em", textTransform: "uppercase" }}>
               {heroBadge}
             </span>
           </div>
@@ -910,8 +917,8 @@ function Hero({ setCurrentPage }) {
 
         <Reveal delay={0.06}>
           <h1 style={{
-            fontSize: "clamp(44px, 7vw, 88px)", fontWeight: 800, lineHeight: 1.04,
-            fontFamily: font, color: C.heading, letterSpacing: "-0.04em", margin: "0 0 28px",
+            fontSize: "clamp(46px, 7vw, 88px)", fontWeight: 900, lineHeight: 0.97,
+            fontFamily: font, color: C.heading, letterSpacing: "-0.045em", margin: "0 0 28px",
           }}>
             Software that powers<br />
             <span style={{ color: C.gold }}>real businesses.</span>
@@ -920,7 +927,7 @@ function Hero({ setCurrentPage }) {
 
         <Reveal delay={0.12}>
           <p style={{
-            fontSize: "clamp(17px, 2vw, 21px)", color: C.text, lineHeight: 1.72,
+            fontSize: "clamp(17px, 2vw, 21px)", color: C.text, lineHeight: 1.78,
             fontFamily: font, maxWidth: 640, margin: "0 auto 48px", fontWeight: 400,
           }}>
             {heroSub}
@@ -930,42 +937,45 @@ function Hero({ setCurrentPage }) {
         <Reveal delay={0.18}>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <button type="button" onClick={() => setCurrentPage("products")} style={{
-              background: C.gold, color: "#060810",
-              padding: "15px 32px", borderRadius: 10, border: "none",
-              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-              transition: "all 0.25s", letterSpacing: "0.01em",
-              boxShadow: `0 8px 32px ${C.goldGlow}`,
+              background: C.gold, color: "#05070A",
+              padding: "14px 26px", borderRadius: 10, border: "none",
+              fontSize: 15, fontWeight: 900, fontFamily: font, cursor: "pointer",
+              transition: "all 0.22s ease", letterSpacing: "0.01em",
+              boxShadow: C.shadowGold,
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.goldGlow}`; }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 32px ${C.goldGlow}`; }}>
+            onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowGold; }}>
               {heroCTAP}
             </button>
             <button type="button" onClick={() => setCurrentPage("contact")} style={{
-              background: "transparent", border: `1px solid ${C.border}`, color: C.text,
-              padding: "15px 32px", borderRadius: 10,
-              fontSize: 15, fontWeight: 500, fontFamily: font, cursor: "pointer",
-              transition: "all 0.25s",
+              background: "rgba(255,255,255,0.055)", backdropFilter: "blur(12px)",
+              border: `1px solid ${C.border}`, color: C.heading,
+              padding: "14px 26px", borderRadius: 10,
+              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
+              transition: "all 0.22s ease",
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.white; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}>
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = "rgba(255,255,255,0.055)"; }}>
               {heroCTAS}
             </button>
           </div>
         </Reveal>
 
         <Reveal delay={0.26}>
-          <div style={{ display: "flex", gap: 32, justifyContent: "center", flexWrap: "wrap", marginTop: 64, paddingTop: 48, borderTop: `1px solid ${C.border}` }}>
-            {[
-              { val: "25+", label: "Clinical modules" },
-              { val: "118", label: "API endpoints" },
-              { val: "99.5%", label: "Uptime SLA" },
-              { val: "3+", label: "Active deployments" },
-            ].map((s, i) => (
-              <div key={i} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.val}</div>
-                <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 6, letterSpacing: "0.04em", fontWeight: 500 }}>{s.label}</div>
-              </div>
-            ))}
+          <div style={{ marginTop: 64, paddingTop: 48, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              {[
+                { val: "25+", label: "Clinical modules" },
+                { val: "118", label: "API endpoints" },
+                { val: "99.5%", label: "Uptime SLA" },
+                { val: "3+", label: "Active deployments" },
+              ].map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.045)", border: `1px solid ${C.border}`, borderRadius: 100, padding: "10px 20px" }}>
+                  <div style={{ fontSize: "clamp(18px, 2.2vw, 26px)", fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, fontWeight: 600, letterSpacing: "0.02em" }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </Reveal>
       </div>
@@ -1001,7 +1011,7 @@ function ExperiencePreview({ setCurrentPage }) {
   const view = views[active];
 
   return (
-    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.light }}>
+    <section role="region" aria-label="Experience preview" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <div className="experience-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(320px, 1.1fr)", gap: 24, alignItems: "stretch" }}>
@@ -1017,10 +1027,10 @@ function ExperiencePreview({ setCurrentPage }) {
             }}>
               <div>
                 <span style={{ color: view.color, fontFamily: font, fontSize: 12, fontWeight: 900 }}>INTERACTIVE PREVIEW</span>
-                <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(26px, 4vw, 42px)", fontWeight: 900, lineHeight: 1.08, margin: "14px 0 16px" }}>
+                <h2 style={{ color: C.heading, fontFamily: font, fontSize: "clamp(28px, 3.5vw, 42px)", fontWeight: 800, lineHeight: 1.08, margin: "14px 0 16px", letterSpacing: "-0.035em" }}>
                   CareCore adapts to every workflow in your facility.
                 </h2>
-                <p style={{ color: C.text, fontFamily: font, fontSize: 15.5, lineHeight: 1.75, margin: 0 }}>
+                <p style={{ color: C.text, fontFamily: font, fontSize: 15.5, lineHeight: 1.78, margin: 0 }}>
                   From clinical care to hospital operations to custom builds — explore the depth of what the platform handles.
                 </p>
               </div>
@@ -1138,7 +1148,7 @@ function Products({ setCurrentPage }) {
   ];
 
   return (
-    <section id="products" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
+    <section id="products" role="region" aria-label="Products overview" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -1155,16 +1165,17 @@ function Products({ setCurrentPage }) {
               <div style={{
                 background: C.lightCard, borderRadius: 16, padding: "clamp(24px, 3vw, 36px)",
                 border: `1px solid ${C.lightBorder}`, height: "100%",
-                transition: "all 0.35s ease", cursor: "default",
+                transition: "all 0.22s ease", cursor: "default",
                 display: "flex", flexDirection: "column",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
               }} onMouseEnter={e => {
                 e.currentTarget.style.borderColor = `${p.color}44`;
                 e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = `0 20px 48px rgba(0,0,0,0.25)`;
+                e.currentTarget.style.boxShadow = `0 16px 48px rgba(0,0,0,0.14)`;
               }} onMouseLeave={e => {
                 e.currentTarget.style.borderColor = C.lightBorder;
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.08)";
               }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 14, background: `${p.color}14`, border: `1px solid ${p.color}26`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1353,7 +1364,7 @@ function Services({ setCurrentPage }) {
   ];
 
   return (
-    <section id="services" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.bg }}>
+    <section id="services" role="region" aria-label="Services" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader tag="SERVICES" tagColor={C.mint} title="What We Can Do For You" subtitle="Whether you need a full product built or a specific technical challenge solved, we have the expertise." dark />
@@ -1363,13 +1374,13 @@ function Services({ setCurrentPage }) {
           {services.map((s, i) => (
             <Reveal key={i} delay={i * 0.06}>
               <button type="button" style={{
-                background: C.card, borderRadius: 14, padding: 28,
-                border: `1px solid ${C.border}`, transition: "all 0.3s", cursor: "pointer",
+                background: C.card, borderRadius: 16, padding: 28,
+                border: `1px solid ${C.border}`, transition: "all 0.22s ease", cursor: "pointer",
                 display: "flex", gap: 18, alignItems: "flex-start",
-                width: "100%", textAlign: "left",
+                width: "100%", textAlign: "left", boxShadow: C.shadow,
               }} onClick={() => setCurrentPage("contact")}
-                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}33`; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${s.color}35`; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = C.shadowLg; }}
+                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadow; }}>
                 <div style={{
                   width: 48, height: 48, borderRadius: 12, flexShrink: 0,
                   background: `${s.color}14`, border: `1px solid ${s.color}26`,
@@ -1380,8 +1391,8 @@ function Services({ setCurrentPage }) {
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{s.title}</h3>
-                  <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{s.title}</h3>
+                  <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.78, margin: 0 }}>{s.desc}</p>
                 </div>
               </button>
             </Reveal>
@@ -1432,7 +1443,7 @@ function SystemsShowcase({ setCurrentPage }) {
   ];
 
   return (
-    <section id="systems" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
+    <section id="systems" role="region" aria-label="Product suite" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.surface }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -1530,7 +1541,7 @@ function EngineeringStandards() {
   ];
 
   return (
-    <section id="standards" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.bg }}>
+    <section id="standards" role="region" aria-label="Engineering standards" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -1547,9 +1558,10 @@ function EngineeringStandards() {
             <Reveal key={item.title} delay={i * 0.08}>
               <div style={{
                 height: "100%", background: C.card, border: `1px solid ${C.border}`,
-                borderRadius: 14, padding: 28, display: "flex", flexDirection: "column",
-                boxShadow: "0 16px 46px rgba(0,0,0,0.14)",
-              }}>
+                borderRadius: 16, padding: 28, display: "flex", flexDirection: "column",
+                boxShadow: C.shadow, transition: "all 0.22s ease",
+              }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = C.shadowLg; }}
+                 onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadow; }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: `${item.color}14`, border: `1px solid ${item.color}26`, marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div style={{ width: 16, height: 16, borderRadius: 5, background: item.color, boxShadow: `0 0 18px ${item.color}55` }} />
                 </div>
@@ -1602,7 +1614,7 @@ function TrustSecurity() {
   ];
 
   return (
-    <section id="trust" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.surface }}>
+    <section id="trust" role="region" aria-label="Trust and delivery" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.surface }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -1706,7 +1718,7 @@ function TechImmersion({ setCurrentPage }) {
   ];
 
   return (
-    <section style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
+    <section role="region" aria-label="Built for real work" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -1844,7 +1856,7 @@ function Pricing({ setCurrentPage, tiers: managedTiers }) {
     : defaultTiers;
 
   return (
-    <section id="pricing" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
+    <section id="pricing" role="region" aria-label="Pricing" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader tag="CARECORE PRICING" tagColor={C.accent} title="Plans for Every Facility" subtitle="All modules included. No feature gating. No hidden fees. Choose your tier based on facility size." />
@@ -1856,8 +1868,8 @@ function Pricing({ setCurrentPage, tiers: managedTiers }) {
               <div style={{
                 background: C.lightCard, borderRadius: 18, padding: "clamp(24px, 3vw, 36px)",
                 border: t.popular ? `2px solid ${t.color}` : `1px solid ${C.lightBorder}`,
-                position: "relative", transition: "all 0.3s",
-                boxShadow: t.popular ? `0 16px 48px ${t.color}18` : "0 2px 8px rgba(0,0,0,0.04)",
+                position: "relative", transition: "all 0.22s ease",
+                boxShadow: t.popular ? `0 16px 48px ${t.color}22` : "0 4px 24px rgba(0,0,0,0.08)",
                 height: "100%", display: "flex", flexDirection: "column",
               }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 20px 56px rgba(0,0,0,0.1)"; }}
                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = t.popular ? `0 16px 48px ${t.color}18` : "0 2px 8px rgba(0,0,0,0.04)"; }}>
@@ -1914,22 +1926,22 @@ function Pricing({ setCurrentPage, tiers: managedTiers }) {
 // ═══════════════════════════════════════
 function About() {
   return (
-    <section id="about" style={{ padding: "120px clamp(16px, 4vw, 32px)", background: C.light }}>
+    <section id="about" role="region" aria-label="About Orion Soft" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.light }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 48, alignItems: "center" }}>
           <Reveal>
             <div>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.08em" }}>ABOUT US</span>
-              <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.lightHeading, letterSpacing: "-0.02em", margin: "12px 0 20px" }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "0.13em", textTransform: "uppercase" }}>ABOUT US</span>
+              <h2 style={{ fontSize: "clamp(28px, 3.5vw, 48px)", fontWeight: 800, fontFamily: font, color: C.lightHeading, letterSpacing: "-0.035em", margin: "12px 0 20px", lineHeight: 1.08 }}>
                 Built with global standards.<br />Designed for real operations.
               </h2>
-              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.75, marginBottom: 20 }}>
+              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.78, marginBottom: 20 }}>
                 Orion Soft Limited builds practical, dependable software for healthcare providers
                 and ambitious businesses. We focus on secure systems, clear workflows, fast
                 interfaces, and implementation support that helps teams adopt technology with
                 confidence.
               </p>
-              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.75, marginBottom: 28 }}>
+              <p style={{ fontSize: 15.5, color: C.lightText, fontFamily: font, lineHeight: 1.78, marginBottom: 28 }}>
                 Our team combines product thinking, engineering discipline, and close discovery
                 with each client. We study your workflow, map the operational gaps, and build
                 software that fits the way your organisation needs to work.
@@ -2455,7 +2467,7 @@ function FAQSection({ setCurrentPage }) {
   const faqs = raw.map(f => ({ q: f.question, a: f.answer }));
 
   return (
-    <section style={{ padding: "100px clamp(16px, 4vw, 32px)", background: C.surface }}>
+    <section role="region" aria-label="FAQ" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.surface }}>
       <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <Reveal>
           <SectionHeader
@@ -2472,10 +2484,11 @@ function FAQSection({ setCurrentPage }) {
             <Reveal key={item.q} delay={i * 0.04}>
               <div style={{
                 background: C.card,
-                border: `1px solid ${openIdx === i ? C.accent + "40" : C.border}`,
+                border: `1px solid ${openIdx === i ? C.gold + "44" : C.border}`,
                 borderRadius: 12,
                 overflow: "hidden",
                 transition: "border-color 0.22s ease",
+                boxShadow: openIdx === i ? "0 0 0 3px rgba(200,168,80,0.07)" : "none",
               }}>
                 <button
                   type="button"
@@ -2489,8 +2502,8 @@ function FAQSection({ setCurrentPage }) {
                   }}
                 >
                   <h3 style={{ fontSize: 15.5, fontWeight: 700, color: openIdx === i ? C.heading : C.text, fontFamily: font, margin: 0, lineHeight: 1.4 }}>{item.q}</h3>
-                  <span style={{
-                    color: openIdx === i ? C.accent : C.textMuted,
+                  <span aria-hidden="true" style={{
+                    color: openIdx === i ? C.gold : C.textMuted,
                     fontSize: 22, fontWeight: 300, lineHeight: 1, flexShrink: 0,
                     transform: openIdx === i ? "rotate(45deg)" : "none",
                     transition: "transform 0.25s ease, color 0.2s",
@@ -2512,12 +2525,12 @@ function FAQSection({ setCurrentPage }) {
         <Reveal delay={0.22}>
           <div style={{ textAlign: "center", marginTop: 34 }}>
             <button type="button" onClick={() => setCurrentPage("contact")} style={{
-              background: `${C.accent}10`, border: `1px solid ${C.accent}33`,
-              color: C.accent, padding: "13px 24px", borderRadius: 10,
-              fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer",
-              transition: "all 0.2s",
-            }} onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}20`; e.currentTarget.style.borderColor = `${C.accent}55`; }}
-               onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}10`; e.currentTarget.style.borderColor = `${C.accent}33`; }}>
+              background: C.gold, border: "none",
+              color: "#05070A", padding: "13px 24px", borderRadius: 10,
+              fontSize: 14, fontWeight: 900, fontFamily: font, cursor: "pointer",
+              transition: "all 0.22s ease", boxShadow: C.shadowGold,
+            }} onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+               onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadowGold; }}>
               Still have questions? Ask us directly →
             </button>
           </div>
@@ -2537,48 +2550,49 @@ function CTABanner({ setCurrentPage }) {
   const ctaP    = cta.primaryText   || "Start Your Project →";
   const ctaS    = cta.secondaryText || "See CareCore HMS";
   return (
-    <section style={{
-      padding: "96px clamp(16px, 4vw, 32px)",
-      background: `linear-gradient(135deg, ${C.bg} 0%, rgba(16,42,67,0.96) 50%, ${C.bg} 100%)`,
+    <section role="region" aria-label="Call to action" style={{
+      padding: "120px clamp(20px, 5vw, 60px)",
+      background: C.bg,
       borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`,
       position: "relative", overflow: "hidden",
     }}>
-      <div style={{ position: "absolute", inset: 0, opacity: 0.06,
-        background: `radial-gradient(ellipse 600px 400px at 50% 50%, ${C.accent}, transparent)` }} />
+      <div style={{ position: "absolute", inset: 0, opacity: 0.08,
+        background: `radial-gradient(ellipse 700px 500px at 50% 50%, ${C.gold}, transparent)` }} aria-hidden="true" />
       <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", position: "relative" }}>
         <Reveal>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
-            background: C.accentDim, border: `1px solid rgba(0,200,255,0.15)`,
+            background: C.goldDim, border: `1px solid rgba(200,168,80,0.25)`,
             borderRadius: 100, padding: "7px 18px", marginBottom: 24,
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
-            <span style={{ fontSize: 12, color: C.accent, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em" }}>{ctaTag}</span>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.gold, boxShadow: `0 0 8px ${C.gold}` }} aria-hidden="true" />
+            <span style={{ fontSize: 11, color: C.gold, fontFamily: font, fontWeight: 800, letterSpacing: "0.13em", textTransform: "uppercase" }}>{ctaTag}</span>
           </div>
-          <h2 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.025em", marginBottom: 14, lineHeight: 1.15 }}>
+          <h2 style={{ fontSize: "clamp(28px, 3.8vw, 48px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.035em", marginBottom: 14, lineHeight: 1.08 }}>
             {ctaHead}
           </h2>
-          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, marginBottom: 32, maxWidth: 520, margin: "0 auto 32px" }}>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.78, marginBottom: 32, maxWidth: 520, margin: "0 auto 32px" }}>
             {ctaSub}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button type="button" onClick={() => setCurrentPage("contact")} style={{
-              background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
-              color: C.bg, padding: "15px 34px", borderRadius: 10, border: "none",
-              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-              boxShadow: `0 8px 28px ${C.accentGlow}`, transition: "all 0.3s",
+              background: C.gold,
+              color: "#05070A", padding: "15px 34px", borderRadius: 10, border: "none",
+              fontSize: 15, fontWeight: 900, fontFamily: font, cursor: "pointer",
+              boxShadow: C.shadowGold, transition: "all 0.22s ease",
               letterSpacing: "0.01em",
-            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px ${C.accentGlow}`; }}
-               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 28px ${C.accentGlow}`; }}>
+            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; e.currentTarget.style.background = C.goldLight; }}
+               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowGold; e.currentTarget.style.background = C.gold; }}>
               {ctaP}
             </button>
             <button type="button" onClick={() => setCurrentPage("products")} style={{
-              border: `1px solid ${C.accent}44`, color: C.accent,
+              background: "rgba(255,255,255,0.055)", backdropFilter: "blur(12px)",
+              border: `1px solid ${C.border}`, color: C.heading,
               padding: "15px 34px", borderRadius: 10,
               fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer",
-              background: `${C.accent}08`, transition: "all 0.3s",
-            }} onMouseEnter={e => { e.currentTarget.style.background = `${C.accent}18`; }}
-               onMouseLeave={e => { e.currentTarget.style.background = `${C.accent}08`; }}>
+              transition: "all 0.22s ease",
+            }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}
+               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.055)"; e.currentTarget.style.borderColor = C.border; }}>
               {ctaS}
             </button>
           </div>
@@ -2991,13 +3005,13 @@ function Footer({ setCurrentPage }) {
   };
 
   return (
-    <footer style={{ padding: "56px clamp(16px, 4vw, 32px) 28px", background: C.bg, borderTop: `1px solid ${C.border}` }}>
+    <footer style={{ padding: "64px clamp(20px, 5vw, 60px) 28px", background: C.surface, borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 36, marginBottom: 40 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <OrionLogo size={28} gradientId="footer-orion-logo" />
-              <span style={{ fontSize: 17, fontWeight: 700, color: C.white, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
+              <span style={{ fontSize: 17, fontWeight: 800, color: C.white, fontFamily: font, letterSpacing: "-0.04em" }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
             </div>
             <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.7, maxWidth: 250, marginBottom: 16 }}>
               {fTagline} Registered · RC {fRC}.
@@ -3097,7 +3111,8 @@ function Footer({ setCurrentPage }) {
           flexWrap: "wrap", gap: 12,
         }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: 0 }}>
-            © 2026 Orion Soft Limited. RC: {fRC} · Built in Nigeria. Available globally.
+            © 2026 Orion Soft Limited · RC: {fRC} · 🇳🇬 Proudly built in Nigeria · Available globally
+            {" "}<span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.goldDim, border: `1px solid rgba(200,168,80,0.25)`, borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: C.gold, letterSpacing: "0.06em", verticalAlign: "middle", marginLeft: 6 }}>NDPR</span>
             <button type="button" onClick={() => setCurrentPage("admin")} style={{
               background: "none", border: "none", color: "rgba(255,255,255,0.12)", fontSize: 11, fontFamily: font,
               cursor: "pointer", padding: "2px 6px", marginLeft: 8, letterSpacing: "0.03em",
@@ -3133,15 +3148,15 @@ function Footer({ setCurrentPage }) {
 function SectionHeader({ tag, tagColor, title, subtitle, dark = false }) {
   return (
     <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto" }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: tagColor, fontFamily: font, letterSpacing: "0.1em" }}>{tag}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: tagColor, fontFamily: font, letterSpacing: "0.13em", textTransform: "uppercase" }}>{tag}</span>
       <h2 style={{
-        fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 800, fontFamily: font,
+        fontSize: "clamp(28px, 3.5vw, 48px)", fontWeight: 800, fontFamily: font,
         color: dark ? C.heading : C.lightHeading,
-        letterSpacing: "-0.025em", margin: "10px 0 14px", lineHeight: 1.15,
+        letterSpacing: "-0.035em", margin: "10px 0 14px", lineHeight: 1.08,
       }}>{title}</h2>
       {subtitle && <p style={{
         fontSize: 16, color: dark ? C.text : C.lightMuted, fontFamily: font,
-        lineHeight: 1.7, margin: 0,
+        lineHeight: 1.78, margin: 0,
       }}>{subtitle}</p>}
     </div>
   );

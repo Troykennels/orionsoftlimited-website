@@ -147,3 +147,14 @@ input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; bo
   border-color: rgba(200,168,80,0.42) !important;
   box-shadow: 0 22px 70px rgba(0,0,0,0.24);
 }
+/* Premium typography baseline */
+h1, h2, h3 { text-rendering: optimizeLegibility; }
+/* Smooth hover transitions */
+button, a { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+/* HR dividers */
+hr { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 0; }
+/* Prevent layout shift on hover transforms */
+article, .card { will-change: transform; }
+@media (max-width: 640px) {
+  .stats-row-inner { grid-template-columns: repeat(2, 1fr) !important; }
+}
