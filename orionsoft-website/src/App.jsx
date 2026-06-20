@@ -12,6 +12,18 @@ const SupportPage     = lazy(() => import("./pages/CredibilityPages").then(m => 
 const PartnersPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.PartnersPage })));
 const TechStackPage   = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.TechStackPage })));
 
+// Trust & growth pages — one module, separate chunk
+const ClientsPage       = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ClientsPage })));
+const SuccessStoriesPage= lazy(() => import("./pages/TrustPages").then(m => ({ default: m.SuccessStoriesPage })));
+const TestimonialsPage  = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.TestimonialsPage })));
+const AwardsPage        = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.AwardsPage })));
+const CertificationsPage= lazy(() => import("./pages/TrustPages").then(m => ({ default: m.CertificationsPage })));
+const FAQPage           = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.FAQPage })));
+const DocsPage          = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.DocsPage })));
+const ApiDocsPage       = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ApiDocsPage })));
+const ReferralPage      = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ReferralPage })));
+const InvestorsPage     = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.InvestorsPage })));
+
 // Enterprise contact & lead management page
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 
@@ -3071,21 +3083,37 @@ function Footer({ setCurrentPage }) {
               { l: "FleetCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
             ]},
             { title: "Company", links: [
-              { l: "Home", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("home"); } },
               { l: "About", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
+              { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
               { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
               { l: "Blog", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
-              { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
+              { l: "Awards", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("awards"); } },
+              { l: "Investors", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("investors"); } },
+            ]},
+            { title: "Trust", links: [
+              { l: "Our Clients", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("clients"); } },
+              { l: "Testimonials", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("testimonials"); } },
+              { l: "Success Stories", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("success-stories"); } },
+              { l: "Case Studies", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
+              { l: "Certifications", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("certifications"); } },
             ]},
             { title: "Solutions", links: [
               { l: "Industries", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
               { l: "Solutions", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
               { l: "Partners", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
+              { l: "Referral Programme", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("referral"); } },
+            ]},
+            { title: "Resources", links: [
+              { l: "Documentation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
+              { l: "API Reference", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
+              { l: "FAQ", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
+              { l: "Support", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
               { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
               { l: "Privacy Policy", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("privacy"); } },
               { l: "Terms of Service", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("terms"); } },
+              { l: "Security", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
               { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
             ]},
             { title: "Contact", isContact: true },
@@ -5201,8 +5229,10 @@ function ResourcesPage({ setCurrentPage }) {
   const resources = [
     { name: "Blog", label: "Insights & Articles", icon: "M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h5", color: C.blue, action: () => setCurrentPage("blog"), cta: "Read the blog", soon: false },
     { name: "Case Studies", label: "Real deployments. Real results.", icon: "M9 12l2 2 4-4 M21 12a9 9 0 11-18 0 9 9 0 0118 0z", color: C.mint, action: () => setCurrentPage("case-studies"), cta: "View case studies", soon: false },
-    { name: "Documentation", label: "Technical Docs", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6", color: C.purple, action: null, cta: "Coming soon", soon: true,
-      desc: "Detailed product documentation, API references, and integration guides for developers and administrators." },
+    { name: "Success Stories", label: "Outcomes from real clients", icon: "M3 3v18h18 M7 16l4-6 4 3 5-7", color: C.gold, action: () => setCurrentPage("success-stories"), cta: "View success stories", soon: false },
+    { name: "Documentation", label: "Step-by-step product guides", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6", color: C.purple, action: () => setCurrentPage("docs"), cta: "Browse docs", soon: false },
+    { name: "API Reference", label: "Build on Orion Soft", icon: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5", color: C.accent, action: () => setCurrentPage("api-docs"), cta: "View API docs", soon: false },
+    { name: "FAQ", label: "Answers before the first call", icon: "M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", color: C.mint, action: () => setCurrentPage("faq"), cta: "Read FAQ", soon: false },
     { name: "Support Centre", label: "Help when you need it", icon: "M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", color: C.gold, action: () => setCurrentPage("support"), cta: "Get support", soon: false },
     { name: "Webinars", label: "Live & on-demand sessions", icon: "M23 7l-7 5 7 5z M1 5h15v14H1z", color: C.rose, action: null, cta: "Coming soon", soon: true,
       desc: "Product walkthroughs, training sessions, and industry deep-dives — live and recorded." },
@@ -5740,6 +5770,37 @@ export default function App() {
 
         {currentPage === "team" && (
           <TeamPage setCurrentPage={navSetPage} />
+        )}
+
+        {currentPage === "clients" && (
+          <Suspense fallback={<PageLoader />}><ClientsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "success-stories" && (
+          <Suspense fallback={<PageLoader />}><SuccessStoriesPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "testimonials" && (
+          <Suspense fallback={<PageLoader />}><TestimonialsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "awards" && (
+          <Suspense fallback={<PageLoader />}><AwardsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "certifications" && (
+          <Suspense fallback={<PageLoader />}><CertificationsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "faq" && (
+          <Suspense fallback={<PageLoader />}><FAQPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "docs" && (
+          <Suspense fallback={<PageLoader />}><DocsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "api-docs" && (
+          <Suspense fallback={<PageLoader />}><ApiDocsPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "referral" && (
+          <Suspense fallback={<PageLoader />}><ReferralPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "investors" && (
+          <Suspense fallback={<PageLoader />}><InvestorsPage setCurrentPage={navSetPage} /></Suspense>
         )}
 
         {currentPage === "admin" && (

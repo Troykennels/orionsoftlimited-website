@@ -61,6 +61,8 @@ input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; bo
   .stats-bar > div { flex: 0 0 50% !important; padding: 10px 0 !important; }
   .product-highlights-grid { grid-template-columns: 1fr !important; }
   .industry-row { grid-template-columns: 1fr !important; }
+  .docs-grid { grid-template-columns: 1fr !important; }
+  .story-grid { grid-template-columns: 1fr !important; }
 }
 @media (min-width: 769px) {
   .nav-burger { display: none !important; }
