@@ -118,42 +118,49 @@ RESPONSE RULES:
 - For technical deep dives, offer to connect them with the technical team
 - For booking confirmations or follow-up questions: acknowledge warmly, confirm that the team will be in touch, and offer to collect their contact if not already done
 
-ACTION SYSTEM — at the end of your response, you may append ONE of these tokens (invisible to user):
-- [ACTION:BOOK_DEMO] — when user wants a demo or trial
-- [ACTION:COLLECT_LEAD] — when user is interested but not ready for demo
-- [ACTION:ESCALATE] — when user explicitly asks for a human / complex technical question
-- [ACTION:PRODUCT:carecore] — when recommending CareCore (replace with product id)
-Do not explain the tokens. They will be stripped before showing to the user.
+ACTION SYSTEM — ALWAYS append exactly ONE token at the end of your response (invisible to user):
+- [ACTION:PRODUCT:carecore] — when you have identified the right product. Replace "carecore" with the product id: carecore, schoolcore, compliancecore, inventorycore, financecore, hrcore, churchcore, fleetcore, or telehealth.
+- [ACTION:BOOK_DEMO] — when user explicitly asks for a demo/trial AND no specific product is identified yet
+- [ACTION:COLLECT_LEAD] — when user is interested but not ready for demo, or wants to be contacted
+- [ACTION:ESCALATE] — when user asks to speak to a human, or has a complex technical question
 
-CONVERSATION GOAL: Understand the user's business, recommend the right product, and either book a demo or collect contact info.`;
+PRODUCT ACTION RULES (most important):
+- ANY time you mention, recommend, or focus on a specific product → append [ACTION:PRODUCT:productid]
+- Example: If discussing CareCore → end with [ACTION:PRODUCT:carecore]
+- If the user asks about CareCore specifically → [ACTION:PRODUCT:carecore]
+- If recommending CareCore + also offering a demo → still use [ACTION:PRODUCT:carecore], NOT [ACTION:BOOK_DEMO]
+- Only use [ACTION:BOOK_DEMO] if the user asks for a demo but you haven't pinpointed which product yet
+- Do not explain the tokens. They will be stripped before showing to the user.
+
+CONVERSATION GOAL: Understand the user's business, identify the exact Orion Soft product that fits, and either show them the product page or book a demo.`;
 
 // Rule-based fallback when no API key
 function ruleBasedResponse(messages) {
   const last = (messages.filter(m => m.role === "user").pop()?.content || "").toLowerCase();
 
   if (/hospital|clinic|health centre|pharmacy|lab|ward|doctor|patient|medical/.test(last))
-    return { text: "Based on what you've described, CareCore — our Hospital Management System — would be an excellent fit. It covers everything from patient registration and clinical workflows to pharmacy, lab, billing, and real-time analytics. Would you like to see a live demo?", action: "BOOK_DEMO" };
+    return { text: "Based on what you've described, CareCore — our Hospital Management System — would be an excellent fit. It covers everything from patient registration and clinical workflows to pharmacy, lab, billing, and real-time analytics. Would you like to see a live demo?", action: "PRODUCT", product: "carecore" };
 
   if (/school|student|pupil|teacher|class|academic|waec|neco|university|polytechnic/.test(last))
-    return { text: "SchoolCore is built for exactly that — admissions, attendance, results, fee management, timetables, and a parent portal, all in one system. Want me to arrange a demo?", action: "BOOK_DEMO" };
+    return { text: "SchoolCore is built for exactly that — admissions, attendance, results, fee management, timetables, and a parent portal, all in one system. Want me to arrange a demo?", action: "PRODUCT", product: "schoolcore" };
 
   if (/church|ministry|pastor|member|tithe|offering|cell group|prayer/.test(last))
-    return { text: "ChurchCore is designed specifically for Nigerian ministries — member management, cell groups, tithes and offerings, events, and SMS communication. Would you like to see how it works?", action: "BOOK_DEMO" };
+    return { text: "ChurchCore is designed specifically for Nigerian ministries — member management, cell groups, tithes and offerings, events, and SMS communication. Would you like to see how it works?", action: "PRODUCT", product: "churchcore" };
 
   if (/fleet|vehicle|truck|driver|logistics|transport|delivery/.test(last))
-    return { text: "FleetCore would work well for you — vehicle registry, driver management, fuel tracking, maintenance scheduling, and route management. Shall I book you a demo?", action: "BOOK_DEMO" };
+    return { text: "FleetCore would work well for you — vehicle registry, driver management, fuel tracking, maintenance scheduling, and route management. Shall I book you a demo?", action: "PRODUCT", product: "fleetcore" };
 
   if (/inventory|stock|warehouse|supply|purchase order|supplier/.test(last))
-    return { text: "InventoryCore gives you real-time stock visibility across multiple locations, automated reorder alerts, batch tracking, and supplier management. Want to see it in action?", action: "BOOK_DEMO" };
+    return { text: "InventoryCore gives you real-time stock visibility across multiple locations, automated reorder alerts, batch tracking, and supplier management. Want to see it in action?", action: "PRODUCT", product: "inventorycore" };
 
-  if (/hr|human resource|staff|employee|payroll|leave|recruitment|onboard/.test(last))
-    return { text: "HRCore manages your full employee lifecycle — records, recruitment, onboarding, leave, attendance, performance reviews, and payroll integration. Want a demo?", action: "BOOK_DEMO" };
+  if (/\bhr\b|human resource|staff.*manage|employee|leave.*manage|recruitment|onboard/.test(last))
+    return { text: "HRCore manages your full employee lifecycle — records, recruitment, onboarding, leave, attendance, performance reviews, and payroll integration. Want a demo?", action: "PRODUCT", product: "hrcore" };
 
-  if (/finance|accounting|invoice|account|tax|paye|vat|budget|payroll/.test(last))
-    return { text: "FinanceCore is built for Nigerian businesses — invoicing, payroll, PAYE, VAT/WHT, bank reconciliation, and financial statements. Shall I connect you with the team?", action: "COLLECT_LEAD" };
+  if (/finance|accounting|invoice|account|tax|paye|vat|budget/.test(last))
+    return { text: "FinanceCore is built for Nigerian businesses — invoicing, payroll, PAYE, VAT/WHT, bank reconciliation, and financial statements. Shall I connect you with the team?", action: "PRODUCT", product: "financecore" };
 
   if (/compliance|risk|audit|regulatory|policy|ndpr|cbn|nafdac/.test(last))
-    return { text: "ComplianceCore keeps you audit-ready with policy management, risk registers, regulatory tracking for Nigerian requirements (CAC, NDPR, CBN, NAFDAC), and a full audit trail.", action: "COLLECT_LEAD" };
+    return { text: "ComplianceCore keeps you audit-ready with policy management, risk registers, regulatory tracking for Nigerian requirements (CAC, NDPR, CBN, NAFDAC), and a full audit trail.", action: "PRODUCT", product: "compliancecore" };
 
   if (/price|cost|how much|fee|subscription|payment|afford/.test(last))
     return { text: "Our pricing is tailored to your organisation — size, modules, and deployment type all factor in. I'd rather give you an accurate quote than a number that doesn't fit. Can I get your contact details so our team can reach out?", action: "COLLECT_LEAD" };

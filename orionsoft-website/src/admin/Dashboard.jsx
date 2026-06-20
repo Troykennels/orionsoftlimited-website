@@ -1113,31 +1113,55 @@ function CrudSection({ title, sk, defaultItem, fields, renderItem, defaultList =
 }
 
 // ─── Products ────────────────────────────────────────────────────────────────
+const ALL_INDUSTRY_OPTIONS = ["Healthcare","Education","Financial Services","Faith Organisations","Logistics & Fleet","Manufacturing & Retail","Government & NGOs"];
+const ALL_SOLUTION_OPTIONS  = ["Go Paperless","Process Automation","Data & Reporting","Compliance & Audit","Enterprise Integration","Training & Adoption"];
+
 function ProductsSection() {
   return (
     <CrudSection
       title="Product"
       sk={SK.products}
-      defaultItem={{ name: "", tag: "", headline: "", desc: "", status: "live", color: "#C8A850", available: true, published: true }}
+      defaultItem={{
+        id: "", name: "", tag: "", tagline: "", desc: "", color: "#C8A850",
+        status: "live", published: true, featured: false, order: 99, soon: false, hasPage: false,
+        industries: [], solutions: [], modules: "", features: "",
+      }}
       fields={[
-        { key: "name", label: "Product Name", placeholder: "e.g. CareCore HMS" },
-        { key: "tag", label: "Tag Line", placeholder: "e.g. FLAGSHIP PRODUCT" },
-        { key: "headline", label: "Headline", placeholder: "Short compelling headline" },
-        { key: "desc", label: "Description", type: "textarea", placeholder: "Detailed description" },
-        { key: "status", label: "Status", type: "select", options: [{ value: "live", label: "Live" }, { value: "beta", label: "Beta" }, { value: "coming-soon", label: "Coming Soon" }] },
-        { key: "color", label: "Accent Color (hex)", placeholder: "#C8A850" },
-        { key: "available", label: "Available", type: "toggle", toggleLabel: "Available" },
-        { key: "published", label: "Published", type: "toggle", toggleLabel: "Published" },
+        { key: "id",       label: "ID / URL Slug",   placeholder: "e.g. hrcore (used in URL — no spaces)", hint: "Leave blank to auto-generate. Must be unique." },
+        { key: "name",     label: "Product Name",     placeholder: "e.g. HRCore" },
+        { key: "tag",      label: "Short Tag",        placeholder: "e.g. Human Resources" },
+        { key: "tagline",  label: "Tagline",          placeholder: "One-line pitch shown on product page" },
+        { key: "desc",     label: "Description",      type: "textarea", rows: 3, placeholder: "Short product description" },
+        { key: "color",    label: "Accent Color (hex)", placeholder: "#C8A850" },
+        { key: "order",    label: "Display Order",    type: "number", placeholder: "1–99 (lower = appears first)" },
+        { key: "status",   label: "Status",           type: "select", options: [{ value: "live", label: "Live" }, { value: "beta", label: "Beta" }, { value: "soon", label: "Coming Soon" }] },
+        { key: "industries", label: "Industries (comma-separated)", placeholder: "Healthcare, Education, Financial Services…", hint: `Options: ${ALL_INDUSTRY_OPTIONS.join(", ")}` },
+        { key: "solutions",  label: "Solutions (comma-separated)",  placeholder: "Go Paperless, Data & Reporting…",            hint: `Options: ${ALL_SOLUTION_OPTIONS.join(", ")}` },
+        { key: "modules",    label: "Key Modules (comma-separated or one per line)", type: "textarea", rows: 3, placeholder: "Patient Records, Billing, Pharmacy…" },
+        { key: "features",   label: "Features (one per line)",                       type: "textarea", rows: 4, placeholder: "Real-time dashboard\nRole-based access…" },
+        { key: "soon",      label: "Coming Soon",    type: "toggle", toggleLabel: "Mark as Coming Soon" },
+        { key: "featured",  label: "Featured",       type: "toggle", toggleLabel: "Feature on homepage" },
+        { key: "hasPage",   label: "Has Dedicated Page", type: "toggle", toggleLabel: "Has a built-in product page (don't change for existing 9 products)" },
+        { key: "published", label: "Published",      type: "toggle", toggleLabel: "Visible on website" },
       ]}
       renderItem={p => (
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: p.color || C.gold, flexShrink: 0 }} />
             <span style={{ fontSize: 15, fontWeight: 700, color: C.heading, fontFamily: font }}>{p.name}</span>
-            <Badge color={p.status === "live" ? C.mint : p.status === "beta" ? C.amber : C.textMuted}>{p.status}</Badge>
+            {p.id && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>/{p.id}</span>}
+            <Badge color={p.status === "live" ? C.mint : p.status === "beta" ? C.amber : C.textMuted}>{p.status || "live"}</Badge>
             <Badge color={p.published ? C.mint : C.textMuted}>{p.published ? "Published" : "Draft"}</Badge>
+            {p.featured && <Badge color={C.gold}>Featured</Badge>}
+            {p.soon && <Badge color={C.purple}>Soon</Badge>}
           </div>
-          {p.tag && <div style={{ fontSize: 11, color: C.gold, fontFamily: font, letterSpacing: "0.05em" }}>{p.tag}</div>}
-          {p.desc && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{p.desc}</div>}
+          {p.tag && <div style={{ fontSize: 11, color: C.gold, fontFamily: font, letterSpacing: "0.05em", marginBottom: 2 }}>{p.tag}</div>}
+          {(p.industries?.length > 0 || (typeof p.industries === "string" && p.industries)) && (
+            <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 3 }}>
+              Industries: {Array.isArray(p.industries) ? p.industries.join(", ") : p.industries}
+            </div>
+          )}
+          {p.desc && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{String(p.desc).slice(0, 120)}{String(p.desc).length > 120 ? "…" : ""}</div>}
         </div>
       )}
     />

@@ -23,6 +23,19 @@ const QUICK_REPLIES = [
   "What's the pricing?",
 ];
 
+// Maps product ID to display name + emoji — keeps emails and UI in sync
+const PRODUCT_LABELS = {
+  carecore:       { name: "CareCore",       emoji: "🏥", color: "#4F8EF7" },
+  schoolcore:     { name: "SchoolCore",     emoji: "🎓", color: "#10B981" },
+  compliancecore: { name: "ComplianceCore", emoji: "✅", color: "#F59E0B" },
+  inventorycore:  { name: "InventoryCore",  emoji: "📦", color: "#8B5CF6" },
+  financecore:    { name: "FinanceCore",    emoji: "💰", color: "#C8A850" },
+  hrcore:         { name: "HRCore",         emoji: "👥", color: "#F43F5E" },
+  churchcore:     { name: "ChurchCore",     emoji: "⛪", color: "#7C3AED" },
+  fleetcore:      { name: "FleetCore",      emoji: "🚗", color: "#06B6D4" },
+  telehealth:     { name: "TeleHealth",     emoji: "💊", color: "#4F8EF7" },
+};
+
 const LEAD_FIELDS = [
   { key: "name",  label: "Your full name",       type: "text",  placeholder: "John Okafor" },
   { key: "email", label: "Email address",         type: "email", placeholder: "john@company.com" },
@@ -130,6 +143,7 @@ export default function ChatBot({ setCurrentPage }) {
   const [leadStep, setLeadStep] = useState(0);
   const [leadInput, setLeadInput] = useState("");
   const [demoProduct, setDemoProduct] = useState("");
+  const [showProductActions, setShowProductActions] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const sessionMessages = useRef(messages);
@@ -194,14 +208,18 @@ export default function ChatBot({ setCurrentPage }) {
       addMessage(assistantMsg);
 
       // Handle actions
-      if (data.action === "BOOK_DEMO" || data.action === "BOOK_DEMO:carecore") {
+      if (data.action === "BOOK_DEMO" || data.action?.startsWith("BOOK_DEMO")) {
         setTimeout(() => setFlowState("BOOK_DEMO"), 600);
+        setShowProductActions(false);
       } else if (data.action === "COLLECT_LEAD") {
         setTimeout(() => setFlowState("COLLECT_LEAD"), 600);
+        setShowProductActions(false);
       } else if (data.action === "ESCALATE") {
         setTimeout(() => { setFlowState("ESCALATE"); handleEscalate(); }, 600);
+        setShowProductActions(false);
       } else if (data.action === "PRODUCT" && data.product) {
         setDemoProduct(data.product);
+        setTimeout(() => setShowProductActions(true), 600);
       }
 
       // Auto-save conversation
@@ -232,11 +250,13 @@ export default function ChatBot({ setCurrentPage }) {
     if (!msg || loading) return;
     setInput("");
     setHasNew(false);
+    setShowProductActions(false);
     addMessage({ role: "user", content: msg });
     sendToAI(msg);
   }
 
   function handleQuickReply(text) {
+    setShowProductActions(false);
     addMessage({ role: "user", content: text });
     sendToAI(text);
   }
@@ -393,6 +413,32 @@ export default function ChatBot({ setCurrentPage }) {
               </div>
             )}
 
+            {/* Product action CTA — shown after AI recommends a specific product */}
+            {showProductActions && !flowState && !loading && (() => {
+              const prod = PRODUCT_LABELS[demoProduct];
+              return prod ? (
+                <div style={{ background: C.card, border: `1px solid ${prod.color}33`, borderRadius: 14, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 13, color: prod.color, fontFamily: font, fontWeight: 700, marginBottom: 10 }}>
+                    {prod.emoji} {prod.name} — what would you like to do?
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" onClick={() => { setShowProductActions(false); setCurrentPage(demoProduct); setOpen(false); }} style={{
+                      padding: "8px 14px", background: `${prod.color}18`, border: `1px solid ${prod.color}44`,
+                      color: prod.color, borderRadius: 20, fontSize: 12.5, fontFamily: font, fontWeight: 700, cursor: "pointer",
+                    }}>
+                      View {prod.name} page →
+                    </button>
+                    <button type="button" onClick={() => { setShowProductActions(false); setFlowState("BOOK_DEMO"); }} style={{
+                      padding: "8px 14px", background: C.goldDim, border: `1px solid ${C.gold}44`,
+                      color: C.gold, borderRadius: 20, fontSize: 12.5, fontFamily: font, fontWeight: 700, cursor: "pointer",
+                    }}>
+                      Book a free demo
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             {/* Lead collection form */}
             {(flowState === "COLLECT_LEAD" || flowState === "BOOK_DEMO") && leadStep < LEAD_FIELDS.length && (
               <LeadStep
@@ -402,6 +448,8 @@ export default function ChatBot({ setCurrentPage }) {
                 onSubmit={handleLeadNext}
                 step={leadStep}
                 total={LEAD_FIELDS.length}
+                product={PRODUCT_LABELS[demoProduct]}
+                isDemo={flowState === "BOOK_DEMO"}
               />
             )}
 
@@ -558,12 +606,20 @@ function MessageBubble({ msg }) {
   );
 }
 
-function LeadStep({ field, value, onChange, onSubmit, step, total }) {
+function LeadStep({ field, value, onChange, onSubmit, step, total, product, isDemo }) {
   const inputRef = useRef(null);
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, [field.key]);
 
   return (
     <div style={{ background: "rgba(15,24,40,1)", border: "1px solid rgba(200,168,80,0.25)", borderRadius: 14, padding: "14px 16px" }}>
+      {product ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <span style={{ fontSize: 14 }}>{product.emoji}</span>
+          <span style={{ fontSize: 12, color: product.color, fontFamily: font, fontWeight: 700 }}>
+            {isDemo ? `Booking demo — ${product.name}` : `Enquiry — ${product.name}`}
+          </span>
+        </div>
+      ) : null}
       <div style={{ fontSize: 12, color: "#C8A850", fontFamily: font, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em" }}>
         STEP {step + 1} OF {total}
       </div>

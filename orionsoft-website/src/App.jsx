@@ -162,6 +162,7 @@ const CMS_SK = {
   features:      "orionsoft_features_v1",
   newsletter:    "orionsoft_newsletter_v1",
   conversations: "orionsoft_conversations_v1",
+  products:      "orionsoft_products_v1",
 };
 const ANALYTICS_SK = "orionsoft_analytics_v1";
 const HEARTBEAT_SK = "orionsoft_heartbeat_v1";
@@ -209,6 +210,7 @@ function buildCMSState() {
     announcements: readCMS(CMS_SK.announcements,  null),
     features:      readCMS(CMS_SK.features,       {}),
     newsletter:    readCMS(CMS_SK.newsletter,     []),
+    products:      readCMS(CMS_SK.products,       DEFAULT_PRODUCTS_CATALOG),
   };
 }
 function useCMSData() {
@@ -230,17 +232,38 @@ const DEFAULT_MAIN_MENU = [
   { id: "m4", label: "Careers",  page: "careers",  active: true, order: 3 },
 ];
 
-// Product suite — used by Nav mega-menu, ProductsOverviewPage, LoginPage, etc.
-const ALL_PRODUCTS = [
-  { id: "carecore",        name: "CareCore",       tag: "Hospital Management",   color: "#4F8EF7" },
-  { id: "schoolcore",      name: "SchoolCore",      tag: "School Management",     color: "#10B981" },
-  { id: "compliancecore",  name: "ComplianceCore",  tag: "Compliance & Risk",     color: "#F59E0B" },
-  { id: "inventorycore",   name: "InventoryCore",   tag: "Inventory & Supply",    color: "#8B5CF6" },
-  { id: "financecore",     name: "FinanceCore",     tag: "Finance & Accounting",  color: "#C8A850" },
-  { id: "hrcore",          name: "HRCore",          tag: "Human Resources",       color: "#F43F5E" },
-  { id: "churchcore",      name: "ChurchCore",      tag: "Faith Organisations",   color: "#7C3AED" },
-  { id: "fleetcore",       name: "FleetCore",       tag: "Fleet Management",      color: "#06B6D4" },
-  { id: "telehealth",      name: "TeleHealth",      tag: "Telemedicine · Soon",   color: "#4F8EF7", soon: true },
+// Canonical product catalog — source of truth for all product listings.
+// Admin panel reads/writes to the same localStorage key (orionsoft_products_v1).
+// When a new product is added via admin and given the right industries/solutions,
+// every page (Nav, Industries, Solutions, Pricing, Login, etc.) updates automatically.
+const DEFAULT_PRODUCTS_CATALOG = [
+  { id: "carecore",       name: "CareCore",       tag: "Hospital Management",   color: "#4F8EF7", status: "live",  published: true,  featured: true,  order: 1, soon: false, hasPage: true,
+    industries: ["Healthcare"],
+    solutions:  ["Go Paperless","Process Automation","Data & Reporting","Enterprise Integration","Training & Adoption"] },
+  { id: "schoolcore",     name: "SchoolCore",     tag: "School Management",     color: "#10B981", status: "live",  published: true,  featured: false, order: 2, soon: false, hasPage: true,
+    industries: ["Education"],
+    solutions:  ["Go Paperless","Training & Adoption"] },
+  { id: "compliancecore", name: "ComplianceCore", tag: "Compliance & Risk",     color: "#F59E0B", status: "live",  published: true,  featured: false, order: 3, soon: false, hasPage: true,
+    industries: ["Financial Services","Government & NGOs"],
+    solutions:  ["Compliance & Audit"] },
+  { id: "inventorycore",  name: "InventoryCore",  tag: "Inventory & Supply",    color: "#8B5CF6", status: "live",  published: true,  featured: false, order: 4, soon: false, hasPage: true,
+    industries: ["Healthcare","Manufacturing & Retail","Logistics & Fleet"],
+    solutions:  ["Process Automation","Data & Reporting"] },
+  { id: "financecore",    name: "FinanceCore",    tag: "Finance & Accounting",  color: "#C8A850", status: "live",  published: true,  featured: false, order: 5, soon: false, hasPage: true,
+    industries: ["Education","Financial Services","Faith Organisations","Manufacturing & Retail","Government & NGOs"],
+    solutions:  ["Data & Reporting","Compliance & Audit","Enterprise Integration"] },
+  { id: "hrcore",         name: "HRCore",         tag: "Human Resources",       color: "#F43F5E", status: "live",  published: true,  featured: false, order: 6, soon: false, hasPage: true,
+    industries: ["Education","Financial Services","Manufacturing & Retail","Government & NGOs"],
+    solutions:  ["Process Automation","Compliance & Audit","Enterprise Integration"] },
+  { id: "churchcore",     name: "ChurchCore",     tag: "Faith Organisations",   color: "#7C3AED", status: "live",  published: true,  featured: false, order: 7, soon: false, hasPage: true,
+    industries: ["Faith Organisations"],
+    solutions:  ["Go Paperless","Training & Adoption"] },
+  { id: "fleetcore",      name: "FleetCore",      tag: "Fleet Management",      color: "#06B6D4", status: "live",  published: true,  featured: false, order: 8, soon: false, hasPage: true,
+    industries: ["Logistics & Fleet"],
+    solutions:  ["Data & Reporting"] },
+  { id: "telehealth",     name: "TeleHealth",     tag: "Telemedicine · Soon",   color: "#4F8EF7", status: "soon",  published: true,  featured: false, order: 9, soon: true,  hasPage: true,
+    industries: ["Healthcare"],
+    solutions:  [] },
 ];
 
 // Top-level desktop nav (fixed structure — no longer CMS-driven)
@@ -303,70 +326,14 @@ const PRODUCT_COLORS = [
   { name: "Rose", value: "#FDA4AF" },
 ];
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: "carecore-hms",
-    name: "CareCore HMS",
-    tag: "FLAGSHIP PRODUCT",
-    status: "live",
-    published: true,
-    primary: true,
-    headline: "The complete operating system for your hospital.",
-    desc: "Patient records, clinical workflows, billing, pharmacy, lab, and ward management — all connected, all real-time.",
-    features: [
-      "Triage → diagnosis → discharge without data loss",
-      "Real-time ward occupancy and bed management",
-      "Automated invoicing with itemised financial reports",
-      "Drug interaction checks and NEWS2 early warning",
-    ],
-    pricing: [
-      { id: "p1", name: "Clinic", beds: "1–10 beds", onboard: "₦350K – 500K", monthly: "₦30,000", popular: false },
-      { id: "p2", name: "Small Hospital", beds: "11–50 beds", onboard: "₦500K – 800K", monthly: "₦60,000", popular: true },
-      { id: "p3", name: "Medium Hospital", beds: "51–150 beds", onboard: "₦800K – 1.2M", monthly: "₦100,000", popular: false },
-      { id: "p4", name: "Large Hospital", beds: "150+ beds", onboard: "₦1.2M – 2M", monthly: "₦150–250K", popular: false },
-    ],
-    screenshots: [
-      { id: "s1", url: "/assets/carecore/dashboard-overview.png", title: "Executive Dashboard", desc: "Facility metrics at a glance." },
-      { id: "s2", url: "/assets/carecore/quick-actions.png", title: "Quick Actions", desc: "Fast clinical workflows." },
-    ],
-    ctaLabel: "Explore CareCore",
-    ctaAction: "products",
-    color: "#38BDF8",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "custom-software",
-    name: "Custom Software",
-    tag: "BESPOKE BUILDS",
-    status: "live",
-    published: true,
-    primary: false,
-    headline: "Software shaped around how your business actually works.",
-    desc: "We turn complex manual processes into dashboards, portals, APIs, and workflow systems built for your exact operation.",
-    features: [
-      "School systems, inventory, logistics, and CRMs",
-      "API integrations and automated data flows",
-      "Real-time management dashboards and reporting",
-      "Deployed with training, docs, and ongoing support",
-    ],
-    pricing: [],
-    screenshots: [],
-    ctaLabel: "Start a Build",
-    ctaAction: "contact",
-    color: "#C4B5FD",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-];
 
 function useProducts() {
   const [products, setProducts] = useState(() => {
     try {
       const raw = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS;
+      return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS_CATALOG;
     } catch {
-      return DEFAULT_PRODUCTS;
+      return DEFAULT_PRODUCTS_CATALOG;
     }
   });
 
@@ -390,7 +357,7 @@ function useProducts() {
   const deleteProduct = (id) =>
     setProducts(prev => save(prev.filter(p => p.id !== id)));
 
-  const resetToDefaults = () => setProducts(save(DEFAULT_PRODUCTS));
+  const resetToDefaults = () => setProducts(save(DEFAULT_PRODUCTS_CATALOG));
 
   return { products, persist, addProduct, updateProduct, deleteProduct, resetToDefaults };
 }
@@ -701,6 +668,10 @@ function OrionLogo({ size = 32, gradientId = "orion-logo" }) {
 // NAV
 // ═══════════════════════════════════════
 function Nav({ currentPage, setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const navProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false)
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
@@ -725,7 +696,7 @@ function Nav({ currentPage, setCurrentPage }) {
     setCurrentPage(page);
   };
 
-  const isProductPage = ALL_PRODUCTS.some(p => p.id === currentPage) || currentPage === "products";
+  const isProductPage = navProducts.some(p => p.id === currentPage) || currentPage === "products";
 
   return (
     <nav aria-label="Main navigation"
@@ -828,7 +799,7 @@ function Nav({ currentPage, setCurrentPage }) {
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-              {ALL_PRODUCTS.map(p => (
+              {navProducts.map(p => (
                 <button key={p.id} type="button" onClick={() => go(p.id)}
                   style={{
                     display: "flex", alignItems: "center", gap: 14, textAlign: "left",
@@ -870,7 +841,7 @@ function Nav({ currentPage, setCurrentPage }) {
                 style={{ display: "block", width: "100%", textAlign: "left", color: C.gold, background: "none", border: "none", fontSize: 14, fontFamily: font, padding: "10px 0", cursor: "pointer", fontWeight: 600 }}>
                 All products →
               </button>
-              {ALL_PRODUCTS.map(p => (
+              {navProducts.map(p => (
                 <button key={p.id} type="button" onClick={() => go(p.id)}
                   style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", color: C.text, background: "none", border: "none", fontSize: 14.5, fontFamily: font, padding: "10px 0", cursor: "pointer" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
@@ -4668,6 +4639,9 @@ function ClientStrip({ portfolio = [] }) {
 }
 
 function ProductShowcase({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const showcaseProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <section id="products" style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.bg }}>
       <div style={{ maxWidth: 1100, margin: "0 auto", textAlign: "center" }}>
@@ -4686,7 +4660,7 @@ function ProductShowcase({ setCurrentPage }) {
             display: "flex", gap: 12, overflowX: "auto", padding: "4px 4px 16px",
             justifyContent: "flex-start", scrollSnapType: "x proximity",
           }}>
-            {ALL_PRODUCTS.map(p => (
+            {showcaseProducts.map(p => (
               <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 9, flexShrink: 0,
@@ -4893,6 +4867,87 @@ function StatsRow() {
 // ═══════════════════════════════════════
 // NEW PAGES — Products, Industries, Solutions, Pricing, About, Resources, Login
 // ═══════════════════════════════════════
+// Generic page rendered for CMS-only products (no dedicated hardcoded page component)
+function GenericProductPage({ product: p, setCurrentPage }) {
+  const featureList = Array.isArray(p.features)
+    ? p.features
+    : typeof p.features === "string"
+      ? p.features.split(/[\n,]/).map(s => s.trim()).filter(Boolean)
+      : [];
+  const moduleList = Array.isArray(p.modules)
+    ? p.modules
+    : typeof p.modules === "string"
+      ? p.modules.split(/[\n,]/).map(s => s.trim()).filter(Boolean)
+      : [];
+  return (
+    <div style={{ background: C.bg }}>
+      <section style={{ background: C.bg, padding: "150px clamp(20px, 5vw, 60px) 70px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 800, height: 500, borderRadius: "50%", background: `radial-gradient(ellipse, ${p.color}14 0%, transparent 70%)`, filter: "blur(40px)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 760, margin: "0 auto" }}>
+          <Reveal>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: p.color, fontFamily: font, letterSpacing: "0.14em" }}>{p.tag?.replace(" · Soon", "").toUpperCase()}</span>
+            <h1 style={{ fontSize: "clamp(38px, 5.5vw, 64px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.04em", margin: "16px 0 20px", lineHeight: 1.06 }}>{p.name}</h1>
+            {p.tagline && <p style={{ fontSize: "clamp(16px, 2vw, 20px)", color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 620, margin: "0 auto 24px" }}>{p.tagline}</p>}
+            {p.soon && (
+              <span style={{ display: "inline-block", background: `${p.color}18`, border: `1px solid ${p.color}44`, color: p.color, fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 16px", letterSpacing: "0.08em" }}>COMING SOON</span>
+            )}
+          </Reveal>
+          {!p.soon && (
+            <Reveal delay={0.1}>
+              <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginTop: 28 }}>
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: C.gold, color: "#05070A", border: "none", borderRadius: 10, padding: "14px 24px", fontFamily: font, fontSize: 15, fontWeight: 900, cursor: "pointer" }}>Book a Demo</button>
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "rgba(255,255,255,0.055)", color: C.heading, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 24px", fontFamily: font, fontSize: 15, fontWeight: 800, cursor: "pointer" }}>Get a Quote</button>
+              </div>
+            </Reveal>
+          )}
+        </div>
+      </section>
+      {(p.desc || featureList.length > 0 || moduleList.length > 0) && (
+        <section style={{ padding: "60px clamp(20px, 4vw, 40px) 100px", background: C.bg }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 40 }}>
+            {p.desc && (
+              <Reveal>
+                <div>
+                  <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "0 0 16px" }}>About {p.name}</h2>
+                  <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, margin: 0 }}>{p.desc}</p>
+                </div>
+              </Reveal>
+            )}
+            {featureList.length > 0 && (
+              <Reveal delay={0.08}>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`, borderRadius: 16, padding: "28px 26px" }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 700, color: p.color, fontFamily: font, letterSpacing: "0.1em", margin: "0 0 18px" }}>KEY FEATURES</h3>
+                  <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                    {featureList.map((f, i) => (
+                      <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: C.text, fontFamily: font }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: p.color, flexShrink: 0, marginTop: 6 }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            )}
+            {moduleList.length > 0 && (
+              <Reveal delay={0.12}>
+                <div>
+                  <h3 style={{ fontSize: 13, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em", margin: "0 0 14px" }}>MODULES</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {moduleList.map((m, i) => (
+                      <span key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 13, color: C.text, fontFamily: font }}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+              </Reveal>
+            )}
+          </div>
+        </section>
+      )}
+      <CTABanner setCurrentPage={setCurrentPage} />
+    </div>
+  );
+}
+
 function PageHero({ label, title, subtitle, color = C.gold }) {
   return (
     <section style={{ background: C.bg, padding: "150px clamp(20px, 5vw, 60px) 70px", textAlign: "center", position: "relative", overflow: "hidden" }}>
@@ -4909,13 +4964,16 @@ function PageHero({ label, title, subtitle, color = C.gold }) {
 }
 
 function ProductsOverviewPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const pageProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="PRODUCTS" title="Everything you need to run your business." subtitle="Nine production-grade software products, built and supported by one company. Pick the one that fits — or run several together." />
+      <PageHero label="PRODUCTS" title="Everything you need to run your business." subtitle={`${pageProducts.length} production-grade software products, built and supported by one company. Pick the one that fits — or run several together.`} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
-            {ALL_PRODUCTS.map((p, i) => (
+            {pageProducts.map((p, i) => (
               <Reveal key={p.id} delay={Math.min(i * 0.05, 0.3)}>
                 <button type="button" onClick={() => setCurrentPage(p.id)} style={{
                   width: "100%", textAlign: "left", cursor: "pointer",
@@ -4949,29 +5007,35 @@ function ProductsOverviewPage({ setCurrentPage }) {
 }
 
 const INDUSTRIES = [
-  { name: "Healthcare", icon: "M22 12h-4l-3 9L9 3l-3 9H2", color: C.blue, products: [["carecore","CareCore"],["telehealth","TeleHealth"],["inventorycore","InventoryCore"]],
+  { name: "Healthcare",          icon: "M22 12h-4l-3 9L9 3l-3 9H2",                                                                          color: C.blue,
     desc: "Hospitals and clinics still lose hours to paper files, fragmented billing, and stockouts in the pharmacy. Orion Soft connects every clinical and administrative workflow into one system — so your team can focus on patients, not paperwork." },
-  { name: "Education", icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5", color: C.mint, products: [["schoolcore","SchoolCore"],["hrcore","HRCore"],["financecore","FinanceCore"]],
+  { name: "Education",           icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5",                                              color: C.mint,
     desc: "Admissions, results, fees, and parent communication shouldn't live in a dozen spreadsheets. We give schools and tertiary institutions one platform for academics, staff, and finance — with a parent portal that keeps families in the loop." },
-  { name: "Financial Services", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10", color: C.gold, products: [["financecore","FinanceCore"],["compliancecore","ComplianceCore"],["hrcore","HRCore"]],
+  { name: "Financial Services",  icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",                                       color: C.gold,
     desc: "Regulated institutions face constant pressure from CBN, NDPR, and audit requirements. Orion Soft keeps your books accurate, your filings on time, and your evidence trails audit-ready — without slowing the business down." },
-  { name: "Faith Organisations", icon: "M12 2v20M5 9h14", color: C.purple, products: [["churchcore","ChurchCore"],["financecore","FinanceCore"]],
+  { name: "Faith Organisations", icon: "M12 2v20M5 9h14",                                                                                     color: C.purple,
     desc: "Ministries grow faster than their record-keeping. We help churches track members, cell groups, giving, and events in one place — so leaders can shepherd people instead of chasing data." },
-  { name: "Logistics & Fleet", icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7 M5.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z M18.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z", color: "#06B6D4", products: [["fleetcore","FleetCore"],["inventorycore","InventoryCore"]],
+  { name: "Logistics & Fleet",   icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7 M5.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z M18.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z", color: "#06B6D4",
     desc: "Unplanned breakdowns, fuel leakage, and expired vehicle documents quietly erode fleet margins. Orion Soft tracks every vehicle, driver, and trip — with maintenance schedules and compliance alerts that prevent costly surprises." },
-  { name: "Manufacturing & Retail", icon: "M2 20h20 M4 20V8l5-3 5 3v12 M14 20V11l4-2 4 2v9", color: C.amber, products: [["inventorycore","InventoryCore"],["financecore","FinanceCore"],["hrcore","HRCore"]],
+  { name: "Manufacturing & Retail", icon: "M2 20h20 M4 20V8l5-3 5 3v12 M14 20V11l4-2 4 2v9",                                                color: C.amber,
     desc: "Stock visibility, accurate costing, and a reliable workforce are the difference between profit and loss. We connect inventory, finance, and HR so you always know what you have, what it cost, and who's running the floor." },
-  { name: "Government & NGOs", icon: "M3 21h18 M5 21V7l7-4 7 4v14 M9 9h.01 M15 9h.01 M9 13h.01 M15 13h.01", color: C.rose, products: [["compliancecore","ComplianceCore"],["hrcore","HRCore"],["financecore","FinanceCore"]],
+  { name: "Government & NGOs",   icon: "M3 21h18 M5 21V7l7-4 7 4v14 M9 9h.01 M15 9h.01 M9 13h.01 M15 13h.01",                               color: C.rose,
     desc: "Public-sector and donor-funded organisations live and die by accountability. Orion Soft delivers transparent finance, clean compliance records, and proper HR governance — the documentation your stakeholders and auditors expect." },
 ];
 
 function IndustriesPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const allProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  const toArr = v => Array.isArray(v) ? v : (typeof v === "string" ? v.split(",").map(s => s.trim()).filter(Boolean) : []);
   return (
     <div style={{ background: C.bg }}>
       <PageHero label="INDUSTRIES" title="Software shaped to your sector." subtitle="Every industry has its own workflows, regulations, and pressures. Here's how Orion Soft products solve the problems specific to yours." color={C.blue} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
-          {INDUSTRIES.map((ind, i) => (
+          {INDUSTRIES.map((ind, i) => {
+            const indProducts = allProducts.filter(p => toArr(p.industries).includes(ind.name));
+            return (
             <Reveal key={ind.name} delay={Math.min(i * 0.04, 0.24)}>
               <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "clamp(26px, 4vw, 40px)", display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)", gap: 32, alignItems: "center" }} className="industry-row">
                 <div>
@@ -4986,17 +5050,17 @@ function IndustriesPage({ setCurrentPage }) {
                 <div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em", display: "block", marginBottom: 12 }}>RELEVANT PRODUCTS</span>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
-                    {ind.products.map(([id, name]) => {
-                      const meta = ALL_PRODUCTS.find(p => p.id === id);
-                      return (
-                        <button key={id} type="button" onClick={() => setCurrentPage(id)} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", cursor: "pointer", transition: "all 0.2s", textAlign: "left" }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = `${meta?.color || ind.color}55`; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta?.color || ind.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: 14, fontWeight: 600, color: C.heading, fontFamily: font }}>{name}</span>
-                        </button>
-                      );
-                    })}
+                    {indProducts.map(p => (
+                      <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", cursor: "pointer", transition: "all 0.2s", textAlign: "left" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color || ind.color}55`; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.color || ind.color, flexShrink: 0 }} />
+                        <span style={{ fontSize: 14, fontWeight: 600, color: C.heading, fontFamily: font }}>{p.name}</span>
+                      </button>
+                    ))}
+                    {indProducts.length === 0 && (
+                      <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, margin: 0 }}>Products coming soon.</p>
+                    )}
                   </div>
                   <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: "none", color: ind.color, fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer", padding: 0 }}>
                     Talk to us about {ind.name} →
@@ -5004,7 +5068,8 @@ function IndustriesPage({ setCurrentPage }) {
                 </div>
               </article>
             </Reveal>
-          ))}
+            );
+          })}
         </div>
       </section>
       <CTABanner setCurrentPage={setCurrentPage} />
@@ -5028,13 +5093,19 @@ const SOLUTIONS = [
 ];
 
 function SolutionsPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const allProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+  const toArr = v => Array.isArray(v) ? v : (typeof v === "string" ? v.split(",").map(s => s.trim()).filter(Boolean) : []);
   return (
     <div style={{ background: C.bg }}>
       <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve — going paperless, tightening compliance, or making sense of your data — there's an Orion Soft path to get you there." color={C.mint} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
-            {SOLUTIONS.map((sol, i) => (
+            {SOLUTIONS.map((sol, i) => {
+              const solProducts = allProducts.filter(p => toArr(p.solutions).includes(sol.name));
+              return (
               <Reveal key={sol.name} delay={Math.min(i * 0.05, 0.3)}>
                 <article style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", height: "100%", display: "flex", flexDirection: "column", transition: "all 0.3s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = `${sol.color}44`; e.currentTarget.style.transform = "translateY(-4px)"; }}
@@ -5045,21 +5116,19 @@ function SolutionsPage({ setCurrentPage }) {
                   <h3 style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 10px" }}>{sol.name}</h3>
                   <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 20px", flex: 1 }}>{sol.desc}</p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {sol.products.map(id => {
-                      const meta = ALL_PRODUCTS.find(p => p.id === id);
-                      return (
-                        <button key={id} type="button" onClick={() => setCurrentPage(id)} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = `${meta?.color}55`; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
-                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta?.color }} />
-                          <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font }}>{meta?.name}</span>
-                        </button>
-                      );
-                    })}
+                    {solProducts.map(p => (
+                      <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}55`; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.color }} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font }}>{p.name}</span>
+                      </button>
+                    ))}
                   </div>
                 </article>
               </Reveal>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -5069,13 +5138,16 @@ function SolutionsPage({ setCurrentPage }) {
 }
 
 function PricingPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const pricingProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <div style={{ background: C.bg }}>
       <PageHero label="PRICING" title="Straightforward pricing. No surprises." subtitle="All Orion Soft products are priced based on organisation size and modules selected. Contact us for a tailored quote." color={C.gold} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 20 }}>
-            {ALL_PRODUCTS.map((p, i) => (
+            {pricingProducts.map((p, i) => (
               <Reveal key={p.id} delay={Math.min(i * 0.04, 0.28)}>
                 <article style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`, borderRadius: 16, padding: "30px 28px", height: "100%", display: "flex", flexDirection: "column" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -5276,13 +5348,16 @@ function ResourcesPage({ setCurrentPage }) {
 }
 
 function LoginPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const loginProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <div style={{ background: C.bg }}>
       <PageHero label="LOGIN" title="Access your Orion Soft product." subtitle="Select your product below to sign in. Don't have credentials yet? Contact support to get started." color={C.blue} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 18 }}>
-            {ALL_PRODUCTS.map((p, i) => (
+            {loginProducts.map((p, i) => (
               <Reveal key={p.id} delay={Math.min(i * 0.04, 0.28)}>
                 <article style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.color}`, borderRadius: 16, padding: "28px 26px", height: "100%", display: "flex", flexDirection: "column" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -5348,6 +5423,9 @@ const ORION_HOME_STATS = [
 const ORION_MARKETS = ["Healthcare", "Education", "Finance", "Inventory", "HR", "Fleet", "Faith", "Telemedicine"];
 
 function OrionHero({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const heroProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <section className="orion-hero" style={{
       minHeight: "100vh",
@@ -5408,7 +5486,7 @@ function OrionHero({ setCurrentPage }) {
                   <div style={{ color: C.mint, background: C.mintDim, border: `1px solid ${C.mint}33`, borderRadius: 999, padding: "8px 11px", fontFamily: font, fontSize: 12, fontWeight: 900 }}>LIVE</div>
                 </div>
                 <div className="orion-product-matrix" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                  {ALL_PRODUCTS.map((p, i) => (
+                  {heroProducts.map((p, i) => (
                     <button key={p.id} type="button" onClick={() => setCurrentPage(p.id)} className="orion-matrix-card" style={{ minHeight: 92, textAlign: "left", border: `1px solid ${p.color}30`, background: "rgba(5,8,16,0.58)", borderRadius: 14, padding: 14, cursor: "pointer", animation: `floatSoft ${5 + (i % 3)}s ease-in-out ${i * 0.12}s infinite` }}>
                       <span style={{ width: 9, height: 9, borderRadius: "50%", background: p.color, display: "block", boxShadow: `0 0 12px ${p.color}`, marginBottom: 11 }} />
                       <span style={{ color: C.heading, fontFamily: font, fontSize: 14, fontWeight: 900, display: "block" }}>{p.name}</span>
@@ -5464,6 +5542,9 @@ function OrionTrustStrip({ portfolio = [] }) {
 }
 
 function OrionProductSuite({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const suiteProducts = ((cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG))
+    .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <section id="products" style={{ background: C.bg, padding: "118px clamp(20px, 4vw, 40px)" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -5482,7 +5563,7 @@ function OrionProductSuite({ setCurrentPage }) {
         </Reveal>
 
         <div className="orion-products-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 16 }}>
-          {ALL_PRODUCTS.map((p, i) => (
+          {suiteProducts.map((p, i) => (
             <Reveal key={p.id} delay={Math.min(i * 0.04, 0.24)}>
               <button type="button" onClick={() => setCurrentPage(p.id)} className="orion-product-card" style={{ width: "100%", minHeight: 220, textAlign: "left", border: `1px solid ${C.border}`, borderRadius: 18, background: "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.028))", padding: 24, cursor: "pointer", position: "relative", overflow: "hidden", backdropFilter: "blur(16px)" }}>
                 <span aria-hidden="true" style={{ position: "absolute", inset: "auto -60px -80px auto", width: 170, height: 170, borderRadius: "50%", background: `${p.color}20`, filter: "blur(24px)" }} />
@@ -5639,7 +5720,12 @@ export default function App() {
       blog: "Blog — Orion Soft Limited",
       team: "Team — Orion Soft Limited",
     };
-    document.title = defaults[currentPage] || "Orion Soft Limited";
+    if (!defaults[currentPage]) {
+      const cmsProduct = (cms?.products || DEFAULT_PRODUCTS_CATALOG).find(p => p.id === currentPage);
+      document.title = cmsProduct ? `${cmsProduct.name} — ${cmsProduct.tag.replace(" · Soon", "")} | Orion Soft Limited` : "Orion Soft Limited";
+    } else {
+      document.title = defaults[currentPage];
+    }
   }, [currentPage, cms]);
 
   const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); trackPageView(page); };
@@ -5689,6 +5775,13 @@ export default function App() {
         {currentPage === "telehealth" && (
           <Suspense fallback={<PageLoader />}><TeleHealthPage setCurrentPage={navSetPage} /></Suspense>
         )}
+
+        {/* CMS-only products: no dedicated page component — render the generic template */}
+        {(() => {
+          const cmsProducts = cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG;
+          const p = cmsProducts.find(prod => prod.id === currentPage && !prod.hasPage && prod.published !== false);
+          return p ? <GenericProductPage product={p} setCurrentPage={navSetPage} /> : null;
+        })()}
 
         {currentPage === "industries" && (
           <IndustriesPage setCurrentPage={navSetPage} />
