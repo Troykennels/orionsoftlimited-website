@@ -1,0 +1,158 @@
+const rateMap = new Map();
+const RATE_LIMIT = 10;
+const RATE_WINDOW = 15 * 60 * 1000;
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
+const FROM = "Orion Soft <onboarding@resend.dev>";
+
+const TYPE_LABELS = {
+  demo: "Demo Booking", contact: "General Contact", quote: "Quote Request",
+  support: "Support Ticket", partnership: "Partnership Application",
+  career: "Career Application", newsletter: "Newsletter Subscription",
+};
+
+const NEXT_STEPS = {
+  demo: "Our team will review your request and confirm a time within 1 business day.",
+  contact: "A member of our team will get back to you within 1–2 business days.",
+  quote: "Our sales team will prepare a tailored quote within 1 business day.",
+  support: "Our support team will pick up your ticket within 4 business hours.",
+  partnership: "Our business development team will be in touch within 3 business days.",
+  career: "Our HR team will review your application within 5 business days.",
+  newsletter: "You're now subscribed! You'll receive our next update shortly.",
+};
+
+function checkRate(ip) {
+  const now = Date.now();
+  const e = rateMap.get(ip) || { count: 0, start: now };
+  if (now - e.start > RATE_WINDOW) { rateMap.set(ip, { count: 1, start: now }); return true; }
+  if (e.count >= RATE_LIMIT) return false;
+  e.count++;
+  rateMap.set(ip, e);
+  return true;
+}
+
+function confirmHtml({ type, name, ref }) {
+  const label = TYPE_LABELS[type] || "Enquiry";
+  const next = NEXT_STEPS[type] || NEXT_STEPS.contact;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orion Soft — ${label}</title></head>
+<body style="margin:0;padding:0;background:#060810;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  <tr><td style="text-align:center;padding-bottom:24px;">
+    <div style="display:inline-block;background:#0F1828;border:1px solid rgba(200,168,80,0.3);border-radius:12px;padding:14px 22px;">
+      <span style="color:#C8A850;font-size:18px;font-weight:800;">ORION SOFT</span>
+      <span style="color:rgba(255,255,255,0.35);font-size:11px;margin-left:8px;">LIMITED</span>
+    </div>
+  </td></tr>
+  <tr><td style="background:#0F1828;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:36px;">
+    <div style="text-align:center;font-size:40px;margin-bottom:16px;">✓</div>
+    <h1 style="color:#F2F6FF;font-size:22px;font-weight:700;margin:0 0 10px;text-align:center;">${label} Received</h1>
+    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${name || "there"}, thank you for reaching out to Orion Soft. We'll respond shortly.</p>
+    <div style="background:#060810;border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:18px;margin-bottom:22px;">
+      <p style="color:#6B7A96;font-size:11px;font-weight:700;letter-spacing:0.1em;margin:0 0 6px;">WHAT HAPPENS NEXT</p>
+      <p style="color:#C8D0E0;font-size:14px;line-height:1.65;margin:0;">${next}</p>
+    </div>
+    ${ref ? `<p style="color:#6B7A96;font-size:12px;text-align:center;margin:0 0 22px;">Reference: <strong style="color:#C8D0E0;">${ref}</strong></p>` : ""}
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:18px;">
+      <p style="color:#6B7A96;font-size:11px;font-weight:700;letter-spacing:0.08em;margin:0 0 8px;">NEED IMMEDIATE HELP?</p>
+      <p style="margin:0 0 5px;"><a href="mailto:orionsoftlimited@gmail.com" style="color:#4F8EF7;font-size:13px;text-decoration:none;">📧 orionsoftlimited@gmail.com</a></p>
+      <p style="margin:0 0 5px;"><a href="tel:08169577059" style="color:#4F8EF7;font-size:13px;text-decoration:none;">📱 08169577059</a></p>
+      <p style="margin:0;"><a href="https://wa.me/2348169577059" style="color:#25D366;font-size:13px;text-decoration:none;">💬 Chat on WhatsApp</a></p>
+    </div>
+  </td></tr>
+  <tr><td style="padding:16px 0 0;text-align:center;">
+    <p style="color:#3A4556;font-size:11px;margin:0;">© ${new Date().getFullYear()} Orion Soft Limited · CAC RC: 9535128 · NDPR Compliant</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+function adminHtml(data) {
+  const { type, honeypot: _h, timing: _t, ref, ...fields } = data;
+  const label = TYPE_LABELS[type] || "Enquiry";
+  const rows = Object.entries(fields)
+    .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "")
+    .map(([k, v]) => {
+      const display = k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
+      const val = Array.isArray(v) ? v.join(", ") : String(v);
+      return `<tr>
+        <td style="padding:9px 14px;color:#6B7A96;font-size:12px;font-weight:700;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.04);text-transform:uppercase;letter-spacing:0.06em;">${display}</td>
+        <td style="padding:9px 14px;color:#C8D0E0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);word-break:break-word;">${val}</td>
+      </tr>`;
+    }).join("");
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>New ${label}</title></head>
+<body style="margin:0;padding:0;background:#060810;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+  <tr><td style="background:#0F1828;border:1px solid rgba(200,168,80,0.25);border-radius:16px;padding:28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr>
+        <td><h1 style="color:#F2F6FF;font-size:18px;font-weight:700;margin:0;">🔔 New ${label}</h1></td>
+        <td align="right"><span style="background:rgba(200,168,80,0.12);color:#C8A850;border:1px solid rgba(200,168,80,0.3);border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;">${ref}</span></td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid rgba(255,255,255,0.05);border-radius:10px;overflow:hidden;">
+      <tbody>${rows}</tbody>
+    </table>
+  </td></tr>
+  <tr><td style="padding:14px 0 0;text-align:center;">
+    <p style="color:#3A4556;font-size:11px;margin:0;">Submitted ${new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos", dateStyle: "full", timeStyle: "short" })} WAT</p>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+async function sendEmail(to, subject, html, apiKey) {
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+  if (!checkRate(ip)) return res.status(429).json({ error: "Too many requests. Please wait a few minutes." });
+
+  const body = req.body || {};
+
+  // Honeypot & timing spam checks — fail silently
+  if (body.honeypot) return res.status(200).json({ ok: true, ref: "OK" });
+  if (typeof body.timing === "number" && body.timing < 3000) return res.status(200).json({ ok: true, ref: "OK" });
+
+  if (!body.type || !TYPE_LABELS[body.type]) return res.status(400).json({ error: "Invalid form type" });
+  if (body.type !== "newsletter" && !body.name?.trim()) return res.status(400).json({ error: "Name is required" });
+  if (!body.email?.trim() || !body.email.includes("@")) return res.status(400).json({ error: "Valid email is required" });
+
+  const ref = body.ref || `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (apiKey) {
+    const emailData = { ...body, ref };
+    await sendEmail(
+      body.email,
+      `${TYPE_LABELS[body.type]} Received — Orion Soft [${ref}]`,
+      confirmHtml({ type: body.type, name: body.name, ref }),
+      apiKey
+    );
+    await sendEmail(
+      ADMIN_EMAIL,
+      `[${ref}] New ${TYPE_LABELS[body.type]} from ${body.name || body.email}`,
+      adminHtml(emailData),
+      apiKey
+    );
+  }
+
+  return res.json({ ok: true, ref });
+}

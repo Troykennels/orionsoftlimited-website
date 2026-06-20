@@ -615,50 +615,77 @@ function LiveVisitorsSection() {
 }
 
 // ─── Leads (Contact Forms) ───────────────────────────────────────────────────
+const LEAD_TYPE_META = {
+  demo:        { label: "Demo Booking",   color: C.gold,   icon: "🎯" },
+  contact:     { label: "General Contact",color: C.accent, icon: "✉️"  },
+  quote:       { label: "Quote Request",  color: C.mint,   icon: "💰" },
+  support:     { label: "Support Ticket", color: C.purple, icon: "🛠️" },
+  partnership: { label: "Partnership",    color: C.amber,  icon: "🤝" },
+  career:      { label: "Career",         color: C.rose,   icon: "🚀" },
+  newsletter:  { label: "Newsletter",     color: C.cyan,   icon: "📬" },
+};
+
+const LEAD_STATUSES = ["new", "contacted", "qualified", "converted", "closed"];
+const STATUS_COLORS = { new: C.rose, contacted: C.amber, qualified: C.blue, converted: C.mint, closed: C.textMuted };
+
 function LeadsSection() {
   const [leads, setLeads] = useState(() => lsGet(SK.leads, []));
   const [selected, setSelected] = useState(null);
-  const [filter, setFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const reload = useCallback(() => setLeads(lsGet(SK.leads, [])), []);
   useEffect(() => { window.addEventListener("localstoreupdate", reload); return () => window.removeEventListener("localstoreupdate", reload); }, [reload]);
 
-  // Normalise: support both new contact-form leads (name/email/message/read)
-  // and existing pipeline leads (contactName/status).
   const norm = (l) => ({
     ...l,
     name: l.name || l.contactName || "Anonymous",
     email: l.email || "",
     phone: l.phone || "",
-    subject: l.subject || l.interestedService || "",
     company: l.company || l.hospitalName || "",
-    message: l.message || l.projectDesc || "",
-    createdAt: l.createdAt || "",
-    read: l.read !== undefined ? l.read : (l.status && l.status !== "New"),
+    message: l.message || l.description || l.projectDesc || "",
+    status: l.status || "new",
+    type: l.type || "contact",
+    ref: l.ref || l.id?.slice(0, 12) || "—",
+    submittedAt: l.submittedAt || l.createdAt || "",
+    read: l.read !== undefined ? l.read : (l.status && l.status !== "new" && l.status !== "New"),
   });
-  const all = leads.map(norm);
 
-  const filtered = filter === "unread" ? all.filter(l => !l.read) : filter === "read" ? all.filter(l => l.read) : all;
+  const all = leads.map(norm);
+  const typeCounts = LEAD_STATUSES.reduce((a, s) => ({ ...a, [s]: all.filter(l => l.status === s).length }), {});
+  const newCount = all.filter(l => !l.read || l.status === "new").length;
+
+  let filtered = all;
+  if (typeFilter !== "all") filtered = filtered.filter(l => l.type === typeFilter);
+  if (statusFilter !== "all") filtered = filtered.filter(l => l.status === statusFilter);
 
   function markRead(id) {
     const updated = leads.map(l => l.id === id ? { ...l, read: true } : l);
-    setLeads(updated);
-    lsSet(SK.leads, updated);
-    auditLog("mark_read", "lead", `Lead ID ${id}`);
+    setLeads(updated); lsSet(SK.leads, updated);
+  }
+
+  function updateStatus(id, status) {
+    const updated = leads.map(l => l.id === id ? { ...l, status, read: true, updatedAt: new Date().toISOString() } : l);
+    setLeads(updated); lsSet(SK.leads, updated);
+    auditLog("update_status", "lead", `Lead ${id} → ${status}`);
+    if (selected?.id === id) setSelected(prev => norm(updated.find(l => l.id === id) || prev));
   }
 
   function deleteLead(id) {
     if (!confirm("Delete this submission?")) return;
     const updated = leads.filter(l => l.id !== id);
-    setLeads(updated);
-    lsSet(SK.leads, updated);
+    setLeads(updated); lsSet(SK.leads, updated);
     auditLog("delete", "lead", `Lead ID ${id}`);
     if (selected?.id === id) setSelected(null);
   }
 
   function exportCSV() {
-    const headers = ["Name", "Email", "Phone", "Subject", "Message", "Date", "Read"];
-    const rows = all.map(l => [l.name, l.email, l.phone || "", l.subject || "", (l.message || "").replace(/,/g, ";"), l.createdAt || "", l.read ? "Yes" : "No"]);
+    const headers = ["Ref", "Type", "Status", "Name", "Email", "Phone", "Company", "Product/Role", "Priority", "Message", "Date"];
+    const rows = all.map(l => [
+      l.ref, l.type, l.status, l.name, l.email, l.phone || "", l.company || "",
+      l.product || l.role || l.interestedService || "", l.priority || "",
+      (l.message || "").replace(/"/g, "'"), l.submittedAt ? new Date(l.submittedAt).toLocaleDateString("en-NG") : "",
+    ]);
     const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -667,72 +694,140 @@ function LeadsSection() {
     auditLog("export", "leads", `Exported ${all.length} leads`);
   }
 
-  const unread = all.filter(l => !l.read).length;
-
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {["all", "unread", "read"].map(f => (
-            <button key={f} type="button" onClick={() => setFilter(f)} style={{
-              padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer",
-              background: filter === f ? C.gold : C.card, color: filter === f ? "#060810" : C.textMuted, border: "none",
-            }}>
-              {f === "all" ? `All (${all.length})` : f === "unread" ? `Unread (${unread})` : `Read (${all.length - unread})`}
-            </button>
-          ))}
-        </div>
-        <Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
+        <StatCard label="Total Leads" value={all.length} color={C.accent} icon="📋" />
+        <StatCard label="New / Unread" value={newCount} color={C.rose} icon="🔔" />
+        <StatCard label="Converted" value={typeCounts.converted || 0} color={C.mint} icon="✅" />
       </div>
 
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        {[["all", "All Types"], ...Object.entries(LEAD_TYPE_META).map(([id, m]) => [id, m.icon + " " + m.label.split(" ")[0]])].map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setTypeFilter(id)} style={{
+            padding: "7px 13px", borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: font, cursor: "pointer", border: "none",
+            background: typeFilter === id ? C.gold : C.card, color: typeFilter === id ? "#060810" : C.textMuted,
+          }}>{label}{id !== "all" ? ` (${all.filter(l => l.type === id).length})` : ""}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 22 }}>
+        {["all", ...LEAD_STATUSES].map(s => (
+          <button key={s} type="button" onClick={() => setStatusFilter(s)} style={{
+            padding: "6px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700, fontFamily: font, cursor: "pointer", border: "none",
+            background: statusFilter === s ? (STATUS_COLORS[s] || C.accent) : C.surface,
+            color: statusFilter === s ? (s === "new" ? "#fff" : "#05070A") : C.textMuted,
+          }}>{s === "all" ? "All Statuses" : s.charAt(0).toUpperCase() + s.slice(1)}</button>
+        ))}
+        <div style={{ marginLeft: "auto" }}><Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn></div>
+      </div>
+
+      {/* List + Detail */}
       <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 1fr" : "1fr", gap: 20 }}>
         <div>
-          {filtered.length === 0 && <SectionCard><p style={{ color: C.textMuted, fontSize: 14, fontFamily: font }}>No submissions yet.</p></SectionCard>}
-          {filtered.map((lead, i) => (
-            <div key={lead.id || i} onClick={() => { setSelected(lead); markRead(lead.id); }}
-              style={{ background: selected?.id === lead.id ? C.goldDim : C.card, border: `1px solid ${selected?.id === lead.id ? C.gold + "44" : C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 10, cursor: "pointer", transition: "all 0.2s" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{lead.name || "Anonymous"}</span>
-                  {!lead.read && <Badge color={C.rose}>New</Badge>}
+          {filtered.length === 0 && <SectionCard><p style={{ color: C.textMuted, fontSize: 14, fontFamily: font }}>No submissions match the current filters.</p></SectionCard>}
+          {filtered.map((lead, i) => {
+            const meta = LEAD_TYPE_META[lead.type] || LEAD_TYPE_META.contact;
+            const isSelected = selected?.id === lead.id;
+            return (
+              <div key={lead.id || i} onClick={() => { setSelected(lead); markRead(lead.id); }}
+                style={{ background: isSelected ? C.goldDim : C.card, border: `1px solid ${isSelected ? C.gold + "44" : C.border}`, borderRadius: 12, padding: "14px 16px", marginBottom: 8, cursor: "pointer", transition: "all 0.18s" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: C.heading, fontFamily: font }}>{lead.name}</span>
+                    {(!lead.read || lead.status === "new") && <Badge color={C.rose}>New</Badge>}
+                    <span style={{ background: `${meta.color}18`, color: meta.color, border: `1px solid ${meta.color}30`, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 700, fontFamily: font }}>{meta.icon} {meta.label}</span>
+                  </div>
+                  <button type="button" onClick={e => { e.stopPropagation(); deleteLead(lead.id); }} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 16 }}>×</button>
                 </div>
-                <button type="button" onClick={e => { e.stopPropagation(); deleteLead(lead.id); }} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 16, padding: "0 2px" }} title="Delete">×</button>
+                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{lead.email}{lead.company ? ` · ${lead.company}` : ""}</div>
+                {(lead.product || lead.role || lead.interestedService) && <div style={{ fontSize: 12, color: C.text, fontFamily: font, marginTop: 3 }}>{lead.product || lead.role || lead.interestedService}</div>}
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
+                  <span style={{ background: `${STATUS_COLORS[lead.status] || C.textMuted}18`, color: STATUS_COLORS[lead.status] || C.textMuted, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 700, fontFamily: font }}>
+                    {lead.status}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>
+                    {lead.submittedAt ? new Date(lead.submittedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" }) : ""}
+                  </span>
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{lead.email}</div>
-              {lead.subject && <div style={{ fontSize: 13, color: C.text, fontFamily: font, marginTop: 4 }}>{lead.subject}</div>}
-              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 6 }}>
-                {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString("en-NG") : ""}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {selected && (
-          <SectionCard>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-              <SectionTitle>{selected.name}</SectionTitle>
-              <button type="button" onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 20 }}>×</button>
-            </div>
-            {[["Email", selected.email], ["Phone", selected.phone], ["Subject", selected.subject], ["Company", selected.company], ["Date", selected.createdAt ? new Date(selected.createdAt).toLocaleString("en-NG") : "—"]].filter(([, v]) => v).map(([k, v]) => (
-              <div key={k} style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.06em", marginBottom: 4 }}>{k.toUpperCase()}</div>
-                <div style={{ fontSize: 14, color: C.text, fontFamily: font }}>{v}</div>
+        {selected && (() => {
+          const meta = LEAD_TYPE_META[selected.type] || LEAD_TYPE_META.contact;
+          const detail = [
+            ["Ref", selected.ref], ["Email", selected.email], ["Phone", selected.phone],
+            ["Company", selected.company], ["Product / Interest", selected.product || selected.interestedService],
+            ["Role Applied", selected.role], ["Partnership Type", selected.partnerType],
+            ["Issue Type", selected.issueType], ["Priority", selected.priority],
+            ["Preferred Date", selected.preferredDate], ["Preferred Time", selected.preferredTime],
+            ["Organisation Size", selected.orgSize], ["Budget", selected.budget],
+            ["CV Link", selected.cvLink], ["Website", selected.website || selected.cvLink],
+            ["Topics", Array.isArray(selected.topics) ? selected.topics.join(", ") : selected.topics],
+            ["Date", selected.submittedAt ? new Date(selected.submittedAt).toLocaleString("en-NG") : ""],
+          ].filter(([, v]) => v);
+          return (
+            <SectionCard style={{ position: "sticky", top: 20, maxHeight: "85vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 18 }}>{meta.icon}</span>
+                    <span style={{ color: meta.color, fontFamily: font, fontSize: 12, fontWeight: 800 }}>{meta.label.toUpperCase()}</span>
+                  </div>
+                  <h3 style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 700, margin: 0 }}>{selected.name}</h3>
+                </div>
+                <button type="button" onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 20 }}>×</button>
               </div>
-            ))}
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.06em", marginBottom: 6 }}>MESSAGE</div>
-              <div style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, background: C.surface, borderRadius: 10, padding: "14px 16px", whiteSpace: "pre-wrap" }}>{selected.message || "—"}</div>
-            </div>
-            <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
-              <a href={`mailto:${selected.email}?subject=Re: ${selected.subject || "Your enquiry"}`} style={{ flex: 1, display: "block", padding: "11px", background: C.gold, color: "#060810", borderRadius: 10, textAlign: "center", textDecoration: "none", fontSize: 14, fontWeight: 700, fontFamily: font }}>
-                Reply by Email →
-              </a>
-              <button type="button" onClick={() => deleteLead(selected.id)} style={{ padding: "11px 16px", background: C.roseDim, border: `1px solid ${C.rose}44`, color: C.rose, borderRadius: 10, fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>
-                Delete
-              </button>
-            </div>
-          </SectionCard>
-        )}
+
+              {/* Status changer */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.08em", marginBottom: 8 }}>STATUS</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {LEAD_STATUSES.map(s => (
+                    <button key={s} type="button" onClick={() => updateStatus(selected.id, s)} style={{ padding: "5px 11px", borderRadius: 8, fontSize: 11, fontWeight: 700, fontFamily: font, cursor: "pointer", border: "none", background: selected.status === s ? (STATUS_COLORS[s] || C.accent) : C.surface, color: selected.status === s ? (s === "new" ? "#fff" : "#05070A") : C.textMuted }}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fields */}
+              {detail.map(([k, v]) => (
+                <div key={k} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.06em", marginBottom: 3 }}>{k.toUpperCase()}</div>
+                  <div style={{ fontSize: 13, color: C.text, fontFamily: font, wordBreak: "break-word" }}>{v}</div>
+                </div>
+              ))}
+
+              {/* Message */}
+              {selected.message && (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.06em", marginBottom: 6 }}>MESSAGE</div>
+                  <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.7, background: C.surface, borderRadius: 10, padding: "12px 14px", whiteSpace: "pre-wrap" }}>{selected.message}</div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a href={`mailto:${selected.email}?subject=Re: ${selected.type === "demo" ? "Demo Request" : selected.type === "quote" ? "Quote Request" : selected.type === "support" ? "Support Ticket" : "Your Enquiry"}`}
+                  style={{ flex: 1, display: "block", minWidth: 120, padding: "11px", background: C.gold, color: "#060810", borderRadius: 10, textAlign: "center", textDecoration: "none", fontSize: 13, fontWeight: 700, fontFamily: font }}>
+                  Reply by Email →
+                </a>
+                {selected.phone && (
+                  <a href={`https://wa.me/234${selected.phone.replace(/^0/, "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${selected.name}, this is Orion Soft following up on your ${selected.type} submission. `)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ padding: "11px 16px", background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.25)", color: "#25D366", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 700, fontFamily: font }}>
+                    WhatsApp
+                  </a>
+                )}
+                <button type="button" onClick={() => deleteLead(selected.id)} style={{ padding: "11px 14px", background: C.roseDim, border: `1px solid ${C.rose}44`, color: C.rose, borderRadius: 10, fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Delete</button>
+              </div>
+            </SectionCard>
+          );
+        })()}
       </div>
     </div>
   );
