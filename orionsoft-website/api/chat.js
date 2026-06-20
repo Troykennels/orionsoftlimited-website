@@ -163,7 +163,7 @@ export default async function handler(req, res) {
     content: String(m.content || "").slice(0, 1000),
   }));
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     const fallback = ruleBasedResponse(trimmedMessages);
@@ -171,18 +171,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "llama-3.1-8b-instant",
         max_tokens: 400,
-        system: SYSTEM_PROMPT,
-        messages: trimmedMessages,
+        messages: [{ role: "system", content: SYSTEM_PROMPT }, ...trimmedMessages],
       }),
     });
 
@@ -192,7 +190,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const raw = data.content?.[0]?.text || "";
+    const raw = data.choices?.[0]?.message?.content || "";
 
     // Extract action token
     const actionMatch = raw.match(/\[ACTION:([^\]]+)\]/);
