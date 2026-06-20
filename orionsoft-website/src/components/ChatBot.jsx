@@ -10,7 +10,9 @@ const C = {
 const font = "'Instrument Sans', 'DM Sans', system-ui, sans-serif";
 const CONV_SK = "orionsoft_conversations_v1";
 const HIST_SK = "orionsoft_chat_history_v1";
+const LEADS_SK = "orionsoft_leads_v1";
 const API_URL = "/api/chat";
+const CONTACT_URL = "/api/contact";
 
 const QUICK_REPLIES = [
   "What products do you offer?",
@@ -55,6 +57,50 @@ function loadHistory() {
 
 function saveHistory(msgs) {
   try { localStorage.setItem(HIST_SK, JSON.stringify(msgs.slice(-50))); } catch {}
+}
+
+function saveChatLead(leadData, ref) {
+  try {
+    const lead = {
+      id: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      ref, type: leadData.demoSlot ? "demo" : "contact",
+      status: "new", source: "Ori AI Chat",
+      submittedAt: new Date().toISOString(),
+      contactName: leadData.name || "", email: leadData.email || "",
+      phone: leadData.phone || "", company: leadData.org || "",
+      interestedService: leadData.demoProduct || "general",
+      notes: leadData.demoSlot ? `Demo slot: ${leadData.demoSlot}` : "Lead collected via chatbot",
+      priority: "Medium", ...leadData,
+    };
+    const existing = JSON.parse(localStorage.getItem(LEADS_SK) || "[]");
+    existing.unshift(lead);
+    localStorage.setItem(LEADS_SK, JSON.stringify(existing.slice(0, 500)));
+    window.dispatchEvent(new CustomEvent("localstoreupdate"));
+  } catch {}
+}
+
+async function notifyAdminByEmail(leadData, ref) {
+  try {
+    await fetch(CONTACT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: leadData.demoSlot ? "demo" : "contact",
+        source: "chatbot",
+        ref,
+        name: leadData.name || "Chat Lead",
+        email: leadData.email || "",
+        phone: leadData.phone || "",
+        company: leadData.org || "",
+        product: leadData.demoProduct || "",
+        message: leadData.demoSlot
+          ? `Demo slot requested: ${leadData.demoSlot}`
+          : "Lead collected via Ori AI chat",
+        honeypot: "",
+        timing: 99999,
+      }),
+    });
+  } catch {}
 }
 
 export default function ChatBot({ setCurrentPage }) {
@@ -195,6 +241,10 @@ export default function ChatBot({ setCurrentPage }) {
       addMessage({ role: "assistant", content: `Thanks, ${updatedLead.name}! I've got your details. ${flowState === "BOOK_DEMO" ? "Now let's pick a time for your demo." : "Our team will reach out to you at **" + updatedLead.email + "** within 24 hours."}` });
       persistConversation(sessionMessages.current);
       if (flowState !== "BOOK_DEMO") {
+        // Contact lead (no demo slot) — save and notify now
+        const ref = `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+        saveChatLead(updatedLead, ref);
+        notifyAdminByEmail(updatedLead, ref);
         setLeadStep(0);
       }
     }
@@ -209,6 +259,10 @@ export default function ChatBot({ setCurrentPage }) {
       role: "assistant",
       content: `Demo booked: ${slot}. Lead: ${JSON.stringify(finalLead)}`,
     }]);
+    // Save to leads list + notify admin by email
+    const ref = `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+    saveChatLead(finalLead, ref);
+    notifyAdminByEmail(finalLead, ref);
   }
 
   function handleEscalate() {
@@ -218,6 +272,12 @@ export default function ChatBot({ setCurrentPage }) {
     });
     setFlowState("DONE");
     persistConversation(sessionMessages.current);
+    // Notify admin of escalation if we have lead info
+    if (lead.email) {
+      const ref = `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+      saveChatLead({ ...lead, notes: "ESCALATED from chat" }, ref);
+      notifyAdminByEmail({ ...lead, message: "Conversation escalated — needs immediate follow-up" }, ref);
+    }
   }
 
   function handleClearHistory() {

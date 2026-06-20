@@ -104,7 +104,7 @@ function adminHtml(data) {
 </body></html>`;
 }
 
-async function sendEmail(to, subject, html, apiKey) {
+async function sendViaResend(to, subject, html, apiKey) {
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -113,6 +113,25 @@ async function sendEmail(to, subject, html, apiKey) {
     });
     return r.ok;
   } catch { return false; }
+}
+
+async function sendViaGmail(to, subject, html) {
+  try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      service: "gmail",
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+    });
+    await transporter.sendMail({ from: `"Orion Soft" <${process.env.GMAIL_USER}>`, to, subject, html });
+    return true;
+  } catch { return false; }
+}
+
+async function sendEmail(to, subject, html) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) return sendViaResend(to, subject, html, resendKey);
+  if (process.env.GMAIL_APP_PASSWORD) return sendViaGmail(to, subject, html);
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -131,28 +150,34 @@ export default async function handler(req, res) {
   if (body.honeypot) return res.status(200).json({ ok: true, ref: "OK" });
   if (typeof body.timing === "number" && body.timing < 3000) return res.status(200).json({ ok: true, ref: "OK" });
 
-  if (!body.type || !TYPE_LABELS[body.type]) return res.status(400).json({ error: "Invalid form type" });
-  if (body.type !== "newsletter" && !body.name?.trim()) return res.status(400).json({ error: "Name is required" });
-  if (!body.email?.trim() || !body.email.includes("@")) return res.status(400).json({ error: "Valid email is required" });
+  // Allow chatbot-originated leads (type: "chatbot") to bypass strict validation
+  const isChatbot = body.source === "chatbot";
+  if (!isChatbot) {
+    if (!body.type || !TYPE_LABELS[body.type]) return res.status(400).json({ error: "Invalid form type" });
+    if (body.type !== "newsletter" && !body.name?.trim()) return res.status(400).json({ error: "Name is required" });
+    if (!body.email?.trim() || !body.email.includes("@")) return res.status(400).json({ error: "Valid email is required" });
+  } else {
+    if (!body.email?.trim() || !body.email.includes("@")) return res.status(400).json({ error: "Valid email is required" });
+    body.type = body.type || "demo";
+  }
 
   const ref = body.ref || `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
-  const apiKey = process.env.RESEND_API_KEY;
+  const emailData = { ...body, ref };
 
-  if (apiKey) {
-    const emailData = { ...body, ref };
+  // Send confirmation to the user (best-effort)
+  if (body.email && body.type !== "newsletter") {
     await sendEmail(
       body.email,
-      `${TYPE_LABELS[body.type]} Received — Orion Soft [${ref}]`,
+      `${TYPE_LABELS[body.type] || "Enquiry"} Received — Orion Soft [${ref}]`,
       confirmHtml({ type: body.type, name: body.name, ref }),
-      apiKey
-    );
-    await sendEmail(
-      ADMIN_EMAIL,
-      `[${ref}] New ${TYPE_LABELS[body.type]} from ${body.name || body.email}`,
-      adminHtml(emailData),
-      apiKey
     );
   }
+  // Always notify admin
+  await sendEmail(
+    ADMIN_EMAIL,
+    `[${ref}] New ${TYPE_LABELS[body.type] || "Lead"} from ${body.name || body.email}`,
+    adminHtml(emailData),
+  );
 
   return res.json({ ok: true, ref });
 }

@@ -1,16 +1,17 @@
 # Claude Code worktrees and memory (not for version control)
 .claude/
 
-# Large media — host on CDN (Cloudinary, S3, etc.), not in git
-*.mp4
+# Large media — host on CDN, not in git
 *.mov
 *.avi
 *.mkv
 *.wav
 *.mp3
 *.aac
-orionsoft-website/public/assets/carecore/video-edit/exports/
-orionsoft-website/public/assets/carecore/video-edit/voice/
+orionsoft-website/public/assets/carecore/video-edit/
+
+# Allow the specific demo video used on the website (4MB — within Vercel limit)
+!orionsoft-website/public/assets/carecore/demo-premium-website.mp4
 
 # OS
 .DS_Store
