@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -121,7 +121,7 @@ function lsGet(key, fallback = null) {
 
 function uid() { return `i-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
-// Server sync — fetches live data from Upstash via /api/admin/data
+// Server sync fetches live data from Upstash via /api/admin/data
 // Merges server records into localStorage so admin sees ALL visitors' data
 const ADMIN_KEY = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
 
@@ -303,6 +303,8 @@ const NAV_GROUPS = [
       { id: "dashboard",    label: "Dashboard",        icon: "📊" },
       { id: "analytics",    label: "Analytics",        icon: "📈" },
       { id: "live",         label: "Live Visitors",    icon: "🟢" },
+      { id: "activities",   label: "Recent Activity",  icon: "🔔" },
+      { id: "calendar",     label: "Calendar",         icon: "📅" },
     ],
   },
   {
@@ -340,6 +342,7 @@ const NAV_GROUPS = [
   {
     label: "SYSTEM",
     items: [
+      { id: "health",       label: "System Health",    icon: "💡" },
       { id: "users",        label: "Users & Roles",    icon: "👤" },
       { id: "audit",        label: "Audit Logs",       icon: "📋" },
       { id: "media",        label: "Media Library",    icon: "🖼️" },
@@ -408,7 +411,7 @@ function AdminLogin({ onLogin }) {
         <div style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ fontSize: 28, marginBottom: 14 }}>🔐</div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, margin: "0 0 6px", letterSpacing: "-0.02em" }}>Admin Portal</h1>
-          <p style={{ fontSize: 14, color: C.textMuted, margin: 0 }}>Orion Soft Limited — Restricted Access</p>
+          <p style={{ fontSize: 14, color: C.textMuted, margin: 0 }}>Orion Soft Limited Restricted Access</p>
         </div>
 
         {locked ? (
@@ -445,70 +448,344 @@ function AdminLogin({ onLogin }) {
   );
 }
 
+// ─── Live analytics hook — fetches from /api/admin/analytics, 60s cache + auto-refresh ───
+const ANALYTICS_TTL = 60_000;
+function useAnalytics() {
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+  const [lastUpdated,setUpdated]    = useState(null);
+  const [countdown,  setCountdown]  = useState(60);
+  const cacheRef = useRef({ data: null, ts: 0 });
+
+  const loadData = useCallback(async (force = false) => {
+    const c = cacheRef.current;
+    if (!force && c.data && (Date.now() - c.ts) < ANALYTICS_TTL) {
+      setData(c.data); setLoading(false); return;
+    }
+    setLoading(true);
+    try {
+      const res = await globalThis.fetch("/api/admin/analytics", {
+        headers: { "x-admin-key": ADMIN_KEY }, cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      cacheRef.current = { data: json, ts: Date.now() };
+      setData(json); setUpdated(new Date()); setCountdown(60); setError(null);
+    } catch (err) {
+      setError(err.message || "Failed to load analytics");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+    const t1 = setInterval(() => loadData(true), ANALYTICS_TTL);
+    const t2 = setInterval(() => setCountdown(n => n <= 1 ? 60 : n - 1), 1000);
+    return () => { clearInterval(t1); clearInterval(t2); };
+  }, [loadData]);
+
+  return { data, loading, error, lastUpdated, countdown, refresh: () => loadData(true) };
+}
+
+// ─── Skeleton loading placeholders ───────────────────────────────────────────
+const shimmerStyle = {
+  background: "linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.1) 50%,rgba(255,255,255,0.04) 75%)",
+  backgroundSize: "400% 100%",
+  animation: "shimmer 1.8s ease-in-out infinite",
+};
+function SkeletonCard() {
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
+      <div style={{ ...shimmerStyle, height: 11, width: "55%", borderRadius: 4, marginBottom: 18 }}/>
+      <div style={{ ...shimmerStyle, height: 34, width: "65%", borderRadius: 6, marginBottom: 14 }}/>
+      <div style={{ ...shimmerStyle, height: 9, width: "42%", borderRadius: 4 }}/>
+    </div>
+  );
+}
+function SkeletonBlock({ height = 200 }) {
+  return <div style={{ ...shimmerStyle, borderRadius: 14, height, border: `1px solid ${C.border}` }}/>;
+}
+
+// ─── Inline sparkline for stat cards ────────────────────────────────────────
+function MiniSparkline({ data = [], color = C.gold, width = 80, height = 32 }) {
+  if (!data.length || data.every(v => !v)) return null;
+  const max = Math.max(...data, 1);
+  const step = width / (data.length - 1 || 1);
+  const pts  = data.map((v, i) => [i * step, height - (v / max) * (height - 4)]);
+  const line = pts.map(([x,y], i) => `${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${pts.at(-1)[0]},${height} L0,${height} Z`;
+  const gid  = `spk${color.replace(/[^a-z0-9]/gi,"")}`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display:"block", flexShrink:0 }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.4"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gid})`}/>
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx={pts.at(-1)[0]} cy={pts.at(-1)[1]} r="2.5" fill={color}/>
+    </svg>
+  );
+}
+
+// ─── Full-width area line chart ──────────────────────────────────────────────
+function LineAreaChart({ data = [], color = C.blue, height = 160, secondaryData = [], secondaryColor = C.gold }) {
+  const W = 600, PAD = { t:12, r:8, b:30, l:36 };
+  const cW = W - PAD.l - PAD.r, cH = height - PAD.t - PAD.b;
+  const vals = data.map(d => d.value ?? d.visits ?? 0);
+  const max  = Math.max(...vals, ...secondaryData.map(d => d.value ?? d.leads ?? 0), 1);
+  const toX  = i  => PAD.l + (i / (data.length - 1 || 1)) * cW;
+  const toY  = v  => PAD.t + cH - (v / max) * cH;
+  const pts  = vals.map((v, i) => [toX(i), toY(v)]);
+  const line = pts.map(([x,y],i) => `${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const area = `${line} L${pts.at(-1)[0]},${PAD.t+cH} L${PAD.l},${PAD.t+cH} Z`;
+  const gid1 = `lac${color.replace(/[^a-z0-9]/gi,"")}`;
+
+  // Second series (leads)
+  const s2vals = secondaryData.map(d => d.value ?? d.leads ?? 0);
+  const pts2   = s2vals.map((v,i) => [toX(i), toY(v)]);
+  const line2  = pts2.map(([x,y],i) => `${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+
+  // X-axis: first, 1/4, 1/2, 3/4, last
+  const xTicks = [0, Math.floor(data.length*0.25), Math.floor(data.length*0.5), Math.floor(data.length*0.75), data.length-1].filter((v,i,a) => a.indexOf(v) === i);
+  // Y-axis ticks
+  const yTicks = [0, Math.round(max*0.5), max].map(v => ({ y: toY(v), v }));
+
+  if (!data.length) return <div style={{ height, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:13 }}>No data yet. Visits will appear as people browse the site.</div>;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} style={{ width:"100%", height, display:"block" }}>
+      <defs>
+        <linearGradient id={gid1} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.02"/>
+        </linearGradient>
+      </defs>
+      {/* Grid lines */}
+      {yTicks.map((t,i) => (
+        <g key={i}>
+          <line x1={PAD.l} y1={t.y} x2={W-PAD.r} y2={t.y} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+          <text x={PAD.l-4} y={t.y+4} textAnchor="end" fontSize="9" fill={C.textMuted} fontFamily={font}>{t.v}</text>
+        </g>
+      ))}
+      {/* Area + primary line */}
+      <path d={area} fill={`url(#${gid1})`}/>
+      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Secondary series */}
+      {s2vals.some(v => v > 0) && <path d={line2} fill="none" stroke={secondaryColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 2" opacity="0.7"/>}
+      {/* X-axis labels */}
+      {xTicks.map(i => (
+        data[i] && <text key={i} x={toX(i)} y={height-4} textAnchor="middle" fontSize="9" fill={C.textMuted} fontFamily={font}>{data[i].label}</text>
+      ))}
+      {/* Last point */}
+      {pts.length > 0 && <circle cx={pts.at(-1)[0]} cy={pts.at(-1)[1]} r="3.5" fill={color} stroke={C.card} strokeWidth="1.5"/>}
+    </svg>
+  );
+}
+
+// ─── Donut / ring chart ──────────────────────────────────────────────────────
+function DonutChart({ segments = [], size = 140, innerLabel = "total" }) {
+  const total = segments.reduce((s, sg) => s + (sg.value || 0), 0);
+  if (!total) return <div style={{ height:size, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:12 }}>No data yet</div>;
+  const cx = size/2, cy = size/2, R = size*0.35, stroke = size*0.17;
+  let angle = -Math.PI / 2;
+  const arcs = segments.filter(s => s.value > 0).map(sg => {
+    const sweep = (sg.value / total) * 2 * Math.PI;
+    const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
+    angle += sweep;
+    const x2 = cx + R * Math.cos(angle), y2 = cy + R * Math.sin(angle);
+    return { ...sg, d: `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${sweep>Math.PI?1:0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}` };
+  });
+  return (
+    <div style={{ display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink:0 }}>
+        {arcs.map((arc, i) => (
+          <path key={i} d={arc.d} fill="none" stroke={arc.color} strokeWidth={stroke} strokeLinecap="butt">
+            <title>{arc.label}: {arc.value}</title>
+          </path>
+        ))}
+        <text x={cx} y={cy - 5} textAnchor="middle" fontSize={size*0.13} fontWeight="800" fill={C.heading} fontFamily={font}>{total}</text>
+        <text x={cx} y={cy + size*0.1} textAnchor="middle" fontSize={size*0.07} fill={C.textMuted} fontFamily={font}>{innerLabel}</text>
+      </svg>
+      <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+        {segments.filter(s => s.value > 0).map((s, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <div style={{ width:8, height:8, borderRadius:"50%", background:s.color, flexShrink:0 }}/>
+            <span style={{ fontSize:12, color:C.textMuted, fontFamily:font }}>{s.label}</span>
+            <span style={{ fontSize:12, color:C.text, fontFamily:font, fontWeight:700, marginLeft:"auto" }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Horizontal bar chart ────────────────────────────────────────────────────
+function HBarChart({ data = [], color = C.gold, nameKey = "name", countKey = "count" }) {
+  if (!data.length) return <p style={{ color:C.textMuted, fontSize:13, fontFamily:font }}>No data yet.</p>;
+  const max = Math.max(...data.map(d => d[countKey] || 0), 1);
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+      {data.slice(0, 8).map((d, i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ fontSize:10, color:C.textMuted, fontFamily:font, width:16, textAlign:"right", flexShrink:0 }}>#{i+1}</div>
+          <div style={{ flex:1, fontSize:12, color:C.text, fontFamily:font, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{d[nameKey] || d.page || d.source || "—"}</div>
+          <div style={{ width:120, height:7, background:C.surface, borderRadius:4, overflow:"hidden", flexShrink:0 }}>
+            <div style={{ width:`${((d[countKey]||0)/max)*100}%`, height:"100%", background:color, borderRadius:4, opacity:0.6+0.4*((d[countKey]||0)/max), transition:"width 0.5s ease" }}/>
+          </div>
+          <div style={{ fontSize:12, color:color, fontFamily:font, fontWeight:700, width:36, textAlign:"right", flexShrink:0 }}>{d[countKey]}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Dual bar chart (visits + leads per month) ───────────────────────────────
+function DualBarChart({ data = [], color1 = C.blue, color2 = C.gold, height = 140 }) {
+  const maxV = Math.max(...data.map(d => d.visits || 0), 1);
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"flex-end", gap:3, height }}>
+        {data.map((d, i) => (
+          <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:1 }}>
+            <div style={{ width:"100%", display:"flex", gap:1, alignItems:"flex-end", height:height-22 }}>
+              <div style={{ flex:1, background:color1, opacity:0.7, borderRadius:"2px 2px 0 0", height:`${Math.max((d.visits/maxV)*100,d.visits>0?2:0)}%` }} title={`${d.label}: ${d.visits} visits`}/>
+              <div style={{ flex:1, background:color2, opacity:0.8, borderRadius:"2px 2px 0 0", height:`${Math.max(((d.leads||0)/maxV)*100,(d.leads||0)>0?3:0)}%` }} title={`${d.label}: ${d.leads} leads`}/>
+            </div>
+            <div style={{ fontSize:8, color:C.textMuted, fontFamily:font, textAlign:"center", lineHeight:1.2 }}>{d.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:14, marginTop:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:C.textMuted }}><div style={{ width:10, height:10, borderRadius:2, background:color1 }}/> Visits</div>
+        <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:C.textMuted }}><div style={{ width:10, height:10, borderRadius:2, background:color2 }}/> Leads</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live stat card with sparkline ───────────────────────────────────────────
+function LiveStatCard({ label, value, sub, color = C.gold, icon, spark = [], trend = null }) {
+  const val = typeof value === "number" ? value.toLocaleString() : value;
+  const pos  = typeof trend === "number" && trend >= 0;
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "20px 22px", display:"flex", flexDirection:"column", gap:8 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <span style={{ fontSize:12, color:C.textMuted, fontFamily:font, fontWeight:500 }}>{label}</span>
+        <span style={{ fontSize:16 }}>{icon}</span>
+      </div>
+      <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:8 }}>
+        <div style={{ fontSize:30, fontWeight:800, color, fontFamily:font, letterSpacing:"-0.03em", lineHeight:1 }}>{val}</div>
+        {spark.length > 1 && <MiniSparkline data={spark} color={color} width={72} height={28}/>}
+      </div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        {sub && <div style={{ fontSize:11.5, color:C.textMuted, fontFamily:font }}>{sub}</div>}
+        {trend !== null && trend !== undefined && (
+          <div style={{ fontSize:11, fontWeight:700, color: pos ? C.mint : C.rose, fontFamily:font }}>
+            {pos ? "↑" : "↓"} {Math.abs(trend)}%
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard Overview ──────────────────────────────────────────────────────
 function DashboardOverview() {
-  const analytics = lsGet(SK.analytics, {});
-  const leads = lsGet(SK.leads, []);
-  const blog = lsGet(SK.blog, []);
-  const team = lsGet(SK.team, []);
-  const newsletter = lsGet(SK.newsletter, []);
-  const audit = lsGet(SK.audit, []);
+  const { data, loading, error, lastUpdated, countdown, refresh } = useAnalytics();
+  const blog    = lsGet(SK.blog,    []);
+  const clients = lsGet(SK.clients, []);
+  const audit   = lsGet(SK.audit,   []);
 
-  const totalViews = Object.values(analytics.totals || {}).reduce((a, b) => a + b, 0);
-  const today = new Date().toISOString().split("T")[0];
-  const todayViews = Object.values(analytics.daily?.[today] || {}).reduce((a, b) => a + b, 0);
-  const unreadLeads = leads.filter(l => !l.read && l.status !== undefined ? !l.read : (l.status === "New")).length;
+  const s    = data?.stats    || {};
+  const tr   = data?.trends   || {};
+  const v7   = (tr.daily || []).slice(-7).map(d => d.visits);
+  const l7   = (tr.daily || []).slice(-7).map(d => d.leads);
+
+  const METRICS = [
+    { label:"Website Visitors",    value:s.visitors?.total      ?? 0, sub:`${(s.visitors?.month??0).toLocaleString()} this month`,            color:C.blue,   icon:"👁️",  spark:v7, trend:s.visitors?.growth },
+    { label:"Visitors Today",      value:s.visitors?.today      ?? 0, sub:new Date().toLocaleDateString("en-NG",{weekday:"long"}),             color:C.cyan,   icon:"📅",  spark:v7 },
+    { label:"Demo Requests",       value:s.leads?.demo          ?? 0, sub:`${s.leads?.new??0} new unread`,                                     color:C.gold,   icon:"🎯",  spark:l7, trend:s.leads?.growth },
+    { label:"Active Clients",      value:clients.filter(c=>c.published!==false).length, sub:"From clients list",                               color:C.mint,   icon:"🏢",  spark:null },
+    { label:"Support Tickets",     value:s.leads?.support       ?? 0, sub:"Via support form",                                                  color:C.amber,  icon:"🎫",  spark:l7 },
+    { label:"Contact Messages",    value:s.leads?.contact       ?? 0, sub:"Via contact form",                                                  color:C.purple, icon:"📬",  spark:l7 },
+    { label:"Newsletter Subs",     value:s.leads?.newsletter    ?? 0, sub:"Signed up via website",                                             color:C.rose,   icon:"📰",  spark:l7 },
+    { label:"Companies Reached",   value:s.companies?.unique    ?? 0, sub:`Across ${s.leads?.total??0} total submissions`,                     color:C.gold,   icon:"🏭",  spark:null },
+  ];
+
+  const LEAD_TYPE_COLORS = { demo:C.gold, contact:C.blue, support:C.purple, newsletter:C.rose, quote:C.mint, career:C.amber, partnership:C.cyan };
+  const donutSegs = Object.entries(data?.leadTypes || {}).map(([k, v]) => ({ label:k, value:v, color:LEAD_TYPE_COLORS[k]||C.textMuted }));
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
-        <StatCard label="Total Page Views"   value={totalViews.toLocaleString()}  sub="All time"              color={C.gold}   icon="📊" />
-        <StatCard label="Views Today"        value={todayViews.toLocaleString()}  sub={today}                 color={C.blue}   icon="📈" />
-        <StatCard label="Unread Leads"       value={unreadLeads}                  sub={`of ${leads.length}`} color={C.rose}   icon="📬" />
-        <StatCard label="Blog Posts"         value={(blog.filter(b => b.published)).length} sub="Published"  color={C.mint}   icon="📝" />
-        <StatCard label="Newsletter Subs"    value={newsletter.length}            sub="Total subscribers"     color={C.purple} icon="📰" />
-        <StatCard label="Team Members"       value={team.filter(t => t.published !== false).length} sub="Active" color={C.cyan} icon="👥" />
+      {/* Header bar */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, flexWrap:"wrap", gap:8 }}>
+        <div style={{ fontSize:12, color:C.textMuted, fontFamily:font }}>
+          {error && <span style={{ color:C.rose }}>⚠ {error} · </span>}
+          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString("en-NG")} · refreshing in ${countdown}s` : loading ? "Loading live data…" : ""}
+        </div>
+        <Btn small variant="ghost" onClick={refresh} disabled={loading}>
+          {loading ? "…" : "↻ Refresh"}
+        </Btn>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+      {/* 8 live stat cards */}
+      <div className="admin-stat-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px,1fr))", gap:14, marginBottom:24 }}>
+        {loading
+          ? Array(8).fill(0).map((_,i) => <SkeletonCard key={i}/>)
+          : METRICS.map(m => <LiveStatCard key={m.label} {...m}/>)
+        }
+      </div>
+
+      {/* Charts row */}
+      <div className="admin-analytics-grid" style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:20, marginBottom:20 }}>
         <SectionCard>
-          <SectionTitle>Recent Activity</SectionTitle>
-          <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginBottom: 16 }}>Last admin actions</p>
-          {audit.slice(0, 8).map((entry, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, whiteSpace: "nowrap", marginTop: 1 }}>
-                {new Date(entry.ts).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <div>
-                <span style={{ fontSize: 13.5, color: C.text, fontFamily: font }}>
-                  <strong style={{ color: C.gold }}>{entry.user}</strong> {entry.action}
-                  {entry.target && entry.target !== "admin" && <> · <span style={{ color: C.textMuted }}>{entry.target}</span></>}
-                </span>
-                {entry.details && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{entry.details}</div>}
-              </div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+            <SectionTitle>Visitor Trend (30 days)</SectionTitle>
+            <div style={{ display:"flex", gap:10, fontSize:11, color:C.textMuted }}>
+              <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:2, background:C.blue, borderRadius:1 }}/> Visits</span>
+              <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:2, background:C.gold, borderRadius:1, borderTop:"1px dashed" }}/> Leads</span>
             </div>
-          ))}
-          {audit.length === 0 && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>No activity yet.</p>}
+          </div>
+          {loading ? <SkeletonBlock height={160}/> : <LineAreaChart data={tr.daily||[]} color={C.blue} height={160} secondaryData={tr.daily||[]} secondaryColor={C.gold}/>}
         </SectionCard>
 
         <SectionCard>
-          <SectionTitle>Quick Links</SectionTitle>
-          <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginBottom: 16 }}>Common tasks</p>
-          {[
-            { label: "Write a blog post",         icon: "📝", section: "blog" },
-            { label: "Add a testimonial",          icon: "⭐", section: "testimonials" },
-            { label: "Update homepage hero",       icon: "🏠", section: "homepage" },
-            { label: "View contact form leads",    icon: "📬", section: "leads" },
-            { label: "Manage products",            icon: "📦", section: "products" },
-            { label: "Check newsletter list",      icon: "📰", section: "newsletter" },
-            { label: "SEO settings",               icon: "🔍", section: "seo" },
-            { label: "Feature flags",              icon: "🚩", section: "features" },
-          ].map(q => (
-            <div key={q.section} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 15 }}>{q.icon}</span>
-              <span style={{ fontSize: 14, color: C.text, fontFamily: font }}>{q.label}</span>
+          <SectionTitle>Lead Breakdown</SectionTitle>
+          <div style={{ marginTop:16 }}>
+            {loading ? <SkeletonBlock height={140}/> : <DonutChart segments={donutSegs} size={130} innerLabel="leads"/>}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Popular products + admin audit */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+        <SectionCard>
+          <SectionTitle>Popular Products</SectionTitle>
+          <p style={{ fontSize:12, color:C.textMuted, fontFamily:font, margin:"4px 0 16px" }}>By demo request interest</p>
+          {loading ? <SkeletonBlock height={140}/> : <HBarChart data={data?.topProducts||[]} color={C.gold} nameKey="name" countKey="count"/>}
+        </SectionCard>
+
+        <SectionCard>
+          <SectionTitle>Recent Admin Actions</SectionTitle>
+          <p style={{ fontSize:12, color:C.textMuted, fontFamily:font, margin:"4px 0 16px" }}>From this browser session</p>
+          {audit.slice(0,7).map((e,i) => (
+            <div key={i} style={{ display:"flex", gap:10, padding:"9px 0", borderBottom:`1px solid ${C.border}`, alignItems:"flex-start" }}>
+              <span style={{ fontSize:11, color:C.textMuted, fontFamily:font, whiteSpace:"nowrap", marginTop:1 }}>
+                {new Date(e.ts).toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"})}
+              </span>
+              <div style={{ fontSize:13, color:C.text, fontFamily:font }}>
+                <strong style={{ color:C.gold }}>{e.user}</strong> {e.action}
+                {e.target && e.target !== "admin" && <span style={{ color:C.textMuted }}> · {e.target}</span>}
+                {e.details && <div style={{ fontSize:11.5, color:C.textMuted, marginTop:2 }}>{e.details}</div>}
+              </div>
             </div>
           ))}
+          {audit.length === 0 && <p style={{ fontSize:13, color:C.textMuted, fontFamily:font }}>No actions yet this session.</p>}
         </SectionCard>
       </div>
     </div>
@@ -517,125 +794,125 @@ function DashboardOverview() {
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
 function AnalyticsSection() {
-  const analytics = lsGet(SK.analytics, {});
-  const daily = analytics.daily || {};
-  const totals = analytics.totals || {};
-
-  const last14 = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    return d.toISOString().split("T")[0];
-  });
-
-  const chartData = last14.map(date => ({
-    date,
-    views: Object.values(daily[date] || {}).reduce((a, b) => a + b, 0),
-    label: new Date(date).toLocaleDateString("en-NG", { month: "short", day: "numeric" }),
-  }));
-
-  const maxViews = Math.max(...chartData.map(d => d.views), 1);
-  const totalViews = Object.values(totals).reduce((a, b) => a + b, 0);
-
-  const topPages = Object.entries(totals)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
-    .map(([page, views]) => ({ page, views }));
+  const { data, loading, error, lastUpdated, countdown, refresh } = useAnalytics();
+  const tr = data?.trends || {};
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 28 }}>
-        <StatCard label="Total Views"   value={totalViews.toLocaleString()} color={C.gold}   icon="👁️" />
-        <StatCard label="Pages Tracked" value={Object.keys(totals).length}  color={C.blue}   icon="📄" />
-        <StatCard label="Today"         value={Object.values(daily[new Date().toISOString().split("T")[0]] || {}).reduce((a, b) => a + b, 0)} color={C.mint} icon="📅" />
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, flexWrap:"wrap", gap:8 }}>
+        <div style={{ fontSize:12, color:C.textMuted, fontFamily:font }}>
+          {error && <span style={{ color:C.rose }}>⚠ {error} · </span>}
+          {lastUpdated ? `Live data · updated ${lastUpdated.toLocaleTimeString("en-NG")} · next in ${countdown}s` : loading ? "Loading from Upstash…" : ""}
+        </div>
+        <Btn small variant="ghost" onClick={refresh} disabled={loading}>{loading ? "…" : "↻ Refresh"}</Btn>
       </div>
 
+      {/* Summary stat row */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:14, marginBottom:24 }}>
+        {loading ? Array(4).fill(0).map((_,i) => <SkeletonCard key={i}/>) : [
+          { label:"Total Visitors",  value:(data?.stats?.visitors?.total??0).toLocaleString(),  color:C.blue,   icon:"👁️" },
+          { label:"This Month",      value:(data?.stats?.visitors?.month??0).toLocaleString(),  color:C.cyan,   icon:"📅" },
+          { label:"Growth MoM",      value:`${data?.stats?.visitors?.growth??0 >= 0 ? "+" : ""}${data?.stats?.visitors?.growth??0}%`, color:data?.stats?.visitors?.growth>=0?C.mint:C.rose, icon:"📈" },
+          { label:"Pages Tracked",   value:(data?.topPages||[]).length, color:C.gold, icon:"📄" },
+        ].map(m => <StatCard key={m.label} {...m} />)}
+      </div>
+
+      {/* 30-day area chart */}
       <SectionCard>
-        <SectionTitle>Page Views — Last 14 Days</SectionTitle>
-        <div style={{ marginTop: 20, height: 180, display: "flex", alignItems: "flex-end", gap: 4 }}>
-          {chartData.map((d, i) => (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }} title={`${d.date}: ${d.views} views`}>
-              <span style={{ fontSize: 10, color: C.textMuted, fontFamily: font }}>{d.views > 0 ? d.views : ""}</span>
-              <div style={{
-                width: "100%", background: d.views > 0 ? C.gold : C.border,
-                borderRadius: "4px 4px 0 0",
-                height: `${Math.max((d.views / maxViews) * 120, d.views > 0 ? 4 : 2)}px`,
-                transition: "height 0.3s", opacity: d.views > 0 ? 1 : 0.3,
-              }} />
-              <span style={{ fontSize: 9, color: C.textMuted, fontFamily: font, textAlign: "center", width: "100%", overflow: "hidden", whiteSpace: "nowrap" }}>{d.label}</span>
-            </div>
-          ))}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16 }}>
+          <SectionTitle>Visitors: Last 30 Days</SectionTitle>
+          <div style={{ display:"flex", gap:12, fontSize:11, color:C.textMuted }}>
+            <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:2, background:C.blue, borderRadius:1 }}/> Visits</span>
+            <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:2, background:C.gold, borderRadius:1 }}/> Leads</span>
+          </div>
+        </div>
+        {loading ? <SkeletonBlock height={180}/> : <LineAreaChart data={tr.daily||[]} color={C.blue} height={180} secondaryData={tr.daily||[]} secondaryColor={C.gold}/>}
+      </SectionCard>
+
+      {/* 12-month dual bar */}
+      <SectionCard style={{ marginTop:20 }}>
+        <SectionTitle>Monthly Overview (12 Months)</SectionTitle>
+        <div style={{ marginTop:16 }}>
+          {loading ? <SkeletonBlock height={160}/> : <DualBarChart data={tr.monthly||[]} color1={C.blue} color2={C.gold} height={160}/>}
+        </div>
+        <div style={{ display:"flex", gap:16, marginTop:12, fontSize:11, color:C.textMuted }}>
+          <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:2, background:C.blue }}/> Visits</span>
+          <span style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:2, background:C.gold }}/> Leads</span>
         </div>
       </SectionCard>
 
-      <SectionCard style={{ marginTop: 20 }}>
-        <SectionTitle>Top Pages</SectionTitle>
-        {topPages.length === 0 && <p style={{ color: C.textMuted, fontSize: 14, fontFamily: font, marginTop: 12 }}>No data yet. Page views are tracked as visitors navigate the site.</p>}
-        {topPages.map((p, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-            <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font, width: 20, textAlign: "right" }}>#{i + 1}</span>
-            <span style={{ flex: 1, fontSize: 14, color: C.text, fontFamily: font, fontWeight: 500 }}>/{p.page}</span>
-            <div style={{ width: 120, height: 6, background: C.surface, borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(p.views / topPages[0].views) * 100}%`, background: C.gold, borderRadius: 3 }} />
-            </div>
-            <span style={{ fontSize: 13, color: C.gold, fontFamily: font, fontWeight: 700, width: 50, textAlign: "right" }}>{p.views}</span>
+      {/* Traffic sources + top pages */}
+      <div className="admin-analytics-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20, marginTop:20 }}>
+        <SectionCard>
+          <SectionTitle>Traffic Sources</SectionTitle>
+          <div style={{ marginTop:16 }}>
+            {loading ? <SkeletonBlock height={140}/> : (
+              (data?.trafficSources||[]).length > 0
+                ? <DonutChart segments={(data.trafficSources).map(s => ({ label:s.source, value:s.count, color:C.blue }))} size={120} innerLabel="sources"/>
+                : <p style={{ fontSize:13, color:C.textMuted, fontFamily:font }}>No referrer data yet.</p>
+            )}
           </div>
-        ))}
-      </SectionCard>
+        </SectionCard>
 
-      <SectionCard style={{ marginTop: 20, background: C.goldDim, border: `1px solid ${C.gold}33` }}>
-        <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
-          <strong style={{ color: C.gold }}>Note:</strong> Analytics are tracked locally in the browser. Each visitor's page views accumulate per browser session. For cross-visitor analytics, integrate Google Analytics 4 by setting <code style={{ background: C.surface, padding: "2px 6px", borderRadius: 4, fontSize: 12 }}>VITE_GA_MEASUREMENT_ID</code> in your Vercel environment variables.
-        </p>
-      </SectionCard>
+        <SectionCard>
+          <SectionTitle>Top Pages</SectionTitle>
+          <div style={{ marginTop:12 }}>
+            {loading ? <SkeletonBlock height={140}/> : <HBarChart data={(data?.topPages||[]).map(p=>({name:p.page,count:p.count}))} color={C.cyan} nameKey="name" countKey="count"/>}
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 }
 
 // ─── Live Visitors ───────────────────────────────────────────────────────────
 function LiveVisitorsSection() {
-  const [hb, setHb] = useState(() => lsGet(SK.heartbeat, null));
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setHb(lsGet(SK.heartbeat, null));
-      setNow(Date.now());
-    }, 5000);
-    return () => clearInterval(t);
-  }, []);
-
-  const isActive = hb && (now - hb.ts < 90000); // 90 seconds = active
-  const secondsAgo = hb ? Math.round((now - hb.ts) / 1000) : null;
+  const { data, loading, refresh, countdown } = useAnalytics();
+  const todayVisits = data?.stats?.visitors?.today ?? null;
+  const totalVisits = data?.stats?.visitors?.total ?? null;
+  const v7 = (data?.trends?.daily||[]).slice(-7).map(d => d.visits);
 
   return (
     <div>
       <SectionCard>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
-          <div style={{ width: 14, height: 14, borderRadius: "50%", background: isActive ? C.success : C.textMuted, boxShadow: isActive ? `0 0 12px ${C.success}` : "none", animation: isActive ? "pulse 2s infinite" : "none" }} />
-          <SectionTitle>{isActive ? "Live — Active visitor" : "No active visitors"}</SectionTitle>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:12, height:12, borderRadius:"50%", background:C.mint, boxShadow:`0 0 10px ${C.mint}`, animation:"pulse 2s infinite" }}/>
+            <SectionTitle>Live Traffic (Upstash)</SectionTitle>
+          </div>
+          <div style={{ fontSize:12, color:C.textMuted, fontFamily:font }}>refreshes in {countdown}s · <button onClick={refresh} style={{ background:"none", border:"none", color:C.blue, cursor:"pointer", fontSize:12, fontFamily:font }}>↻</button></div>
         </div>
 
-        {hb ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
-            <div style={{ background: C.surface, borderRadius: 12, padding: "16px 20px" }}>
-              <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 6 }}>CURRENT PAGE</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font }}>/{hb.page || "home"}</div>
-            </div>
-            <div style={{ background: C.surface, borderRadius: 12, padding: "16px 20px" }}>
-              <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, fontWeight: 600, letterSpacing: "0.06em", marginBottom: 6 }}>LAST SEEN</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: isActive ? C.success : C.textMuted, fontFamily: font }}>
-                {secondsAgo < 60 ? `${secondsAgo}s ago` : `${Math.round(secondsAgo / 60)}m ago`}
-              </div>
-            </div>
+        {loading ? (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:14 }}>
+            {Array(3).fill(0).map((_,i) => <SkeletonCard key={i}/>)}
           </div>
         ) : (
-          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No heartbeat data yet. Visitors will appear here as they navigate the website.</p>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:14 }}>
+            <div style={{ background:C.surface, borderRadius:12, padding:"20px 24px" }}>
+              <div style={{ fontSize:11, color:C.textMuted, fontFamily:font, fontWeight:600, letterSpacing:"0.06em", marginBottom:8 }}>TODAY</div>
+              <div style={{ fontSize:36, fontWeight:900, color:C.blue, fontFamily:font, lineHeight:1 }}>{(todayVisits??0).toLocaleString()}</div>
+              <div style={{ fontSize:12, color:C.textMuted, fontFamily:font, marginTop:6 }}>page views</div>
+            </div>
+            <div style={{ background:C.surface, borderRadius:12, padding:"20px 24px" }}>
+              <div style={{ fontSize:11, color:C.textMuted, fontFamily:font, fontWeight:600, letterSpacing:"0.06em", marginBottom:8 }}>ALL TIME</div>
+              <div style={{ fontSize:36, fontWeight:900, color:C.gold, fontFamily:font, lineHeight:1 }}>{(totalVisits??0).toLocaleString()}</div>
+              <div style={{ fontSize:12, color:C.textMuted, fontFamily:font, marginTop:6 }}>total visits tracked</div>
+            </div>
+            <div style={{ background:C.surface, borderRadius:12, padding:"20px 24px" }}>
+              <div style={{ fontSize:11, color:C.textMuted, fontFamily:font, fontWeight:600, letterSpacing:"0.06em", marginBottom:8 }}>LAST 7 DAYS</div>
+              <div style={{ marginTop:4 }}>
+                <MiniSparkline data={v7} color={C.mint} width={120} height={40}/>
+              </div>
+              <div style={{ fontSize:12, color:C.textMuted, fontFamily:font, marginTop:6 }}>{v7.reduce((a,b)=>a+b,0).toLocaleString()} visits</div>
+            </div>
+          </div>
         )}
 
-        <div style={{ marginTop: 20, background: C.goldDim, border: `1px solid ${C.gold}33`, borderRadius: 10, padding: "14px 18px" }}>
-          <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
-            <strong style={{ color: C.gold }}>How this works:</strong> The website sends a heartbeat every 20 seconds while a tab is open. Live Visitors shows whether the current browser session (your own or a shared device) is active. For multi-visitor real-time tracking, integrate a backend service or Tawk.to's visitor monitoring API.
-          </p>
+        <div style={{ marginTop:20 }}>
+          <SectionTitle style={{ marginBottom:12 }}>Visitor Trend (Last 14 Days)</SectionTitle>
+          {loading ? <SkeletonBlock height={140}/> : <LineAreaChart data={(data?.trends?.daily||[]).slice(-14)} color={C.blue} height={140}/>}
         </div>
       </SectionCard>
     </div>
@@ -691,7 +968,7 @@ function LeadsSection() {
     message: l.message || l.description || l.projectDesc || "",
     status: l.status || "new",
     type: l.type || "contact",
-    ref: l.ref || l.id?.slice(0, 12) || "—",
+    ref: l.ref || l.id?.slice(0, 12) || "",
     submittedAt: l.submittedAt || l.createdAt || "",
     read: l.read !== undefined ? l.read : (l.status && l.status !== "new" && l.status !== "New"),
   });
@@ -1127,7 +1404,7 @@ function ProductsSection() {
         industries: [], solutions: [], modules: "", features: "",
       }}
       fields={[
-        { key: "id",       label: "ID / URL Slug",   placeholder: "e.g. hrcore (used in URL — no spaces)", hint: "Leave blank to auto-generate. Must be unique." },
+        { key: "id",       label: "ID / URL Slug",   placeholder: "e.g. hrcore (used in URL no spaces)", hint: "Leave blank to auto-generate. Must be unique." },
         { key: "name",     label: "Product Name",     placeholder: "e.g. HRCore" },
         { key: "tag",      label: "Short Tag",        placeholder: "e.g. Human Resources" },
         { key: "tagline",  label: "Tagline",          placeholder: "One-line pitch shown on product page" },
@@ -1511,7 +1788,7 @@ function HomepageSection() {
 // ─── SEO ─────────────────────────────────────────────────────────────────────
 const SEO_PAGES = ["home", "products", "services", "work", "contact", "careers"];
 const DEFAULT_SEO = {
-  home:     { title: "Orion Soft Limited — Software that Works", desc: "Healthcare technology and custom software.", keywords: "hospital management system, custom software Nigeria", ogImage: "", robots: "index, follow" },
+  home:     { title: "Orion Soft Limited Software that Works", desc: "Healthcare technology and custom software.", keywords: "hospital management system, custom software Nigeria", ogImage: "", robots: "index, follow" },
 };
 
 function SEOSection() {
@@ -1536,7 +1813,7 @@ function SEOSection() {
         ))}
       </div>
       <SectionCard>
-        <div style={{ marginBottom: 6 }}><Label>Page Title (&lt; 60 chars)</Label><Input value={cur.title || ""} onChange={e => upd("title", e.target.value)} placeholder="Page Title — Brand" /></div>
+        <div style={{ marginBottom: 6 }}><Label>Page Title (&lt; 60 chars)</Label><Input value={cur.title || ""} onChange={e => upd("title", e.target.value)} placeholder="Page Title Brand" /></div>
         <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginBottom: 14 }}>{(cur.title || "").length}/60</div>
         <div style={{ marginBottom: 6 }}><Label>Meta Description (&lt; 155 chars)</Label><Textarea value={cur.desc || ""} onChange={e => upd("desc", e.target.value)} rows={3} placeholder="Short description for search engines" /></div>
         <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginBottom: 14 }}>{(cur.desc || "").length}/155</div>
@@ -1754,9 +2031,9 @@ function SettingsSection() {
 
 // ─── Users & Roles ───────────────────────────────────────────────────────────
 const ROLE_PERMS = {
-  superadmin: "Full access — all sections, system settings, user management",
-  editor:     "Content only — blog, products, testimonials, FAQs, team, careers",
-  viewer:     "Read-only — can view analytics and leads but cannot edit anything",
+  superadmin: "Full access all sections, system settings, user management",
+  editor:     "Content only blog, products, testimonials, FAQs, team, careers",
+  viewer:     "Read-only can view analytics and leads but cannot edit anything",
 };
 
 function UsersSection({ session }) {
@@ -2092,7 +2369,7 @@ function BackupsSection() {
 
       <SectionCard>
         <SectionTitle>Data Management</SectionTitle>
-        <p style={{ color: C.textMuted, fontSize: 13, fontFamily: font, marginBottom: 16 }}>Reset individual data stores. Use with caution — this cannot be undone without a backup.</p>
+        <p style={{ color: C.textMuted, fontSize: 13, fontFamily: font, marginBottom: 16 }}>Reset individual data stores. Use with caution this cannot be undone without a backup.</p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {BACKUP_KEYS.map(([label, key]) => (
             <Btn key={key} small danger onClick={() => clearKey(label, key)}>Clear {label}</Btn>
@@ -2283,12 +2560,315 @@ function ConversationsSection() {
   );
 }
 
+// ─── Recent Activities ───────────────────────────────────────────────────────
+function RecentActivitiesSection() {
+  const { data, loading, refresh, countdown } = useAnalytics();
+  const activities = data?.recentActivities || [];
+  const LEAD_COLORS = { demo:C.gold, contact:C.blue, support:C.purple, newsletter:C.rose, quote:C.mint, career:C.amber, partnership:C.cyan };
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+        <p style={{ fontSize:13, color:C.textMuted, fontFamily:font }}>
+          Combined lead + conversation feed from Upstash · refreshing in {countdown}s
+        </p>
+        <Btn small variant="ghost" onClick={refresh} disabled={loading}>{loading ? "…" : "↻ Refresh"}</Btn>
+      </div>
+
+      <SectionCard>
+        {loading
+          ? Array(8).fill(0).map((_,i) => (
+              <div key={i} style={{ ...shimmerStyle, height:58, borderRadius:8, marginBottom:10 }}/>
+            ))
+          : activities.length === 0
+            ? <p style={{ fontSize:14, color:C.textMuted, fontFamily:font }}>No activity yet. Submit forms on the website to see entries here.</p>
+            : activities.map((a, i) => {
+                const isLead = a._kind === "lead";
+                const typeColor = isLead ? (LEAD_COLORS[a.type] || C.textMuted) : C.cyan;
+                const dt = new Date(a.submittedAt || a.startedAt || 0);
+                return (
+                  <div key={i} style={{ display:"flex", gap:14, padding:"12px 0", borderBottom:`1px solid ${C.border}`, alignItems:"flex-start" }}>
+                    <div style={{ width:36, height:36, borderRadius:"50%", background:`${typeColor}22`, border:`1px solid ${typeColor}44`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:15 }}>
+                      {isLead ? { demo:"🎯", contact:"✉️", support:"🎫", newsletter:"📰", quote:"💰", career:"🚀", partnership:"🤝" }[a.type] || "📬" : "💬"}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        <span style={{ fontSize:13.5, fontWeight:700, color:C.heading, fontFamily:font }}>
+                          {isLead ? (a.name || a.email || "Anonymous") : (a.visitorName || "Visitor")}
+                        </span>
+                        <span style={{ fontSize:11, fontWeight:600, color:typeColor, background:`${typeColor}18`, padding:"2px 8px", borderRadius:20 }}>
+                          {isLead ? (a.type || "lead") : "chat"}
+                        </span>
+                        {isLead && a.company && <span style={{ fontSize:12, color:C.textMuted, fontFamily:font }}>· {a.company}</span>}
+                      </div>
+                      <div style={{ fontSize:12.5, color:C.textMuted, fontFamily:font, marginTop:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"90%" }}>
+                        {isLead ? (a.message || a.interestedService || "No message") : (a.messages?.[0]?.content || "Conversation started")}
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:C.textMuted, fontFamily:font, whiteSpace:"nowrap", marginTop:2 }}>
+                      {isNaN(dt) ? "—" : dt.toLocaleDateString("en-NG", { month:"short", day:"numeric" }) + " " + dt.toLocaleTimeString("en-NG", { hour:"2-digit", minute:"2-digit" })}
+                    </div>
+                  </div>
+                );
+              })
+        }
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Calendar / Heatmap ──────────────────────────────────────────────────────
+function CalendarSection() {
+  const { data, loading } = useAnalytics();
+  const daily = data?.trends?.daily || [];
+  const byDate = {};
+  daily.forEach(d => { byDate[d.date] = { visits: d.visits, leads: d.leads }; });
+  const maxV = Math.max(...daily.map(d => d.visits), 1);
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const monthLabel = now.toLocaleDateString("en-NG", { month:"long", year:"numeric" });
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dk = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    cells.push({ d, dk, ...(byDate[dk] || { visits:0, leads:0 }) });
+  }
+
+  function heatColor(v) {
+    if (v === 0) return C.surface;
+    const pct = v / maxV;
+    if (pct < 0.25) return "#0f3460";
+    if (pct < 0.5)  return "#1a5276";
+    if (pct < 0.75) return "#1f618d";
+    return C.blue;
+  }
+
+  return (
+    <div>
+      <SectionCard>
+        <SectionTitle>{monthLabel}: Visit Heatmap</SectionTitle>
+        <p style={{ fontSize:12, color:C.textMuted, fontFamily:font, margin:"6px 0 20px" }}>
+          Color intensity = visitor volume. Data from Upstash daily counters.
+        </p>
+
+        {loading ? <SkeletonBlock height={220}/> : (
+          <>
+            {/* Day labels */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:4 }}>
+              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+                <div key={d} style={{ fontSize:10, color:C.textMuted, fontFamily:font, textAlign:"center", fontWeight:600 }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Calendar grid */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+              {cells.map((cell, i) => cell === null
+                ? <div key={`e${i}`} style={{ aspectRatio:"1", borderRadius:6 }}/>
+                : (
+                  <div key={cell.dk} title={`${cell.dk}: ${cell.visits} visits, ${cell.leads} leads`}
+                    style={{ aspectRatio:"1", borderRadius:6, background:heatColor(cell.visits), display:"flex", alignItems:"center", justifyContent:"center", cursor:"default", border:`1px solid ${C.border}` }}>
+                    <span style={{ fontSize:10, color: cell.visits > 0 ? "#fff" : C.textMuted, fontFamily:font, fontWeight:cell.visits>0?700:400 }}>{cell.d}</span>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Legend */}
+            <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:16 }}>
+              <span style={{ fontSize:11, color:C.textMuted, fontFamily:font }}>Less</span>
+              {[0, 0.2, 0.45, 0.7, 1].map((p,i) => (
+                <div key={i} style={{ width:14, height:14, borderRadius:3, background:heatColor(Math.round(p*maxV)) }}/>
+              ))}
+              <span style={{ fontSize:11, color:C.textMuted, fontFamily:font }}>More</span>
+            </div>
+          </>
+        )}
+      </SectionCard>
+
+      {/* Monthly totals table */}
+      <SectionCard style={{ marginTop:20 }}>
+        <SectionTitle>Month-by-Month Summary</SectionTitle>
+        <div style={{ overflowX:"auto", marginTop:14 }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontFamily:font, fontSize:13 }}>
+            <thead>
+              <tr>
+                {["Month","Visits","Leads","Conversion"].map(h => (
+                  <th key={h} style={{ textAlign:"left", padding:"8px 12px", fontSize:11, fontWeight:700, color:C.textMuted, letterSpacing:"0.06em", borderBottom:`1px solid ${C.border}` }}>{h.toUpperCase()}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading
+                ? Array(6).fill(0).map((_,i) => (
+                    <tr key={i}><td colSpan={4} style={{ padding:"10px 12px" }}><div style={{ ...shimmerStyle, height:16, borderRadius:4 }}/></td></tr>
+                  ))
+                : (data?.trends?.monthly||[]).slice(-6).reverse().map(m => (
+                    <tr key={m.month} style={{ borderBottom:`1px solid ${C.border}` }}>
+                      <td style={{ padding:"10px 12px", color:C.text, fontWeight:500 }}>{m.label}</td>
+                      <td style={{ padding:"10px 12px", color:C.blue, fontWeight:700 }}>{m.visits.toLocaleString()}</td>
+                      <td style={{ padding:"10px 12px", color:C.gold, fontWeight:700 }}>{m.leads}</td>
+                      <td style={{ padding:"10px 12px", color:C.mint }}>
+                        {m.visits > 0 ? `${((m.leads/m.visits)*100).toFixed(1)}%` : "—"}
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── System Health ───────────────────────────────────────────────────────────
+function SystemHealthSection() {
+  const { data, loading, lastUpdated, refresh } = useAnalytics();
+  const health = data?.health || {};
+  const [latency, setLatency] = useState(null);
+  const [pinging, setPinging] = useState(false);
+
+  async function ping() {
+    setPinging(true);
+    const t0 = Date.now();
+    try {
+      await globalThis.fetch("/api/admin/analytics", { headers: { "x-admin-key": ADMIN_KEY }, cache:"no-store" });
+      setLatency(Date.now() - t0);
+    } catch { setLatency(-1); }
+    setPinging(false);
+  }
+
+  useEffect(() => { ping(); }, []);
+
+  const SERVICES = [
+    {
+      name: "Upstash Redis",
+      icon: "🗄️",
+      status: loading ? null : health.upstash,
+      description: "Primary data store: leads, visits, conversations",
+    },
+    {
+      name: "Email Service",
+      icon: "📧",
+      status: loading ? null : health.email,
+      description: "Gmail/Resend: notification emails on form submissions",
+    },
+    {
+      name: "AI (Groq)",
+      icon: "🤖",
+      status: loading ? null : health.ai,
+      description: "Groq LLM: powers Ori AI assistant and chat responses",
+    },
+    {
+      name: "API Endpoint",
+      icon: "⚡",
+      status: loading ? null : latency !== null,
+      description: latency === -1 ? "Unreachable" : latency !== null ? `${latency}ms response time` : "Measuring…",
+      latency,
+    },
+  ];
+
+  function StatusDot({ ok }) {
+    if (ok === null) return <div style={{ width:10, height:10, borderRadius:"50%", background:C.textMuted, ...shimmerStyle }}/>;
+    return (
+      <div style={{ width:10, height:10, borderRadius:"50%", background: ok ? C.mint : C.rose, boxShadow: ok ? `0 0 8px ${C.mint}` : `0 0 8px ${C.rose}`, animation: ok ? "pulse 3s infinite" : "none" }}/>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18 }}>
+        <p style={{ fontSize:13, color:C.textMuted, fontFamily:font }}>
+          {lastUpdated ? `Last checked: ${lastUpdated.toLocaleTimeString("en-NG")}` : "Checking services…"}
+        </p>
+        <Btn small variant="ghost" onClick={() => { refresh(); ping(); }} disabled={loading || pinging}>
+          {(loading || pinging) ? "…" : "↻ Check Now"}
+        </Btn>
+      </div>
+
+      {/* Service cards */}
+      <div className="admin-health-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:16, marginBottom:24 }}>
+        {SERVICES.map(svc => (
+          <SectionCard key={svc.name}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+              <span style={{ fontSize:22 }}>{svc.icon}</span>
+              <StatusDot ok={svc.status}/>
+            </div>
+            <div style={{ fontSize:14, fontWeight:700, color:C.heading, fontFamily:font, marginBottom:4 }}>{svc.name}</div>
+            <div style={{ fontSize:12, color: svc.status === null ? C.textMuted : svc.status ? C.mint : C.rose, fontFamily:font, marginBottom:6 }}>
+              {svc.status === null ? "Checking…" : svc.status ? "Operational" : "Degraded"}
+            </div>
+            <div style={{ fontSize:11.5, color:C.textMuted, fontFamily:font, lineHeight:1.5 }}>{svc.description}</div>
+          </SectionCard>
+        ))}
+      </div>
+
+      {/* API latency gauge */}
+      <SectionCard>
+        <SectionTitle>API Response Latency</SectionTitle>
+        <div style={{ marginTop:16 }}>
+          {latency === null ? (
+            <SkeletonBlock height={40}/>
+          ) : latency === -1 ? (
+            <p style={{ fontSize:14, color:C.rose, fontFamily:font }}>API endpoint unreachable.</p>
+          ) : (
+            <>
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+                <div style={{ fontSize:32, fontWeight:900, color: latency < 300 ? C.mint : latency < 800 ? C.amber : C.rose, fontFamily:font }}>{latency}ms</div>
+                <div style={{ fontSize:13, color:C.textMuted, fontFamily:font }}>
+                  {latency < 300 ? "Excellent (under 300ms)" : latency < 800 ? "Good (under 800ms)" : "Slow (over 800ms)"}
+                </div>
+              </div>
+              <div style={{ height:8, background:C.surface, borderRadius:4, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${Math.min((latency/1500)*100,100)}%`, background: latency < 300 ? C.mint : latency < 800 ? C.amber : C.rose, borderRadius:4, transition:"width 0.6s" }}/>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:C.textMuted, fontFamily:font, marginTop:4 }}>
+                <span>0ms</span><span>750ms</span><span>1500ms+</span>
+              </div>
+            </>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Environment config status */}
+      <SectionCard style={{ marginTop:20 }}>
+        <SectionTitle>Environment Variables</SectionTitle>
+        <p style={{ fontSize:12, color:C.textMuted, fontFamily:font, margin:"6px 0 16px" }}>Detected from API health check response</p>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {[
+            { key:"UPSTASH_REDIS_REST_URL", ok:health.upstash, label:"Upstash Redis URL" },
+            { key:"UPSTASH_REDIS_REST_TOKEN", ok:health.upstash, label:"Upstash Redis Token" },
+            { key:"GMAIL_USER / RESEND_API_KEY", ok:health.email, label:"Email provider" },
+            { key:"GROQ_API_KEY", ok:health.ai, label:"Groq AI key" },
+          ].map(e => (
+            <div key={e.key} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:C.surface, borderRadius:8 }}>
+              <span style={{ fontSize:13 }}>{e.ok ? "✅" : "⚠️"}</span>
+              <div>
+                <div style={{ fontSize:12, fontWeight:600, color:C.text, fontFamily:font }}>{e.label}</div>
+                <div style={{ fontSize:10.5, color:C.textMuted, fontFamily:font }}>{e.key}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ active, session }) {
   switch (active) {
     case "dashboard":     return <DashboardOverview />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
+    case "activities":    return <RecentActivitiesSection />;
+    case "calendar":      return <CalendarSection />;
+    case "health":        return <SystemHealthSection />;
     case "leads":         return <LeadsSection />;
     case "newsletter":    return <NewsletterSection />;
     case "chat":          return <ConversationsSection />;

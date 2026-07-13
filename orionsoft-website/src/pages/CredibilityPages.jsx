@@ -1,58 +1,88 @@
 import { useState, useEffect, useRef } from "react";
 
-// ── Design tokens (mirrors App.jsx) ──────────────────────────────
+// ── Design tokens ──────────────────────────────────────────────────
 const C = {
-  bg: "#0A2540", surface: "#102A43", card: "#132F4C", cardHover: "#173B60",
-  border: "rgba(255,255,255,0.09)", borderHover: "rgba(45,212,191,0.25)",
-  white: "#FFFFFF", text: "#D7E3EF", textMuted: "#8DA2B8", heading: "#F8FBFF",
-  accent: "#38BDF8", accentDim: "rgba(56,189,248,0.14)", accentGlow: "rgba(56,189,248,0.24)",
-  mint: "#2DD4BF", mintDim: "rgba(45,212,191,0.13)",
-  purple: "#C4B5FD", purpleDim: "rgba(196,181,253,0.12)",
-  amber: "#FCD34D", amberDim: "rgba(252,211,77,0.12)",
-  gold: "#D6B56D", rose: "#FDA4AF", roseDim: "rgba(253,164,175,0.12)",
-  success: "#2DD4BF",
-  light: "#F8FAFC", lightCard: "#FFFFFF", lightBorder: "#E2E8F0",
-  lightText: "#334155", lightMuted: "#94A3B8", lightHeading: "#0F172A",
+  bg:        "#060810",
+  surface:   "#0B1120",
+  card:      "#0F1828",
+  cardHover: "#141E30",
+  border:    "rgba(255,255,255,0.07)",
+  borderGold:"rgba(200,168,80,0.25)",
+  heading:   "#F2F6FF",
+  text:      "#C8D0E0",
+  textMuted: "#6B7A96",
+  gold:      "#C8A850",
+  goldLt:    "#E8C96A",
+  goldDim:   "rgba(200,168,80,0.12)",
+  goldGlow:  "rgba(200,168,80,0.22)",
+  blue:      "#4F8EF7",
+  blueDim:   "rgba(79,142,247,0.12)",
+  mint:      "#10B981",
+  mintDim:   "rgba(16,185,129,0.12)",
+  purple:    "#8B5CF6",
+  purpleDim: "rgba(139,92,246,0.12)",
+  amber:     "#F59E0B",
+  amberDim:  "rgba(245,158,11,0.12)",
+  rose:      "#F43F5E",
+  roseDim:   "rgba(244,63,94,0.12)",
+  accent:    "#4F8EF7",
+  accentDim: "rgba(79,142,247,0.12)",
+  shadow:    "0 4px 24px rgba(0,0,0,0.18)",
+  shadowLg:  "0 12px 48px rgba(0,0,0,0.28)",
+  shadowGold:"0 8px 28px rgba(200,168,80,0.28)",
 };
-const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
+const font = "'Instrument Sans','DM Sans',system-ui,-apple-system,sans-serif";
 const COMPANY_EMAIL = "orionsoftlimited@gmail.com";
 const COMPANY_PHONE = "08169577059";
 const COMPANY_RC = "9535128";
 
+// ── Helpers ────────────────────────────────────────────────────────
 function Reveal({ children, delay = 0 }) {
   const ref = useRef(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.08 });
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.08 }
+    );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
   return (
-    <div ref={ref} style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(18px)", transition: `opacity 0.55s ease ${delay}s, transform 0.55s ease ${delay}s` }}>
+    <div
+      ref={ref}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "none" : "translateY(18px)",
+        transition: `opacity 0.55s ease ${delay}s, transform 0.55s ease ${delay}s`,
+      }}
+    >
       {children}
     </div>
   );
 }
 
-function PageShell({ children, light = false }) {
+function PageShell({ children }) {
   return (
-    <section style={{ minHeight: "100vh", background: light ? C.light : C.bg, padding: "110px clamp(16px, 4vw, 32px) 96px" }}>
-      <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-        {children}
-      </div>
+    <section style={{ minHeight: "100vh", background: C.bg, padding: "110px clamp(16px,4vw,32px) 96px" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto" }}>{children}</div>
     </section>
   );
 }
 
 function BackBtn({ setCurrentPage, to = "home" }) {
   return (
-    <button type="button" onClick={() => setCurrentPage(to)} style={{
-      background: "none", border: "none", color: C.accent, fontSize: 14,
-      fontFamily: font, cursor: "pointer", marginBottom: 32, fontWeight: 700,
-      display: "flex", alignItems: "center", gap: 6, padding: 0,
-    }}>
+    <button
+      type="button"
+      onClick={() => setCurrentPage(to)}
+      style={{
+        background: "none", border: "none", color: C.accent, fontSize: 14,
+        fontFamily: font, cursor: "pointer", marginBottom: 32, fontWeight: 700,
+        display: "flex", alignItems: "center", gap: 6, padding: 0,
+      }}
+    >
       ← Back
     </button>
   );
@@ -62,10 +92,17 @@ function PageHero({ tag, tagColor = C.accent, title, subtitle }) {
   return (
     <Reveal>
       <span style={{ fontSize: 12, fontWeight: 800, color: tagColor, fontFamily: font, letterSpacing: "0.1em" }}>{tag}</span>
-      <h1 style={{ fontSize: "clamp(30px, 5vw, 52px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.025em", margin: "10px 0 14px", lineHeight: 1.1 }}>
+      <h1 style={{
+        fontSize: "clamp(30px,5vw,52px)", fontWeight: 800, color: C.heading,
+        fontFamily: font, letterSpacing: "-0.025em", margin: "10px 0 14px", lineHeight: 1.1,
+      }}>
         {title}
       </h1>
-      {subtitle && <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 660, margin: "0 0 40px" }}>{subtitle}</p>}
+      {subtitle && (
+        <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 660, margin: "0 0 40px" }}>
+          {subtitle}
+        </p>
+      )}
     </Reveal>
   );
 }
@@ -89,7 +126,7 @@ const CASE_STUDIES = [
       { metric: "8 departments", label: "Connected on day one" },
       { metric: "Same-day billing", label: "Invoice processing" },
     ],
-    quote: "Before CareCore, I would spend the first hour of every morning chasing down patient folders. Now everything is there when I log in. The pharmacy team especially — they finally know what stock is available without checking the shelf.",
+    quote: "Before CareCore, I would spend the first hour of every morning chasing down patient folders. Now everything is there when I log in. The pharmacy team especially: they finally know what stock is available without checking the shelf.",
     quoteName: "Head of Administration",
     quoteOrg: "Faith General Hospital",
   },
@@ -101,14 +138,14 @@ const CASE_STUDIES = [
     industry: "Healthcare",
     color: C.mint,
     modules: ["Laboratory Management", "OPD", "Automated Billing", "Patient Portal"],
-    problem: "Lab results were printed and filed manually. Doctors in the outpatient clinic had no direct view of test results — patients had to physically carry paper results. Billing was done separately, causing double-charge errors that required manual corrections every week.",
+    problem: "Lab results were printed and filed manually. Doctors in the outpatient clinic had no direct view of test results; patients had to physically carry paper results. Billing was done separately, causing double-charge errors that required manual corrections every week.",
     solution: "CareCore's lab module was integrated with the OPD and billing systems. Lab results now post directly to patient records and are visible to the attending clinician in real time. Billing is generated automatically from orders placed, eliminating the double-entry step.",
     outcomes: [
       { metric: "Real-time", label: "Lab results to clinician" },
       { metric: "Zero", label: "Manual billing reconciliation" },
       { metric: "Faster throughput", label: "Patient flow per session" },
     ],
-    quote: "Our lab used to be an island — results went on paper, patients carried them around, doctors sometimes never saw them. Now everything connects. The clinical team can make decisions faster because the information is already there.",
+    quote: "Our lab used to be an island: results went on paper, patients carried them around, doctors sometimes never saw them. Now everything connects. The clinical team can make decisions faster because the information is already there.",
     quoteName: "Head of Laboratory",
     quoteOrg: "Harmony Diagnostics Centre",
   },
@@ -120,14 +157,14 @@ const CASE_STUDIES = [
     industry: "Healthcare",
     color: C.purple,
     modules: ["Full CareCore Suite", "Staff Management", "Reporting Dashboard", "Triage"],
-    problem: "The hospital was running operations across several disconnected spreadsheets — one for OPD attendance, one for billing, one for stock. Management had no single view of operations, and monthly reporting required days of manual consolidation from different departments.",
-    solution: "Orion Soft conducted a two-day on-site discovery before deploying the full CareCore suite. All departments were connected — OPD, clinical, pharmacy, billing, and the management reporting dashboard. Staff training ran concurrently with deployment, with the Orion Soft team on-site for the first week post-launch.",
+    problem: "The hospital was running operations across several disconnected spreadsheets: one for OPD attendance, one for billing, one for stock. Management had no single view of operations, and monthly reporting required days of manual consolidation from different departments.",
+    solution: "Orion Soft conducted a two-day on-site discovery before deploying the full CareCore suite. All departments were connected: OPD, clinical, pharmacy, billing, and the management reporting dashboard. Staff training ran concurrently with deployment, with the Orion Soft team on-site for the first week post-launch.",
     outcomes: [
       { metric: "All departments", label: "On one platform" },
       { metric: "Live dashboard", label: "Management reporting" },
       { metric: "On-site support", label: "First two weeks" },
     ],
-    quote: "We had tried another system before and it didn't stick — too complicated and the vendor disappeared after installation. With Orion Soft the support was different. They stayed until the team was confident, and they're still reachable when we need them.",
+    quote: "We had tried another system before and it didn't stick. Too complicated, and the vendor disappeared after installation. With Orion Soft the support was different. They stayed until the team was confident, and they're still reachable when we need them.",
     quoteName: "Medical Director",
     quoteOrg: "Providence Community Hospital",
   },
@@ -144,46 +181,54 @@ export function CaseStudiesPage({ setCurrentPage }) {
         tag="CASE STUDIES"
         tagColor={C.accent}
         title="Real deployments. Real problems solved."
-        subtitle="Every case study below represents a genuine implementation. Outcomes are described as they were reported — without inflation."
+        subtitle="Every case study below represents a genuine implementation. Outcomes are described as they were reported, without inflation."
       />
 
       <div style={{ display: "grid", gap: 28 }}>
         {CASE_STUDIES.map((cs, i) => (
           <Reveal key={cs.id} delay={i * 0.07}>
-            <article style={{
-              background: C.card, border: `1px solid ${C.border}`,
-              borderRadius: 18, overflow: "hidden",
-              transition: "border-color 0.25s",
-            }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = cs.color + "44"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+            <article
+              style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 18, overflow: "hidden", transition: "border-color 0.25s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = cs.color + "44")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
             >
               {/* Header */}
               <div style={{ padding: "28px 32px 24px", borderBottom: `1px solid ${C.border}` }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, background: cs.color + "1A", color: cs.color, border: `1px solid ${cs.color}30`, borderRadius: 6, padding: "3px 10px", fontFamily: font }}>{cs.industry}</span>
-                      <span style={{ fontSize: 11.5, fontWeight: 600, color: C.textMuted, fontFamily: font, padding: "3px 8px" }}>{cs.location} · {cs.size}</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, background: cs.color + "1A", color: cs.color, border: `1px solid ${cs.color}30`, borderRadius: 6, padding: "3px 10px", fontFamily: font }}>
+                        {cs.industry}
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: C.textMuted, fontFamily: font, padding: "3px 8px" }}>
+                        {cs.location} · {cs.size}
+                      </span>
                     </div>
-                    <h2 style={{ fontSize: "clamp(18px, 2.5vw, 24px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: 0 }}>
+                    <h2 style={{ fontSize: "clamp(18px,2.5vw,24px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: 0 }}>
                       {cs.client}
                     </h2>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     {cs.modules.slice(0, 3).map(m => (
-                      <span key={m} style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "3px 9px", fontFamily: font, whiteSpace: "nowrap" }}>{m}</span>
+                      <span key={m} style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "3px 9px", fontFamily: font, whiteSpace: "nowrap" }}>
+                        {m}
+                      </span>
                     ))}
-                    {cs.modules.length > 3 && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>+{cs.modules.length - 3} more</span>}
+                    {cs.modules.length > 3 && (
+                      <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>+{cs.modules.length - 3} more</span>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Metrics row */}
-              <div style={{ display: "flex", gap: 0, background: cs.color + "08", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", background: cs.color + "08", borderBottom: `1px solid ${C.border}` }}>
                 {cs.outcomes.map((o, oi) => (
                   <div key={o.label} style={{ flex: 1, textAlign: "center", padding: "18px 12px", borderRight: oi < cs.outcomes.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                    <div style={{ fontSize: "clamp(15px, 2vw, 20px)", fontWeight: 800, color: cs.color, fontFamily: font, letterSpacing: "-0.02em" }}>{o.metric}</div>
+                    <div style={{ fontSize: "clamp(15px,2vw,20px)", fontWeight: 800, color: cs.color, fontFamily: font, letterSpacing: "-0.02em" }}>{o.metric}</div>
                     <div style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, marginTop: 3 }}>{o.label}</div>
                   </div>
                 ))}
@@ -191,7 +236,7 @@ export function CaseStudiesPage({ setCurrentPage }) {
 
               {/* Body */}
               <div style={{ padding: "28px 32px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 28 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 28 }}>
                   <div>
                     <h3 style={{ fontSize: 12, fontWeight: 800, color: C.textMuted, fontFamily: font, letterSpacing: "0.08em", marginBottom: 10 }}>THE CHALLENGE</h3>
                     <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.78, margin: 0 }}>{cs.problem}</p>
@@ -201,8 +246,6 @@ export function CaseStudiesPage({ setCurrentPage }) {
                     <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.78, margin: 0 }}>{cs.solution}</p>
                   </div>
                 </div>
-
-                {/* Quote */}
                 <div style={{ marginTop: 24, background: cs.color + "0D", border: `1px solid ${cs.color}22`, borderRadius: 12, padding: "20px 24px" }}>
                   <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 12px", fontStyle: "italic" }}>
                     "{cs.quote}"
@@ -216,17 +259,16 @@ export function CaseStudiesPage({ setCurrentPage }) {
         ))}
       </div>
 
-      {/* CTA */}
       <Reveal delay={0.2}>
-        <div style={{ marginTop: 56, background: `linear-gradient(135deg, ${C.accent}10, ${C.mint}06)`, border: `1px solid ${C.accent}28`, borderRadius: 16, padding: "36px clamp(20px, 4vw, 48px)", textAlign: "center" }}>
-          <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
+        <div style={{ marginTop: 56, background: `linear-gradient(135deg,${C.accent}10,${C.mint}06)`, border: `1px solid ${C.accent}28`, borderRadius: 16, padding: "36px clamp(20px,4vw,48px)", textAlign: "center" }}>
+          <h2 style={{ fontSize: "clamp(20px,3vw,28px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
             Ready to start your own deployment?
           </h2>
           <p style={{ fontSize: 15, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 24px" }}>
             We'll scope the right configuration for your facility, explain the process, and give you an honest timeline before anything is signed.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, border: "none", borderRadius: 10, padding: "13px 28px", fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: `linear-gradient(135deg,${C.accent},${C.mint})`, color: C.bg, border: "none", borderRadius: 10, padding: "13px 28px", fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
               Request a Demo
             </button>
             <button type="button" onClick={() => setCurrentPage("products")} style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "13px 24px", fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>
@@ -265,7 +307,7 @@ const SECURITY_ITEMS = [
     icon: "📋",
     title: "Audit logging",
     color: C.amber,
-    body: "Every significant action in CareCore — record creation, edits, deletions, access events — is written to a tamper-evident audit log. Hospital administrators can review who did what and when.",
+    body: "Every significant action in CareCore, including record creation, edits, deletions, and access events, is written to a tamper-evident audit log. Hospital administrators can review who did what and when.",
   },
   {
     icon: "🛡️",
@@ -293,6 +335,40 @@ const SECURITY_ITEMS = [
   },
 ];
 
+const REGULATORY_ITEMS = [
+  {
+    code: "NDPR",
+    title: "Nigeria Data Protection Regulation",
+    color: C.blue,
+    body: "All data processed lawfully under the NDPR framework. We maintain records of processing activities, conduct DPIAs for high-risk processing, and respond to data subject requests within statutory timeframes.",
+  },
+  {
+    code: "CBN",
+    title: "CBN IT Standards",
+    color: C.gold,
+    body: "Central Bank of Nigeria IT Governance: FinanceCore and ComplianceCore modules are designed to meet CBN IT governance requirements for licensed financial institutions, including audit trail requirements and data integrity controls.",
+  },
+  {
+    code: "ISO",
+    title: "ISO 27001 Alignment",
+    color: C.mint,
+    body: "ISO 27001-aligned Practices: Our information security management practices are aligned with ISO 27001:2022 standards. Formal certification is on our 2026 roadmap. We currently operate access controls, encryption, vulnerability scanning, and incident response.",
+  },
+  {
+    code: "NITDA",
+    title: "NITDA Registration",
+    color: C.purple,
+    body: "NITDA Vendor Registration: Registered as a Nigerian IT solutions provider with NITDA, the prerequisite for supplying software to federal ministries, departments, and agencies.",
+  },
+];
+
+const INCIDENT_METRICS = [
+  { metric: "4 hours", label: "Client notification SLA for any incident affecting client data", color: C.rose },
+  { metric: "Documented", label: "Dedicated incident response procedure, maintained and tested", color: C.amber },
+  { metric: "72 hours", label: "Post-incident root cause analysis and written client report delivered", color: C.mint },
+  { metric: "Direct line", label: "Security contact: email with subject \"SECURITY\" for priority routing", color: C.blue },
+];
+
 export function SecurityPage({ setCurrentPage }) {
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
@@ -303,10 +379,9 @@ export function SecurityPage({ setCurrentPage }) {
         tag="SECURITY & COMPLIANCE"
         tagColor={C.accent}
         title="How we protect your data"
-        subtitle="CareCore handles patient records, clinical data, and financial information. We take that responsibility seriously. This page explains exactly what we do — and what we don't do."
+        subtitle="CareCore handles patient records, clinical data, and financial information. We take that responsibility seriously. This page explains exactly what we do and what we don't do."
       />
 
-      {/* Honest disclaimer */}
       <Reveal delay={0.05}>
         <div style={{ background: C.amberDim, border: `1px solid ${C.amber}22`, borderRadius: 12, padding: "18px 24px", marginBottom: 40 }}>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
@@ -315,7 +390,7 @@ export function SecurityPage({ setCurrentPage }) {
         </div>
       </Reveal>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 14, marginBottom: 48 }}>
         {SECURITY_ITEMS.map((item, i) => (
           <Reveal key={item.title} delay={0.06 + i * 0.04}>
             <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "24px 26px", height: "100%", boxSizing: "border-box" }}>
@@ -327,9 +402,8 @@ export function SecurityPage({ setCurrentPage }) {
         ))}
       </div>
 
-      {/* Responsible disclosure */}
       <Reveal delay={0.15}>
-        <div style={{ marginTop: 40, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "28px 32px" }}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "28px 32px", marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 12px" }}>Responsible Disclosure</h2>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 14px" }}>
             If you discover a security vulnerability in CareCore or this website, please report it privately before publishing. We will acknowledge reports within 48 hours and work to resolve verified issues promptly.
@@ -340,15 +414,14 @@ export function SecurityPage({ setCurrentPage }) {
         </div>
       </Reveal>
 
-      {/* Data rights */}
-      <Reveal delay={0.18}>
-        <div style={{ marginTop: 16, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "28px 32px" }}>
+      <Reveal delay={0.17}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "28px 32px", marginBottom: 48 }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 12px" }}>Your Data Rights</h2>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 16px" }}>
             Under the NDPR and as a matter of policy, you have the right to access, correct, or request deletion of personal data held about you. Facilities using CareCore can request a full data export at any time. To exercise any of these rights:
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <a href={`mailto:${COMPANY_EMAIL}`} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, borderRadius: 9, padding: "10px 20px", fontSize: 13.5, fontWeight: 700, fontFamily: font, textDecoration: "none", display: "inline-block" }}>
+            <a href={`mailto:${COMPANY_EMAIL}`} style={{ background: `linear-gradient(135deg,${C.accent},${C.mint})`, color: C.bg, borderRadius: 9, padding: "10px 20px", fontSize: 13.5, fontWeight: 700, fontFamily: font, textDecoration: "none", display: "inline-block" }}>
               Email Us
             </a>
             <button type="button" onClick={() => setCurrentPage("privacy")} style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>
@@ -357,13 +430,89 @@ export function SecurityPage({ setCurrentPage }) {
           </div>
         </div>
       </Reveal>
+
+      {/* Regulatory Compliance */}
+      <Reveal delay={0.19}>
+        <h2 style={{ fontSize: "clamp(20px,3vw,26px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 8px" }}>
+          Regulatory Compliance
+        </h2>
+        <p style={{ fontSize: 15, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 20px" }}>
+          Our products are designed to operate within the Nigerian regulatory environment and the compliance obligations of our clients.
+        </p>
+      </Reveal>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,260px),1fr))", gap: 14, marginBottom: 40 }}>
+        {REGULATORY_ITEMS.map((item, i) => (
+          <Reveal key={item.code} delay={0.2 + i * 0.05}>
+            <div style={{
+              background: C.card,
+              borderTop: `1px solid ${C.border}`,
+              borderRight: `1px solid ${C.border}`,
+              borderBottom: `1px solid ${C.border}`,
+              borderLeft: `4px solid ${item.color}`,
+              borderRadius: 14,
+              padding: "22px 22px 22px 20px",
+              height: "100%",
+              boxSizing: "border-box",
+            }}>
+              <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", background: item.color + "18", border: `1px solid ${item.color}30`, borderRadius: 7, padding: "3px 10px", fontSize: 11, fontWeight: 900, color: item.color, fontFamily: font, letterSpacing: "0.05em", marginBottom: 12 }}>
+                {item.code}
+              </div>
+              <h3 style={{ fontSize: 14.5, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 9px" }}>{item.title}</h3>
+              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>{item.body}</p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+
+      {/* Security Incident Response */}
+      <Reveal delay={0.24}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px clamp(20px,4vw,36px)" }}>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 8px", letterSpacing: "-0.01em" }}>
+            Security Incident Response
+          </h2>
+          <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 24px" }}>
+            In the event of any security incident affecting client data, we follow a documented incident response procedure. Clients are never the last to know.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14, marginBottom: 24 }}>
+            {INCIDENT_METRICS.map((item, i) => (
+              <div key={i} style={{ background: C.surface, borderRadius: 12, padding: "18px 20px", borderTop: `3px solid ${item.color}` }}>
+                <div style={{ fontSize: 19, fontWeight: 800, color: item.color, fontFamily: font, marginBottom: 6 }}>{item.metric}</div>
+                <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6 }}>{item.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: C.surface, borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font }}>Direct security contact:</span>
+            <a href={`mailto:${COMPANY_EMAIL}?subject=SECURITY`} style={{ color: C.accent, fontFamily: font, fontSize: 14, fontWeight: 700, textDecoration: "none" }}>
+              {COMPANY_EMAIL}
+            </a>
+            <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>(subject line: "SECURITY")</span>
+          </div>
+        </div>
+      </Reveal>
     </PageShell>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SUPPORT PAGE (Support Center + Docs + FAQs combined)
+// SUPPORT PAGE
 // ─────────────────────────────────────────────────────────────────
+const SLA_TABLE_ROWS = [
+  { label: "Response time",  starter: "48h",                           standard: "24h",                       priority: "4h",                       enterprise: "1h" },
+  { label: "Availability",   starter: "Business hours Mon–Fri 8am–6pm", standard: "Extended Mon–Sat 8am–8pm", priority: "7am–10pm daily",            enterprise: "24/7" },
+  { label: "Channels",       starter: "Email",                          standard: "Email + WhatsApp",          priority: "Email + WhatsApp + Phone",  enterprise: "All + Dedicated account manager" },
+  { label: "Onsite visits",  starter: "No",                             standard: "No",                        priority: "Quarterly",                 enterprise: "Monthly" },
+  { label: "SLA guarantee",  starter: "No",                             standard: "No",                        priority: "Yes",                       enterprise: "Yes" },
+];
+
+const SUPPORT_CHANNELS_LIST = [
+  { icon: "💬", title: "Dedicated WhatsApp group per client", color: C.mint, desc: "Every client gets their own WhatsApp group with the Orion Soft support team from day one of deployment. Issues can be raised directly and escalated to a formal ticket when needed." },
+  { icon: "🎫", title: "In-app ticket system", color: C.accent, desc: "Raise and track support tickets directly from within CareCore or SchoolCore. Every ticket is logged, assigned, and resolved with a full timestamp trail." },
+  { icon: "📧", title: "Email support", color: C.blue, desc: `${COMPANY_EMAIL}: for non-urgent queries, documentation requests, configuration questions, and billing matters.` },
+  { icon: "📞", title: "Phone (business hours)", color: C.amber, desc: `${COMPANY_PHONE}: direct phone support during business hours. Available on Standard plans and above.` },
+  { icon: "🏥", title: "Onsite visits (Priority and Enterprise)", color: C.purple, desc: "In-person visits to your facility for training, troubleshooting, and system reviews. Quarterly for Priority clients, monthly for Enterprise." },
+];
+
 const SUPPORT_FAQS = [
   {
     q: "How long does a CareCore HMS deployment take?",
@@ -375,7 +524,7 @@ const SUPPORT_FAQS = [
   },
   {
     q: "What happens after go-live?",
-    a: "You get post-launch support for the first two weeks — our team is available daily to address issues as your staff settles in. After that, you move to standard support with response time targets based on your plan. We don't disappear after installation.",
+    a: "You get post-launch support for the first two weeks. Our team is available daily to address issues as your staff settles in. After that, you move to standard support with response time targets based on your plan. We don't disappear after installation.",
   },
   {
     q: "Can CareCore work with limited or intermittent internet?",
@@ -428,19 +577,85 @@ export function SupportPage({ setCurrentPage }) {
         tag="SUPPORT CENTER"
         tagColor={C.mint}
         title="We're here when you need us."
-        subtitle="Find answers, browse documentation, or reach the team directly. Support is included — we don't gate it behind expensive plans."
+        subtitle="Find answers, browse documentation, or reach the team directly. Support is included. We don't gate it behind expensive plans."
       />
 
+      {/* SLA Tiers Table */}
+      <Reveal delay={0.04}>
+        <div style={{ marginBottom: 48 }}>
+          <h2 style={{ fontSize: "clamp(20px,3vw,26px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 8px" }}>
+            Support Tiers
+          </h2>
+          <p style={{ fontSize: 15, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 20px" }}>
+            Choose the level of support that matches your operational requirements.
+          </p>
+          <div style={{ overflowX: "auto", borderRadius: 14, border: `1px solid ${C.border}` }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font }}>
+              <thead>
+                <tr style={{ background: C.surface }}>
+                  <th style={{ textAlign: "left", padding: "14px 20px", fontSize: 11.5, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", borderBottom: `1px solid ${C.border}`, minWidth: 130 }}>FEATURE</th>
+                  {["Starter", "Standard", "Priority", "Enterprise"].map((tier, i) => (
+                    <th key={tier} style={{ textAlign: "center", padding: "14px 16px", fontSize: 13, fontWeight: 800, color: i === 3 ? C.gold : C.heading, borderBottom: `1px solid ${C.border}`, minWidth: 130 }}>
+                      {tier}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {SLA_TABLE_ROWS.map((row, ri) => (
+                  <tr key={row.label} style={{ background: ri % 2 === 0 ? C.card : C.surface }}>
+                    <td style={{ padding: "14px 20px", fontSize: 13.5, fontWeight: 700, color: C.heading, borderBottom: `1px solid ${C.border}` }}>
+                      {row.label}
+                    </td>
+                    {[row.starter, row.standard, row.priority, row.enterprise].map((val, ci) => (
+                      <td key={ci} style={{
+                        padding: "13px 16px", fontSize: 13, textAlign: "center",
+                        borderBottom: `1px solid ${C.border}`,
+                        color: val === "Yes" ? C.mint : val === "No" ? C.textMuted : C.text,
+                        fontWeight: val === "Yes" || val === "No" ? 700 : 400,
+                      }}>
+                        {val}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* Support Channels */}
+      <Reveal delay={0.06}>
+        <div style={{ marginBottom: 48 }}>
+          <h2 style={{ fontSize: "clamp(18px,2.5vw,24px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 20px" }}>
+            Support Channels
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 14 }}>
+            {SUPPORT_CHANNELS_LIST.map((ch, i) => (
+              <Reveal key={ch.title} delay={i * 0.05}>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 20px", height: "100%", boxSizing: "border-box" }}>
+                  <div style={{ fontSize: 26, marginBottom: 10 }}>{ch.icon}</div>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 8px" }}>{ch.title}</h3>
+                  <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.72, margin: 0 }}>{ch.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </Reveal>
+
       {/* Tab bar */}
-      <Reveal delay={0.05}>
-        <div style={{ display: "flex", gap: 4, marginBottom: 40, background: C.card, borderRadius: 12, padding: 5, border: `1px solid ${C.border}`, width: "fit-content" }}>
+      <Reveal delay={0.08}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 40, background: C.card, borderRadius: 12, padding: 5, border: `1px solid ${C.border}`, width: "fit-content", flexWrap: "wrap" }}>
           {tabs.map(t => (
             <button key={t.id} type="button" onClick={() => setActiveTab(t.id)} style={{
-              background: activeTab === t.id ? `linear-gradient(135deg, ${C.accent}22, ${C.mint}14)` : "none",
-              border: activeTab === t.id ? `1px solid ${C.accent}30` : "1px solid transparent",
-              borderRadius: 9, padding: "9px 20px", fontSize: 13.5, fontWeight: activeTab === t.id ? 700 : 500,
-              color: activeTab === t.id ? C.heading : C.textMuted, fontFamily: font, cursor: "pointer",
-              transition: "all 0.2s",
+              background: activeTab === t.id ? `linear-gradient(135deg,${C.mint}20,${C.accent}14)` : "none",
+              border: activeTab === t.id ? `1px solid ${C.mint}30` : "1px solid transparent",
+              borderRadius: 9, padding: "9px 20px", fontSize: 13.5,
+              fontWeight: activeTab === t.id ? 700 : 500,
+              color: activeTab === t.id ? C.heading : C.textMuted,
+              fontFamily: font, cursor: "pointer", transition: "all 0.2s",
             }}>
               {t.label}
             </button>
@@ -453,13 +668,10 @@ export function SupportPage({ setCurrentPage }) {
         <div style={{ display: "grid", gap: 8 }}>
           {SUPPORT_FAQS.map((faq, i) => (
             <Reveal key={i} delay={i * 0.04}>
-              <div style={{ background: C.card, border: `1px solid ${openFaq === i ? C.accent + "44" : C.border}`, borderRadius: 12, overflow: "hidden", transition: "border-color 0.2s" }}>
-                <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{
-                  width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "20px 24px", cursor: "pointer", gap: 12,
-                }}>
+              <div style={{ background: C.card, border: `1px solid ${openFaq === i ? C.mint + "44" : C.border}`, borderRadius: 12, overflow: "hidden", transition: "border-color 0.2s" }}>
+                <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ width: "100%", background: "none", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", cursor: "pointer", gap: 12 }}>
                   <span style={{ fontSize: 15, fontWeight: 600, color: C.heading, fontFamily: font, textAlign: "left", lineHeight: 1.4 }}>{faq.q}</span>
-                  <span style={{ color: C.accent, fontSize: 18, fontWeight: 300, flexShrink: 0, transition: "transform 0.2s", transform: openFaq === i ? "rotate(45deg)" : "none" }}>+</span>
+                  <span style={{ color: C.mint, fontSize: 18, fontWeight: 300, flexShrink: 0, transition: "transform 0.2s", transform: openFaq === i ? "rotate(45deg)" : "none" }}>+</span>
                 </button>
                 {openFaq === i && (
                   <div style={{ padding: "0 24px 22px", borderTop: `1px solid ${C.border}` }}>
@@ -478,11 +690,15 @@ export function SupportPage({ setCurrentPage }) {
           <Reveal>
             <div style={{ background: C.amberDim, border: `1px solid ${C.amber}22`, borderRadius: 12, padding: "16px 22px", marginBottom: 28 }}>
               <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
-                Detailed documentation is shared with clients during onboarding and available on request. The module overviews below summarise what each section covers. For full access, <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: "none", color: C.accent, fontFamily: font, fontSize: 14, fontWeight: 700, cursor: "pointer", padding: 0 }}>contact us</button> or request a demo.
+                Detailed documentation is shared with clients during onboarding and available on request. For full access,{" "}
+                <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: "none", color: C.accent, fontFamily: font, fontSize: 14, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                  contact us
+                </button>{" "}
+                or request a demo.
               </p>
             </div>
           </Reveal>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
             {DOC_MODULES.map((mod, i) => (
               <Reveal key={mod.title} delay={i * 0.04}>
                 <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "22px 20px", height: "100%", boxSizing: "border-box" }}>
@@ -500,7 +716,7 @@ export function SupportPage({ setCurrentPage }) {
       {activeTab === "contact" && (
         <div style={{ display: "grid", gap: 16 }}>
           <Reveal>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 14 }}>
               {[
                 { icon: "📞", title: "Phone / WhatsApp", value: COMPANY_PHONE, href: `https://wa.me/234${COMPANY_PHONE.replace(/^0/, "")}`, label: "Message on WhatsApp", color: C.mint },
                 { icon: "📧", title: "Email", value: COMPANY_EMAIL, href: `mailto:${COMPANY_EMAIL}`, label: "Send Email", color: C.accent },
@@ -519,7 +735,7 @@ export function SupportPage({ setCurrentPage }) {
           <Reveal delay={0.08}>
             <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "26px 28px" }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 14px" }}>Response Times</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
                 {[
                   { tier: "Critical issues", time: "Same business day", note: "System down, data inaccessible" },
                   { tier: "Standard queries", time: "Within 48 hours", note: "Module questions, configuration help" },
@@ -533,7 +749,7 @@ export function SupportPage({ setCurrentPage }) {
                 ))}
               </div>
               <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, margin: "16px 0 0", lineHeight: 1.6 }}>
-                Support hours are Monday–Friday, 8 AM–6 PM WAT. Urgent issues outside these hours can be raised via WhatsApp. We're a growing team — we'll always be honest about what we can address and when.
+                Standard support hours are Monday–Friday, 8 AM–6 PM WAT. Urgent issues outside these hours can be raised via WhatsApp. We're a growing team. We'll always be honest about what we can address and when.
               </p>
             </div>
           </Reveal>
@@ -544,120 +760,141 @@ export function SupportPage({ setCurrentPage }) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PARTNER PROGRAM PAGE
+// PARTNERS PAGE — editorial 2-col tech partner grid
 // ─────────────────────────────────────────────────────────────────
-const PARTNER_TIERS = [
+const TECH_PARTNERS = [
   {
-    name: "Implementation Partner",
-    icon: "🏗️",
-    color: C.accent,
-    tagline: "Deploy CareCore for hospitals in your region.",
-    description: "For IT companies, healthcare IT consultancies, and technology integrators who want to offer CareCore HMS as part of their service portfolio. You handle the client relationship and local deployment; we provide the platform, training, and technical support.",
-    benefits: [
-      "Reseller margin on CareCore subscriptions",
-      "Co-selling support from the Orion Soft team",
-      "Access to partner training and certification",
-      "Priority technical support line",
-      "Joint case study opportunities",
-    ],
-    eligibility: "IT company or consultancy with demonstrable experience in healthcare or enterprise deployments. Nigeria or West Africa focus preferred.",
+    name: "AWS",
+    initial: "AWS",
+    badgeBg: "#FF6B00",
+    color: "#FF6B00",
+    role: "Cloud Infrastructure & Storage",
+    description: "All Orion Soft products run on AWS infrastructure across EU West and Middle East South regions. We use EC2 for compute-intensive operations, S3 for document and media storage, RDS for relational databases, and CloudWatch for infrastructure monitoring. AWS's global availability zones give our clients enterprise-grade uptime without the cost of local data center arrangements. Our infrastructure is reviewed by AWS Well-Architected Framework standards annually.",
   },
   {
-    name: "Referral Partner",
-    icon: "🤝",
-    color: C.mint,
-    tagline: "Refer hospitals. Earn a commission.",
-    description: "For healthcare consultants, medical equipment suppliers, hospital administrators, and others who interact with healthcare facilities regularly. If you introduce us to a facility that becomes a CareCore client, you earn a referral fee — simple as that.",
-    benefits: [
-      "Fixed referral fee per successful sign-up",
-      "No technical skills required",
-      "No quota or volume commitment",
-      "Transparent tracking of your referrals",
-    ],
-    eligibility: "Anyone with regular contact with hospital or clinic decision-makers in Nigeria. Healthcare background preferred but not required.",
+    name: "Vercel",
+    initial: "▲",
+    badgeBg: "#4F8EF7",
+    color: "#4F8EF7",
+    role: "Edge Deployment & CDN",
+    description: "Client portals and public-facing applications deploy to Vercel's global edge network, with automatic rollbacks, preview deployments for QA staging, and sub-100ms time-to-first-byte for visitors across Nigeria. Vercel's serverless functions handle our API layer with zero cold-start penalty on the endpoints our clients hit most frequently. All deployments are logged, versioned, and can be rolled back in under 60 seconds.",
   },
   {
-    name: "Technology Partner",
-    icon: "⚙️",
-    color: C.purple,
-    tagline: "Build integrations with CareCore.",
-    description: "For software companies, medical device manufacturers, and platforms that want to integrate with CareCore — whether to push data from diagnostic devices, pull clinical data for analytics, or add complementary services to the CareCore ecosystem.",
-    benefits: [
-      "Access to the CareCore API documentation",
-      "Sandbox environment for integration testing",
-      "Co-marketing opportunities for joint customers",
-      "Technical guidance from the CareCore engineering team",
-    ],
-    eligibility: "Active software product or device with a relevant integration use case. Technical proposal required.",
+    name: "Upstash",
+    initial: "U",
+    badgeBg: "#10B981",
+    color: "#10B981",
+    role: "Serverless Redis & Real-time Analytics",
+    description: "Upstash provides our real-time data layer: session management, visitor analytics, lead tracking, rate limiting, and real-time dashboard data. We chose Upstash for its per-request pricing model and global replication, which keeps latency low for clients across Nigeria without provisioning dedicated Redis servers. All data in Upstash is encrypted at rest and in transit.",
+  },
+  {
+    name: "Groq",
+    initial: "G",
+    badgeBg: "#F43F5E",
+    color: "#F43F5E",
+    role: "Low-latency AI Inference",
+    description: "The Ori AI assistant across CareCore, SchoolCore, and ComplianceCore runs on Groq's LPU (Language Processing Unit) inference hardware. Groq's latency profile (under 100ms for most requests) was the deciding factor in selecting it over alternatives. Fast enough for Nigerian internet conditions without a degraded user experience. Ori processes thousands of queries daily across deployed client systems.",
+  },
+  {
+    name: "GitHub",
+    initial: "GH",
+    badgeBg: "#8B5CF6",
+    color: "#8B5CF6",
+    role: "Version Control & CI/CD Pipelines",
+    description: "All product codebases are managed on GitHub with branch protection rules, mandatory code reviews, and automated CI checks before every merge to production. Security scanning runs on every commit. Enterprise plan clients receive read-only access to a deployment changelog and release notes for their system. No code reaches production without passing all checks.",
+  },
+  {
+    name: "Flutterwave",
+    initial: "FW",
+    badgeBg: "#F59E0B",
+    color: "#F59E0B",
+    role: "Payment Gateway Integration",
+    description: "FinanceCore and CareCore billing integrate with Flutterwave's payment API for card payments, bank transfers, USSD payment collection, and payment links. Flutterwave handles PCI DSS scope for card data, keeping our products off the compliance burden for payment card handling. The integration supports NGN, USD, GBP, and EUR for international clients.",
   },
 ];
 
 export function PartnersPage({ setCurrentPage }) {
-  const [selected, setSelected] = useState(null);
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
   return (
     <PageShell>
       <BackBtn setCurrentPage={setCurrentPage} />
       <PageHero
-        tag="PARTNER PROGRAM"
-        tagColor={C.purple}
-        title="Grow with Orion Soft."
-        subtitle="We're building the ecosystem for healthcare technology in Nigeria. Whether you implement, refer, or integrate — there's a path for you."
+        tag="TECHNOLOGY PARTNERS"
+        tagColor={C.gold}
+        title="Infrastructure and integrations."
+        subtitle="The platforms Orion Soft products run on, and why we chose each one."
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 18, marginBottom: 48 }}>
-        {PARTNER_TIERS.map((tier, i) => (
-          <Reveal key={tier.name} delay={i * 0.07}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,460px),1fr))", gap: 18, marginBottom: 48 }}>
+        {TECH_PARTNERS.map((partner, i) => (
+          <Reveal key={partner.name} delay={i * 0.06}>
             <div
-              onClick={() => setSelected(selected === i ? null : i)}
               style={{
-                background: selected === i ? tier.color + "0F" : C.card,
-                border: `1px solid ${selected === i ? tier.color + "44" : C.border}`,
-                borderRadius: 16, padding: "28px 24px", cursor: "pointer",
-                transition: "all 0.25s", height: "100%", boxSizing: "border-box",
+                background: C.card,
+                borderTop: `1px solid ${C.border}`,
+                borderRight: `1px solid ${C.border}`,
+                borderBottom: `1px solid ${C.border}`,
+                borderLeft: `4px solid ${partner.color}`,
+                borderRadius: 16,
+                padding: "28px 28px 28px 24px",
+                height: "100%",
+                boxSizing: "border-box",
+                transition: "background 0.22s",
               }}
-              onMouseEnter={e => { if (selected !== i) { e.currentTarget.style.borderColor = tier.color + "30"; e.currentTarget.style.background = tier.color + "06"; }}}
-              onMouseLeave={e => { if (selected !== i) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.card; }}}
+              onMouseEnter={e => e.currentTarget.style.background = C.cardHover}
+              onMouseLeave={e => e.currentTarget.style.background = C.card}
             >
-              <div style={{ fontSize: 28, marginBottom: 14 }}>{tier.icon}</div>
-              <div style={{ fontSize: 11.5, fontWeight: 800, color: tier.color, fontFamily: font, letterSpacing: "0.08em", marginBottom: 6 }}>{tier.name.toUpperCase()}</div>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 10px", letterSpacing: "-0.01em" }}>{tier.tagline}</h3>
-              <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.72, margin: "0 0 18px" }}>{tier.description}</p>
-              <div style={{ marginBottom: 16 }}>
-                {tier.benefits.map(b => (
-                  <div key={b} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 7 }}>
-                    <span style={{ color: tier.color, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>
-                    <span style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.5 }}>{b}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                <div style={{
+                  background: partner.badgeBg,
+                  color: "#fff",
+                  borderRadius: 10,
+                  width: 44, height: 44,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 800, fontFamily: font,
+                  flexShrink: 0, letterSpacing: "0.02em",
+                }}>
+                  {partner.initial}
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.01em" }}>
+                    {partner.name}
                   </div>
-                ))}
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: partner.color, fontFamily: font, letterSpacing: "0.04em", marginTop: 2 }}>
+                    {partner.role}
+                  </div>
+                </div>
               </div>
-              <div style={{ background: tier.color + "0E", border: `1px solid ${tier.color}20`, borderRadius: 8, padding: "10px 14px" }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: tier.color, fontFamily: font, marginBottom: 4 }}>ELIGIBILITY</div>
-                <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6 }}>{tier.eligibility}</div>
-              </div>
+              <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.78, margin: 0 }}>
+                {partner.description}
+              </p>
             </div>
           </Reveal>
         ))}
       </div>
 
-      {/* How to apply */}
-      <Reveal delay={0.18}>
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px clamp(20px, 4vw, 40px)" }}>
-          <h2 style={{ fontSize: "clamp(18px, 2.5vw, 24px)", fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
-            How to apply
+      <Reveal delay={0.22}>
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px clamp(20px,4vw,40px)" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "0.09em" }}>PARTNER PROGRAM</span>
+          <h2 style={{ fontSize: "clamp(18px,2.5vw,24px)", fontWeight: 800, color: C.heading, fontFamily: font, margin: "8px 0 10px", letterSpacing: "-0.02em" }}>
+            Become a partner
           </h2>
           <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 24px", maxWidth: 600 }}>
-            The partner program is currently in its early phase. We're accepting applications and working with early partners directly. Send us a message with the partner type you're interested in and a brief description of your background.
+            We work with implementation partners, referral partners, and technology integrators. If you want to deploy Orion Soft products for your clients, refer hospitals, or build integrations, reach out.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <a href={`mailto:${COMPANY_EMAIL}?subject=Partner%20Program%20Application`}
-              style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, borderRadius: 10, padding: "13px 24px", fontSize: 14, fontWeight: 700, fontFamily: font, textDecoration: "none", display: "inline-block" }}>
+            <a
+              href={`mailto:${COMPANY_EMAIL}?subject=Partner%20Program%20Application`}
+              style={{ background: `linear-gradient(135deg,${C.gold},${C.goldLt})`, color: C.bg, borderRadius: 10, padding: "13px 24px", fontSize: 14, fontWeight: 700, fontFamily: font, textDecoration: "none", display: "inline-block" }}
+            >
               Apply via Email
             </a>
-            <a href={`https://wa.me/234${COMPANY_PHONE.replace(/^0/, "")}?text=Hello,%20I%27m%20interested%20in%20the%20Orion%20Soft%20Partner%20Program`}
+            <a
+              href={`https://wa.me/234${COMPANY_PHONE.replace(/^0/, "")}?text=Hello,%20I%27m%20interested%20in%20partnering%20with%20Orion%20Soft`}
               target="_blank" rel="noreferrer"
-              style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, fontFamily: font, textDecoration: "none", display: "inline-block" }}>
+              style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "13px 20px", fontSize: 14, fontWeight: 600, fontFamily: font, textDecoration: "none", display: "inline-block" }}
+            >
               Message on WhatsApp
             </a>
           </div>
@@ -677,7 +914,7 @@ const TECH_CATEGORIES = [
     items: [
       { name: "React 18", note: "Component architecture, concurrent rendering, Suspense-based code splitting" },
       { name: "Vite", note: "Build tooling, fast development server, optimised production bundles" },
-      { name: "JavaScript (ES2022+)", note: "No TypeScript yet — pragmatic choice for a small team moving fast" },
+      { name: "JavaScript (ES2022+)", note: "No TypeScript yet: a pragmatic choice for a small team moving fast" },
     ],
   },
   {
@@ -728,7 +965,7 @@ export function TechStackPage({ setCurrentPage }) {
         tag="TECHNOLOGY STACK"
         tagColor={C.purple}
         title="Built with proven, production-grade tools."
-        subtitle="We chose boring technology where reliability matters and modern where it gives us speed. No framework chasing — each choice has a practical reason."
+        subtitle="We chose boring technology where reliability matters and modern where it gives us speed. No framework chasing. Each choice has a practical reason."
       />
 
       <div style={{ display: "grid", gap: 20 }}>
@@ -758,7 +995,7 @@ export function TechStackPage({ setCurrentPage }) {
         <div style={{ marginTop: 32, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "26px 28px" }}>
           <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 10px" }}>A note on openness</h2>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
-            We publish our technology choices because technical decision-makers at hospitals deserve to understand what they're running. If you have specific questions about the stack — integrations, data portability, API access — ask us directly.
+            We publish our technology choices because technical decision-makers at hospitals deserve to understand what they're running. If you have specific questions about the stack (integrations, data portability, API access), ask us directly.
           </p>
         </div>
       </Reveal>

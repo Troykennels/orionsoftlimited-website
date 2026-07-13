@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 
 // ─── Design tokens (self-contained for lazy-load isolation) ──────────────────
 const C = {
@@ -24,15 +24,15 @@ const WHATSAPP_NUMBER = "2348169577059";
 const LEADS_KEY = "orionsoft_leads_v1";
 
 const PRODUCTS = [
-  { id: "carecore", label: "CareCore — Hospital Management" },
-  { id: "schoolcore", label: "SchoolCore — School Management" },
-  { id: "compliancecore", label: "ComplianceCore — Compliance & Risk" },
-  { id: "inventorycore", label: "InventoryCore — Inventory & Supply Chain" },
-  { id: "financecore", label: "FinanceCore — Finance & Accounting" },
-  { id: "hrcore", label: "HRCore — Human Resources" },
-  { id: "churchcore", label: "ChurchCore — Church Management" },
-  { id: "fleetcore", label: "FleetCore — Fleet Management" },
-  { id: "telehealth", label: "TeleHealth — Telemedicine (2026)" },
+  { id: "carecore", label: "CareCore Hospital Management" },
+  { id: "schoolcore", label: "SchoolCore School Management" },
+  { id: "compliancecore", label: "ComplianceCore Compliance & Risk" },
+  { id: "inventorycore", label: "InventoryCore Inventory & Supply Chain" },
+  { id: "financecore", label: "FinanceCore Finance & Accounting" },
+  { id: "hrcore", label: "HRCore Human Resources" },
+  { id: "churchcore", label: "ChurchCore Church Management" },
+  { id: "fleetcore", label: "FleetCore Fleet Management" },
+  { id: "telehealth", label: "TeleHealth Telemedicine (2026)" },
 ];
 
 const DEMO_TIMES = ["9:00 AM WAT","10:00 AM WAT","11:00 AM WAT","12:00 PM WAT","2:00 PM WAT","3:00 PM WAT","4:00 PM WAT"];
@@ -81,7 +81,7 @@ function saveLead(type, form, ref) {
 }
 
 function buildCalendarUrl({ name, email, product, preferredDate, preferredTime, message }) {
-  const title = encodeURIComponent(`Orion Soft Demo — ${product || "Product Suite"}`);
+  const title = encodeURIComponent(`Orion Soft Demo ${product || "Product Suite"}`);
   const details = encodeURIComponent(
     `Demo for ${name} (${email})\nProduct: ${product || "TBD"}\n${message ? `Notes: ${message}\n` : ""}` +
     `\nOrion Soft will confirm shortly.\nContact: ${ADMIN_EMAIL} | ${ADMIN_PHONE}`
@@ -198,7 +198,7 @@ function DemoForm({ f, set, err }) {
         <FSelect value={f.product} onChange={e => set(p => ({ ...p, product: e.target.value }))} required>
           <option value="">Select a product…</option>
           {PRODUCTS.map(p => <option key={p.id} value={p.label}>{p.label}</option>)}
-          <option value="Not sure yet — show me everything">Not sure yet — show me everything</option>
+          <option value="Not sure yet show me everything">Not sure yet show me everything</option>
         </FSelect>
       </Field>
       <GridRow>
@@ -403,7 +403,7 @@ function Sidebar({ activeTab }) {
         <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(37,211,102,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>💬</div>
         <div>
           <div style={{ color: "#25D366", fontFamily: font, fontSize: 14, fontWeight: 800 }}>Chat on WhatsApp</div>
-          <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginTop: 2 }}>Fastest response — usually within 1 hour</div>
+          <div style={{ color: C.textMuted, fontFamily: font, fontSize: 12, marginTop: 2 }}>Fastest response usually within 1 hour</div>
         </div>
       </a>
 
@@ -517,7 +517,7 @@ export default function ContactPage({ setCurrentPage }) {
       setResultRef(data.ref || ref);
       setStatus("success");
     } catch {
-      // Still save locally and show success — email delivery is best-effort
+      // Still save locally and show success email delivery is best-effort
       saveLead(tab, form, ref);
       setResultRef(ref);
       setStatus("success");
@@ -554,7 +554,7 @@ export default function ContactPage({ setCurrentPage }) {
               Work with us.
             </h1>
             <p style={{ color: C.text, fontFamily: font, fontSize: "clamp(16px, 2vw, 19px)", lineHeight: 1.7, maxWidth: 580, margin: 0 }}>
-              Whether you're booking a demo, requesting a quote, or applying to join the team — we're ready to help.
+              Whether you're booking a demo, requesting a quote, or applying to join the team we're ready to help.
             </p>
           </Reveal>
         </div>
@@ -601,7 +601,7 @@ export default function ContactPage({ setCurrentPage }) {
                         {tab === "support" && "Technical help for existing Orion Soft customers"}
                         {tab === "partnership" && "Explore reseller, integration, and referral opportunities"}
                         {tab === "career" && "Join the team building Nigeria's enterprise software future"}
-                        {tab === "newsletter" && "Product updates, insights, and company news — twice a month"}
+                        {tab === "newsletter" && "Product updates, insights, and company news twice a month"}
                       </p>
                     </div>
                   </div>
@@ -613,7 +613,7 @@ export default function ContactPage({ setCurrentPage }) {
                     <SuccessView type={tab} ref={resultRef} form={form} onReset={() => { setStatus("idle"); setForm({ priority: "Medium", topics: [] }); setErrors({}); }} setCurrentPage={setCurrentPage} />
                   ) : (
                     <form onSubmit={handleSubmit} noValidate>
-                      {/* Honeypot — hidden from real users */}
+                      {/* Honeypot hidden from real users */}
                       <input type="text" name="honeypot" tabIndex={-1} autoComplete="off"
                         style={{ position: "absolute", opacity: 0, pointerEvents: "none", height: 0, width: 0 }}
                         aria-hidden="true" value={form.honeypot || ""} onChange={e => setForm(p => ({ ...p, honeypot: e.target.value }))} />

@@ -1,4 +1,4 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+﻿*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
 body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; min-width: 320px; }
 button, a, input, textarea, select { font: inherit; }
@@ -121,6 +121,18 @@ input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; bo
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
 }
+@keyframes shimmer {
+  0%   { background-position: -400% 0; }
+  100% { background-position:  400% 0; }
+}
+@media (max-width: 860px) {
+  .admin-analytics-grid { grid-template-columns: 1fr !important; }
+  .admin-health-grid    { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 560px) {
+  .admin-health-grid    { grid-template-columns: 1fr !important; }
+  .admin-stat-grid      { grid-template-columns: repeat(2, 1fr) !important; }
+}
 .orion-grid-bg {
   position: absolute;
   inset: 0;
@@ -149,6 +161,41 @@ input:focus, textarea:focus, select:focus { border-color: #4F8EF7 !important; bo
   border-color: rgba(200,168,80,0.42) !important;
   box-shadow: 0 22px 70px rgba(0,0,0,0.24);
 }
+/* ── Homepage redesign animations ──────────────────────────────────────────── */
+@keyframes hpFloat0 {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes hpFloat1 {
+  0%, 100% { transform: translateY(18px); }
+  50%       { transform: translateY(10px); }
+}
+@keyframes hpFloat2 {
+  0%, 100% { transform: translateY(9px); }
+  50%       { transform: translateY(1px); }
+}
+/* ── Products page responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .products-page-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .products-page-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Homepage responsive ───────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .hero-enterprise    { grid-template-columns: 1fr !important; }
+  .hero-constellation { display: none !important; }
+  .intro-grid         { grid-template-columns: 1fr !important; }
+  .products-grid-hp   { grid-template-columns: repeat(2, 1fr) !important; }
+  .industries-grid-hp { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 560px) {
+  .products-grid-hp   { grid-template-columns: 1fr !important; }
+  .industries-grid-hp { grid-template-columns: 1fr !important; }
+  .cta-buttons-hp     { flex-direction: row !important; flex-wrap: wrap !important; }
+}
+
 /* Premium typography baseline */
 h1, h2, h3 { text-rendering: optimizeLegibility; }
 /* Smooth hover transitions */
@@ -160,3 +207,81 @@ article, .card { will-change: transform; }
 @media (max-width: 640px) {
   .stats-row-inner { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* ── Homepage v2 (11-section rebuild) ──────────────────────────────────────── */
+@keyframes showcaseFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Hero SaaS collage entrance */
+@keyframes heroCardIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(28px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* four-col-grid → 2 col on tablet, 1 on mobile */
+@media (max-width: 960px) {
+  .four-col-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 560px) {
+  .four-col-grid { grid-template-columns: 1fr !important; }
+}
+
+/* product showcase: stacked on small screens */
+@media (max-width: 860px) {
+  .product-showcase-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Why-choose rows → stacked on mobile */
+@media (max-width: 860px) {
+  .why-row { grid-template-columns: 1fr !important; gap: 12px 0 !important; }
+  .why-row > *:last-child { text-align: left !important; }
+}
+
+/* Tech row: label stacks above pills */
+@media (max-width: 640px) {
+  .tech-row { grid-template-columns: 1fr !important; gap: 8px 0 !important; }
+}
+
+/* Implementation timeline: single column on mobile */
+@media (max-width: 900px) {
+  .impl-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .timeline-line { display: none !important; }
+}
+@media (max-width: 560px) {
+  .impl-grid { grid-template-columns: 1fr !important; }
+}
+
+/* News grid: single column on mobile */
+@media (max-width: 860px) {
+  .news-grid { grid-template-columns: 1fr !important; }
+}
+
+/* Industries cards grid 3 col → 2 → 1 */
+@media (max-width: 1100px) {
+  .industries-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .industries-cards-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Consultation page responsive ──────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .consultation-grid { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 560px) {
+  .consultation-grid > div { padding: 24px !important; }
+}
+
+/* ── Company page Mission/Vision responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .company-mv-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .company-mv-right { border-left: none !important; padding-left: 0 !important; border-top: 3px solid #C8A850 !important; padding-top: 28px !important; }
+}
+
+/* ── ProcessPage responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .process-methodology-row { grid-template-columns: 1fr !important; }
+  .process-plans-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+}
+

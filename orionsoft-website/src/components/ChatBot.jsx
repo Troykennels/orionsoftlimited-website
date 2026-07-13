@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
@@ -23,7 +23,7 @@ const QUICK_REPLIES = [
   "What's the pricing?",
 ];
 
-// Maps product ID to display name + emoji — keeps emails and UI in sync
+// Maps product ID to display name + emoji keeps emails and UI in sync
 const PRODUCT_LABELS = {
   carecore:       { name: "CareCore",       emoji: "🏥", color: "#4F8EF7" },
   schoolcore:     { name: "SchoolCore",     emoji: "🎓", color: "#10B981" },
@@ -46,8 +46,8 @@ const LEAD_FIELDS = [
 const DEMO_SLOTS = [
   "Tomorrow morning (9am–12pm)",
   "Tomorrow afternoon (1pm–5pm)",
-  "This week — any time",
-  "Next week — I'll confirm",
+  "This week any time",
+  "Next week I'll confirm",
 ];
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
@@ -201,7 +201,7 @@ export default function ChatBot({ setCurrentPage }) {
         body: JSON.stringify({ messages: allMsgs, sessionId }),
       });
 
-      let data = { text: "I'm having a moment — please try again or reach us at orionsoftlimited@gmail.com", action: null };
+      let data = { text: "I'm having a moment please try again or reach us at orionsoftlimited@gmail.com", action: null };
       if (res.ok) data = await res.json();
 
       const assistantMsg = { role: "assistant", content: data.text || data.message || data, seen: open };
@@ -278,7 +278,7 @@ export default function ChatBot({ setCurrentPage }) {
       addMessage({ role: "assistant", content: `Thanks, ${updatedLead.name}! I've got your details. ${flowState === "BOOK_DEMO" ? "Now let's pick a time for your demo." : "Our team will reach out to you at **" + updatedLead.email + "** within 24 hours."}` });
       persistConversation(sessionMessages.current);
       if (flowState !== "BOOK_DEMO") {
-        // Contact lead (no demo slot) — save and notify now
+        // Contact lead (no demo slot) save and notify now
         const ref = `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
         saveChatLead(updatedLead, ref);
         notifyAdminByEmail(updatedLead, ref);
@@ -313,7 +313,7 @@ export default function ChatBot({ setCurrentPage }) {
     if (lead.email) {
       const ref = `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
       saveChatLead({ ...lead, notes: "ESCALATED from chat" }, ref);
-      notifyAdminByEmail({ ...lead, message: "Conversation escalated — needs immediate follow-up" }, ref);
+      notifyAdminByEmail({ ...lead, message: "Conversation escalated needs immediate follow-up" }, ref);
     }
   }
 
@@ -413,13 +413,13 @@ export default function ChatBot({ setCurrentPage }) {
               </div>
             )}
 
-            {/* Product action CTA — shown after AI recommends a specific product */}
+            {/* Product action CTA shown after AI recommends a specific product */}
             {showProductActions && !flowState && !loading && (() => {
               const prod = PRODUCT_LABELS[demoProduct];
               return prod ? (
                 <div style={{ background: C.card, border: `1px solid ${prod.color}33`, borderRadius: 14, padding: "14px 16px" }}>
                   <div style={{ fontSize: 13, color: prod.color, fontFamily: font, fontWeight: 700, marginBottom: 10 }}>
-                    {prod.emoji} {prod.name} — what would you like to do?
+                    {prod.emoji} {prod.name} what would you like to do?
                   </div>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button type="button" onClick={() => { setShowProductActions(false); setCurrentPage(demoProduct); setOpen(false); }} style={{
@@ -472,7 +472,7 @@ export default function ChatBot({ setCurrentPage }) {
               </div>
             )}
 
-            {/* Done state — CTA */}
+            {/* Done state CTA */}
             {flowState === "DONE" && !loading && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
                 <button type="button" onClick={() => setCurrentPage("contact")} style={{
@@ -616,7 +616,7 @@ function LeadStep({ field, value, onChange, onSubmit, step, total, product, isDe
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <span style={{ fontSize: 14 }}>{product.emoji}</span>
           <span style={{ fontSize: 12, color: product.color, fontFamily: font, fontWeight: 700 }}>
-            {isDemo ? `Booking demo — ${product.name}` : `Enquiry — ${product.name}`}
+            {isDemo ? `Booking demo ${product.name}` : `Enquiry ${product.name}`}
           </span>
         </div>
       ) : null}

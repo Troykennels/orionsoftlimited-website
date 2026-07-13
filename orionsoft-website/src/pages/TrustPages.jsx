@@ -1,6 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
-// Self-contained design tokens — duplicated intentionally for lazy-load isolation
+// Self-contained design tokens duplicated intentionally for lazy-load isolation
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
   border: "rgba(255,255,255,0.07)",
@@ -66,7 +66,7 @@ const CLIENT_SECTORS = [
 const FEATURED_CLIENTS = [
   { name: "Nisad Consultation", sector: "Healthcare", product: "CareCore", desc: "Multi-department hospital deployment covering OPD, pharmacy, lab, and billing." },
   { name: "Faith General Hospital", sector: "Healthcare", product: "CareCore", desc: "Electronic health records and ward management for a 120-bed facility." },
-  { name: "Grace Academy", sector: "Education", product: "SchoolCore", desc: "Full academic management — admissions through WAEC results, parent portal included." },
+  { name: "Grace Academy", sector: "Education", product: "SchoolCore", desc: "Full academic management admissions through WAEC results, parent portal included." },
   { name: "Beacon Ministry", sector: "Faith", product: "ChurchCore", desc: "5,000+ member database, cell groups, tithes, and SMS communication." },
   { name: "SwiftMove Logistics", sector: "Logistics", product: "FleetCore", desc: "Fleet of 60 vehicles tracked in real time with maintenance and fuel reporting." },
   { name: "Covenant Finance Ltd", sector: "Finance", product: "FinanceCore", desc: "Full-cycle accounting, PAYE, and CBN-compliant reporting." },
@@ -78,7 +78,7 @@ export function ClientsPage({ setCurrentPage }) {
       <PageHero
         label="OUR CLIENTS"
         title="130+ organisations trust Orion Soft."
-        subtitle="From 10-bed clinics to 500-bed hospitals, from primary schools to universities, from local churches to national logistics companies — here are the organisations running on Orion Soft."
+        subtitle="From 10-bed clinics to 500-bed hospitals, from primary schools to universities, from local churches to national logistics companies here are the organisations running on Orion Soft."
         color={C.blue}
       />
 
@@ -170,7 +170,7 @@ const SUCCESS_STORIES = [
     challenge: "Paper-based records, billing errors, and a pharmacy that couldn't track stock expiry were costing the clinic money and patient trust.",
     solution: "Deployed CareCore across OPD, pharmacy, lab, billing, and appointments in 3 weeks with full staff training.",
     results: [["68%", "Reduction in billing errors"], ["4×", "Faster patient registration"], ["Zero", "Stock expiry incidents"], ["3 wks", "Full deployment time"]],
-    quote: "CareCore transformed how we run the clinic. We can see every patient, every stock item, every invoice — in one screen.",
+    quote: "CareCore transformed how we run the clinic. We can see every patient, every stock item, every invoice in one screen.",
     quoteName: "Medical Director, Nisad Consultation",
   },
   {
@@ -214,7 +214,7 @@ export function SuccessStoriesPage({ setCurrentPage }) {
       <PageHero
         label="SUCCESS STORIES"
         title="Proof in the numbers."
-        subtitle="These aren't case study summaries — they're the actual outcomes our clients achieved after deploying Orion Soft products. Measured, verified, real."
+        subtitle="These aren't case study summaries they're the actual outcomes our clients achieved after deploying Orion Soft products. Measured, verified, real."
         color={C.mint}
       />
 
@@ -251,7 +251,7 @@ export function SuccessStoriesPage({ setCurrentPage }) {
                   </div>
                   <blockquote style={{ background: `${s.color}0D`, border: `1px solid ${s.color}28`, borderRadius: 12, padding: "16px 18px", margin: 0 }}>
                     <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 10px", fontStyle: "italic" }}>"{s.quote}"</p>
-                    <cite style={{ fontSize: 12, color: s.color, fontFamily: font, fontStyle: "normal", fontWeight: 600 }}>— {s.quoteName}</cite>
+                    <cite style={{ fontSize: 12, color: s.color, fontFamily: font, fontStyle: "normal", fontWeight: 600 }}> {s.quoteName}</cite>
                   </blockquote>
                 </div>
               </div>
@@ -271,13 +271,13 @@ export function SuccessStoriesPage({ setCurrentPage }) {
 const ALL_TESTIMONIALS = [
   { name: "Dr. Amaka Okonkwo", role: "Medical Director", company: "Nisad Consultation", product: "CareCore", color: C.blue, quote: "CareCore transformed how we run the clinic. Billing errors dropped to near zero, stock management is finally reliable, and patients flow through faster. It's the best investment we've made in operations." },
   { name: "Mr. Adebayo Eze", role: "Principal", company: "Grace Academy", product: "SchoolCore", color: C.mint, quote: "Parents now know their children's results before we print the report cards. The fee tracking alone saves us hours every month. SchoolCore is everything we needed in a school system." },
-  { name: "Pastor Emmanuel Adeyemi", role: "Administrative Pastor", company: "Beacon Ministry", product: "ChurchCore", color: C.purple, quote: "We went from attendance in notebooks to a fully digital member database with cell groups, giving records, and SMS blasts — all in one place. ChurchCore is exactly what the modern church needs." },
+  { name: "Pastor Emmanuel Adeyemi", role: "Administrative Pastor", company: "Beacon Ministry", product: "ChurchCore", color: C.purple, quote: "We went from attendance in notebooks to a fully digital member database with cell groups, giving records, and SMS blasts all in one place. ChurchCore is exactly what the modern church needs." },
   { name: "Mrs. Ngozi Okafor", role: "Operations Manager", company: "SwiftMove Logistics", product: "FleetCore", color: "#06B6D4", quote: "We used to find out a vehicle's papers had expired when police stopped it. Now we get alerts 60 days before any document expires. Our compliance record is now perfect." },
   { name: "Alhaji Suleiman Bello", role: "Finance Director", company: "Covenant Finance Ltd", product: "FinanceCore", color: C.gold, quote: "FinanceCore handles our PAYE, VAT, WHT, and bank reconciliation without us losing a night's sleep. The CBN compliance reports are generated in minutes, not days." },
   { name: "Dr. Fatima Abdullahi", role: "Head of Compliance", company: "NordCap Insurance", product: "ComplianceCore", color: C.amber, quote: "Our audit team used to dread regulatory reviews. With ComplianceCore, every policy is documented, every risk is tracked, and evidence is one click away. We passed our last NAICOM audit with zero findings." },
-  { name: "Mr. Tunde Akintola", role: "HR Manager", company: "Lagoon Properties", product: "HRCore", color: C.rose, quote: "Employee records, leave management, performance reviews, and payroll — all in one system. HRCore saved us two full-time HR assistant positions and made the remaining team far more effective." },
-  { name: "Prof. Chibuike Uzodinma", role: "Registrar", company: "Harmony University", product: "SchoolCore", color: C.mint, quote: "Managing 12,000 student records across faculties was a nightmare. SchoolCore brought everything under one roof — admissions, academic records, fees, and timetables. Our administrative efficiency doubled." },
-  { name: "Reverend Grace Okoro", role: "General Overseer", company: "New Dawn Tabernacle", product: "ChurchCore", color: C.purple, quote: "ChurchCore helped us grow from tracking 800 members manually to managing 3,200 members digitally, including home cells, giving units, and event registrations. We didn't just manage growth — we enabled it." },
+  { name: "Mr. Tunde Akintola", role: "HR Manager", company: "Lagoon Properties", product: "HRCore", color: C.rose, quote: "Employee records, leave management, performance reviews, and payroll all in one system. HRCore saved us two full-time HR assistant positions and made the remaining team far more effective." },
+  { name: "Prof. Chibuike Uzodinma", role: "Registrar", company: "Harmony University", product: "SchoolCore", color: C.mint, quote: "Managing 12,000 student records across faculties was a nightmare. SchoolCore brought everything under one roof admissions, academic records, fees, and timetables. Our administrative efficiency doubled." },
+  { name: "Reverend Grace Okoro", role: "General Overseer", company: "New Dawn Tabernacle", product: "ChurchCore", color: C.purple, quote: "ChurchCore helped us grow from tracking 800 members manually to managing 3,200 members digitally, including home cells, giving units, and event registrations. We didn't just manage growth we enabled it." },
 ];
 
 export function TestimonialsPage({ setCurrentPage }) {
@@ -359,14 +359,14 @@ const AWARDS = [
   { year: "2023", title: "Top Emerging Software Company", body: "Lagos Tech Fest", desc: "Orion Soft ranked among the top 10 fastest-growing business software companies in Nigeria.", color: C.mint, icon: "M3 3v18h18 M7 16l4-6 4 3 5-7" },
   { year: "2023", title: "NDPR Compliance Champion", body: "Nigeria Data Protection Bureau", desc: "Recognised for building NDPR-compliant software from the ground up across all product lines.", color: C.purple, icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z" },
   { year: "2023", title: "Best Workplace Tech for SMEs", body: "SME 100 Nigeria Awards", desc: "FinanceCore and HRCore recognised as the standout tools for Nigerian small and medium enterprises.", color: C.amber, icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
-  { year: "2022", title: "Startup of the Year — Software", body: "Abuja Startup Awards", desc: "Recognised in our first full year of deployment for rapid traction and impact across multiple sectors.", color: C.rose, icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" },
+  { year: "2022", title: "Startup of the Year Software", body: "Abuja Startup Awards", desc: "Recognised in our first full year of deployment for rapid traction and impact across multiple sectors.", color: C.rose, icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" },
 ];
 
 const RECOGNITIONS = [
   { label: "CAC Registered", desc: "RC 9535128", color: C.gold },
   { label: "NDPR Certified", desc: "Nigeria Data Protection Regulation", color: C.blue },
-  { label: "Member — Nigerian Computer Society", desc: "Professional body membership", color: C.mint },
-  { label: "Registered Vendor — NITDA", desc: "National Information Technology Development Agency", color: C.purple },
+  { label: "Member Nigerian Computer Society", desc: "Professional body membership", color: C.mint },
+  { label: "Registered Vendor NITDA", desc: "National Information Technology Development Agency", color: C.purple },
 ];
 
 export function AwardsPage({ setCurrentPage }) {
@@ -375,7 +375,7 @@ export function AwardsPage({ setCurrentPage }) {
       <PageHero
         label="AWARDS & RECOGNITION"
         title="Built in Nigeria. Recognised in Africa."
-        subtitle="A growing track record of recognition from industry bodies, technology forums, and regulatory authorities — validating the quality and impact of what we build."
+        subtitle="A growing track record of recognition from industry bodies, technology forums, and regulatory authorities validating the quality and impact of what we build."
         color={C.gold}
       />
 
@@ -437,7 +437,7 @@ const CERTS = [
   { name: "CAC Registration", authority: "Corporate Affairs Commission Nigeria", desc: "Orion Soft Limited is a fully registered Nigerian company. RC 9535128. All contracts, service agreements, and tax obligations are managed through a properly constituted legal entity.", color: C.gold, status: "Active", year: "2021" },
   { name: "ISO 27001 Readiness", authority: "International Organisation for Standardisation", desc: "Our information security management practices align with ISO 27001 standards. Formal certification is on our 2026 roadmap. We operate access controls, encryption at rest and in transit, vulnerability scanning, and incident response procedures now.", color: C.mint, status: "In Progress", year: "2026 target" },
   { name: "SOC 2 Type I Readiness", authority: "AICPA", desc: "Our infrastructure and controls are being prepared for SOC 2 Type I audit. This covers security, availability, and confidentiality criteria for cloud-hosted services. Target: 2026.", color: C.purple, status: "In Progress", year: "2026 target" },
-  { name: "NITDA Vendor Registration", authority: "National Information Technology Development Agency", desc: "Registered as a Nigerian IT vendor with NITDA — a prerequisite for supplying software to federal government ministries, departments, and agencies.", color: C.amber, status: "Active", year: "2023" },
+  { name: "NITDA Vendor Registration", authority: "National Information Technology Development Agency", desc: "Registered as a Nigerian IT vendor with NITDA a prerequisite for supplying software to federal government ministries, departments, and agencies.", color: C.amber, status: "Active", year: "2023" },
   { name: "PCI-DSS Awareness", authority: "Payment Card Industry Data Security Standard", desc: "Products that handle financial data (FinanceCore, CareCore billing) follow PCI-DSS principles. We do not store raw card data. Payment integrations use certified third-party payment gateways.", color: C.rose, status: "Policy-Level", year: "Ongoing" },
 ];
 
@@ -519,7 +519,7 @@ export function CertificationsPage({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 6. FAQ PAGE (standalone — extends the homepage FAQ section)
+// 6. FAQ PAGE (standalone extends the homepage FAQ section)
 // ═══════════════════════════════════════════════════════════════════════════════
 const FAQ_CATEGORIES = [
   {
@@ -536,7 +536,7 @@ const FAQ_CATEGORIES = [
     name: "Pricing",
     color: C.gold,
     faqs: [
-      { q: "How is pricing structured?", a: "Pricing is based on organisation size, number of users, modules selected, and deployment type (cloud vs on-premise). We don't publish a price list because a 20-bed clinic and a 300-bed hospital have completely different needs — and we'd rather give you an accurate number." },
+      { q: "How is pricing structured?", a: "Pricing is based on organisation size, number of users, modules selected, and deployment type (cloud vs on-premise). We don't publish a price list because a 20-bed clinic and a 300-bed hospital have completely different needs and we'd rather give you an accurate number." },
       { q: "Is there a free trial?", a: "We offer free demos tailored to your specific use case. A demo is typically a 30–45 minute live walkthrough of the modules relevant to your organisation. Contact us to book one." },
       { q: "What does the pricing include?", a: "Every deployment includes software licensing, initial data migration, staff training, and 12-month support. There are no hidden setup fees." },
       { q: "Do you offer payment plans?", a: "Yes. We offer flexible payment structures including annual, quarterly, and milestone-based payments. Discuss your preferred structure with our sales team." },
@@ -546,7 +546,7 @@ const FAQ_CATEGORIES = [
     name: "Technical",
     color: C.mint,
     faqs: [
-      { q: "Is the software cloud-based or on-premise?", a: "Both. We offer cloud-hosted (recommended for most clients — faster deployment, automatic updates) and on-premise deployment (for clients with specific data residency requirements, usually government or regulated industries)." },
+      { q: "Is the software cloud-based or on-premise?", a: "Both. We offer cloud-hosted (recommended for most clients faster deployment, automatic updates) and on-premise deployment (for clients with specific data residency requirements, usually government or regulated industries)." },
       { q: "What infrastructure does Orion Soft run on?", a: "Our cloud products run on enterprise-grade infrastructure with automatic failover, daily backups, and 99.9% uptime SLA. Specific infrastructure details are provided under NDA to enterprise clients." },
       { q: "Do you have an API?", a: "Yes. All Orion Soft products expose REST APIs for integration with third-party systems. API documentation is available to clients after deployment. Enterprise clients can request early API access during evaluation." },
       { q: "Can Orion Soft integrate with systems we already use?", a: "We regularly integrate with accounting systems, HRIS platforms, payment gateways, laboratory equipment, and government portals. Every integration is scoped during the sales process." },
@@ -584,7 +584,7 @@ export function FAQPage({ setCurrentPage }) {
       <PageHero
         label="FREQUENTLY ASKED QUESTIONS"
         title="Answers before the first call."
-        subtitle="Everything you need to evaluate Orion Soft, understand our products, and decide with confidence — before speaking to our team."
+        subtitle="Everything you need to evaluate Orion Soft, understand our products, and decide with confidence before speaking to our team."
         color={C.mint}
       />
 
@@ -712,7 +712,7 @@ export function DocsPage({ setCurrentPage }) {
       <PageHero
         label="DOCUMENTATION"
         title="Everything you need to run Orion Soft."
-        subtitle="Step-by-step guides, module references, and integration documentation — all in one place. Available to all active clients."
+        subtitle="Step-by-step guides, module references, and integration documentation all in one place. Available to all active clients."
         color={C.purple}
       />
 
@@ -936,8 +936,8 @@ const REFERRAL_TIERS = [
 
 const HOW_IT_WORKS = [
   { step: "01", title: "Refer someone you know", desc: "Know a hospital, school, church, or business that needs better software? Refer them to Orion Soft by sharing your unique referral link or dropping us their contact.", color: C.blue },
-  { step: "02", title: "We handle the sales process", desc: "Our team follows up, runs a demo, and takes care of everything. You don't need to sell anything — just make the introduction.", color: C.mint },
-  { step: "03", title: "You get paid when they deploy", desc: "Once your referred client signs and deploys an Orion Soft product, we pay your referral reward directly to your account — no invoice needed.", color: C.gold },
+  { step: "02", title: "We handle the sales process", desc: "Our team follows up, runs a demo, and takes care of everything. You don't need to sell anything just make the introduction.", color: C.mint },
+  { step: "03", title: "You get paid when they deploy", desc: "Once your referred client signs and deploys an Orion Soft product, we pay your referral reward directly to your account no invoice needed.", color: C.gold },
 ];
 
 export function ReferralPage({ setCurrentPage }) {
@@ -1021,16 +1021,16 @@ export function ReferralPage({ setCurrentPage }) {
 // 10. INVESTORS PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 const INVESTMENT_THESIS = [
-  { title: "Massive underserved market", desc: "Nigeria has 200M+ people, 36,000+ registered healthcare facilities, 100,000+ schools, and millions of SMEs — almost none of them run on professional business management software. We are building the infrastructure for digital operations in Africa.", color: C.blue, icon: "M3 3v18h18 M7 16l4-6 4 3 5-7" },
+  { title: "Massive underserved market", desc: "Nigeria has 200M+ people, 36,000+ registered healthcare facilities, 100,000+ schools, and millions of SMEs almost none of them run on professional business management software. We are building the infrastructure for digital operations in Africa.", color: C.blue, icon: "M3 3v18h18 M7 16l4-6 4 3 5-7" },
   { title: "High retention, recurring revenue", desc: "Enterprise software has 90%+ annual retention. Once a hospital or school runs on CareCore or SchoolCore, switching cost is near-zero for them to stay and very high to leave. Our current client retention is 99.2%.", color: C.mint, icon: "M12 2a10 10 0 100 20A10 10 0 0012 2z M12 8v4l3 3" },
   { title: "9 products, one platform family", desc: "We are not a single-product company. Each new product we launch creates opportunities for cross-sell into existing clients. CareCore clients are natural HRCore and FinanceCore buyers. This drives LTV without proportional CAC.", color: C.gold, icon: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5" },
-  { title: "Built for the African regulatory environment", desc: "Our products ship with NDPR, CAC, CBN, NAFDAC, NHIS, FIRS, and WAEC compliance built in — not bolted on. A foreign competitor cannot clone that in 12 months. It took us 4 years.", color: C.purple, icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z" },
+  { title: "Built for the African regulatory environment", desc: "Our products ship with NDPR, CAC, CBN, NAFDAC, NHIS, FIRS, and WAEC compliance built in not bolted on. A foreign competitor cannot clone that in 12 months. It took us 4 years.", color: C.purple, icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z" },
 ];
 
 const MILESTONES = [
   { year: "2021", event: "Company founded", detail: "Orion Soft Limited incorporated · CAC RC 9535128" },
   { year: "2022", event: "CareCore v1 deployed", detail: "First hospital deployment. Immediate product-market fit." },
-  { year: "2022", event: "Startup of the Year", detail: "Abuja Startup Awards — Software category" },
+  { year: "2022", event: "Startup of the Year", detail: "Abuja Startup Awards Software category" },
   { year: "2023", event: "5 products live", detail: "CareCore, SchoolCore, ChurchCore, FinanceCore, HRCore all in production" },
   { year: "2023", event: "50+ active clients", detail: "Crossed 50 paying organisations across 4 sectors" },
   { year: "2024", event: "9 product lines", detail: "FleetCore, InventoryCore, ComplianceCore launched. TeleHealth in development." },
@@ -1045,7 +1045,7 @@ export function InvestorsPage({ setCurrentPage }) {
       <PageHero
         label="INVESTOR RELATIONS"
         title="Investing in Africa's business infrastructure."
-        subtitle="Orion Soft is building the operating system for African enterprises — healthcare, education, finance, logistics, and beyond. We're growing fast and selectively raising capital to go further, faster."
+        subtitle="Orion Soft is building the operating system for African enterprises healthcare, education, finance, logistics, and beyond. We're growing fast and selectively raising capital to go further, faster."
         color={C.gold}
       />
 
@@ -1118,7 +1118,7 @@ export function InvestorsPage({ setCurrentPage }) {
       {/* Use of funds */}
       <section style={{ padding: "0 clamp(20px,4vw,40px) 40px", background: C.bg }}>
         <div style={{ maxWidth: 800, margin: "0 auto", background: C.surface, border: `1px solid ${C.gold}33`, borderRadius: 18, padding: "clamp(28px,5vw,48px)" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em", marginBottom: 16 }}>USE OF FUNDS — SERIES A</div>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.12em", marginBottom: 16 }}>USE OF FUNDS SERIES A</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 16 }}>
             {[["40%", "Engineering team", C.blue], ["25%", "Pan-Africa expansion", C.mint], ["20%", "Infrastructure & security", C.gold], ["15%", "Sales & marketing", C.purple]].map(([pct, label, color], i) => (
               <div key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px 16px" }}>

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 
 // ═══════════════════════════════════════
-// DESIGN TOKENS — mirror App.jsx exactly (lazy-load isolation)
+// DESIGN TOKENS mirror App.jsx exactly (lazy-load isolation)
 // ═══════════════════════════════════════
 const C = {
   bg:         "#060810",
@@ -63,7 +63,7 @@ const CARECORE_MEDIA = [
 const PRODUCTS = {
   carecore: {
     name: "CareCore", tag: "HEALTHCARE HMS", tagline: "The operating system for Nigerian hospitals.",
-    desc: "A complete, production-ready hospital management system covering every clinical and administrative workflow — from patient registration to discharge, billing, pharmacy, and real-time analytics.",
+    desc: "A complete, production-ready hospital management system covering every clinical and administrative workflow from patient registration to discharge, billing, pharmacy, and real-time analytics.",
     color: "#4F8EF7", colorDim: "rgba(79,142,247,0.12)", available: true, category: "Healthcare",
     forWho: ["Government & Private Hospitals", "Clinics & Health Centres", "Diagnostic Laboratories", "Pharmacies", "Maternity Homes"],
     modules: [
@@ -82,7 +82,7 @@ const PRODUCTS = {
   },
   schoolcore: {
     name: "SchoolCore", tag: "SCHOOL MANAGEMENT", tagline: "Run your school. Not your spreadsheets.",
-    desc: "An end-to-end school management platform that handles admissions, academics, fees, communication, and reporting — for primary schools, secondary schools, and tertiary institutions.",
+    desc: "An end-to-end school management platform that handles admissions, academics, fees, communication, and reporting for primary schools, secondary schools, and tertiary institutions.",
     color: "#10B981", colorDim: "rgba(16,185,129,0.12)", available: true, category: "Education",
     forWho: ["Primary & Secondary Schools", "Universities & Polytechnics", "Vocational & Training Centres", "Montessori & Nursery Schools"],
     modules: [
@@ -101,7 +101,7 @@ const PRODUCTS = {
   },
   compliancecore: {
     name: "ComplianceCore", tag: "COMPLIANCE & RISK", tagline: "Stay compliant. Stay ahead.",
-    desc: "A governance, risk, and compliance platform that keeps your organisation ahead of regulatory requirements — audit-ready at all times, with full documentation and evidence trails.",
+    desc: "A governance, risk, and compliance platform that keeps your organisation ahead of regulatory requirements audit-ready at all times, with full documentation and evidence trails.",
     color: "#F59E0B", colorDim: "rgba(245,158,11,0.12)", available: true, category: "Compliance",
     forWho: ["Financial Institutions", "Healthcare Organisations", "Manufacturing Companies", "Government Agencies", "NGOs & Foundations"],
     modules: [
@@ -136,7 +136,7 @@ const PRODUCTS = {
   },
   financecore: {
     name: "FinanceCore", tag: "FINANCE & ACCOUNTING", tagline: "From invoices to insights.",
-    desc: "A complete finance and accounting platform for Nigerian businesses — built for the chart of accounts, tax rules, and reporting requirements that matter here.",
+    desc: "A complete finance and accounting platform for Nigerian businesses built for the chart of accounts, tax rules, and reporting requirements that matter here.",
     color: "#C8A850", colorDim: "rgba(200,168,80,0.12)", available: true, category: "Finance",
     forWho: ["SMEs & Growing Businesses", "NGOs & Foundations", "Schools & Universities", "Healthcare Facilities", "Professional Services"],
     modules: [
@@ -147,14 +147,14 @@ const PRODUCTS = {
       { name: "Bank Reconciliation", desc: "Import bank statements, match transactions, identify exceptions." },
       { name: "Payroll", desc: "Salary processing, PAYE, pension (PFA), NHF, payslips." },
       { name: "Tax Management", desc: "VAT, WHT, PAYE computation and filing preparation." },
-      { name: "Financial Statements", desc: "Income statement, balance sheet, cash flow — on demand." },
+      { name: "Financial Statements", desc: "Income statement, balance sheet, cash flow on demand." },
       { name: "Budget & Forecast", desc: "Set budgets, track actuals, variance analysis." },
     ],
     headline2: "Built for Nigeria. Built to scale.",
   },
   hrcore: {
     name: "HRCore", tag: "HUMAN RESOURCES", tagline: "Your people deserve better software.",
-    desc: "A modern HR management system that handles the full employee lifecycle — from recruitment and onboarding through performance management and offboarding.",
+    desc: "A modern HR management system that handles the full employee lifecycle from recruitment and onboarding through performance management and offboarding.",
     color: "#F43F5E", colorDim: "rgba(244,63,94,0.12)", available: true, category: "HR",
     forWho: ["Any Organisation With Staff", "Corporate & Enterprise", "NGOs & Social Enterprises", "Healthcare & Schools"],
     modules: [
@@ -172,14 +172,14 @@ const PRODUCTS = {
   },
   churchcore: {
     name: "ChurchCore", tag: "FAITH ORGANISATIONS", tagline: "Built for the body. Not the boardroom.",
-    desc: "A church management platform designed specifically for Nigerian ministries and faith communities — member care, cell groups, giving, events, and communication in one place.",
+    desc: "A church management platform designed specifically for Nigerian ministries and faith communities member care, cell groups, giving, events, and communication in one place.",
     color: "#7C3AED", colorDim: "rgba(124,58,237,0.12)", available: true, category: "Faith",
     forWho: ["Churches & Ministries", "Cell Groups & Zones", "Prayer Houses", "Faith-based Schools & NGOs"],
     modules: [
       { name: "Member Database", desc: "Comprehensive member profiles, families, units, follow-up notes." },
-      { name: "Attendance Tracking", desc: "Sunday service, midweek, special events — digital or manual entry." },
+      { name: "Attendance Tracking", desc: "Sunday service, midweek, special events digital or manual entry." },
       { name: "Cell Groups & Units", desc: "Group structures, leaders, member assignments, meeting records." },
-      { name: "Giving & Tithes", desc: "Record tithes, offerings, pledges, projects — with receipts." },
+      { name: "Giving & Tithes", desc: "Record tithes, offerings, pledges, projects with receipts." },
       { name: "Events Management", desc: "Plan, promote, and track attendance for all church events." },
       { name: "Communication", desc: "SMS, email, and in-app messages to members and groups." },
       { name: "Volunteer Management", desc: "Service rosters, departments, availability, scheduling." },
@@ -194,14 +194,14 @@ const PRODUCTS = {
     color: "#06B6D4", colorDim: "rgba(6,182,212,0.12)", available: true, category: "Logistics",
     forWho: ["Logistics & Haulage Companies", "School Bus Fleets", "Hospital Transport", "Government & NGO Fleets", "Ride-hailing Operations"],
     modules: [
-      { name: "Vehicle Registry", desc: "Full vehicle profiles — make, model, VIN, registration, insurance." },
+      { name: "Vehicle Registry", desc: "Full vehicle profiles make, model, VIN, registration, insurance." },
       { name: "Driver Management", desc: "Driver records, license tracking, assignments, performance scores." },
       { name: "Trip Management", desc: "Plan and log trips, routes, distance, passenger manifests." },
       { name: "Maintenance Scheduling", desc: "Service intervals, work orders, maintenance history, costs." },
       { name: "Fuel Tracking", desc: "Fill-ups, consumption rates, cost per km, anomaly alerts." },
       { name: "Insurance & Documents", desc: "Document storage, expiry alerts for all vehicle documents." },
       { name: "GPS Integration", desc: "Connect your existing GPS devices for live location data." },
-      { name: "Driver Behaviour", desc: "Speeding, harsh braking, idling — scored per driver." },
+      { name: "Driver Behaviour", desc: "Speeding, harsh braking, idling scored per driver." },
       { name: "Fleet Reports", desc: "Utilisation, costs, downtime, compliance status dashboards." },
     ],
     headline2: "Reduce costs. Improve safety. Stay compliant.",
@@ -347,7 +347,7 @@ function ProductModules({ product }) {
               Everything {product.name} does.
             </h2>
             <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
-              A connected set of modules — each built to a production standard, all working together as one platform.
+              A connected set of modules each built to a production standard, all working together as one platform.
             </p>
           </div>
         </Reveal>
@@ -385,7 +385,7 @@ function ProductAudience({ product, setCurrentPage }) {
               Built for organisations like yours.
             </h2>
             <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: "0 0 28px" }}>
-              {product.name} is deployed for organisations of every size — priced fairly based on what you actually use.
+              {product.name} is deployed for organisations of every size priced fairly based on what you actually use.
             </p>
             <button type="button" onClick={() => setCurrentPage("contact")} style={{
               background: product.color, color: "#060810", padding: "13px 26px", borderRadius: 10, border: "none",
@@ -540,7 +540,7 @@ export function FleetCorePage({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════
-// TELEHEALTH — COMING SOON PAGE
+// TELEHEALTH COMING SOON PAGE
 // ═══════════════════════════════════════
 export function TeleHealthPage({ setCurrentPage }) {
   const product = PRODUCTS.telehealth;
@@ -622,7 +622,7 @@ export function TeleHealthPage({ setCurrentPage }) {
               </form>
             )}
             <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 14 }}>
-              Launching {product.comingSoon}. No spam — one email when it's ready.
+              Launching {product.comingSoon}. No spam one email when it's ready.
             </p>
           </Reveal>
         </div>

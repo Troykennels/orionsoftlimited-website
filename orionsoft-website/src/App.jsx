@@ -1,18 +1,23 @@
-import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
+﻿import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
 
-// Admin dashboard loaded on demand — not part of the initial JS bundle
-const AdminDashboard = lazy(() => import("./admin/Dashboard"));
+// Admin dashboard loaded on demand not part of the initial JS bundle
+const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
+const HomePage          = lazy(() => import("./pages/HomePage"));
+const ProductsPageFull  = lazy(() => import("./pages/ProductsPage"));
+const IndustriesPageFull = lazy(() => import("./pages/IndustriesPage"));
+const ProcessPageFull   = lazy(() => import("./pages/ProcessPage"));
+const CompanyPageFull   = lazy(() => import("./pages/CompanyPage"));
 
-// Credibility pages — all from one module so it loads once, split from main bundle
+// Credibility pages all from one module so it loads once, split from main bundle
 const CaseStudiesPage = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.CaseStudiesPage })));
 const SecurityPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.SecurityPage })));
 const SupportPage     = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.SupportPage })));
 const PartnersPage    = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.PartnersPage })));
 const TechStackPage   = lazy(() => import("./pages/CredibilityPages").then(m => ({ default: m.TechStackPage })));
 
-// Trust & growth pages — one module, separate chunk
+// Trust & growth pages one module, separate chunk
 const ClientsPage       = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ClientsPage })));
 const SuccessStoriesPage= lazy(() => import("./pages/TrustPages").then(m => ({ default: m.SuccessStoriesPage })));
 const TestimonialsPage  = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.TestimonialsPage })));
@@ -24,10 +29,16 @@ const ApiDocsPage       = lazy(() => import("./pages/TrustPages").then(m => ({ d
 const ReferralPage      = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ReferralPage })));
 const InvestorsPage     = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.InvestorsPage })));
 
+// Why Orion Soft — mission, vision, values, stats, partners
+const WhyPageFull = lazy(() => import("./pages/WhyPage"));
+
+// Book a Consultation — 45-minute discovery call booking form
+const ConsultationPageFull = lazy(() => import("./pages/ConsultationPage"));
+
 // Enterprise contact & lead management page
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 
-// Product landing pages — one module, lazily loaded as a separate chunk
+// Product landing pages one module, lazily loaded as a separate chunk
 const CareCorePage       = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.CareCorePage })));
 const SchoolCorePage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.SchoolCorePage })));
 const ComplianceCorePage = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.ComplianceCorePage })));
@@ -42,7 +53,7 @@ const TeleHealthPage     = lazy(() => import("./pages/ProductPages").then(m => (
 // DESIGN SYSTEM
 // ═══════════════════════════════════════
 const C = {
-  // Backgrounds — near-black, dark luxury
+  // Backgrounds near-black, dark luxury
   bg:         "#060810",
   surface:    "#0B1120",
   card:       "#0F1828",
@@ -58,13 +69,13 @@ const C = {
   text:       "#C8D0E0",
   textMuted:  "#6B7A96",
 
-  // Gold — primary brand accent (replace sky blue as dominant color)
+  // Gold primary brand accent (replace sky blue as dominant color)
   gold:       "#C8A850",
   goldLight:  "#E8C96A",
   goldDim:    "rgba(200,168,80,0.12)",
   goldGlow:   "rgba(200,168,80,0.22)",
 
-  // Blue — for interactive/CTA elements
+  // Blue for interactive/CTA elements
   blue:       "#4F8EF7",
   blueDim:    "rgba(79,142,247,0.12)",
   blueGlow:   "rgba(79,142,247,0.22)",
@@ -232,7 +243,7 @@ const DEFAULT_MAIN_MENU = [
   { id: "m4", label: "Careers",  page: "careers",  active: true, order: 3 },
 ];
 
-// Canonical product catalog — source of truth for all product listings.
+// Canonical product catalog source of truth for all product listings.
 // Admin panel reads/writes to the same localStorage key (orionsoft_products_v1).
 // When a new product is added via admin and given the right industries/solutions,
 // every page (Nav, Industries, Solutions, Pricing, Login, etc.) updates automatically.
@@ -266,20 +277,20 @@ const DEFAULT_PRODUCTS_CATALOG = [
     solutions:  [] },
 ];
 
-// Top-level desktop nav (fixed structure — no longer CMS-driven)
+// Top-level desktop nav (fixed structure no longer CMS-driven)
 const TOP_NAV = [
-  { label: "Products",    page: "products",   hasMenu: true },
-  { label: "Industries",  page: "industries" },
-  { label: "Solutions",   page: "solutions" },
-  { label: "Pricing",     page: "pricing" },
-  { label: "About",       page: "about" },
-  { label: "Resources",   page: "resources" },
-  { label: "Partners",    page: "partners" },
-  { label: "Contact",     page: "contact" },
+  { label: "Products",     page: "products",     hasMenu: true },
+  { label: "Industries",   page: "industries" },
+  { label: "Why Us",       page: "why" },
+  { label: "Pricing",      page: "pricing" },
+  { label: "About",        page: "about" },
+  { label: "Resources",    page: "resources" },
+  { label: "Partners",     page: "partners" },
+  { label: "Contact",      page: "contact" },
 ];
 // Default testimonials (matches current SocialProof hardcoded values)
 const DEFAULT_CMS_TESTIMONIALS = [
-  { id: "t1", name: "Dr. A. Emmanuel",  role: "Medical Director",  company: "",                 quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.", rating: 5, featured: true },
+  { id: "t1", name: "Dr. A. Emmanuel",  role: "Medical Director",  company: "",                 quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files now the ward team runs everything from their phones.", rating: 5, featured: true },
   { id: "t2", name: "Mrs. C. Adeyemi", role: "Finance Manager",    company: "Regional Hospital", quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.", rating: 5, featured: true },
   { id: "t3", name: "Nurse H. Oladele", role: "Head of Nursing",   company: "",                 quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.", rating: 5, featured: true },
 ];
@@ -294,10 +305,10 @@ const DEFAULT_CMS_FAQS = [
 ];
 // Default Why Us reasons (title/desc editable from CMS, icons fixed by position)
 const DEFAULT_CMS_WHYUS = [
-  { id: "w1", title: "Healthcare-first, not adapted",      desc: "CareCore reflects how clinical teams actually operate. Every module — from triage to discharge to billing — was built around real hospital workflows, not retrofitted from a generic template." },
-  { id: "w2", title: "Production-grade from day one",      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build — not add-ons. Security isn't a feature tier; it's a baseline." },
-  { id: "w3", title: "We stay after launch",               desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment — not an extra cost added after you've already committed." },
-  { id: "w4", title: "International delivery standard",    desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments — the standard international buyers expect, at a price that makes sense." },
+  { id: "w1", title: "Healthcare-first, not adapted",      desc: "CareCore reflects how clinical teams actually operate. Every module from triage to discharge to billing was built around real hospital workflows, not retrofitted from a generic template." },
+  { id: "w2", title: "Production-grade from day one",      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build not add-ons. Security isn't a feature tier; it's a baseline." },
+  { id: "w3", title: "We stay after launch",               desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment not an extra cost added after you've already committed." },
+  { id: "w4", title: "International delivery standard",    desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments the standard international buyers expect, at a price that makes sense." },
 ];
 const DEFAULT_CMS_STATS = [
   { id: "s1", value: "25+",   label: "Clinical modules" },
@@ -308,7 +319,7 @@ const DEFAULT_CMS_STATS = [
 ];
 
 // ═══════════════════════════════════════
-// ADMIN — CONSTANTS & PRODUCTS STORE
+// ADMIN CONSTANTS & PRODUCTS STORE
 // ═══════════════════════════════════════
 const PRODUCTS_STORAGE_KEY = "orionsoft_products_v1";
 const PORTFOLIO_STORAGE_KEY = "orionsoft_portfolio_v1";
@@ -403,7 +414,7 @@ function captureLeadFromForm(formType, form) {
       demoDate: "",
       demoTime: "",
       notes: form.message || "",
-      history: [{ id: `h-${Date.now()}`, type: "created", message: `Lead captured from website — ${serviceMap[formType] || formType} enquiry`, by: "Website", ts: now }],
+      history: [{ id: `h-${Date.now()}`, type: "created", message: `Lead captured from website ${serviceMap[formType] || formType} enquiry`, by: "Website", ts: now }],
       createdAt: now,
       updatedAt: now,
     };
@@ -458,7 +469,7 @@ const CAREER_ROLES = [
       "Basic graphic design and content production skills",
       "Understanding of healthcare or B2B marketing is a plus",
     ],
-    compensation: "Competitive — based on experience",
+    compensation: "Competitive based on experience",
   },
   {
     title: "Software Developer (Frontend/Backend)",
@@ -473,7 +484,7 @@ const CAREER_ROLES = [
       "Ability to work independently and meet deadlines",
       "Bonus: experience with healthcare systems, reporting, or workflow automation",
     ],
-    compensation: "Competitive — based on experience and skill level",
+    compensation: "Competitive based on experience and skill level",
   },
   {
     title: "General Application",
@@ -697,15 +708,20 @@ function Nav({ currentPage, setCurrentPage }) {
   };
 
   const isProductPage = navProducts.some(p => p.id === currentPage) || currentPage === "products";
+  const isHome = false; // Hero is now dark nav uses unified dark style across all pages
 
   return (
     <nav aria-label="Main navigation"
       onMouseLeave={() => setMegaOpen(false)}
       style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        background: (scrolled || megaOpen) ? "rgba(6,8,16,0.92)" : "transparent",
+        background: isHome
+          ? (scrolled || megaOpen) ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.82)"
+          : (scrolled || megaOpen) ? "rgba(6,8,16,0.92)" : "transparent",
         backdropFilter: (scrolled || megaOpen) ? "blur(20px) saturate(1.4)" : "none",
-        borderBottom: (scrolled || megaOpen) ? `1px solid rgba(255,255,255,0.06)` : "none",
+        borderBottom: (scrolled || megaOpen)
+          ? `1px solid ${isHome ? "rgba(6,24,40,0.08)" : "rgba(255,255,255,0.06)"}`
+          : "none",
         transition: "all 0.4s ease",
       }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 clamp(20px, 4vw, 40px)", display: "flex", justifyContent: "space-between", alignItems: "center", height: 70 }}>
@@ -713,7 +729,7 @@ function Nav({ currentPage, setCurrentPage }) {
         <button type="button" onClick={() => go("home")}
           style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <OrionLogo size={30} gradientId="nav-logo" />
-          <span style={{ fontSize: 18, fontWeight: 800, color: C.white, fontFamily: font, letterSpacing: "-0.04em" }}>
+          <span style={{ fontSize: 18, fontWeight: 800, color: isHome ? "#061828" : C.white, fontFamily: font, letterSpacing: "-0.04em" }}>
             Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
         </button>
@@ -732,13 +748,13 @@ function Nav({ currentPage, setCurrentPage }) {
                   aria-expanded={l.hasMenu ? megaOpen : undefined}
                   style={{
                     background: "none", border: "none", cursor: "pointer", padding: "6px 0",
-                    color: active ? C.white : C.textMuted,
+                    color: active ? (isHome ? "#061828" : C.white) : (isHome ? "#4A5B6C" : C.textMuted),
                     fontSize: 14, fontWeight: active ? 600 : 400, fontFamily: font,
                     transition: "color 0.2s", letterSpacing: "0.01em", position: "relative",
                     display: "inline-flex", alignItems: "center", gap: 5,
                   }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = C.white; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = C.textMuted; }}>
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = isHome ? "#061828" : C.white; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = isHome ? "#4A5B6C" : C.textMuted; }}>
                   {l.label}
                   {l.hasMenu && (
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: megaOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", opacity: 0.7 }}><polyline points="6 9 12 15 18 9" /></svg>
@@ -750,10 +766,10 @@ function Nav({ currentPage, setCurrentPage }) {
           })}
           <button type="button" onClick={() => go("login")} style={{
             background: "none", border: "none", cursor: "pointer", padding: "6px 0",
-            color: currentPage === "login" ? C.white : C.textMuted, fontSize: 14, fontWeight: 400, fontFamily: font, transition: "color 0.2s",
+            color: currentPage === "login" ? (isHome ? "#061828" : C.white) : (isHome ? "#4A5B6C" : C.textMuted), fontSize: 14, fontWeight: 400, fontFamily: font, transition: "color 0.2s",
           }}
-          onMouseEnter={e => { e.currentTarget.style.color = C.white; }}
-          onMouseLeave={e => { e.currentTarget.style.color = currentPage === "login" ? C.white : C.textMuted; }}>
+          onMouseEnter={e => { e.currentTarget.style.color = isHome ? "#061828" : C.white; }}
+          onMouseLeave={e => { e.currentTarget.style.color = currentPage === "login" ? (isHome ? "#061828" : C.white) : (isHome ? "#4A5B6C" : C.textMuted); }}>
             Login
           </button>
           <button type="button" onClick={() => go("contact")} style={{
@@ -777,7 +793,7 @@ function Nav({ currentPage, setCurrentPage }) {
           style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 8 }}>
           {[0,1,2].map(i => (
             <div key={i} style={{
-              width: 22, height: 1.5, background: C.white, marginBottom: i < 2 ? 6 : 0,
+              width: 22, height: 1.5, background: isHome ? "#061828" : C.white, marginBottom: i < 2 ? 6 : 0,
               transition: "all 0.3s",
               transform: menuOpen ? (i===0 ? "rotate(45deg) translate(5px,5px)" : i===1 ? "scaleX(0)" : "rotate(-45deg) translate(5px,-5px)") : "none",
               opacity: menuOpen && i===1 ? 0 : 1,
@@ -877,7 +893,7 @@ function Hero({ setCurrentPage }) {
   const cms = useContext(CMSContext);
   const heroData = cms?.homepage?.hero || {};
   const heroBadge = heroData.badge || "SOFTWARE COMPANY · NIGERIA & GLOBAL";
-  const heroSub = heroData.subheadline || "We design, build, and deploy production-grade software for healthcare providers, enterprises, and ambitious businesses — from Nigeria to the world.";
+  const heroSub = heroData.subheadline || "We design, build, and deploy production-grade software for healthcare providers, enterprises, and ambitious businesses from Nigeria to the world.";
   const heroCTAP = heroData.ctaPrimary || "See what we build →";
   const heroCTAS = heroData.ctaSecondary || "Talk to us";
 
@@ -1022,7 +1038,7 @@ function ExperiencePreview({ setCurrentPage }) {
                   CareCore adapts to every workflow in your facility.
                 </h2>
                 <p style={{ color: C.text, fontFamily: font, fontSize: 15.5, lineHeight: 1.78, margin: 0 }}>
-                  From clinical care to hospital operations to custom builds — explore the depth of what the platform handles.
+                  From clinical care to hospital operations to custom builds explore the depth of what the platform handles.
                 </p>
               </div>
               <div style={{ display: "grid", gap: 10, marginTop: 30 }}>
@@ -1110,7 +1126,7 @@ function Products({ setCurrentPage }) {
       name: "CareCore HMS",
       tag: "FLAGSHIP",
       tagColor: C.accent,
-      desc: "A complete hospital management system — patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more. All in one platform.",
+      desc: "A complete hospital management system patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more. All in one platform.",
       features: ["Clinical Decision Support", "NEWS2 Early Warning", "Drug Interaction Checker", "Real-Time Analytics", "Multi-Facility Support", "Full Audit Trail"],
       color: C.accent,
       action: "products",
@@ -1120,7 +1136,7 @@ function Products({ setCurrentPage }) {
       name: "Custom Software",
       tag: "SERVICES",
       tagColor: C.purple,
-      desc: "We design, build, and deploy custom web applications, APIs, dashboards, and internal tools shaped precisely around your operations — not a template.",
+      desc: "We design, build, and deploy custom web applications, APIs, dashboards, and internal tools shaped precisely around your operations not a template.",
       features: ["Web Applications", "API Development", "Dashboards & Analytics", "Business Automation", "Mobile-Responsive", "Ongoing Support"],
       color: C.purple,
       action: "services",
@@ -1130,7 +1146,7 @@ function Products({ setCurrentPage }) {
       name: "What's Next",
       tag: "2026",
       tagColor: C.mint,
-      desc: "Inventory management, school administration, logistics, and more — all built to the same engineering standard as CareCore. Join the waitlist for early access.",
+      desc: "Inventory management, school administration, logistics, and more all built to the same engineering standard as CareCore. Join the waitlist for early access.",
       features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale", "HR & Payroll", "More Coming"],
       color: C.mint,
       action: "contact",
@@ -1442,7 +1458,7 @@ function SystemsShowcase({ setCurrentPage }) {
             tag="SYSTEMS & APPS"
             tagColor={C.mint}
             title="A Growing Product Suite"
-            subtitle="CareCore is live and ready. More systems are in development — built to the same standard for healthcare, retail, education, and logistics."
+            subtitle="CareCore is live and ready. More systems are in development built to the same standard for healthcare, retail, education, and logistics."
             dark
           />
         </Reveal>
@@ -1540,7 +1556,7 @@ function EngineeringStandards() {
             tag="ENGINEERING STANDARD"
             tagColor={C.accent}
             title="Built for People Who Notice the Details"
-            subtitle="Production architecture, role-based security, and go-live support — built into every system we deliver."
+            subtitle="Production architecture, role-based security, and go-live support built into every system we deliver."
             dark
           />
         </Reveal>
@@ -1613,7 +1629,7 @@ function TrustSecurity() {
             tag="TRUST & DELIVERY"
             tagColor={C.mint}
             title="Everything Buyers Need to Verify"
-            subtitle="Security, implementation quality, and post-launch support — confirmed before you commit."
+            subtitle="Security, implementation quality, and post-launch support confirmed before you commit."
             dark
           />
         </Reveal>
@@ -1717,7 +1733,7 @@ function TechImmersion({ setCurrentPage }) {
             tag="BUILT FOR REAL WORK"
             tagColor={C.gold}
             title="Software That Earns Its Place in Daily Operations"
-            subtitle="Healthcare desks, engineering teams, infrastructure, and decision rooms — Orion Soft builds for every context where software needs to perform."
+            subtitle="Healthcare desks, engineering teams, infrastructure, and decision rooms Orion Soft builds for every context where software needs to perform."
           />
         </Reveal>
 
@@ -1795,13 +1811,13 @@ function CareCoreSection() {
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
               </svg>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em" }}>CARECORE HMS — DEEP DIVE</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em" }}>CARECORE HMS DEEP DIVE</span>
           </div>
           <h2 style={{ fontSize: "clamp(26px, 3.5vw, 40px)", fontWeight: 800, fontFamily: font, color: C.heading, letterSpacing: "-0.02em", margin: "0 0 12px" }}>
             25+ Modules. One Platform.
           </h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 580, marginBottom: 48 }}>
-            Every module works together — patient data flows seamlessly from registration to triage to diagnosis to billing to discharge.
+            Every module works together patient data flows seamlessly from registration to triage to diagnosis to billing to discharge.
           </p>
         </Reveal>
 
@@ -1994,7 +2010,7 @@ function ProcessSection() {
     {
       num: "01",
       title: "Discovery",
-      desc: "We study your operations, map your workflows, and identify exactly what to build — before writing a line of code.",
+      desc: "We study your operations, map your workflows, and identify exactly what to build before writing a line of code.",
       detail: ["Workflow mapping", "Gap analysis", "Scope definition"],
       color: C.accent,
     },
@@ -2028,7 +2044,7 @@ function ProcessSection() {
           <SectionHeader
             tag="HOW WE WORK"
             tagColor={C.mint}
-            title="From discovery to launch — and beyond."
+            title="From discovery to launch and beyond."
             subtitle="Every engagement follows the same proven process, so your team gets software that works on day one."
             dark
           />
@@ -3054,7 +3070,9 @@ function Footer({ setCurrentPage }) {
               { l: "FleetCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
             ]},
             { title: "Company", links: [
-              { l: "About", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
+              { l: "Why Orion Soft", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("why"); } },
+              { l: "About Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
+              { l: "Our Process", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("process"); } },
               { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
               { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
               { l: "Blog", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
@@ -3067,18 +3085,21 @@ function Footer({ setCurrentPage }) {
               { l: "Success Stories", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("success-stories"); } },
               { l: "Case Studies", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
               { l: "Certifications", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("certifications"); } },
+              { l: "Security & Compliance", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
             ]},
             { title: "Solutions", links: [
               { l: "Industries", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
               { l: "Solutions", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
               { l: "Partners", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
               { l: "Referral Programme", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("referral"); } },
+              { l: "Book Consultation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("consultation"); } },
             ]},
             { title: "Resources", links: [
-              { l: "Documentation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
+              { l: "Knowledge Base", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
               { l: "API Reference", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
-              { l: "Support", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "Support Centre", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); document.querySelector(".ori-chat-btn")?.click(); } },
               { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
@@ -3171,10 +3192,10 @@ function SectionHeader({ tag, tagColor, title, subtitle, dark = false }) {
 }
 
 // ═══════════════════════════════════════
-// HOME PAGE — STATS BAR
+// HOME PAGE STATS BAR
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════
-// HOME PAGE — TRUST BADGES + CUSTOMER LOGOS
+// HOME PAGE TRUST BADGES + CUSTOMER LOGOS
 // ═══════════════════════════════════════
 function TrustSection({ portfolio = [] }) {
   const cms = useContext(CMSContext);
@@ -3454,7 +3475,7 @@ function StatsBar() {
 }
 
 // ═══════════════════════════════════════
-// HOME PAGE — PRODUCT HIGHLIGHTS
+// HOME PAGE PRODUCT HIGHLIGHTS
 // ═══════════════════════════════════════
 function ProductHighlights({ setCurrentPage, products: managedProducts }) {
   const products = (managedProducts || []).filter(p => p.published);
@@ -3550,7 +3571,7 @@ function ProductHighlights({ setCurrentPage, products: managedProducts }) {
 }
 
 // ═══════════════════════════════════════
-// HOME PAGE — WHY ORION SOFT
+// HOME PAGE WHY ORION SOFT
 // ═══════════════════════════════════════
 const WHYUS_ICON_COLORS = [C.accent, C.mint, C.gold, C.purple];
 const WHYUS_ICON_PATHS = [
@@ -3618,7 +3639,7 @@ function WhyUs() {
 }
 
 // ═══════════════════════════════════════
-// HOME PAGE — SOCIAL PROOF
+// HOME PAGE SOCIAL PROOF
 // ═══════════════════════════════════════
 const TESTI_COLORS = [C.blue, C.gold, C.mint];
 function mkInitials(name) { return (name || "").split(" ").slice(0,2).map(w=>w[0]||"").join("").toUpperCase() || "?"; }
@@ -3704,7 +3725,7 @@ function SocialProof({ setCurrentPage }) {
                 25+ modules. 8 departments. Under 4 weeks.
               </h3>
               <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 16px" }}>
-                A mid-size hospital replaced paper records and spreadsheets with CareCore — full go-live with all clinical, billing, and ward modules active.
+                A mid-size hospital replaced paper records and spreadsheets with CareCore full go-live with all clinical, billing, and ward modules active.
               </p>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {[["< 4 weeks", "Full deployment"], ["8", "Departments live"], ["40+", "Staff trained"]].map(([val, lbl]) => (
@@ -3737,7 +3758,7 @@ function SocialProof({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════
-// ADMIN — LOGIN
+// ADMIN LOGIN
 // ═══════════════════════════════════════
 function AdminLogin({ onLogin }) {
   const [pwd, setPwd] = useState("");
@@ -3802,7 +3823,7 @@ function AdminLogin({ onLogin }) {
 }
 
 // ═══════════════════════════════════════
-// ADMIN — PRODUCT FORM (SLIDE PANEL)
+// ADMIN PRODUCT FORM (SLIDE PANEL)
 // ═══════════════════════════════════════
 const EMPTY_PRODUCT = {
   name: "", tag: "", status: "live", published: true, primary: false,
@@ -4066,7 +4087,7 @@ function AdminProductForm({ product, onSave, onCancel }) {
                 </div>
               ))}
               <button type="button" onClick={addPricing} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Pricing Tier</button>
-              {!form.pricing.length && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 10 }}>No tiers set — visitors will see a "Contact Us" CTA.</p>}
+              {!form.pricing.length && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 10 }}>No tiers set visitors will see a "Contact Us" CTA.</p>}
             </div>
           )}
         </div>
@@ -4080,7 +4101,7 @@ function AdminProductForm({ product, onSave, onCancel }) {
 }
 
 // ═══════════════════════════════════════
-// ADMIN — DASHBOARD
+// ADMIN DASHBOARD
 // ═══════════════════════════════════════
 function AdminPanel({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
   const [editing, setEditing] = useState(null);
@@ -4119,7 +4140,7 @@ function AdminPanel({ products, addProduct, updateProduct, deleteProduct, resetT
         if (!Array.isArray(data)) throw new Error("not array");
         importProducts(data);
         showToast("Products imported");
-      } catch { showToast("Import failed — invalid file"); }
+      } catch { showToast("Import failed invalid file"); }
     };
     reader.readAsText(file);
     e.target.value = "";
@@ -4268,7 +4289,7 @@ function AdminPanel({ products, addProduct, updateProduct, deleteProduct, resetT
 }
 
 // ═══════════════════════════════════════
-// ADMIN — GATE (AUTH WRAPPER)
+// ADMIN GATE (AUTH WRAPPER)
 // ═══════════════════════════════════════
 function AdminGate({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
   const [authed, setAuthed] = useState(() => {
@@ -4309,7 +4330,7 @@ function ProductsPage({ setCurrentPage, products }) {
               Software built for real operations.
             </h1>
             <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
-              CareCore HMS is live and serving healthcare facilities. More products are in development — all built to the same standard.
+              CareCore HMS is live and serving healthcare facilities. More products are in development all built to the same standard.
             </p>
           </Reveal>
         </div>
@@ -4339,7 +4360,7 @@ function ServicesPage({ setCurrentPage }) {
               What we can do for your organisation.
             </h1>
             <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
-              From full product builds to technical consulting — we have the expertise to solve real problems end-to-end.
+              From full product builds to technical consulting we have the expertise to solve real problems end-to-end.
             </p>
           </Reveal>
         </div>
@@ -4450,7 +4471,7 @@ function WorkPage({ setCurrentPage, portfolio }) {
               Software shipped for real clients.
             </h1>
             <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
-              From hospital systems to custom business tools — every project is built to production standard, delivered with training, and supported after launch.
+              From hospital systems to custom business tools every project is built to production standard, delivered with training, and supported after launch.
             </p>
           </Reveal>
         </div>
@@ -4460,7 +4481,7 @@ function WorkPage({ setCurrentPage, portfolio }) {
       <section style={{ padding: "60px clamp(16px, 4vw, 32px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-          {/* Industry filter — only shown when there are projects */}
+          {/* Industry filter only shown when there are projects */}
           {filterOptions.length > 1 && (
             <Reveal>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 40, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
@@ -4556,7 +4577,7 @@ function WorkPage({ setCurrentPage, portfolio }) {
                       {item.testimonial?.quote && (
                         <div style={{ marginTop: 12, borderLeft: `3px solid ${PORTFOLIO_INDUSTRY_COLORS[item.industry] || C.accent}`, paddingLeft: 12 }}>
                           <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.6, margin: "0 0 6px", fontStyle: "italic" }}>"{item.testimonial.quote.slice(0, 100)}{item.testimonial.quote.length > 100 ? "…" : ""}"</p>
-                          {item.testimonial.name && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 600 }}>— {item.testimonial.name}{item.testimonial.title ? `, ${item.testimonial.title}` : ""}</span>}
+                          {item.testimonial.name && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 600 }}> {item.testimonial.name}{item.testimonial.title ? `, ${item.testimonial.title}` : ""}</span>}
                         </div>
                       )}
                       {(item.screenshots || []).length > 1 && (
@@ -4576,12 +4597,12 @@ function WorkPage({ setCurrentPage, portfolio }) {
             </div>
           )}
 
-          {/* CareCore screenshots strip — shown when portfolio is empty as a fallback */}
+          {/* CareCore screenshots strip shown when portfolio is empty as a fallback */}
           {published.length === 0 && (
             <div style={{ marginTop: 60 }}>
               <Reveal>
                 <div style={{ marginBottom: 32 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em" }}>CARECORE HMS — LIVE SCREENSHOTS</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.1em" }}>CARECORE HMS LIVE SCREENSHOTS</span>
                 </div>
               </Reveal>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))", gap: 24 }}>
@@ -4610,7 +4631,7 @@ function WorkPage({ setCurrentPage, portfolio }) {
 }
 
 // ═══════════════════════════════════════
-// HOMEPAGE — REDESIGNED COMPONENTS
+// HOMEPAGE REDESIGNED COMPONENTS
 // ═══════════════════════════════════════
 function ClientStrip({ portfolio = [] }) {
   const cms = useContext(CMSContext);
@@ -4651,7 +4672,7 @@ function ProductShowcase({ setCurrentPage }) {
             Nine products. One standard of quality.
           </h2>
           <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 620, margin: "0 auto 44px" }}>
-            From hospitals to schools, churches to fleets — Orion Soft products are built for the way Nigerian organisations actually operate.
+            From hospitals to schools, churches to fleets Orion Soft products are built for the way Nigerian organisations actually operate.
           </p>
         </Reveal>
 
@@ -4699,7 +4720,7 @@ const DIFF_ITEMS = [
   {
     icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
     title: "Production-grade, always",
-    desc: "Role permissions, audit logs, 2FA, and secure deployments are built in from day one — not optional extras.",
+    desc: "Role permissions, audit logs, 2FA, and secure deployments are built in from day one not optional extras.",
     color: C.blue,
   },
   {
@@ -4717,7 +4738,7 @@ const DIFF_ITEMS = [
   {
     icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
     title: "We stay after launch",
-    desc: "Training, go-live support, and SLA-backed maintenance are included — not charged extra after you've already committed.",
+    desc: "Training, go-live support, and SLA-backed maintenance are included not charged extra after you've already committed.",
     color: C.purple,
   },
 ];
@@ -4775,7 +4796,7 @@ function Differentiators() {
 }
 
 const DEFAULT_TESTIMONIALS_DATA = [
-  { quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files — now the ward team runs everything from their phones.", name: "Dr. A. Emmanuel", title: "Medical Director", company: "Faith General Hospital" },
+  { quote: "CareCore changed how we manage patients. Before, we spent hours searching through paper files now the ward team runs everything from their phones.", name: "Dr. A. Emmanuel", title: "Medical Director", company: "Faith General Hospital" },
   { quote: "The Orion Soft team trained every department and stayed available for weeks after go-live. Our billing errors dropped significantly within the first month.", name: "Mrs. C. Adeyemi", title: "Finance Manager", company: "Regional Hospital" },
   { quote: "We went from paper-based OPD records to a full digital system in under four weeks. The clinical staff adapted faster than we expected.", name: "Nurse H. Oladele", title: "Head of Nursing", company: "" },
 ];
@@ -4865,7 +4886,7 @@ function StatsRow() {
 }
 
 // ═══════════════════════════════════════
-// NEW PAGES — Products, Industries, Solutions, Pricing, About, Resources, Login
+// NEW PAGES Products, Industries, Solutions, Pricing, About, Resources, Login
 // ═══════════════════════════════════════
 // Generic page rendered for CMS-only products (no dedicated hardcoded page component)
 function GenericProductPage({ product: p, setCurrentPage }) {
@@ -4969,7 +4990,7 @@ function ProductsOverviewPage({ setCurrentPage }) {
     .filter(p => p.published !== false).sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="PRODUCTS" title="Everything you need to run your business." subtitle={`${pageProducts.length} production-grade software products, built and supported by one company. Pick the one that fits — or run several together.`} />
+      <PageHero label="PRODUCTS" title="Everything you need to run your business." subtitle={`${pageProducts.length} production-grade software products, built and supported by one company. Pick the one that fits or run several together.`} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
@@ -5008,19 +5029,19 @@ function ProductsOverviewPage({ setCurrentPage }) {
 
 const INDUSTRIES = [
   { name: "Healthcare",          icon: "M22 12h-4l-3 9L9 3l-3 9H2",                                                                          color: C.blue,
-    desc: "Hospitals and clinics still lose hours to paper files, fragmented billing, and stockouts in the pharmacy. Orion Soft connects every clinical and administrative workflow into one system — so your team can focus on patients, not paperwork." },
+    desc: "Hospitals and clinics still lose hours to paper files, fragmented billing, and stockouts in the pharmacy. Orion Soft connects every clinical and administrative workflow into one system so your team can focus on patients, not paperwork." },
   { name: "Education",           icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5",                                              color: C.mint,
-    desc: "Admissions, results, fees, and parent communication shouldn't live in a dozen spreadsheets. We give schools and tertiary institutions one platform for academics, staff, and finance — with a parent portal that keeps families in the loop." },
+    desc: "Admissions, results, fees, and parent communication shouldn't live in a dozen spreadsheets. We give schools and tertiary institutions one platform for academics, staff, and finance with a parent portal that keeps families in the loop." },
   { name: "Financial Services",  icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",                                       color: C.gold,
-    desc: "Regulated institutions face constant pressure from CBN, NDPR, and audit requirements. Orion Soft keeps your books accurate, your filings on time, and your evidence trails audit-ready — without slowing the business down." },
+    desc: "Regulated institutions face constant pressure from CBN, NDPR, and audit requirements. Orion Soft keeps your books accurate, your filings on time, and your evidence trails audit-ready without slowing the business down." },
   { name: "Faith Organisations", icon: "M12 2v20M5 9h14",                                                                                     color: C.purple,
-    desc: "Ministries grow faster than their record-keeping. We help churches track members, cell groups, giving, and events in one place — so leaders can shepherd people instead of chasing data." },
+    desc: "Ministries grow faster than their record-keeping. We help churches track members, cell groups, giving, and events in one place so leaders can shepherd people instead of chasing data." },
   { name: "Logistics & Fleet",   icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7 M5.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z M18.5 19a2.5 2.5 0 100-5 2.5 2.5 0 000 5z", color: "#06B6D4",
-    desc: "Unplanned breakdowns, fuel leakage, and expired vehicle documents quietly erode fleet margins. Orion Soft tracks every vehicle, driver, and trip — with maintenance schedules and compliance alerts that prevent costly surprises." },
+    desc: "Unplanned breakdowns, fuel leakage, and expired vehicle documents quietly erode fleet margins. Orion Soft tracks every vehicle, driver, and trip with maintenance schedules and compliance alerts that prevent costly surprises." },
   { name: "Manufacturing & Retail", icon: "M2 20h20 M4 20V8l5-3 5 3v12 M14 20V11l4-2 4 2v9",                                                color: C.amber,
     desc: "Stock visibility, accurate costing, and a reliable workforce are the difference between profit and loss. We connect inventory, finance, and HR so you always know what you have, what it cost, and who's running the floor." },
   { name: "Government & NGOs",   icon: "M3 21h18 M5 21V7l7-4 7 4v14 M9 9h.01 M15 9h.01 M9 13h.01 M15 13h.01",                               color: C.rose,
-    desc: "Public-sector and donor-funded organisations live and die by accountability. Orion Soft delivers transparent finance, clean compliance records, and proper HR governance — the documentation your stakeholders and auditors expect." },
+    desc: "Public-sector and donor-funded organisations live and die by accountability. Orion Soft delivers transparent finance, clean compliance records, and proper HR governance the documentation your stakeholders and auditors expect." },
 ];
 
 function IndustriesPage({ setCurrentPage }) {
@@ -5079,15 +5100,15 @@ function IndustriesPage({ setCurrentPage }) {
 
 const SOLUTIONS = [
   { name: "Go Paperless", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M9 13h6 M9 17h6", color: C.mint,
-    desc: "Replace paper files, registers, and forms with secure digital records your whole team can access instantly — searchable, backed up, and audit-tracked.", products: ["carecore","schoolcore","churchcore"] },
+    desc: "Replace paper files, registers, and forms with secure digital records your whole team can access instantly searchable, backed up, and audit-tracked.", products: ["carecore","schoolcore","churchcore"] },
   { name: "Process Automation", icon: "M12 2v4 M12 18v4 M4.93 4.93l2.83 2.83 M16.24 16.24l2.83 2.83 M2 12h4 M18 12h4 M4.93 19.07l2.83-2.83 M16.24 7.76l2.83-2.83", color: C.blue,
-    desc: "Eliminate repetitive manual work with automated workflows — approvals, reminders, reorder triggers, and notifications that run themselves.", products: ["inventorycore","hrcore","financecore"] },
+    desc: "Eliminate repetitive manual work with automated workflows approvals, reminders, reorder triggers, and notifications that run themselves.", products: ["inventorycore","hrcore","financecore"] },
   { name: "Data & Reporting", icon: "M3 3v18h18 M7 16l4-6 4 3 5-7", color: C.purple,
-    desc: "Turn day-to-day operations into clear dashboards and reports, so leaders make decisions on real numbers — not gut feel.", products: ["financecore","carecore","fleetcore"] },
+    desc: "Turn day-to-day operations into clear dashboards and reports, so leaders make decisions on real numbers not gut feel.", products: ["financecore","carecore","fleetcore"] },
   { name: "Compliance & Audit", icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z", color: C.amber,
     desc: "Stay regulation-aware and audit-ready year round, with policy management, evidence trails, and a live compliance health score.", products: ["compliancecore","financecore","hrcore"] },
   { name: "Enterprise Integration", icon: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5", color: C.gold,
-    desc: "Connect Orion Soft products with each other and with the systems you already run — APIs, data sync, and single sign-on built in.", products: ["financecore","hrcore","carecore"] },
+    desc: "Connect Orion Soft products with each other and with the systems you already run APIs, data sync, and single sign-on built in.", products: ["financecore","hrcore","carecore"] },
   { name: "Training & Adoption", icon: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5", color: C.rose,
     desc: "Software only works if people use it. Every deployment includes hands-on onboarding, staff training, and long-term support.", products: ["carecore","schoolcore","churchcore"] },
 ];
@@ -5099,7 +5120,7 @@ function SolutionsPage({ setCurrentPage }) {
   const toArr = v => Array.isArray(v) ? v : (typeof v === "string" ? v.split(",").map(s => s.trim()).filter(Boolean) : []);
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve — going paperless, tightening compliance, or making sense of your data — there's an Orion Soft path to get you there." color={C.mint} />
+      <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve going paperless, tightening compliance, or making sense of your data there's an Orion Soft path to get you there." color={C.mint} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
@@ -5181,7 +5202,7 @@ function PricingPage({ setCurrentPage }) {
           <div style={{ maxWidth: 820, margin: "0 auto", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: "clamp(32px, 5vw, 48px)" }}>
             <h2 style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 14px" }}>Why no public pricing?</h2>
             <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
-              Our products are deployed for organisations of different sizes. A 10-bed clinic and a 300-bed hospital have different needs. We price fairly based on what you actually use — so you never pay for capacity or modules you don't need.
+              Our products are deployed for organisations of different sizes. A 10-bed clinic and a 300-bed hospital have different needs. We price fairly based on what you actually use so you never pay for capacity or modules you don't need.
             </p>
           </div>
         </Reveal>
@@ -5194,9 +5215,9 @@ function PricingPage({ setCurrentPage }) {
 function AboutPage({ setCurrentPage }) {
   const values = [
     { name: "Quality", desc: "Production-grade from day one. Security, audit logs, and proper architecture are baseline, not extras." },
-    { name: "Honesty", desc: "Clear pricing, realistic timelines, and straight answers — even when they're not what you hoped to hear." },
+    { name: "Honesty", desc: "Clear pricing, realistic timelines, and straight answers even when they're not what you hoped to hear." },
     { name: "Speed", desc: "We move fast and deploy in weeks, not quarters, without cutting the corners that matter." },
-    { name: "Long-term Partnership", desc: "We stay after launch — training, support, and updates that keep your systems healthy for years." },
+    { name: "Long-term Partnership", desc: "We stay after launch training, support, and updates that keep your systems healthy for years." },
   ];
   const timeline = [
     { year: "2022", title: "Founded", desc: "Orion Soft Limited established to close the gap in affordable, production-quality software for Nigerian organisations." },
@@ -5207,14 +5228,14 @@ function AboutPage({ setCurrentPage }) {
   ];
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="ABOUT US" title="Software that makes Nigerian organisations more capable." subtitle="Orion Soft Limited builds production-grade software for healthcare, education, finance, and beyond — engineered to international standards, priced for the local market." />
+      <PageHero label="ABOUT US" title="Software that makes Nigerian organisations more capable." subtitle="Orion Soft Limited builds production-grade software for healthcare, education, finance, and beyond engineered to international standards, priced for the local market." />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 32 }}>
           <Reveal>
             <div>
               <h2 style={{ fontSize: "clamp(24px, 3.4vw, 34px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "0 0 16px" }}>Our story</h2>
               <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, margin: "0 0 14px" }}>
-                Orion Soft Limited was founded to address a clear gap: Nigerian businesses needed software that was both affordable and built to production quality — not cheap tools that break, nor expensive foreign systems that don't fit local realities.
+                Orion Soft Limited was founded to address a clear gap: Nigerian businesses needed software that was both affordable and built to production quality not cheap tools that break, nor expensive foreign systems that don't fit local realities.
               </p>
               <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, margin: 0 }}>
                 Headquartered in Nigeria and delivering globally, we build a growing suite of products that organisations actually rely on every day.
@@ -5307,11 +5328,11 @@ function ResourcesPage({ setCurrentPage }) {
     { name: "FAQ", label: "Answers before the first call", icon: "M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", color: C.mint, action: () => setCurrentPage("faq"), cta: "Read FAQ", soon: false },
     { name: "Support Centre", label: "Help when you need it", icon: "M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 01-3.4 0", color: C.gold, action: () => setCurrentPage("support"), cta: "Get support", soon: false },
     { name: "Webinars", label: "Live & on-demand sessions", icon: "M23 7l-7 5 7 5z M1 5h15v14H1z", color: C.rose, action: null, cta: "Coming soon", soon: true,
-      desc: "Product walkthroughs, training sessions, and industry deep-dives — live and recorded." },
+      desc: "Product walkthroughs, training sessions, and industry deep-dives live and recorded." },
   ];
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="RESOURCES" title="Learn, explore, get support." subtitle="Everything you need to get the most out of Orion Soft — from articles and case studies to documentation and live support." color={C.blue} />
+      <PageHero label="RESOURCES" title="Learn, explore, get support." subtitle="Everything you need to get the most out of Orion Soft from articles and case studies to documentation and live support." color={C.blue} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
@@ -5696,33 +5717,33 @@ export default function App() {
     const seoData = cms?.seo?.[currentPage];
     if (seoData?.title) { document.title = seoData.title; return; }
     const defaults = {
-      home: "Orion Soft Limited — Software for Nigerian Organisations",
-      products: "Products — Orion Soft Limited",
-      carecore: "CareCore — Hospital Management System | Orion Soft Limited",
-      schoolcore: "SchoolCore — School Management | Orion Soft Limited",
-      compliancecore: "ComplianceCore — Compliance & Risk | Orion Soft Limited",
-      inventorycore: "InventoryCore — Inventory Management | Orion Soft Limited",
-      financecore: "FinanceCore — Finance & Accounting | Orion Soft Limited",
-      hrcore: "HRCore — Human Resources | Orion Soft Limited",
-      churchcore: "ChurchCore — Faith Organisations | Orion Soft Limited",
-      fleetcore: "FleetCore — Fleet Management | Orion Soft Limited",
-      telehealth: "TeleHealth — Telemedicine | Orion Soft Limited",
-      industries: "Industries — Orion Soft Limited",
-      solutions: "Solutions — Orion Soft Limited",
-      services: "Solutions — Orion Soft Limited",
-      pricing: "Pricing — Orion Soft Limited",
-      about: "About — Orion Soft Limited",
-      resources: "Resources — Orion Soft Limited",
-      login: "Login — Orion Soft Limited",
-      work: "Our Work — Portfolio | Orion Soft Limited",
-      contact: "Contact — Orion Soft Limited",
-      careers: "Careers — Orion Soft Limited",
-      blog: "Blog — Orion Soft Limited",
-      team: "Team — Orion Soft Limited",
+      home: "Orion Soft Limited Software for Nigerian Organisations",
+      products: "Products Orion Soft Limited",
+      carecore: "CareCore Hospital Management System | Orion Soft Limited",
+      schoolcore: "SchoolCore School Management | Orion Soft Limited",
+      compliancecore: "ComplianceCore Compliance & Risk | Orion Soft Limited",
+      inventorycore: "InventoryCore Inventory Management | Orion Soft Limited",
+      financecore: "FinanceCore Finance & Accounting | Orion Soft Limited",
+      hrcore: "HRCore Human Resources | Orion Soft Limited",
+      churchcore: "ChurchCore Faith Organisations | Orion Soft Limited",
+      fleetcore: "FleetCore Fleet Management | Orion Soft Limited",
+      telehealth: "TeleHealth Telemedicine | Orion Soft Limited",
+      industries: "Industries Orion Soft Limited",
+      solutions: "Solutions Orion Soft Limited",
+      services: "Solutions Orion Soft Limited",
+      pricing: "Pricing Orion Soft Limited",
+      about: "About Orion Soft Limited",
+      resources: "Resources Orion Soft Limited",
+      login: "Login Orion Soft Limited",
+      work: "Our Work Portfolio | Orion Soft Limited",
+      contact: "Contact Orion Soft Limited",
+      careers: "Careers Orion Soft Limited",
+      blog: "Blog Orion Soft Limited",
+      team: "Team Orion Soft Limited",
     };
     if (!defaults[currentPage]) {
       const cmsProduct = (cms?.products || DEFAULT_PRODUCTS_CATALOG).find(p => p.id === currentPage);
-      document.title = cmsProduct ? `${cmsProduct.name} — ${cmsProduct.tag.replace(" · Soon", "")} | Orion Soft Limited` : "Orion Soft Limited";
+      document.title = cmsProduct ? `${cmsProduct.name} ${cmsProduct.tag.replace(" · Soon", "")} | Orion Soft Limited` : "Orion Soft Limited";
     } else {
       document.title = defaults[currentPage];
     }
@@ -5741,11 +5762,18 @@ export default function App() {
 
       <main id="main-content" tabIndex={-1}>
         {currentPage === "home" && (
-          <OrionHome setCurrentPage={navSetPage} portfolio={portfolio} />
+          <Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}>
+            <HomePage
+              setCurrentPage={navSetPage}
+              products={(cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG).filter(p => p.published !== false)}
+            />
+          </Suspense>
         )}
 
         {currentPage === "products" && (
-          <ProductsOverviewPage setCurrentPage={navSetPage} />
+          <Suspense fallback={<div style={{ minHeight: "100vh", background: "#F5F7FC" }} />}>
+            <ProductsPageFull setCurrentPage={navSetPage} />
+          </Suspense>
         )}
 
         {currentPage === "carecore" && (
@@ -5776,7 +5804,7 @@ export default function App() {
           <Suspense fallback={<PageLoader />}><TeleHealthPage setCurrentPage={navSetPage} /></Suspense>
         )}
 
-        {/* CMS-only products: no dedicated page component — render the generic template */}
+        {/* CMS-only products: no dedicated page component render the generic template */}
         {(() => {
           const cmsProducts = cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG;
           const p = cmsProducts.find(prod => prod.id === currentPage && !prod.hasPage && prod.published !== false);
@@ -5784,7 +5812,9 @@ export default function App() {
         })()}
 
         {currentPage === "industries" && (
-          <IndustriesPage setCurrentPage={navSetPage} />
+          <Suspense fallback={<PageLoader />}>
+            <IndustriesPageFull setCurrentPage={navSetPage} />
+          </Suspense>
         )}
         {currentPage === "solutions" && (
           <SolutionsPage setCurrentPage={navSetPage} />
@@ -5796,7 +5826,24 @@ export default function App() {
           <PricingPage setCurrentPage={navSetPage} />
         )}
         {currentPage === "about" && (
-          <AboutPage setCurrentPage={navSetPage} />
+          <Suspense fallback={<PageLoader />}>
+            <CompanyPageFull setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+        {currentPage === "process" && (
+          <Suspense fallback={<PageLoader />}>
+            <ProcessPageFull setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+        {currentPage === "why" && (
+          <Suspense fallback={<PageLoader />}>
+            <WhyPageFull setCurrentPage={navSetPage} />
+          </Suspense>
+        )}
+        {currentPage === "consultation" && (
+          <Suspense fallback={<PageLoader />}>
+            <ConsultationPageFull setCurrentPage={navSetPage} />
+          </Suspense>
         )}
         {currentPage === "resources" && (
           <ResourcesPage setCurrentPage={navSetPage} />
