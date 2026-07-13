@@ -5945,7 +5945,7 @@ export default function App() {
 
         {currentPage === "admin" && (
           <Suspense fallback={<PageLoader label="Loading admin…" />}>
-            <AdminDashboard />
+            <AdminDashboard setCurrentPage={navSetPage} />
           </Suspense>
         )}
       </main>

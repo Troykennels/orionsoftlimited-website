@@ -515,7 +515,8 @@ function MiniSparkline({ data = [], color = C.gold, width = 80, height = 32 }) {
   const step = width / (data.length - 1 || 1);
   const pts  = data.map((v, i) => [i * step, height - (v / max) * (height - 4)]);
   const line = pts.map(([x,y], i) => `${i===0?"M":"L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-  const area = `${line} L${pts.at(-1)[0]},${height} L0,${height} Z`;
+  const last = pts[pts.length - 1];
+  const area = `${line} L${last[0]},${height} L0,${height} Z`;
   const gid  = `spk${color.replace(/[^a-z0-9]/gi,"")}`;
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display:"block", flexShrink:0 }}>
@@ -527,7 +528,7 @@ function MiniSparkline({ data = [], color = C.gold, width = 80, height = 32 }) {
       </defs>
       <path d={area} fill={`url(#${gid})`}/>
       <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx={pts.at(-1)[0]} cy={pts.at(-1)[1]} r="2.5" fill={color}/>
+      <circle cx={last[0]} cy={last[1]} r="2.5" fill={color}/>
     </svg>
   );
 }
@@ -680,7 +681,7 @@ function LiveStatCard({ label, value, sub, color = C.gold, icon, spark = [], tre
       </div>
       <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", gap:8 }}>
         <div style={{ fontSize:30, fontWeight:800, color, fontFamily:font, letterSpacing:"-0.03em", lineHeight:1 }}>{val}</div>
-        {spark.length > 1 && <MiniSparkline data={spark} color={color} width={72} height={28}/>}
+        {spark?.length > 1 && <MiniSparkline data={spark} color={color} width={72} height={28}/>}
       </div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         {sub && <div style={{ fontSize:11.5, color:C.textMuted, fontFamily:font }}>{sub}</div>}
