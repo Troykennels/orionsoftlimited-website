@@ -306,9 +306,9 @@ const DEFAULT_CMS_FAQS = [
 // Default Why Us reasons (title/desc editable from CMS, icons fixed by position)
 const DEFAULT_CMS_WHYUS = [
   { id: "w1", title: "Healthcare-first, not adapted",      desc: "CareCore reflects how clinical teams actually operate. Every module from triage to discharge to billing was built around real hospital workflows, not retrofitted from a generic template." },
-  { id: "w2", title: "Production-grade from day one",      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build not add-ons. Security isn't a feature tier; it's a baseline." },
-  { id: "w3", title: "We stay after launch",               desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment not an extra cost added after you've already committed." },
-  { id: "w4", title: "International delivery standard",    desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments the standard international buyers expect, at a price that makes sense." },
+  { id: "w2", title: "Production-grade from day one",      desc: "Role permissions, audit logs, 2FA access control, and secure deployments are part of every build, not add-ons. Security isn't a feature tier; it's a baseline." },
+  { id: "w3", title: "We stay after launch",               desc: "Staff training, go-live support, and SLA-backed maintenance are built into every deployment, not an extra cost added after you have already committed." },
+  { id: "w4", title: "International delivery standard",    desc: "Complete documentation, API-first architecture, clear communication, and global-ready deployments — the standard international buyers expect, at a price that makes sense." },
 ];
 const DEFAULT_CMS_STATS = [
   { id: "s1", value: "25+",   label: "Clinical modules" },
@@ -1126,7 +1126,7 @@ function Products({ setCurrentPage }) {
       name: "CareCore HMS",
       tag: "FLAGSHIP",
       tagColor: C.accent,
-      desc: "A complete hospital management system patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more. All in one platform.",
+      desc: "A complete hospital management system: patient records, clinical decision support, triage, billing, lab, pharmacy, maternal health, ward management, analytics, and more. All in one platform.",
       features: ["Clinical Decision Support", "NEWS2 Early Warning", "Drug Interaction Checker", "Real-Time Analytics", "Multi-Facility Support", "Full Audit Trail"],
       color: C.accent,
       action: "products",
@@ -1136,7 +1136,7 @@ function Products({ setCurrentPage }) {
       name: "Custom Software",
       tag: "SERVICES",
       tagColor: C.purple,
-      desc: "We design, build, and deploy custom web applications, APIs, dashboards, and internal tools shaped precisely around your operations not a template.",
+      desc: "We design, build, and deploy custom web applications, APIs, dashboards, and internal tools shaped precisely around your operations, not a template.",
       features: ["Web Applications", "API Development", "Dashboards & Analytics", "Business Automation", "Mobile-Responsive", "Ongoing Support"],
       color: C.purple,
       action: "services",
@@ -1146,7 +1146,7 @@ function Products({ setCurrentPage }) {
       name: "What's Next",
       tag: "2026",
       tagColor: C.mint,
-      desc: "Inventory management, school administration, logistics, and more all built to the same engineering standard as CareCore. Join the waitlist for early access.",
+      desc: "Inventory management, school administration, logistics, and more, all built to the same engineering standard as CareCore. Join the waitlist for early access.",
       features: ["Inventory & Supply Chain", "School Management System", "Logistics & Fleet", "Point of Sale", "HR & Payroll", "More Coming"],
       color: C.mint,
       action: "contact",
@@ -1367,7 +1367,7 @@ function Services({ setCurrentPage }) {
     { title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
     { title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, icon: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" },
     { title: "Data & Analytics", desc: "Custom dashboards and reporting tools for real-time business intelligence.", color: C.amber, icon: "M18 20V10M12 20V4M6 20v-6" },
-    { title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and digital transformation guidance.", color: C.rose, icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
+    { title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and technology strategy guidance.", color: C.rose, icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
     { title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
   ];
 
@@ -1375,7 +1375,7 @@ function Services({ setCurrentPage }) {
     <section id="services" role="region" aria-label="Services" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <Reveal>
-          <SectionHeader tag="SERVICES" tagColor={C.mint} title="What We Can Do For You" subtitle="Whether you need a full product built or a specific technical challenge solved, we have the expertise." dark />
+          <SectionHeader tag="SERVICES" tagColor={C.mint} title="What We Can Do For You" subtitle="Whether you need a full product built or a specific technical problem solved, we can help." dark />
         </Reveal>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 16, marginTop: 56 }}>
@@ -1733,7 +1733,7 @@ function TechImmersion({ setCurrentPage }) {
             tag="BUILT FOR REAL WORK"
             tagColor={C.gold}
             title="Software That Earns Its Place in Daily Operations"
-            subtitle="Healthcare desks, engineering teams, infrastructure, and decision rooms Orion Soft builds for every context where software needs to perform."
+            subtitle="Healthcare desks, engineering teams, infrastructure, and decision rooms. Orion Soft builds for every context where software needs to perform."
           />
         </Reveal>
 
@@ -1817,7 +1817,7 @@ function CareCoreSection() {
             25+ Modules. One Platform.
           </h2>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, maxWidth: 580, marginBottom: 48 }}>
-            Every module works together patient data flows seamlessly from registration to triage to diagnosis to billing to discharge.
+            Every module connects. Patient data moves from registration through triage to diagnosis to billing to discharge.
           </p>
         </Reveal>
 
@@ -3099,7 +3099,7 @@ function Footer({ setCurrentPage }) {
               { l: "API Reference", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
               { l: "Support Centre", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
-              { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); document.querySelector(".ori-chat-btn")?.click(); } },
+              { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); document.querySelector('[aria-label="Open Orion Soft live chat"]')?.click(); } },
               { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
@@ -4360,7 +4360,7 @@ function ServicesPage({ setCurrentPage }) {
               What we can do for your organisation.
             </h1>
             <p style={{ fontSize: 17, color: C.text, fontFamily: font, lineHeight: 1.75, maxWidth: 600, margin: 0 }}>
-              From full product builds to technical consulting we have the expertise to solve real problems end-to-end.
+              From full product builds to technical consulting we have the track record to solve real problems from spec to delivery.
             </p>
           </Reveal>
         </div>
@@ -5120,7 +5120,7 @@ function SolutionsPage({ setCurrentPage }) {
   const toArr = v => Array.isArray(v) ? v : (typeof v === "string" ? v.split(",").map(s => s.trim()).filter(Boolean) : []);
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve going paperless, tightening compliance, or making sense of your data there's an Orion Soft path to get you there." color={C.mint} />
+      <PageHero label="SOLUTIONS" title="Outcomes, not just features." subtitle="Whatever you're trying to achieve going paperless, tightening compliance, or making sense of your data, there is an Orion Soft path to get you there." color={C.mint} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: 20 }}>
@@ -5228,7 +5228,7 @@ function AboutPage({ setCurrentPage }) {
   ];
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="ABOUT US" title="Software that makes Nigerian organisations more capable." subtitle="Orion Soft Limited builds production-grade software for healthcare, education, finance, and beyond engineered to international standards, priced for the local market." />
+      <PageHero label="ABOUT US" title="Software that makes Nigerian organisations more capable." subtitle="Orion Soft Limited builds production-grade software for healthcare, education, finance, and beyond — engineered to international standards, priced for the local market." />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 80px", background: C.bg }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 32 }}>
           <Reveal>
@@ -5332,7 +5332,7 @@ function ResourcesPage({ setCurrentPage }) {
   ];
   return (
     <div style={{ background: C.bg }}>
-      <PageHero label="RESOURCES" title="Learn, explore, get support." subtitle="Everything you need to get the most out of Orion Soft from articles and case studies to documentation and live support." color={C.blue} />
+      <PageHero label="RESOURCES" title="Learn, explore, get support." subtitle="Everything you need to get the most out of Orion Soft — from articles and case studies to documentation and live support." color={C.blue} />
       <section style={{ padding: "40px clamp(20px, 4vw, 40px) 120px", background: C.bg }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 20 }}>

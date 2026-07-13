@@ -171,7 +171,6 @@ const CASE_STUDIES = [
 ];
 
 export function CaseStudiesPage({ setCurrentPage }) {
-  const [active, setActive] = useState(null);
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
 
   return (
@@ -385,7 +384,7 @@ export function SecurityPage({ setCurrentPage }) {
       <Reveal delay={0.05}>
         <div style={{ background: C.amberDim, border: `1px solid ${C.amber}22`, borderRadius: 12, padding: "18px 24px", marginBottom: 40 }}>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
-            <strong style={{ color: C.amber }}>Honest note:</strong> We are a growing Nigerian software company. We do not yet hold ISO 27001 or SOC 2 certifications. What we have is a security-conscious engineering culture, documented practices, and a commitment to NDPR compliance. We will update this page as our certifications evolve.
+            <strong style={{ color: C.amber }}>Honest note:</strong> We are a growing Nigerian software company. We do not yet hold ISO 27001 or SOC 2 certifications. What we have is careful engineering habits, documented practices, and a commitment to NDPR compliance. We will update this page as our certifications evolve.
           </p>
         </div>
       </Reveal>
@@ -769,7 +768,7 @@ const TECH_PARTNERS = [
     badgeBg: "#FF6B00",
     color: "#FF6B00",
     role: "Cloud Infrastructure & Storage",
-    description: "All Orion Soft products run on AWS infrastructure across EU West and Middle East South regions. We use EC2 for compute-intensive operations, S3 for document and media storage, RDS for relational databases, and CloudWatch for infrastructure monitoring. AWS's global availability zones give our clients enterprise-grade uptime without the cost of local data center arrangements. Our infrastructure is reviewed by AWS Well-Architected Framework standards annually.",
+    description: "All Orion Soft products run on AWS infrastructure across EU West and Middle East South regions. We use EC2 for compute-intensive operations, S3 for document and media storage, RDS for relational databases, and CloudWatch for infrastructure monitoring. AWS's global availability zones give our clients reliable uptime without the cost of maintaining local data center arrangements. Our infrastructure is reviewed by AWS Well-Architected Framework standards annually.",
   },
   {
     name: "Vercel",
@@ -939,7 +938,7 @@ const TECH_CATEGORIES = [
     category: "Infrastructure",
     color: C.gold,
     items: [
-      { name: "Cloud hosting", note: "Enterprise cloud infrastructure with SLA-backed uptime guarantees" },
+      { name: "Cloud hosting", note: "Cloud infrastructure with contractual uptime commitments" },
       { name: "TLS 1.3", note: "All traffic encrypted in transit, enforced across every endpoint" },
       { name: "Automated backups", note: "Daily snapshots with tested restoration procedures" },
     ],
@@ -995,7 +994,7 @@ export function TechStackPage({ setCurrentPage }) {
         <div style={{ marginTop: 32, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "26px 28px" }}>
           <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 10px" }}>A note on openness</h2>
           <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 }}>
-            We publish our technology choices because technical decision-makers at hospitals deserve to understand what they're running. If you have specific questions about the stack (integrations, data portability, API access), ask us directly.
+            We publish our technology choices because hospital IT teams and administrators should know exactly what they're running. If you have specific questions about the stack (integrations, data portability, API access), ask us directly.
           </p>
         </div>
       </Reveal>

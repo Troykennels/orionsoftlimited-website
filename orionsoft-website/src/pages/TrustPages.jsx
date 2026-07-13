@@ -78,7 +78,7 @@ export function ClientsPage({ setCurrentPage }) {
       <PageHero
         label="OUR CLIENTS"
         title="130+ organisations trust Orion Soft."
-        subtitle="From 10-bed clinics to 500-bed hospitals, from primary schools to universities, from local churches to national logistics companies here are the organisations running on Orion Soft."
+        subtitle="From 10-bed clinics to 500-bed hospitals, from primary schools to universities, from local churches to national logistics companies — here are the organisations running on Orion Soft."
         color={C.blue}
       />
 
@@ -214,7 +214,7 @@ export function SuccessStoriesPage({ setCurrentPage }) {
       <PageHero
         label="SUCCESS STORIES"
         title="Proof in the numbers."
-        subtitle="These aren't case study summaries they're the actual outcomes our clients achieved after deploying Orion Soft products. Measured, verified, real."
+        subtitle="These aren't case study summaries — they're the actual outcomes our clients achieved after deploying Orion Soft products. Measured, verified, real."
         color={C.mint}
       />
 
@@ -276,8 +276,8 @@ const ALL_TESTIMONIALS = [
   { name: "Alhaji Suleiman Bello", role: "Finance Director", company: "Covenant Finance Ltd", product: "FinanceCore", color: C.gold, quote: "FinanceCore handles our PAYE, VAT, WHT, and bank reconciliation without us losing a night's sleep. The CBN compliance reports are generated in minutes, not days." },
   { name: "Dr. Fatima Abdullahi", role: "Head of Compliance", company: "NordCap Insurance", product: "ComplianceCore", color: C.amber, quote: "Our audit team used to dread regulatory reviews. With ComplianceCore, every policy is documented, every risk is tracked, and evidence is one click away. We passed our last NAICOM audit with zero findings." },
   { name: "Mr. Tunde Akintola", role: "HR Manager", company: "Lagoon Properties", product: "HRCore", color: C.rose, quote: "Employee records, leave management, performance reviews, and payroll all in one system. HRCore saved us two full-time HR assistant positions and made the remaining team far more effective." },
-  { name: "Prof. Chibuike Uzodinma", role: "Registrar", company: "Harmony University", product: "SchoolCore", color: C.mint, quote: "Managing 12,000 student records across faculties was a nightmare. SchoolCore brought everything under one roof admissions, academic records, fees, and timetables. Our administrative efficiency doubled." },
-  { name: "Reverend Grace Okoro", role: "General Overseer", company: "New Dawn Tabernacle", product: "ChurchCore", color: C.purple, quote: "ChurchCore helped us grow from tracking 800 members manually to managing 3,200 members digitally, including home cells, giving units, and event registrations. We didn't just manage growth we enabled it." },
+  { name: "Prof. Chibuike Uzodinma", role: "Registrar", company: "Harmony University", product: "SchoolCore", color: C.mint, quote: "Managing 12,000 student records across faculties was a nightmare. SchoolCore brought everything under one roof — admissions, academic records, fees, and timetables. Our administrative efficiency doubled." },
+  { name: "Reverend Grace Okoro", role: "General Overseer", company: "New Dawn Tabernacle", product: "ChurchCore", color: C.purple, quote: "ChurchCore helped us grow from tracking 800 members manually to managing 3,200 members digitally, including home cells, giving units, and event registrations. We didn't just manage growth — we enabled it." },
 ];
 
 export function TestimonialsPage({ setCurrentPage }) {
@@ -317,7 +317,7 @@ export function TestimonialsPage({ setCurrentPage }) {
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,340px),1fr))", gap: 20 }}>
             {visible.map((t, i) => (
-              <article key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", display: "flex", flexDirection: "column", height: "100%", transition: "all 0.3s" }}
+              <article key={t.name + '-' + t.company} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "32px 28px", display: "flex", flexDirection: "column", height: "100%", transition: "all 0.3s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${t.color}33`; e.currentTarget.style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = ""; }}>
                 <div style={{ display: "flex", gap: 3, marginBottom: 16 }}>
@@ -460,7 +460,7 @@ export function CertificationsPage({ setCurrentPage }) {
       <PageHero
         label="CERTIFICATIONS"
         title="Compliance you can verify."
-        subtitle="Orion Soft is built on a foundation of regulatory compliance, data security, and professional accountability. Here's every certification, registration, and control we operate."
+        subtitle="Orion Soft is built on a foundation of regulatory compliance, data security, and professional accountability. Here's every certification, registration, and security control we maintain."
         color={C.blue}
       />
 
@@ -546,7 +546,7 @@ const FAQ_CATEGORIES = [
     name: "Technical",
     color: C.mint,
     faqs: [
-      { q: "Is the software cloud-based or on-premise?", a: "Both. We offer cloud-hosted (recommended for most clients faster deployment, automatic updates) and on-premise deployment (for clients with specific data residency requirements, usually government or regulated industries)." },
+      { q: "Is the software cloud-based or on-premise?", a: "Both. We offer cloud-hosted (recommended for most clients — faster deployment, automatic updates) and on-premise deployment (for clients with specific data residency requirements, usually government or regulated industries)." },
       { q: "What infrastructure does Orion Soft run on?", a: "Our cloud products run on enterprise-grade infrastructure with automatic failover, daily backups, and 99.9% uptime SLA. Specific infrastructure details are provided under NDA to enterprise clients." },
       { q: "Do you have an API?", a: "Yes. All Orion Soft products expose REST APIs for integration with third-party systems. API documentation is available to clients after deployment. Enterprise clients can request early API access during evaluation." },
       { q: "Can Orion Soft integrate with systems we already use?", a: "We regularly integrate with accounting systems, HRIS platforms, payment gateways, laboratory equipment, and government portals. Every integration is scoped during the sales process." },
@@ -584,7 +584,7 @@ export function FAQPage({ setCurrentPage }) {
       <PageHero
         label="FREQUENTLY ASKED QUESTIONS"
         title="Answers before the first call."
-        subtitle="Everything you need to evaluate Orion Soft, understand our products, and decide with confidence before speaking to our team."
+        subtitle="Everything you need to assess Orion Soft and decide before you speak to our team."
         color={C.mint}
       />
 
@@ -1021,10 +1021,10 @@ export function ReferralPage({ setCurrentPage }) {
 // 10. INVESTORS PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 const INVESTMENT_THESIS = [
-  { title: "Massive underserved market", desc: "Nigeria has 200M+ people, 36,000+ registered healthcare facilities, 100,000+ schools, and millions of SMEs almost none of them run on professional business management software. We are building the infrastructure for digital operations in Africa.", color: C.blue, icon: "M3 3v18h18 M7 16l4-6 4 3 5-7" },
+  { title: "Massive underserved market", desc: "Nigeria has 200M+ people, 36,000+ registered healthcare facilities, 100,000+ schools, and millions of SMEs — almost none of them run on professional business management software. We are building the infrastructure for digital operations in Africa.", color: C.blue, icon: "M3 3v18h18 M7 16l4-6 4 3 5-7" },
   { title: "High retention, recurring revenue", desc: "Enterprise software has 90%+ annual retention. Once a hospital or school runs on CareCore or SchoolCore, switching cost is near-zero for them to stay and very high to leave. Our current client retention is 99.2%.", color: C.mint, icon: "M12 2a10 10 0 100 20A10 10 0 0012 2z M12 8v4l3 3" },
   { title: "9 products, one platform family", desc: "We are not a single-product company. Each new product we launch creates opportunities for cross-sell into existing clients. CareCore clients are natural HRCore and FinanceCore buyers. This drives LTV without proportional CAC.", color: C.gold, icon: "M12 2L2 7l10 5 10-5-10-5z M2 17l10 5 10-5 M2 12l10 5 10-5" },
-  { title: "Built for the African regulatory environment", desc: "Our products ship with NDPR, CAC, CBN, NAFDAC, NHIS, FIRS, and WAEC compliance built in not bolted on. A foreign competitor cannot clone that in 12 months. It took us 4 years.", color: C.purple, icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z" },
+  { title: "Built for the African regulatory environment", desc: "Our products ship with NDPR, CAC, CBN, NAFDAC, NHIS, FIRS, and WAEC compliance built in — not bolted on. A foreign competitor cannot clone that in 12 months. It took us 4 years.", color: C.purple, icon: "M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z" },
 ];
 
 const MILESTONES = [
@@ -1045,7 +1045,7 @@ export function InvestorsPage({ setCurrentPage }) {
       <PageHero
         label="INVESTOR RELATIONS"
         title="Investing in Africa's business infrastructure."
-        subtitle="Orion Soft is building the operating system for African enterprises healthcare, education, finance, logistics, and beyond. We're growing fast and selectively raising capital to go further, faster."
+        subtitle="Orion Soft is building the operating system for African enterprises healthcare, education, finance, logistics, and beyond. We're growing fast and raising capital to expand."
         color={C.gold}
       />
 
@@ -1096,7 +1096,7 @@ export function InvestorsPage({ setCurrentPage }) {
           <div style={{ position: "relative", paddingLeft: 32 }}>
             <div style={{ position: "absolute", left: 14, top: 0, bottom: 0, width: 2, background: C.border }} />
             {MILESTONES.map((m, i) => {
-              const isFuture = parseInt(m.year) > 2024;
+              const isFuture = parseInt(m.year) > new Date().getFullYear();
               return (
                 <div key={i} style={{ position: "relative", marginBottom: 28 }}>
                   <div style={{ position: "absolute", left: -25, top: 4, width: 12, height: 12, borderRadius: "50%", background: isFuture ? C.surface : C.gold, border: `2px solid ${isFuture ? C.border : C.gold}`, zIndex: 1 }} />

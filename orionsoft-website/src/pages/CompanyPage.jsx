@@ -255,7 +255,7 @@ export default function CompanyPage({ setCurrentPage }) {
                 title: "Innovation",
                 color: "#F43F5E",
                 icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-                body: "We invest in AI tooling (Ori assistant), modern serverless infrastructure, and product research driven by the people who use our software daily. Features come from listening to clients, not from reading industry trend reports.",
+                body: "We invest in Ori (our AI assistant), the right infrastructure for each job, and product research led by the people who actually use the software every day. Features come from listening to clients, not from reading trend reports.",
               },
             ].map((v, i) => (
               <Reveal key={v.title} delay={Math.min(i * 0.05, 0.25)}>

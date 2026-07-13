@@ -512,7 +512,7 @@ const INDUSTRIES = [
     solutions: [
       "Directors' Portal: consolidated executive dashboard across all units",
       "HRCore + FinanceCore: integrated staff and financial management",
-      "ComplianceCore: enterprise-wide policy and risk governance",
+      "ComplianceCore: company-wide policy tracking and compliance oversight",
       "Automated board packs with live KPI snapshots",
     ],
     products: ["Directors' Portal", "HRCore", "FinanceCore"],
@@ -567,7 +567,7 @@ const INDUSTRIES = [
       "Business owners spending 50%+ of their time on administrative tasks",
       "No clear financial reporting to guide growth or secure financing",
       "Staff leave, payroll, and records tracked informally",
-      "Difficulty scaling without repeatable operational processes",
+      "No systems to support growth without everything depending on one person",
     ],
     solutions: [
       "FinanceCore: invoicing, accounts, and PAYE/VAT compliance built in",
@@ -585,7 +585,7 @@ const INDUSTRIES = [
     tagline: "International NGOs, foundations & development organisations",
     challenges: [
       "Donor reporting requires manual data extraction from multiple sources",
-      "Beneficiary tracking done in spreadsheets with no single source of truth",
+      "Beneficiary tracking done in spreadsheets with no one central record that is always current",
       "Financial compliance across multiple donor-restricted budgets",
       "Project activity logs and staff timesheets managed separately",
     ],
@@ -604,7 +604,7 @@ const INDUSTRIES = [
     color: "#C8A850",
     tagline: "Banks, microfinance, fintech, insurance & professional services",
     challenges: [
-      "CBN, NDPR, and FIRS compliance managed reactively rather than proactively",
+      "CBN, NDPR, and FIRS compliance handled after problems appear, not before they arise",
       "Manual KYC and regulatory documentation creating compliance risk",
       "No automated audit trail across customer accounts and transactions",
       "PAYE, pension, and statutory filings often late or inaccurate",
@@ -632,7 +632,7 @@ const INDUSTRIES = [
     solutions: [
       "FleetCore: vehicle registry, driver records, and trip management",
       "Fuel consumption tracking with variance alerts per vehicle",
-      "Document expiry calendar licence, insurance, roadworthiness reminders",
+      "Document expiry calendar: licence, insurance, roadworthiness reminders",
       "Per-route profitability reporting with fuel cost allocation",
     ],
     products: ["FleetCore", "InventoryCore"],
@@ -667,7 +667,7 @@ const INDUSTRIES = [
       "Billable hours and client project costs tracked manually across engagements",
       "Staff utilisation and profitability per engagement unknown",
       "HR and leave management handled informally as headcount grows",
-      "No structured compliance or risk management framework in place",
+      "No compliance system, policy register, or audit trail in place",
     ],
     solutions: [
       "HRCore: staff records, leave, appraisals, and billable time tracking",
@@ -831,7 +831,7 @@ export default function IndustriesPage({ setCurrentPage }) {
                 Software shaped<br/>to your sector.
               </h1>
               <p style={{ fontSize: 17, color: "rgba(200,210,226,0.75)", fontFamily: font, lineHeight: 1.82, margin: "0 0 36px", maxWidth: 480 }}>
-                Every industry has its own pressures, regulations, and workflows. Orion Soft builds platforms that understand your sector not generic software you have to force-fit.
+                Every industry has its own pressures, regulations, and workflows. Orion Soft builds platforms that understand your sector — not generic tools you have to bend into shape.
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <button type="button" onClick={() => setCurrentPage("contact")}

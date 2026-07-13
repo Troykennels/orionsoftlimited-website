@@ -34,9 +34,6 @@ function Reveal({ children, delay = 0, style = {} }) {
 }
 
 export default function WhyPage({ setCurrentPage }) {
-  const [heroHover1, setHeroHover1] = useState(false);
-  const [heroHover2, setHeroHover2] = useState(false);
-
   const values = [
     {
       color: T.blue,
@@ -56,7 +53,7 @@ export default function WhyPage({ setCurrentPage }) {
       color: T.gold,
       dim: T.goldDim,
       title: "Local Context",
-      body: "Our products are built for Nigerian internet speeds, regulatory environments, and workflows, CBN compliance, NDPR obligations, WAEC result structures, and offline capability are native to our products, not patches applied after the fact.",
+      body: "Our products are built for Nigerian internet speeds, regulatory environments, and workflows. CBN compliance, NDPR obligations, WAEC result structures, and offline capability are native to our products, not patches applied after the fact.",
       paths: [
         "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z",
         "M15 11a3 3 0 11-6 0 3 3 0 016 0z",
@@ -320,7 +317,7 @@ export default function WhyPage({ setCurrentPage }) {
                   MISSION
                 </div>
                 <p style={{ fontSize: 17, color: "#334155", lineHeight: 1.8 }}>
-                  We exist to build enterprise software that Nigerian organisations can own, operate, and grow on, without depending on foreign vendors or paying for features they will never use. Every Orion Soft product starts from a documented understanding of how Nigerian organisations actually work, not how a software specification imagines they should work.
+                  We exist to build enterprise software that Nigerian organisations can own, operate, and grow on without depending on foreign vendors or paying for features they will never use. Every Orion Soft product starts from a documented understanding of how Nigerian organisations actually work, not how a software specification imagines they should work.
                 </p>
               </div>
               <div style={{ borderLeft: "1px solid #E2E8F0", paddingLeft: 48 }}>

@@ -48,7 +48,7 @@ const INDUSTRIES = [
 
 const WHY_REASONS = [
   { num:"01", color:"#4F8EF7", title:"Production-grade from day one.", body:"Security, audit logs, and role-based access are baseline not extras. We don't ship half-finished products and patch them in production. Every module undergoes security review, load testing, and client acceptance before going live.", stat:"99.5%", statLabel:"uptime SLA" },
-  { num:"02", color:"#10B981", title:"Built for African business reality.", body:"PAYE, WHT, NHIS, NHF, NDPR, CAC our systems know Nigerian regulation the way your accountant does. We don't localise afterwards. We build for Nigeria first, then make it global-ready.", stat:"8+", statLabel:"Nigerian regulations supported" },
+  { num:"02", color:"#10B981", title:"Built for African business reality.", body:"PAYE, WHT, NHIS, NHF, NDPR, CAC: our systems know Nigerian regulation the way your accountant does. We don't localise afterwards. We build for Nigeria first, then make it global-ready.", stat:"8+", statLabel:"Nigerian regulations supported" },
   { num:"03", color:"#C8A850", title:"We stay long after launch.", body:"Staff training, go-live support, and SLA-backed maintenance are written into every engagement. You don't get handed to a call centre. You get a dedicated team that knows your deployment.", stat:"100%", statLabel:"deployments with support SLA" },
   { num:"04", color:"#F43F5E", title:"Architecture that holds up under scrutiny.", body:"API-first design, documented endpoints, role-based audit logs, and infrastructure on AWS. When a client's IT team or a government procurement committee asks technical questions, we hand them the documentation. Nothing is hidden behind 'our proprietary approach'.", stat:"25+", statLabel:"core modules shipped" },
 ];
@@ -227,7 +227,7 @@ function HeroSection({ setCurrentPage }) {
 
         {/* Subheadline */}
         <p style={{ fontSize:"clamp(15px,1.3vw,17px)", color:"rgba(200,210,226,0.68)", fontFamily:font, lineHeight:1.88, margin:"0 0 34px", maxWidth:470 }}>
-          From healthcare to education, government to enterprise, Orion Soft Limited develops secure, scalable and intelligent software that transforms how organizations operate.
+          Orion Soft Limited builds software that hospitals, schools, government agencies, and businesses across Nigeria use every day to run their operations.
         </p>
 
         {/* CTAs */}
@@ -967,7 +967,7 @@ function ConsultationSection({ setCurrentPage }) {
           <div>
             <div style={{ fontSize:11, fontWeight:800, color:LC.gold, fontFamily:font, letterSpacing:"0.14em", marginBottom:16 }}>BOOK A FREE CONSULTATION</div>
             <h2 style={{ fontSize:"clamp(28px,3.5vw,46px)", fontWeight:900, color:"#F2F6FF", fontFamily:font, lineHeight:1.06, letterSpacing:"-0.035em", margin:"0 0 14px" }}>
-              Talk to us no sales pressure, just good advice.
+              Talk to us. No sales pressure, just good advice.
             </h2>
             <p style={{ fontSize:16, color:"rgba(200,210,226,0.7)", fontFamily:font, lineHeight:1.8, margin:"0 0 36px" }}>
               Tell us what you're trying to solve. We'll listen, ask the right questions, and tell you honestly whether we're the right fit and which product or approach suits you best.

@@ -66,7 +66,7 @@ function IllCareLocal() {
       </defs>
       <rect width="380" height="190" fill="url(#g-cl)"/>
       {[0,1,2].map(i=>(
-        <g key={i}>
+        <g key={'row-'+i}>
           <rect x="26" y={44+i*34} width="90" height="28" rx="5" fill="#6EE7B7" fillOpacity="0.3" stroke="#10B981" strokeWidth="1" strokeOpacity="0.35"/>
           <circle cx="44" cy={58+i*34} r="4.5" fill="#34D399" fillOpacity="0.8"/>
           <rect x="58" y={53+i*34} width="44" height="3.5" rx="1.5" fill="#10B981" fillOpacity="0.4"/>
@@ -74,7 +74,7 @@ function IllCareLocal() {
         </g>
       ))}
       {[0,1,2].map(i=>(
-        <g key={i}>
+        <g key={'stack-'+i}>
           <ellipse cx="248" cy={156-i*24} rx="54" ry="14" fill="#6EE7B7" fillOpacity={0.35+i*0.08}/>
           <rect x="194" y={132-i*24} width="108" height="24" fill="#10B981" fillOpacity={0.12+i*0.04}/>
           <ellipse cx="248" cy={132-i*24} rx="54" ry="14" fill="#34D399" fillOpacity={0.45+i*0.08} stroke="#10B981" strokeWidth="0.8" strokeOpacity="0.3"/>
@@ -108,10 +108,10 @@ function IllSchool() {
       <path d="M196,66 L248,60 Q262,62 262,72 L262,132 Q262,144 248,146 L196,152 Z" fill="#FCD34D" fillOpacity="0.6"/>
       <line x1="196" y1="66" x2="196" y2="152" stroke="#F59E0B" strokeWidth="2" strokeOpacity="0.45"/>
       {[0,1,2,3].map(i=>(
-        <line key={i} x1="144" y1={82+i*16} x2="186" y2={84+i*16} stroke="#D97706" strokeWidth="1.5" strokeOpacity="0.28"/>
+        <line key={'ll-'+i} x1="144" y1={82+i*16} x2="186" y2={84+i*16} stroke="#D97706" strokeWidth="1.5" strokeOpacity="0.28"/>
       ))}
       {[0,1,2,3].map(i=>(
-        <line key={i} x1="208" y1={82+i*16} x2="248" y2={84+i*16} stroke="#D97706" strokeWidth="1.5" strokeOpacity="0.28"/>
+        <line key={'rl-'+i} x1="208" y1={82+i*16} x2="248" y2={84+i*16} stroke="#D97706" strokeWidth="1.5" strokeOpacity="0.28"/>
       ))}
       <rect x="161" y="40" width="70" height="14" rx="3" fill="#B45309"/>
       <polygon points="196,22 232,40 196,40 160,40" fill="#92400E"/>
@@ -297,8 +297,8 @@ function IllAIAuto() {
         <line key={i} x1={all[a][0]} y1={all[a][1]} x2={all[b][0]} y2={all[b][1]}
           stroke="#22D3EE" strokeWidth="1.5" strokeOpacity="0.38"/>
       ))}
-      {left.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="6" fill="#22D3EE" fillOpacity="0.5"/>)}
-      {mid.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="6" fill="#0891B2" fillOpacity="0.65"/>)}
+      {left.map(([x,y],i)=><circle key={'l-'+i} cx={x} cy={y} r="6" fill="#22D3EE" fillOpacity="0.5"/>)}
+      {mid.map(([x,y],i)=><circle key={'m-'+i} cx={x} cy={y} r="6" fill="#0891B2" fillOpacity="0.65"/>)}
       <circle cx="210" cy="95" r="52" fill="none" stroke="#06B6D4" strokeWidth="10"
         strokeOpacity="0.18" strokeDasharray="14 8"/>
       <circle cx="210" cy="95" r="38" fill="#06B6D4" fillOpacity="0.07" stroke="#06B6D4" strokeWidth="1.5" strokeOpacity="0.25"/>
@@ -348,7 +348,7 @@ const PRODUCTS = [
     name: "CareCore Local",
     category: "Healthcare",
     tagline: "Offline Hospital Management",
-    desc: "Full-featured hospital management that runs completely offline. Designed for areas with unreliable internet zero dependency on connectivity, zero compromise on functionality.",
+    desc: "Full-featured hospital management that runs completely offline. Designed for areas with unreliable internet — zero dependency on connectivity, zero compromise on functionality.",
     color: "#10B981",
     badge: null,
     Illustration: IllCareLocal,
@@ -402,7 +402,7 @@ const PRODUCTS = [
     name: "ComplianceCore",
     category: "Business Software",
     tagline: "Compliance & Risk Management",
-    desc: "Stay perpetually audit-ready with automated tracking of Nigerian regulatory requirements. Policies, risk registers, audit trails, and a full regulatory calendar all in one place.",
+    desc: "Stay audit-ready year-round with automated tracking of Nigerian regulatory requirements. Policies, risk registers, audit trails, and a full regulatory calendar all in one place.",
     color: "#C8A850",
     badge: null,
     Illustration: IllCompliance,
@@ -455,7 +455,7 @@ const PRODUCTS = [
     id: "ai-automation",
     name: "AI Business Automation",
     category: "Technology",
-    tagline: "Automate the repeatable. Focus on the work that matters.",
+    tagline: "Automate the repetitive. Put your team on work that needs them.",
     desc: "Most Nigerian businesses are running manual processes that don't need to be manual. We identify which workflows can be automated, build the pipelines, and connect them to your existing systems. Common use cases: invoice extraction from email, automated compliance reporting, and data sync between separate systems that weren't built to talk to each other.",
     color: "#06B6D4",
     badge: "NEW",
@@ -628,7 +628,7 @@ export default function ProductsPage({ setCurrentPage }) {
               <span style={{ color: LC.gold }}>standard.</span>
             </h1>
             <p style={{ fontSize: "clamp(16px,1.6vw,19px)", color: LC.textLight, fontFamily: font, lineHeight: 1.8, maxWidth: 580 }}>
-              From cloud-based hospital management to AI-powered business automation, every Orion Soft platform is purpose-built for its industry engineered to the same security, reliability, and support standard.
+              From cloud-based hospital management to AI-powered business automation, every Orion Soft platform is purpose-built for its industry — engineered to the same security, reliability, and support standard.
             </p>
           </div>
         </div>
@@ -713,7 +713,7 @@ export default function ProductsPage({ setCurrentPage }) {
                 Don't see exactly what you need?
               </h3>
               <p style={{ fontSize: 15.5, color: "rgba(200,210,226,0.72)", fontFamily: font, maxWidth: 500, lineHeight: 1.7, margin: 0 }}>
-                We also build fully bespoke software tell us what you're trying to solve and our team will design a solution around you.
+                We also build fully bespoke software — tell us what you're trying to solve and our team will design a solution around you.
               </p>
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
