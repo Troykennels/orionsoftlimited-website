@@ -23,3 +23,13 @@ Thumbs.db
 
 # Node
 node_modules/
+
+# Secrets — never commit real env values
+.env
+.env.local
+.env.*.local
+orionsoft-website/.env
+orionsoft-website/.env.local
+
+# Vercel CLI local config/cache
+.vercel/

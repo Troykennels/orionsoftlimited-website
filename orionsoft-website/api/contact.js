@@ -1,11 +1,11 @@
 import { push } from "./store.js";
+import { sendEmail } from "./_lib/mailer.js";
 
 const rateMap = new Map();
 const RATE_LIMIT = 10;
 const RATE_WINDOW = 15 * 60 * 1000;
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
-const RESEND_FROM = process.env.RESEND_FROM_EMAIL || "Orion Soft <onboarding@resend.dev>";
 
 const TYPE_LABELS = {
   demo: "Demo Booking", contact: "General Contact", quote: "Quote Request",
@@ -164,42 +164,6 @@ function adminHtml(data) {
 </table>
 </td></tr></table>
 </body></html>`;
-}
-
-async function sendViaResend(to, subject, html, apiKey) {
-  try {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
-    });
-    return r.ok;
-  } catch { return false; }
-}
-
-async function sendViaGmail(to, subject, html) {
-  try {
-    const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.default.createTransport({
-      service: "gmail",
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-    });
-    await transporter.sendMail({ from: `"Orion Soft" <${process.env.GMAIL_USER}>`, to, subject, html });
-    return true;
-  } catch { return false; }
-}
-
-// Gmail first — works for ANY recipient email address.
-// Resend with onboarding@resend.dev is restricted to the account owner only,
-// so it silently fails for client emails. Gmail has no such restriction.
-async function sendEmail(to, subject, html) {
-  if (process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_USER) {
-    const ok = await sendViaGmail(to, subject, html);
-    if (ok) return true;
-  }
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey) return sendViaResend(to, subject, html, resendKey);
-  return false;
 }
 
 export default async function handler(req, res) {

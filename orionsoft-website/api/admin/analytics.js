@@ -1,7 +1,6 @@
 // Comprehensive analytics endpoint — all metrics from Upstash in one call
 import { list, getCount, hgetall, available } from "../store.js";
-
-const SECRET = process.env.ADMIN_SECRET || process.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
+import { requireAuth } from "../_lib/auth.js";
 
 function safeParse(item) {
   if (item && typeof item === "object") return item;
@@ -33,13 +32,13 @@ const EMPTY = {
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  const key = req.headers["x-admin-key"] || req.query.key || "";
-  if (key !== SECRET) return res.status(401).json({ error: "Unauthorized" });
+  if (!requireAuth(req, res, "admin")) return;
 
   if (!available()) return res.json(EMPTY);
 

@@ -37,69 +37,43 @@ const SK = {
   audit:        "orionsoft_audit_v1",
   features:     "orionsoft_features_v1",
   newsletter:   "orionsoft_newsletter_v1",
-  users:        "orionsoft_users_v1",
   media:        "orionsoft_media_v1",
-  session:      "orionsoft_admin_session_v1",
-  lockout:      "orionsoft_admin_lockout_v1",
   conversations:"orionsoft_conversations_v1",
 };
 
-// ─── Security Layer ──────────────────────────────────────────────────────────
-async function hashStr(str) {
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 min
-
-function getSession() {
+// ─── Auth (server-verified session, see api/_lib/auth.js) ───────────────────
+async function fetchSession() {
   try {
-    const raw = localStorage.getItem(SK.session);
-    if (!raw) return null;
-    const s = JSON.parse(raw);
-    if (Date.now() > s.expiresAt) { localStorage.removeItem(SK.session); return null; }
-    return s;
+    const r = await fetch("/api/auth/me");
+    if (!r.ok) return null;
+    const json = await r.json();
+    return json.user || null;
   } catch { return null; }
 }
 
-function createSession(username, role = "superadmin") {
-  const s = { id: Math.random().toString(36).slice(2), username, role, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL };
-  localStorage.setItem(SK.session, JSON.stringify(s));
-  return s;
+async function serverLogin(email, password) {
+  const r = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, portal: "admin" }),
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) return { ok: false, error: json.error || `Login failed (${r.status})` };
+  return { ok: true, user: json.user };
 }
 
-function destroySession() { localStorage.removeItem(SK.session); }
-
-function getLockout() {
-  try { const r = localStorage.getItem(SK.lockout); return r ? JSON.parse(r) : null; } catch { return null; }
+async function serverLogout() {
+  try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
 }
 
-function setLockout(attempts) {
-  localStorage.setItem(SK.lockout, JSON.stringify({ attempts, lastAt: Date.now() }));
-}
+// ─── Audit Logger (client-side, for CMS content edits only — real admin/staff
+// account activity is now audited server-side in orionsoft:admin:audit) ─────
+let _currentAuditUser = null;
+function setCurrentAuditUser(user) { _currentAuditUser = user; }
 
-function clearLockout() { localStorage.removeItem(SK.lockout); }
-
-function isLockedOut() {
-  const l = getLockout();
-  if (!l || l.attempts < MAX_ATTEMPTS) return false;
-  if (Date.now() - l.lastAt > LOCKOUT_MS) { clearLockout(); return false; }
-  return true;
-}
-
-function remainingLockout() {
-  const l = getLockout();
-  if (!l) return 0;
-  return Math.max(0, Math.ceil((LOCKOUT_MS - (Date.now() - l.lastAt)) / 60000));
-}
-
-// ─── Audit Logger ────────────────────────────────────────────────────────────
 function auditLog(action, target, details = "") {
   try {
-    const s = getSession();
-    const entry = { id: Date.now() + Math.random(), ts: new Date().toISOString(), user: s?.username || "system", role: s?.role || "", action, target, details };
+    const entry = { id: Date.now() + Math.random(), ts: new Date().toISOString(), user: _currentAuditUser?.name || "system", role: _currentAuditUser?.role || "", action, target, details };
     const raw = localStorage.getItem(SK.audit);
     const logs = raw ? JSON.parse(raw) : [];
     logs.unshift(entry);
@@ -123,13 +97,11 @@ function uid() { return `i-${Date.now()}-${Math.random().toString(36).slice(2, 7
 
 // Server sync fetches live data from Upstash via /api/admin/data
 // Merges server records into localStorage so admin sees ALL visitors' data
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
-
+// Auth is via the httpOnly session cookie (sent automatically, same-origin) —
+// no shared secret is sent from the client anymore.
 async function fetchServerData(resource = "all") {
   try {
-    const r = await fetch(`/api/admin/data?resource=${resource}`, {
-      headers: { "x-admin-key": ADMIN_KEY },
-    });
+    const r = await fetch(`/api/admin/data?resource=${resource}`);
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
@@ -340,6 +312,24 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: "STAFF & HR",
+    items: [
+      { id: "employees",     label: "Employees",        icon: "🧑‍💼" },
+      { id: "weekly-reports",label: "Weekly Reports",   icon: "🗒️" },
+      { id: "leave-requests",label: "Leave Requests",   icon: "🌴" },
+      { id: "payroll",       label: "Payroll",          icon: "💵" },
+    ],
+  },
+  {
+    label: "DOCUMENTS",
+    items: [
+      { id: "templates",    label: "Templates",         icon: "📄" },
+      { id: "signatories",  label: "Signatories",       icon: "✍️" },
+      { id: "contracts",    label: "Contracts",         icon: "📑" },
+      { id: "email-log",    label: "Email Log",         icon: "✉️" },
+    ],
+  },
+  {
     label: "SYSTEM",
     items: [
       { id: "health",       label: "System Health",    icon: "💡" },
@@ -353,51 +343,22 @@ const NAV_GROUPS = [
 
 // ─── Login Screen ────────────────────────────────────────────────────────────
 function AdminLogin({ onLogin }) {
+  const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const locked = isLockedOut();
-  const minsLeft = remainingLockout();
-
   async function handleSubmit(e) {
     e.preventDefault();
-    if (locked) return;
     setLoading(true);
     setErr("");
 
-    const envPw = import.meta.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
-    let match = pw === envPw;
-
-    // Also accept additional users created in localStorage
-    if (!match) {
-      const users = lsGet(SK.users, []);
-      if (users.length) {
-        const hash = await hashStr(pw);
-        const u = users.find(x => x.active !== false && x.hash === hash);
-        if (u) {
-          clearLockout();
-          const session = createSession(u.username, u.role || "editor");
-          auditLog("login", "admin", `Successful login (${u.username})`);
-          onLogin(session);
-          setLoading(false);
-          return;
-        }
-      }
-    }
-
-    if (match) {
-      clearLockout();
-      const session = createSession("admin", "superadmin");
-      auditLog("login", "admin", "Successful login");
-      onLogin(session);
+    const result = await serverLogin(email.trim(), pw);
+    if (result.ok) {
+      auditLog("login", "admin", `Successful login (${result.user.email})`);
+      onLogin(result.user);
     } else {
-      const l = getLockout() || { attempts: 0, lastAt: Date.now() };
-      l.attempts++;
-      l.lastAt = Date.now();
-      setLockout(l.attempts);
-      const remaining = MAX_ATTEMPTS - l.attempts;
-      setErr(remaining <= 0 ? `Too many attempts. Locked for ${LOCKOUT_MS / 60000} minutes.` : `Incorrect password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+      setErr(result.error);
     }
     setLoading(false);
   }
@@ -414,32 +375,34 @@ function AdminLogin({ onLogin }) {
           <p style={{ fontSize: 14, color: C.textMuted, margin: 0 }}>Orion Soft Limited Restricted Access</p>
         </div>
 
-        {locked ? (
-          <div style={{ background: C.roseDim, border: `1px solid ${C.rose}44`, borderRadius: 10, padding: "14px 18px", color: C.rose, fontSize: 14, textAlign: "center" }}>
-            Account locked. Try again in {minsLeft} minute{minsLeft === 1 ? "" : "s"}.
-          </div>
-        ) : (
-          <>
-            <div style={{ marginBottom: 20 }}>
-              <Label>Password</Label>
-              <input
-                type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Enter admin password"
-                autoFocus autoComplete="current-password"
-                style={{ width: "100%", background: C.surface, border: `1px solid ${err ? C.rose : C.border}`, color: C.text, borderRadius: 10, padding: "13px 16px", fontSize: 15, fontFamily: font, outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = C.gold}
-                onBlur={e => e.target.style.borderColor = err ? C.rose : C.border}
-              />
-            </div>
-            {err && <div style={{ fontSize: 13, color: C.rose, marginBottom: 16, lineHeight: 1.5 }}>{err}</div>}
-            <button type="submit" disabled={loading || !pw} style={{
-              width: "100%", padding: "13px", background: C.gold, color: "#060810", border: "none", borderRadius: 10,
-              fontSize: 15, fontWeight: 700, fontFamily: font, cursor: loading || !pw ? "not-allowed" : "pointer",
-              opacity: loading || !pw ? 0.6 : 1, transition: "opacity 0.2s",
-            }}>
-              {loading ? "Verifying…" : "Sign In →"}
-            </button>
-          </>
-        )}
+        <div style={{ marginBottom: 16 }}>
+          <Label>Email</Label>
+          <input
+            type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@orionsoftlimited.com"
+            autoFocus autoComplete="username"
+            style={{ width: "100%", background: C.surface, border: `1px solid ${err ? C.rose : C.border}`, color: C.text, borderRadius: 10, padding: "13px 16px", fontSize: 15, fontFamily: font, outline: "none", boxSizing: "border-box" }}
+            onFocus={e => e.target.style.borderColor = C.gold}
+            onBlur={e => e.target.style.borderColor = err ? C.rose : C.border}
+          />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <Label>Password</Label>
+          <input
+            type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Enter admin password"
+            autoComplete="current-password"
+            style={{ width: "100%", background: C.surface, border: `1px solid ${err ? C.rose : C.border}`, color: C.text, borderRadius: 10, padding: "13px 16px", fontSize: 15, fontFamily: font, outline: "none", boxSizing: "border-box" }}
+            onFocus={e => e.target.style.borderColor = C.gold}
+            onBlur={e => e.target.style.borderColor = err ? C.rose : C.border}
+          />
+        </div>
+        {err && <div style={{ fontSize: 13, color: C.rose, marginBottom: 16, lineHeight: 1.5 }}>{err}</div>}
+        <button type="submit" disabled={loading || !pw || !email} style={{
+          width: "100%", padding: "13px", background: C.gold, color: "#060810", border: "none", borderRadius: 10,
+          fontSize: 15, fontWeight: 700, fontFamily: font, cursor: loading || !pw || !email ? "not-allowed" : "pointer",
+          opacity: loading || !pw || !email ? 0.6 : 1, transition: "opacity 0.2s",
+        }}>
+          {loading ? "Verifying…" : "Sign In →"}
+        </button>
         <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 24, lineHeight: 1.6 }}>
           This portal is for authorised Orion Soft administrators only.<br />Unauthorised access attempts are logged.
         </p>
@@ -465,9 +428,7 @@ function useAnalytics() {
     }
     setLoading(true);
     try {
-      const res = await globalThis.fetch("/api/admin/analytics", {
-        headers: { "x-admin-key": ADMIN_KEY }, cache: "no-store",
-      });
+      const res = await globalThis.fetch("/api/admin/analytics", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       cacheRef.current = { data: json, ts: Date.now() };
@@ -2032,47 +1993,73 @@ function SettingsSection() {
 
 // ─── Users & Roles ───────────────────────────────────────────────────────────
 const ROLE_PERMS = {
-  superadmin: "Full access all sections, system settings, user management",
+  superadmin: "Full access all sections, system settings, admin & staff management",
   editor:     "Content only blog, products, testimonials, FAQs, team, careers",
-  viewer:     "Read-only can view analytics and leads but cannot edit anything",
 };
 
 function UsersSection({ session }) {
-  const [users, setUsers] = useState(() => lsGet(SK.users, []));
-  const [form, setForm] = useState({ username: "", password: "", role: "editor" });
+  const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ username: "", email: "", password: "", role: "editor" });
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
 
-  const isSuperAdmin = session.role === "superadmin";
+  const isSuperAdmin = session.adminRole === "superadmin";
 
-  async function addUser() {
-    if (!form.username || !form.password) { setMsg("All fields required."); return; }
-    if (users.find(u => u.username === form.username)) { setMsg("Username already exists."); return; }
-    const hash = await hashStr(form.password);
-    const newUser = { id: Date.now(), username: form.username, hash, role: form.role, createdAt: new Date().toISOString(), active: true };
-    const updated = [...users, newUser];
-    setUsers(updated);
-    lsSet(SK.users, updated, "create_user", form.username);
-    setForm({ username: "", password: "", role: "editor" });
-    setMsg("User added.");
-    setTimeout(() => setMsg(""), 3000);
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/admins");
+      const json = await r.json();
+      if (r.ok) setAdmins(json.admins || []);
+    } finally { setLoading(false); }
   }
 
-  function deleteUser(id) {
-    if (!isSuperAdmin) return;
-    const u = users.find(u => u.id === id);
-    if (u?.username === "admin") { setMsg("Cannot delete the primary admin."); return; }
-    if (!confirm(`Delete user "${u?.username}"?`)) return;
-    const updated = users.filter(u => u.id !== id);
-    setUsers(updated);
-    lsSet(SK.users, updated, "delete_user", u?.username);
+  useEffect(() => { load(); }, []);
+
+  async function addUser() {
+    setErr(""); setMsg("");
+    if (!form.username || !form.email || !form.password) { setErr("All fields required."); return; }
+    if (form.password.length < 10) { setErr("Password must be at least 10 characters."); return; }
+    const r = await fetch("/api/admin/admins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to add admin."); return; }
+    auditLog("create_admin", form.email);
+    setForm({ username: "", email: "", password: "", role: "editor" });
+    setMsg("Admin added.");
+    setTimeout(() => setMsg(""), 3000);
+    load();
+  }
+
+  async function toggleStatus(a) {
+    const nextStatus = a.status === "active" ? "disabled" : "active";
+    const r = await fetch("/api/admin/admins", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: a.id, status: nextStatus }),
+    });
+    if (r.ok) { auditLog("update_admin_status", a.email, nextStatus); load(); }
+  }
+
+  async function deleteUser(a) {
+    if (!confirm(`Remove admin "${a.username}"?`)) return;
+    const r = await fetch(`/api/admin/admins?id=${encodeURIComponent(a.id)}`, { method: "DELETE" });
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to remove admin."); return; }
+    auditLog("delete_admin", a.email);
+    load();
   }
 
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Total Users"  value={users.length + 1} sub="Including primary admin" color={C.blue}   icon="👤" />
-        <StatCard label="Active"       value={users.filter(u => u.active).length + 1}          color={C.mint}   icon="✅" />
-        <StatCard label="Your Role"    value={session.role}                                     color={C.gold}   icon="🔑" />
+        <StatCard label="Total Admins" value={admins.length}                                     color={C.blue}   icon="👤" />
+        <StatCard label="Active"       value={admins.filter(a => a.status === "active").length}   color={C.mint}   icon="✅" />
+        <StatCard label="Your Role"    value={session.adminRole}                                  color={C.gold}   icon="🔑" />
       </div>
 
       <SectionCard>
@@ -2080,7 +2067,7 @@ function UsersSection({ session }) {
         <div style={{ marginTop: 14 }}>
           {Object.entries(ROLE_PERMS).map(([role, desc]) => (
             <div key={role} style={{ display: "flex", gap: 14, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <Badge color={role === "superadmin" ? C.gold : role === "editor" ? C.blue : C.textMuted}>{role}</Badge>
+              <Badge color={role === "superadmin" ? C.gold : C.blue}>{role}</Badge>
               <span style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.5 }}>{desc}</span>
             </div>
           ))}
@@ -2089,60 +2076,60 @@ function UsersSection({ session }) {
 
       {isSuperAdmin && (
         <SectionCard style={{ marginTop: 20 }}>
-          <SectionTitle>Add Admin User</SectionTitle>
-          <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginBottom: 16 }}>Additional users can log in with their own credentials.</p>
+          <SectionTitle>Add Admin</SectionTitle>
+          <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginBottom: 16 }}>Additional admins log in with their own email and password — real server-verified accounts, not shared credentials.</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
               <Label>Username</Label>
               <Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="e.g. content_editor" />
             </div>
             <div>
-              <Label>Password</Label>
-              <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Minimum 8 characters" />
+              <Label>Email</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="name@orionsoftlimited.com" />
             </div>
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <Label>Role</Label>
-            <Select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              <option value="superadmin">Super Admin</option>
-              <option value="editor">Editor</option>
-              <option value="viewer">Viewer</option>
-            </Select>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+            <div>
+              <Label>Password</Label>
+              <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Minimum 10 characters" />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                <option value="editor">Editor</option>
+                <option value="superadmin">Super Admin</option>
+              </Select>
+            </div>
           </div>
-          <Btn onClick={addUser}>Add User</Btn>
+          <Btn onClick={addUser}>Add Admin</Btn>
           {msg && <p style={{ fontSize: 13, color: C.mint, fontFamily: font, marginTop: 8 }}>{msg}</p>}
+          {err && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginTop: 8 }}>{err}</p>}
         </SectionCard>
       )}
 
       <SectionCard style={{ marginTop: 20 }}>
-        <SectionTitle>Admin Users</SectionTitle>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
-          <div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>admin</div>
-            <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>Primary · via VITE_ADMIN_PASSWORD</div>
-          </div>
-          <Badge color={C.gold}>superadmin</Badge>
-        </div>
-        {users.map(u => (
-          <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+        <SectionTitle>Admin Accounts</SectionTitle>
+        {loading && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, padding: "14px 0" }}>Loading…</p>}
+        {!loading && admins.map(a => (
+          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
             <div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{u.username}</div>
-              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>Created {new Date(u.createdAt).toLocaleDateString("en-NG")}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{a.username} <span style={{ color: C.textMuted, fontWeight: 400 }}>· {a.email}</span></div>
+              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>Created {new Date(a.createdAt).toLocaleDateString("en-NG")}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Badge color={u.role === "superadmin" ? C.gold : u.role === "editor" ? C.blue : C.textMuted}>{u.role}</Badge>
-              {isSuperAdmin && (
-                <button type="button" onClick={() => deleteUser(u.id)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+              <Badge color={a.role === "superadmin" ? C.gold : C.blue}>{a.role}</Badge>
+              <Badge color={a.status === "active" ? C.mint : C.textMuted}>{a.status}</Badge>
+              {isSuperAdmin && a.id !== session.id && (
+                <>
+                  <button type="button" onClick={() => toggleStatus(a)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>
+                    {a.status === "active" ? "Disable" : "Enable"}
+                  </button>
+                  <button type="button" onClick={() => deleteUser(a)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+                </>
               )}
             </div>
           </div>
         ))}
-      </SectionCard>
-
-      <SectionCard style={{ marginTop: 20, background: C.amberDim, border: `1px solid ${C.amber}44` }}>
-        <p style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>
-          <strong style={{ color: C.amber }}>Security note:</strong> Passwords for additional users are stored as SHA-256 hashes in the browser's localStorage. This is suitable for a single-device admin setup. For multi-person access from different devices, a backend authentication system is required.
-        </p>
       </SectionCard>
     </div>
   );
@@ -2738,7 +2725,7 @@ function SystemHealthSection() {
     setPinging(true);
     const t0 = Date.now();
     try {
-      await globalThis.fetch("/api/admin/analytics", { headers: { "x-admin-key": ADMIN_KEY }, cache:"no-store" });
+      await globalThis.fetch("/api/admin/analytics", { cache: "no-store" });
       setLatency(Date.now() - t0);
     } catch { setLatency(-1); }
     setPinging(false);
@@ -2861,6 +2848,800 @@ function SystemHealthSection() {
   );
 }
 
+// ─── Employees ───────────────────────────────────────────────────────────────
+function EmployeesSection() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
+  const [showForm, setShowForm] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/employees");
+      const json = await r.json();
+      if (r.ok) setEmployees(json.employees || []);
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addEmployee() {
+    setErr(""); setMsg("");
+    if (!form.fullName || !form.email || !form.title) { setErr("Full name, email, and title are required."); return; }
+    const r = await fetch("/api/admin/employees", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to add employee."); return; }
+    auditLog("create_employee", form.email);
+    setForm({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
+    setMsg("Employee added — welcome email sent.");
+    setShowForm(false);
+    setTimeout(() => setMsg(""), 4000);
+    load();
+  }
+
+  async function toggleStatus(emp) {
+    const nextStatus = emp.status === "active" ? "suspended" : "active";
+    const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, status: nextStatus }) });
+    if (r.ok) { auditLog("update_employee_status", emp.email, nextStatus); load(); }
+  }
+
+  async function toggleStaffRole(emp) {
+    const nextRole = emp.staffRole === "manager" ? "staff" : "manager";
+    const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, staffRole: nextRole }) });
+    if (r.ok) { auditLog("update_employee_role", emp.email, nextRole); load(); }
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Employees" value={employees.length} color={C.blue} icon="🧑‍💼" />
+        <StatCard label="Active" value={employees.filter(e => e.status === "active").length} color={C.mint} icon="✅" />
+        <StatCard label="Suspended" value={employees.filter(e => e.status !== "active").length} color={C.amber} icon="⏸️" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Employees</SectionTitle>
+          <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ Add Employee"}</Btn>
+        </div>
+        {showForm && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div><Label>Full name</Label><Input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} /></div>
+              <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+              <div><Label>Job title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+              <div><Label>Department</Label><Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
+              <div><Label>Staff role</Label>
+                <Select value={form.staffRole} onChange={e => setForm(f => ({ ...f, staffRole: e.target.value }))}>
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager (approves their department's reports & leave)</option>
+                </Select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
+                <div><Label>Salary</Label><Input type="number" value={form.salaryAmount} onChange={e => setForm(f => ({ ...f, salaryAmount: e.target.value }))} /></div>
+                <div><Label>Currency</Label><Select value={form.salaryCurrency} onChange={e => setForm(f => ({ ...f, salaryCurrency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+              </div>
+            </div>
+            <Btn onClick={addEmployee}>Create employee & send welcome email</Btn>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+          <Table
+            cols={[
+              { key: "fullName", label: "Name" },
+              { key: "title", label: "Title" },
+              { key: "department", label: "Department" },
+              { key: "email", label: "Email" },
+              { key: "staffRole", label: "Role", render: e => <Badge color={e.staffRole === "manager" ? C.purple : C.textMuted}>{e.staffRole || "staff"}</Badge> },
+              { key: "status", label: "Status", render: e => <Badge color={e.status === "active" ? C.mint : C.amber}>{e.status}</Badge> },
+              { key: "actions", label: "", render: e => (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" onClick={() => toggleStaffRole(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.staffRole === "manager" ? "Make Staff" : "Make Manager"}</button>
+                  <button type="button" onClick={() => toggleStatus(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.status === "active" ? "Suspend" : "Reactivate"}</button>
+                </div>
+              ) },
+            ]}
+            rows={employees}
+            emptyMsg="No employees yet — add your first team member above."
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Weekly Reports (admin review) ───────────────────────────────────────────
+function WeeklyReportsSection() {
+  const [reports, setReports] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState({});
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [rReports, rEmp] = await Promise.all([fetch("/api/admin/reports"), fetch("/api/admin/employees")]);
+      const [jReports, jEmp] = await Promise.all([rReports.json(), rEmp.json()]);
+      if (rReports.ok) setReports(jReports.reports || []);
+      if (rEmp.ok) setEmployees(jEmp.employees || []);
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
+
+  async function decide(report, status) {
+    const r = await fetch("/api/admin/reports", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: report.id, status, reviewNotes: notes[report.id] || "" }) });
+    if (r.ok) { auditLog("review_report", employeeName(report.employeeId), status); load(); }
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Reports" value={reports.length} color={C.blue} icon="🗒️" />
+        <StatCard label="Awaiting Review" value={reports.filter(r => r.status === "submitted").length} color={C.amber} icon="⏳" />
+        <StatCard label="Approved" value={reports.filter(r => r.status === "approved").length} color={C.mint} icon="✅" />
+      </div>
+      <SectionCard>
+        <SectionTitle>Weekly reports</SectionTitle>
+        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {!loading && reports.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No reports submitted yet.</p>}
+        {reports.map(r => (
+          <div key={r.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{employeeName(r.employeeId)}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{r.weekStart} – {r.weekEnd}</div>
+              </div>
+              <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+            </div>
+            <ul style={{ margin: "8px 0", paddingLeft: 18, color: C.text, fontSize: 13 }}>
+              {r.activities.map((a, i) => <li key={i}>{a.description} {a.hoursSpent ? `(${a.hoursSpent}h)` : ""}</li>)}
+            </ul>
+            {r.notes && <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 8 }}>Notes: {r.notes}</div>}
+            {r.status === "submitted" && (
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                <Input placeholder="Review notes (optional)" value={notes[r.id] || ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} style={{ maxWidth: 300 }} />
+                <Btn small onClick={() => decide(r, "approved")}>Approve</Btn>
+                <Btn small danger onClick={() => decide(r, "rejected")}>Reject</Btn>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Leave Requests (admin review) ───────────────────────────────────────────
+function LeaveRequestsSection() {
+  const [leave, setLeave] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState({});
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [rLeave, rEmp] = await Promise.all([fetch("/api/admin/leave"), fetch("/api/admin/employees")]);
+      const [jLeave, jEmp] = await Promise.all([rLeave.json(), rEmp.json()]);
+      if (rLeave.ok) setLeave(jLeave.leave || []);
+      if (rEmp.ok) setEmployees(jEmp.employees || []);
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
+
+  async function decide(item, status) {
+    const r = await fetch("/api/admin/leave", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, status, decisionNotes: notes[item.id] || "" }) });
+    if (r.ok) { auditLog("decide_leave", employeeName(item.employeeId), status); load(); }
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Requests" value={leave.length} color={C.blue} icon="🌴" />
+        <StatCard label="Pending" value={leave.filter(l => l.status === "pending").length} color={C.amber} icon="⏳" />
+        <StatCard label="Approved" value={leave.filter(l => l.status === "approved").length} color={C.mint} icon="✅" />
+      </div>
+      <SectionCard>
+        <SectionTitle>Leave requests</SectionTitle>
+        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {!loading && leave.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No leave requests yet.</p>}
+        {leave.map(l => (
+          <div key={l.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{employeeName(l.employeeId)}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, textTransform: "capitalize" }}>{l.type} · {l.startDate} – {l.endDate}</div>
+              </div>
+              <Badge color={l.status === "approved" ? C.mint : l.status === "rejected" ? C.rose : C.amber}>{l.status}</Badge>
+            </div>
+            {l.reason && <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 8 }}>Reason: {l.reason}</div>}
+            {l.status === "pending" && (
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                <Input placeholder="Decision notes (optional)" value={notes[l.id] || ""} onChange={e => setNotes(n => ({ ...n, [l.id]: e.target.value }))} style={{ maxWidth: 300 }} />
+                <Btn small onClick={() => decide(l, "approved")}>Approve</Btn>
+                <Btn small danger onClick={() => decide(l, "rejected")}>Reject</Btn>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Signature pad (canvas) — used by Signatories ────────────────────────────
+function SignaturePad({ onChange }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  function pos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  }
+
+  function start(e) {
+    e.preventDefault();
+    drawing.current = true;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = pos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+  function move(e) {
+    if (!drawing.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = pos(e, canvas);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#0A2540";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    setHasDrawn(true);
+  }
+  function end() {
+    drawing.current = false;
+    if (hasDrawn) onChange(canvasRef.current.toDataURL("image/png"));
+  }
+  function clear() {
+    const canvas = canvasRef.current;
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    onChange(null);
+  }
+
+  return (
+    <div>
+      <canvas
+        ref={canvasRef} width={360} height={140}
+        style={{ background: "#fff", borderRadius: 10, border: `1px solid ${C.border}`, touchAction: "none", cursor: "crosshair" }}
+        onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+        onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+      />
+      <div style={{ marginTop: 8 }}>
+        <Btn small variant="ghost" onClick={clear}>Clear signature</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── Document Templates ──────────────────────────────────────────────────────
+function TemplatesSection() {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState({ name: "", bodyMarkup: "" });
+  const [msg, setMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/templates");
+      const json = await r.json();
+      if (r.ok) setTemplates(json.templates || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function startEdit(t) { setEditing(t.id); setDraft({ name: t.name, bodyMarkup: t.bodyMarkup }); }
+
+  async function save() {
+    const r = await fetch("/api/admin/templates", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editing, ...draft }) });
+    if (r.ok) { auditLog("update_template", editing); setEditing(null); setMsg("Template saved."); setTimeout(() => setMsg(""), 3000); load(); }
+  }
+
+  return (
+    <div>
+      <SectionCard>
+        <SectionTitle>Document templates</SectionTitle>
+        <p style={{ color: C.textMuted, fontSize: 13, marginTop: 6, lineHeight: 1.7 }}>
+          Use <code>{"{{placeholder}}"}</code> tokens — they become fillable fields when composing a document.
+          Basic formatting is supported and renders properly in the PDF and on the signing page: <code>{"<b>bold</b>"}</code>, <code>{"<i>italic</i>"}</code>, <code>{"<br>"}</code> for a line break, and <code>{"<p>...</p>"}</code> or <code>{"<ul><li>...</li></ul>"}</code> for paragraphs and bullet lists. Any other tags are stripped, not shown literally.
+        </p>
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 8 }}>{msg}</p>}
+        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {!loading && templates.map(t => (
+          <div key={t.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            {editing === t.id ? (
+              <div>
+                <div style={{ marginBottom: 10 }}><Label>Name</Label><Input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></div>
+                <div style={{ marginBottom: 10 }}><Label>Body</Label><Textarea style={{ minHeight: 220, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} /></div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Btn small onClick={save}>Save</Btn>
+                  <Btn small variant="ghost" onClick={() => setEditing(null)}>Cancel</Btn>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{t.name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2, textTransform: "capitalize" }}>{t.type.replace(/_/g, " ")}</div>
+                </div>
+                <Btn small variant="ghost" onClick={() => startEdit(t)}>Edit</Btn>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Signatories ─────────────────────────────────────────────────────────────
+function SignatoriesSection() {
+  const [signatories, setSignatories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ fullName: "", title: "", email: "" });
+  const [sigData, setSigData] = useState(null);
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/signatories");
+      const json = await r.json();
+      if (r.ok) setSignatories(json.signatories || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function add() {
+    setErr(""); setMsg("");
+    if (!form.fullName || !sigData) { setErr("Full name and a drawn signature are required."); return; }
+    const r = await fetch("/api/admin/signatories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, signatureImageDataUrl: sigData }) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to add signatory."); return; }
+    auditLog("create_signatory", form.fullName);
+    setForm({ fullName: "", title: "", email: "" }); setSigData(null);
+    setMsg("Signatory added."); setTimeout(() => setMsg(""), 3000);
+    load();
+  }
+
+  async function remove(s) {
+    if (!confirm(`Remove signatory "${s.fullName}"?`)) return;
+    const r = await fetch(`/api/admin/signatories?id=${encodeURIComponent(s.id)}`, { method: "DELETE" });
+    if (r.ok) { auditLog("delete_signatory", s.fullName); load(); }
+  }
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Add signatory</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Full name</Label><Input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} /></div>
+          <div><Label>Job title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div><Label>Email (optional)</Label><Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
+        </div>
+        <Label>Draw signature</Label>
+        <SignaturePad onChange={setSigData} />
+        <div style={{ marginTop: 14 }}><Btn onClick={add}>Add signatory</Btn></div>
+        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Signatories</SectionTitle>
+        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {!loading && signatories.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No signatories yet.</p>}
+        {signatories.map(s => (
+          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <img src={s.signatureImageDataUrl} alt={`${s.fullName} signature`} style={{ width: 90, height: 36, objectFit: "contain", background: "#fff", borderRadius: 6 }} />
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{s.fullName}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{s.title}</div>
+              </div>
+            </div>
+            <button type="button" onClick={() => remove(s)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Contracts ───────────────────────────────────────────────────────────────
+function extractPlaceholders(bodyMarkup) {
+  const found = new Set();
+  const re = /\{\{\s*(\w+)\s*\}\}/g;
+  let m;
+  while ((m = re.exec(bodyMarkup || ""))) { if (m[1] !== "recipientName") found.add(m[1]); }
+  return Array.from(found);
+}
+
+function ContractsSection() {
+  const [contracts, setContracts] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [signatories, setSignatories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
+  const [form, setForm] = useState({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: [], fillData: {} });
+  const [expanded, setExpanded] = useState(null);
+  const [milestoneTitle, setMilestoneTitle] = useState({});
+  const [payments, setPayments] = useState([]);
+  const [paymentLinks, setPaymentLinks] = useState({});
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [rC, rT, rS, rP] = await Promise.all([fetch("/api/admin/contracts"), fetch("/api/admin/templates"), fetch("/api/admin/signatories"), fetch("/api/admin/payments")]);
+      const [jC, jT, jS, jP] = await Promise.all([rC.json(), rT.json(), rS.json(), rP.json()]);
+      if (rC.ok) setContracts(jC.contracts || []);
+      if (rT.ok) setTemplates(jT.templates || []);
+      if (rS.ok) setSignatories(jS.signatories || []);
+      if (rP.ok) setPayments(jP.payments || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function requestPayment(c) {
+    const r = await fetch("/api/payments/initialize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId: c.id }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Failed to create payment link."); return; }
+    setPaymentLinks(links => ({ ...links, [c.id]: json.authorizationUrl }));
+    auditLog("request_payment", c.title);
+    load();
+  }
+
+  const selectedTemplate = templates.find(t => t.id === form.templateId);
+  const placeholders = selectedTemplate ? extractPlaceholders(selectedTemplate.bodyMarkup) : [];
+
+  async function compose() {
+    setErr(""); setMsg("");
+    if (!form.templateId || !form.recipientName) { setErr("Template and recipient name are required."); return; }
+    const r = await fetch("/api/admin/contracts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to create contract."); return; }
+    auditLog("create_contract", form.recipientName);
+    setForm({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: [], fillData: {} });
+    setShowCompose(false);
+    setMsg("Draft created.");
+    setTimeout(() => setMsg(""), 3000);
+    load();
+  }
+
+  async function send(c) {
+    if (!confirm(`Send "${c.title}" to ${c.recipientEmail}?`)) return;
+    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "send" }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Failed to send."); return; }
+    auditLog("send_contract", c.title);
+    load();
+  }
+
+  async function cancelContract(c) {
+    if (!confirm(`Cancel "${c.title}"?`)) return;
+    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "cancel" }) });
+    if (r.ok) { auditLog("cancel_contract", c.title); load(); }
+  }
+
+  async function addMilestone(c) {
+    const title = milestoneTitle[c.id];
+    if (!title) return;
+    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "add_milestone", title }) });
+    if (r.ok) { setMilestoneTitle(m => ({ ...m, [c.id]: "" })); load(); }
+  }
+
+  async function toggleMilestone(c, ms) {
+    const status = ms.status === "completed" ? "pending" : "completed";
+    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "update_milestone", milestoneId: ms.id, status }) });
+    if (r.ok) { auditLog("update_milestone", `${c.title} — ${ms.title}`, status); load(); }
+  }
+
+  const statusColor = { draft: C.textMuted, sent: C.blue, signed: C.mint, active: C.mint, completed: C.gold, cancelled: C.rose };
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Contracts" value={contracts.length} color={C.blue} icon="📑" />
+        <StatCard label="Awaiting Signature" value={contracts.filter(c => c.status === "sent").length} color={C.amber} icon="⏳" />
+        <StatCard label="Signed / Active" value={contracts.filter(c => ["signed", "active"].includes(c.status)).length} color={C.mint} icon="✅" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Contracts</SectionTitle>
+          <Btn small onClick={() => setShowCompose(s => !s)}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
+        </div>
+        {showCompose && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ marginBottom: 14 }}>
+              <Label>Template</Label>
+              <Select value={form.templateId} onChange={e => setForm(f => ({ ...f, templateId: e.target.value, fillData: {} }))}>
+                <option value="">Select a template…</option>
+                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </Select>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
+              <div><Label>Recipient email</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
+              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+            </div>
+            {placeholders.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <Label>Fill in the template fields</Label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {placeholders.map(p => (
+                    <Input key={p} placeholder={p} value={form.fillData[p] || ""} onChange={e => setForm(f => ({ ...f, fillData: { ...f.fillData, [p]: e.target.value } }))} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ marginBottom: 16 }}>
+              <Label>Signatories</Label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {signatories.map(s => {
+                  const active = form.signatoryIds.includes(s.id);
+                  return (
+                    <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, signatoryIds: active ? f.signatoryIds.filter(id => id !== s.id) : [...f.signatoryIds, s.id] }))}
+                      style={{ background: active ? C.goldDim : C.surface, border: `1px solid ${active ? C.gold : C.border}`, borderRadius: 8, padding: "6px 12px", color: active ? C.gold : C.text, fontSize: 12.5, cursor: "pointer" }}>
+                      {s.fullName}
+                    </button>
+                  );
+                })}
+                {signatories.length === 0 && <span style={{ color: C.textMuted, fontSize: 12.5 }}>No signatories yet — add one under Signatories.</span>}
+              </div>
+            </div>
+            <Btn onClick={compose}>Create draft & generate PDF</Btn>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading && <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p>}
+        {!loading && contracts.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No contracts yet — compose your first document above.</p>}
+        {!loading && contracts.map(c => (
+          <div key={c.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(e => e === c.id ? null : c.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{c.title}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{c.recipientEmail} · {c.currency} {Number(c.amount).toLocaleString()}</div>
+              </div>
+              <Badge color={statusColor[c.status] || C.textMuted}>{c.status}</Badge>
+            </div>
+            {expanded === c.id && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44` }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+                  <a href={`/api/files/download?key=${encodeURIComponent(c.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View draft PDF →</a>
+                  {c.signedPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.mint, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View signed PDF →</a>}
+                  {c.status === "draft" && <Btn small onClick={() => send(c)}>Send for signature</Btn>}
+                  {["signed", "active"].includes(c.status) && c.amount > 0 && <Btn small onClick={() => requestPayment(c)}>Request Payment</Btn>}
+                  {!["signed", "active", "completed", "cancelled"].includes(c.status) && <Btn small danger onClick={() => cancelContract(c)}>Cancel</Btn>}
+                </div>
+                {paymentLinks[c.id] && (
+                  <div style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5, color: C.text, wordBreak: "break-all" }}>
+                    Payment link: <a href={paymentLinks[c.id]} target="_blank" rel="noreferrer" style={{ color: C.gold }}>{paymentLinks[c.id]}</a>
+                  </div>
+                )}
+                {payments.filter(p => p.contractId === c.id).length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <Label>Payments</Label>
+                    {payments.filter(p => p.contractId === c.id).map(p => (
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12.5 }}>
+                        <span style={{ color: C.text }}>{p.currency} {Number(p.amount).toLocaleString()} · {p.reference}</span>
+                        <Badge color={p.status === "success" ? C.mint : p.status === "failed" ? C.rose : C.amber}>{p.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Label>Milestones</Label>
+                {(c.milestones || []).map(ms => (
+                  <div key={ms.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+                    <input type="checkbox" checked={ms.status === "completed"} onChange={() => toggleMilestone(c, ms)} />
+                    <span style={{ color: ms.status === "completed" ? C.mint : C.text, fontSize: 13, textDecoration: ms.status === "completed" ? "line-through" : "none" }}>{ms.title}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <Input placeholder="New milestone" value={milestoneTitle[c.id] || ""} onChange={e => setMilestoneTitle(m => ({ ...m, [c.id]: e.target.value }))} style={{ maxWidth: 240 }} />
+                  <Btn small variant="ghost" onClick={() => addMilestone(c)}>+ Add</Btn>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Payroll ─────────────────────────────────────────────────────────────────
+function PayrollSection() {
+  const [payroll, setPayroll] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ employeeId: "", period: "", grossAmount: "", currency: "NGN" });
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [rP, rE] = await Promise.all([fetch("/api/admin/payroll"), fetch("/api/admin/employees")]);
+      const [jP, jE] = await Promise.all([rP.json(), rE.json()]);
+      if (rP.ok) setPayroll(jP.payroll || []);
+      if (rE.ok) setEmployees(jE.employees || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
+
+  async function create() {
+    setErr(""); setMsg("");
+    if (!form.employeeId || !form.period || !form.grossAmount) { setErr("Employee, period, and gross amount are required."); return; }
+    const r = await fetch("/api/admin/payroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to create payroll entry."); return; }
+    auditLog("create_payroll", `${employeeName(form.employeeId)} — ${form.period}`);
+    setForm({ employeeId: "", period: "", grossAmount: "", currency: "NGN" });
+    setShowForm(false);
+    setMsg("Draft payroll entry created.");
+    setTimeout(() => setMsg(""), 3000);
+    load();
+  }
+
+  async function issue(p) {
+    if (!confirm(`Issue payslip for ${employeeName(p.employeeId)} — ${p.period}? This sends an email with the PDF attached.`)) return;
+    const r = await fetch("/api/admin/payroll", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, action: "issue" }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Failed to issue payslip."); return; }
+    auditLog("issue_payslip", `${employeeName(p.employeeId)} — ${p.period}`);
+    load();
+  }
+
+  async function markPaid(p) {
+    const r = await fetch("/api/admin/payroll", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, action: "mark_paid" }) });
+    if (r.ok) { auditLog("mark_paid", `${employeeName(p.employeeId)} — ${p.period}`); load(); }
+  }
+
+  const statusColor = { draft: C.textMuted, issued: C.blue, paid: C.mint };
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Payroll</SectionTitle>
+          <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ New Payroll Entry"}</Btn>
+        </div>
+        {showForm && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div><Label>Employee</Label>
+                <Select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}>
+                  <option value="">Select employee…</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </Select>
+              </div>
+              <div><Label>Period (e.g. 2026-09)</Label><Input value={form.period} onChange={e => setForm(f => ({ ...f, period: e.target.value }))} placeholder="YYYY-MM" /></div>
+              <div><Label>Gross amount</Label><Input type="number" value={form.grossAmount} onChange={e => setForm(f => ({ ...f, grossAmount: e.target.value }))} /></div>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+            </div>
+            <Btn onClick={create}>Create draft entry</Btn>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+          <Table
+            cols={[
+              { key: "employee", label: "Employee", render: p => employeeName(p.employeeId) },
+              { key: "period", label: "Period" },
+              { key: "netAmount", label: "Net Pay", render: p => `${p.currency} ${Number(p.netAmount).toLocaleString()}` },
+              { key: "status", label: "Status", render: p => <Badge color={statusColor[p.status]}>{p.status}</Badge> },
+              { key: "actions", label: "", render: p => (
+                <div style={{ display: "flex", gap: 6 }}>
+                  {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
+                  {p.status === "issued" && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid</Btn>}
+                  {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12, fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>PDF</a>}
+                </div>
+              ) },
+            ]}
+            rows={payroll}
+            emptyMsg="No payroll entries yet."
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Email Log ────────────────────────────────────────────────────────────────
+function EmailLogSection() {
+  const [emails, setEmails] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/email-log");
+      const json = await r.json();
+      if (r.ok) setEmails(json.emails || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  const kinds = Array.from(new Set(emails.map(e => e.kind)));
+  const filtered = filter ? emails.filter(e => e.kind === filter) : emails;
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Sent" value={emails.length} color={C.blue} icon="✉️" />
+        <StatCard label="Delivered" value={emails.filter(e => e.ok).length} color={C.mint} icon="✅" />
+        <StatCard label="Failed" value={emails.filter(e => !e.ok).length} color={C.rose} icon="⚠️" />
+      </div>
+      <SectionCard>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <SectionTitle>Email log</SectionTitle>
+          <Select value={filter} onChange={e => setFilter(e.target.value)} style={{ width: "auto" }}>
+            <option value="">All types</option>
+            {kinds.map(k => <option key={k} value={k}>{k}</option>)}
+          </Select>
+        </div>
+        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+          <Table
+            cols={[
+              { key: "sentAt", label: "Sent", render: e => new Date(e.sentAt).toLocaleString("en-NG") },
+              { key: "to", label: "To" },
+              { key: "subject", label: "Subject" },
+              { key: "kind", label: "Type", render: e => <Badge color={C.textMuted}>{e.kind}</Badge> },
+              { key: "ok", label: "Status", render: e => <Badge color={e.ok ? C.mint : C.rose}>{e.ok ? "sent" : "failed"}</Badge> },
+            ]}
+            rows={filtered}
+            emptyMsg="No emails sent yet."
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ active, session }) {
   switch (active) {
@@ -2887,6 +3668,14 @@ function DashboardContent({ active, session }) {
     case "clients":       return <ClientsSection />;
     case "menus":         return <MenusSection />;
     case "settings":      return <SettingsSection />;
+    case "employees":      return <EmployeesSection />;
+    case "weekly-reports": return <WeeklyReportsSection />;
+    case "leave-requests": return <LeaveRequestsSection />;
+    case "payroll":        return <PayrollSection />;
+    case "templates":      return <TemplatesSection />;
+    case "signatories":    return <SignatoriesSection />;
+    case "contracts":      return <ContractsSection />;
+    case "email-log":      return <EmailLogSection />;
     case "users":         return <UsersSection session={session} />;
     case "audit":         return <AuditSection />;
     case "media":         return <MediaSection />;
@@ -2897,23 +3686,38 @@ function DashboardContent({ active, session }) {
 
 // ─── Main Dashboard Shell ────────────────────────────────────────────────────
 export default function AdminDashboard({ setCurrentPage }) {
-  const [session, setSession] = useState(getSession);
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
   const [active, setActive] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  useEffect(() => {
-    const t = setInterval(() => { if (!getSession()) setSession(null); }, 60000);
-    return () => clearInterval(t);
+  const applySession = useCallback((user) => {
+    setSession(user);
+    setCurrentAuditUser(user);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchSession().then((user) => { if (!cancelled) { applySession(user); setChecking(false); } });
+    const t = setInterval(async () => {
+      const user = await fetchSession();
+      if (!cancelled && !user) applySession(null);
+    }, 60000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [applySession]);
+
+  if (checking) {
+    return <div style={{ minHeight: "100vh", background: C.bg }} />;
+  }
+
   if (!session) {
-    return <AdminLogin onLogin={(s) => setSession(s)} />;
+    return <AdminLogin onLogin={applySession} />;
   }
 
   function logout() {
     auditLog("logout", "admin", "Manual logout");
-    destroySession();
-    setSession(null);
+    serverLogout();
+    applySession(null);
   }
 
   const navigate = (id) => { setActive(id); window.scrollTo({ top: 0 }); };
@@ -2968,8 +3772,8 @@ export default function AdminDashboard({ setCurrentPage }) {
         <div style={{ position: "sticky", bottom: 0, padding: sidebarOpen ? "16px 20px" : "16px 8px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
           {sidebarOpen && (
             <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>
-              <span style={{ color: C.text, fontWeight: 600 }}>{session.username}</span>
-              {" · "}{session.role}
+              <span style={{ color: C.text, fontWeight: 600 }}>{session.name}</span>
+              {" · "}{session.adminRole}
             </div>
           )}
           <button type="button" onClick={logout} style={{

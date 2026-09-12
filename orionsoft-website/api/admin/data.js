@@ -1,18 +1,17 @@
 // Protected admin data endpoint — returns server-side leads, conversations, visitor stats
-// Protected by ADMIN_SECRET env var (set to same value as VITE_ADMIN_PASSWORD in Vercel)
+// Protected by a real signed session cookie (see api/_lib/auth.js) — no shared static secret.
 import { list, getCount, hgetall, available } from "../store.js";
+import { requireAuth } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  // Auth check
-  const provided = req.headers["x-admin-key"] || req.query.key || "";
-  const secret = process.env.ADMIN_SECRET || process.env.VITE_ADMIN_PASSWORD || "orionsoft2026";
-  if (provided !== secret) return res.status(401).json({ error: "Unauthorized" });
+  if (!requireAuth(req, res, "admin")) return;
 
   if (!available()) {
     return res.json({ ok: true, upstashMissing: true, leads: [], conversations: [], stats: { totalVisits: 0, pages: {} } });

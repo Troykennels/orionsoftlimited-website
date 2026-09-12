@@ -1,0 +1,397 @@
+import { useState, useEffect, useCallback } from "react";
+import { C, font } from "./theme.js";
+import { Btn, Badge, SectionCard, SectionTitle, Label, Input, Textarea, Select, StatCard, EmptyState } from "./components.jsx";
+import StaffLogin from "./StaffLogin.jsx";
+
+async function api(path, opts) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", ...(opts?.headers || {}) },
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(json.error || `Request failed (${r.status})`);
+  return json;
+}
+
+function TopBar({ user, onLogout, active, setActive }) {
+  const tabs = [
+    { id: "home", label: "Home" },
+    { id: "reports", label: "Weekly Reports" },
+    { id: "leave", label: "Leave" },
+    ...(user.staffRole === "manager" ? [{ id: "team", label: "Team" }] : []),
+    { id: "payslips", label: "Payslips" },
+    { id: "profile", label: "Profile" },
+  ];
+  return (
+    <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: C.heading }}>Orion<span style={{ color: C.blue }}>Staff</span></div>
+          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>{user.name} · {user.title || "Team member"}</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {tabs.map(t => (
+            <button key={t.id} type="button" onClick={() => setActive(t.id)} style={{
+              background: active === t.id ? C.blueDim : "transparent", color: active === t.id ? C.blue : C.textMuted,
+              border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, fontFamily: font, cursor: "pointer",
+            }}>{t.label}</button>
+          ))}
+          <Btn variant="ghost" small onClick={onLogout}>Sign out</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeTab({ reports, leave }) {
+  const pendingReview = reports.filter(r => r.status === "submitted").length;
+  const pendingLeave = leave.filter(l => l.status === "pending").length;
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Reports Submitted" value={reports.length} color={C.blue} icon="📝" />
+        <StatCard label="Awaiting Review" value={pendingReview} color={C.amber} icon="⏳" />
+        <StatCard label="Leave Requests" value={leave.length} color={C.mint} icon="🌴" />
+        <StatCard label="Pending Approval" value={pendingLeave} color={C.amber} icon="⏳" />
+      </div>
+      <SectionCard>
+        <SectionTitle>Welcome to your staff portal</SectionTitle>
+        <p style={{ color: C.textMuted, fontFamily: font, fontSize: 13.5, lineHeight: 1.7, marginTop: 8 }}>
+          Use the tabs above to submit your weekly report, request leave, and view your payslips once they're issued.
+        </p>
+      </SectionCard>
+    </div>
+  );
+}
+
+function ReportsTab({ reports, reload }) {
+  const [form, setForm] = useState({ weekStart: "", weekEnd: "", notes: "" });
+  const [activities, setActivities] = useState([{ description: "", hoursSpent: "" }]);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  function updateActivity(i, field, value) {
+    setActivities(a => a.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
+  }
+
+  async function submit() {
+    setErr(""); setMsg("");
+    if (!form.weekStart || !form.weekEnd) { setErr("Week start and end are required."); return; }
+    const cleanActivities = activities.filter(a => a.description.trim()).map(a => ({ description: a.description, hoursSpent: Number(a.hoursSpent) || 0 }));
+    if (cleanActivities.length === 0) { setErr("Add at least one activity."); return; }
+    setSubmitting(true);
+    try {
+      await api("/api/staff/reports", { method: "POST", body: JSON.stringify({ ...form, activities: cleanActivities }) });
+      setMsg("Report submitted.");
+      setForm({ weekStart: "", weekEnd: "", notes: "" });
+      setActivities([{ description: "", hoursSpent: "" }]);
+      reload();
+    } catch (e) {
+      setErr(e.message);
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Submit weekly report</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Week start</Label><Input type="date" value={form.weekStart} onChange={e => setForm(f => ({ ...f, weekStart: e.target.value }))} /></div>
+          <div><Label>Week end</Label><Input type="date" value={form.weekEnd} onChange={e => setForm(f => ({ ...f, weekEnd: e.target.value }))} /></div>
+        </div>
+        <Label>Activities</Label>
+        {activities.map((row, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, marginBottom: 8 }}>
+            <Input placeholder="What did you work on?" value={row.description} onChange={e => updateActivity(i, "description", e.target.value)} />
+            <Input type="number" placeholder="Hours" value={row.hoursSpent} onChange={e => updateActivity(i, "hoursSpent", e.target.value)} />
+          </div>
+        ))}
+        <Btn small variant="ghost" onClick={() => setActivities(a => [...a, { description: "", hoursSpent: "" }])}>+ Add activity</Btn>
+        <div style={{ marginTop: 16, marginBottom: 16 }}>
+          <Label>Notes / blockers</Label>
+          <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Anything blocking you, or notes for your manager" />
+        </div>
+        <Btn onClick={submit} disabled={submitting}>{submitting ? "Submitting…" : "Submit report"}</Btn>
+        {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+        {err && <p style={{ color: C.rose, fontFamily: font, fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Your reports</SectionTitle>
+        {reports.length === 0 && <EmptyState>No reports submitted yet.</EmptyState>}
+        {reports.map(r => (
+          <div key={r.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700, color: C.heading, fontFamily: font, fontSize: 14 }}>{r.weekStart} – {r.weekEnd}</div>
+              <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+            </div>
+            <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{r.activities.length} activities logged</div>
+            {r.reviewNotes && <div style={{ fontSize: 12.5, color: C.text, fontFamily: font, marginTop: 6 }}>Reviewer: {r.reviewNotes}</div>}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+function LeaveTab({ leave, reload }) {
+  const [form, setForm] = useState({ type: "annual", startDate: "", endDate: "", reason: "" });
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    setErr(""); setMsg("");
+    if (!form.startDate || !form.endDate) { setErr("Start and end dates are required."); return; }
+    setSubmitting(true);
+    try {
+      await api("/api/staff/leave", { method: "POST", body: JSON.stringify(form) });
+      setMsg("Leave request submitted.");
+      setForm({ type: "annual", startDate: "", endDate: "", reason: "" });
+      reload();
+    } catch (e) { setErr(e.message); } finally { setSubmitting(false); }
+  }
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Request leave</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Type</Label>
+            <Select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+              <option value="annual">Annual</option>
+              <option value="sick">Sick</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="other">Other</option>
+            </Select>
+          </div>
+          <div><Label>Start date</Label><Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} /></div>
+          <div><Label>End date</Label><Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+        </div>
+        <Label>Reason (optional)</Label>
+        <Textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} />
+        <div style={{ marginTop: 14 }}>
+          <Btn onClick={submit} disabled={submitting}>{submitting ? "Submitting…" : "Submit request"}</Btn>
+        </div>
+        {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+        {err && <p style={{ color: C.rose, fontFamily: font, fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Your leave requests</SectionTitle>
+        {leave.length === 0 && <EmptyState>No leave requests yet.</EmptyState>}
+        {leave.map(l => (
+          <div key={l.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 700, color: C.heading, fontFamily: font, fontSize: 14, textTransform: "capitalize" }}>{l.type} · {l.startDate} – {l.endDate}</div>
+              <Badge color={l.status === "approved" ? C.mint : l.status === "rejected" ? C.rose : C.amber}>{l.status}</Badge>
+            </div>
+            {l.decisionNotes && <div style={{ fontSize: 12.5, color: C.text, fontFamily: font, marginTop: 6 }}>{l.decisionNotes}</div>}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+function TeamTab() {
+  const [reports, setReports] = useState([]);
+  const [leave, setLeave] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState({});
+  const [tab, setTab] = useState("reports");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [r, l] = await Promise.all([
+        api("/api/staff/reports?scope=team"),
+        api("/api/staff/leave?scope=team"),
+      ]);
+      setReports(r.reports || []);
+      setLeave(l.leave || []);
+    } catch { /* best-effort */ } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function decideReport(r, status) {
+    await api("/api/staff/reports", { method: "PATCH", body: JSON.stringify({ id: r.id, status, reviewNotes: notes[r.id] || "" }) });
+    load();
+  }
+  async function decideLeave(l, status) {
+    await api("/api/staff/leave", { method: "PATCH", body: JSON.stringify({ id: l.id, status, decisionNotes: notes[l.id] || "" }) });
+    load();
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <Btn small variant={tab === "reports" ? "primary" : "ghost"} onClick={() => setTab("reports")}>Reports ({reports.filter(r => r.status === "submitted").length} pending)</Btn>
+        <Btn small variant={tab === "leave" ? "primary" : "ghost"} onClick={() => setTab("leave")}>Leave ({leave.filter(l => l.status === "pending").length} pending)</Btn>
+      </div>
+      {loading && <EmptyState>Loading…</EmptyState>}
+      {!loading && tab === "reports" && (
+        <SectionCard>
+          <SectionTitle>Team weekly reports</SectionTitle>
+          {reports.length === 0 && <EmptyState>No reports from your department yet.</EmptyState>}
+          {reports.map(r => (
+            <div key={r.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{r.weekStart} – {r.weekEnd}</div>
+                <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+              </div>
+              <ul style={{ margin: "8px 0", paddingLeft: 18, color: C.text, fontSize: 13 }}>
+                {r.activities.map((a, i) => <li key={i}>{a.description} {a.hoursSpent ? `(${a.hoursSpent}h)` : ""}</li>)}
+              </ul>
+              {r.status === "submitted" && (
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                  <Input placeholder="Notes (optional)" value={notes[r.id] || ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} style={{ maxWidth: 260 }} />
+                  <Btn small onClick={() => decideReport(r, "approved")}>Approve</Btn>
+                  <Btn small danger onClick={() => decideReport(r, "rejected")}>Reject</Btn>
+                </div>
+              )}
+            </div>
+          ))}
+        </SectionCard>
+      )}
+      {!loading && tab === "leave" && (
+        <SectionCard>
+          <SectionTitle>Team leave requests</SectionTitle>
+          {leave.length === 0 && <EmptyState>No leave requests from your department yet.</EmptyState>}
+          {leave.map(l => (
+            <div key={l.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14, textTransform: "capitalize" }}>{l.type} · {l.startDate} – {l.endDate}</div>
+                <Badge color={l.status === "approved" ? C.mint : l.status === "rejected" ? C.rose : C.amber}>{l.status}</Badge>
+              </div>
+              {l.reason && <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 6 }}>{l.reason}</div>}
+              {l.status === "pending" && (
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
+                  <Input placeholder="Notes (optional)" value={notes[l.id] || ""} onChange={e => setNotes(n => ({ ...n, [l.id]: e.target.value }))} style={{ maxWidth: 260 }} />
+                  <Btn small onClick={() => decideLeave(l, "approved")}>Approve</Btn>
+                  <Btn small danger onClick={() => decideLeave(l, "rejected")}>Reject</Btn>
+                </div>
+              )}
+            </div>
+          ))}
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+function PayslipsTab({ payslips }) {
+  return (
+    <SectionCard>
+      <SectionTitle>Your payslips</SectionTitle>
+      {payslips.length === 0 && <EmptyState>No payslips issued yet.</EmptyState>}
+      {payslips.map(p => (
+        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+          <div>
+            <div style={{ fontWeight: 700, color: C.heading, fontFamily: font, fontSize: 14 }}>{p.period}</div>
+            <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 2 }}>Net: {p.currency} {Number(p.netAmount).toLocaleString()}</div>
+          </div>
+          {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontFamily: font, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Download PDF →</a>}
+        </div>
+      ))}
+    </SectionCard>
+  );
+}
+
+function ProfileTab({ employee, reload }) {
+  const [form, setForm] = useState({ phone: employee.phone || "", bankName: employee.bankName || "", bankAccountNumber: employee.bankAccountNumber || "", bankAccountName: employee.bankAccountName || "" });
+  const [msg, setMsg] = useState("");
+
+  async function save() {
+    await api("/api/staff/profile", { method: "PATCH", body: JSON.stringify(form) });
+    setMsg("Profile updated.");
+    reload();
+    setTimeout(() => setMsg(""), 2500);
+  }
+
+  return (
+    <SectionCard>
+      <SectionTitle>Your profile</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+        <div><Label>Full name</Label><Input value={employee.fullName} disabled /></div>
+        <div><Label>Email</Label><Input value={employee.email} disabled /></div>
+        <div><Label>Title</Label><Input value={employee.title} disabled /></div>
+        <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+      </div>
+      <SectionTitle>Bank details (for payroll)</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+        <div><Label>Bank name</Label><Input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} /></div>
+        <div><Label>Account number</Label><Input value={form.bankAccountNumber} onChange={e => setForm(f => ({ ...f, bankAccountNumber: e.target.value }))} /></div>
+        <div><Label>Account name</Label><Input value={form.bankAccountName} onChange={e => setForm(f => ({ ...f, bankAccountName: e.target.value }))} /></div>
+      </div>
+      <Btn onClick={save}>Save profile</Btn>
+      {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+    </SectionCard>
+  );
+}
+
+export default function StaffApp() {
+  const [session, setSession] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [active, setActive] = useState("home");
+  const [employee, setEmployee] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [leave, setLeave] = useState([]);
+  const [payslips, setPayslips] = useState([]);
+
+  const loadAll = useCallback(async () => {
+    try {
+      const [profileRes, reportsRes, leaveRes] = await Promise.all([
+        api("/api/staff/profile"),
+        api("/api/staff/reports"),
+        api("/api/staff/leave"),
+      ]);
+      setEmployee(profileRes.employee);
+      setReports(reportsRes.reports || []);
+      setLeave(leaveRes.leave || []);
+      try {
+        const payslipsRes = await api("/api/staff/payslips");
+        setPayslips(payslipsRes.payslips || []);
+      } catch { setPayslips([]); }
+    } catch { /* not logged in or transient error — handled by session check */ }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/auth/me");
+        if (r.ok) {
+          const json = await r.json();
+          if (!cancelled) setSession(json.user);
+        }
+      } finally { if (!cancelled) setChecking(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => { if (session) loadAll(); }, [session, loadAll]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setSession(null);
+  }
+
+  if (checking) return <div style={{ minHeight: "100vh", background: C.bg }} />;
+  if (!session) return <StaffLogin onLogin={setSession} />;
+  if (!employee) return <div style={{ minHeight: "100vh", background: C.bg }} />;
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
+      <TopBar user={session} onLogout={logout} active={active} setActive={setActive} />
+      <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px" }}>
+        {active === "home" && <HomeTab reports={reports} leave={leave} />}
+        {active === "reports" && <ReportsTab reports={reports} reload={loadAll} />}
+        {active === "leave" && <LeaveTab leave={leave} reload={loadAll} />}
+        {active === "team" && session.staffRole === "manager" && <TeamTab />}
+        {active === "payslips" && <PayslipsTab payslips={payslips} />}
+        {active === "profile" && <ProfileTab employee={employee} reload={loadAll} />}
+      </div>
+    </div>
+  );
+}

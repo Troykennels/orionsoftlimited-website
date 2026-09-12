@@ -304,6 +304,44 @@ Every time you want to make a change:
 
 ---
 
+## Admin Portal, Staff Portal, Contracts & Payments
+
+The site now includes a full operations platform beyond the marketing pages: a real admin login (no more shared password), a staff portal for weekly reports/leave/payroll, a letterhead document/contract system with e-signing, and Paystack payments — all with automatic emails at every step.
+
+### One-time setup
+
+1. **Set the new environment variables** in Vercel (Project → Settings → Environment Variables) — see the full list and purpose of each in `.env.example`. At minimum you need:
+   - `SESSION_SECRET` and `ADMIN_SECRET` — generate each with:
+     ```bash
+     node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+     ```
+   - `KV_REST_API_URL` / `KV_REST_API_TOKEN` (or the `UPSTASH_REDIS_REST_URL`/`TOKEN` equivalents) — this is where every employee, contract, payment, and report record is stored. Without it, the admin/staff/contracts features still work locally (an in-memory fallback kicks in for `npm run dev`) but nothing persists in production.
+   - `GMAIL_USER` / `GMAIL_APP_PASSWORD` (or `RESEND_API_KEY`) — required for every automatic email (welcome emails, report/leave notifications, contract sending, payment receipts, payslips).
+   - `PAYSTACK_SECRET_KEY` and `VITE_PAYSTACK_PUBLIC_KEY` — from your Paystack dashboard, to accept payments.
+   - `APP_BASE_URL` — your live domain (e.g. `https://orionsoftlimited.com`), used to build links inside emails.
+2. **Create your first admin account** (one-time, via curl/Postman — never done in the browser):
+   ```bash
+   curl -X POST https://orionsoftlimited.com/api/auth/bootstrap-admin \
+     -H "Content-Type: application/json" \
+     -H "x-bootstrap-secret: YOUR_ADMIN_SECRET" \
+     -d '{"username":"yourname","email":"you@orionsoftlimited.com","password":"a-strong-password-here"}'
+   ```
+   You can call this again later to add more admins the same way.
+3. **In Paystack**, add a webhook pointing at `https://orionsoftlimited.com/api/payments/webhook` (Settings → API Keys & Webhooks) so payments are confirmed automatically even if the payer closes their browser.
+
+### Day-to-day use
+
+- **Admin login** — same place as before (the in-SPA Admin page), now asks for email + password instead of a shared password.
+- **Staff portal** — at `/staff`, a separate login for employees. Admin creates each employee under *Staff & HR → Employees*, which emails them their login and a temporary password.
+- **Managers** — set an employee's role to "Manager" in *Employees* to let them review and approve their own department's weekly reports and leave requests from their staff portal (a "Team" tab appears automatically).
+- **Documents** — under *Documents*, edit the 5 built-in templates (offer letter, NDA, service contract, payslip receipt, onboarding letter), add signatories (drawn signature + title), then compose a document from *Contracts*, which generates a branded letterhead PDF automatically.
+- **Sending & signing** — "Send for signature" emails the recipient a link (`/sign/...`) to review, type their name, and sign — no login needed on their end. A signed PDF is generated automatically and everyone is notified.
+- **Getting paid** — once a contract is signed, click "Request Payment" to generate a Paystack checkout link (or the signer can pay directly from the sign page). Payment status updates automatically via the webhook, and a receipt email goes out.
+- **Payroll** — create a draft payroll entry per employee per month, then "Issue & Email" to generate the payslip PDF and email it — it also appears under the employee's "Payslips" tab in the staff portal.
+- **Email Log** — every automatic email the system has ever sent is listed under *Documents → Email Log*, useful for confirming delivery.
+
+---
+
 ## Folder Structure (What Your Project Looks Like)
 
 ```
