@@ -18,7 +18,8 @@ export async function notifyReportSubmitted(report, employee) {
       <strong>${employee?.fullName || "An employee"}</strong> submitted their report for
       ${fmtDate(report.weekStart)} – ${fmtDate(report.weekEnd)}.
     </p>
-    <p style="color:#3A4556;font-size:14px;line-height:1.7;">${report.activities.length} activit${report.activities.length === 1 ? "y" : "ies"} logged.</p>
+    ${report.productFocus ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Focus:</strong> ${report.productFocus}</p>` : ""}
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">${report.summary}</p>
     <p style="margin-top:20px;"><a href="${APP_BASE_URL}/#admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
   `, { title: "Weekly Report Submitted" });
   return sendEmail(ADMIN_EMAIL, `Weekly report submitted — ${employee?.fullName || "Employee"}`, html, { kind: "report_submitted" });

@@ -64,28 +64,98 @@ function HomeTab({ reports, leave }) {
   );
 }
 
+const PRODUCTS = ["CareCore", "SchoolCore", "ComplianceCore", "InventoryCore", "FinanceCore", "HRCore", "ChurchCore", "FleetCore", "TeleHealth", "General / Other"];
+
+const EMPTY_REPORT_FORM = {
+  weekStart: "", weekEnd: "", territory: "", reportingManager: "", productFocus: PRODUCTS[0], summary: "",
+  totals: { prospectsContacted: "", physicalVisits: "", meetingsHeld: "", productDemos: "", proposalsSent: "", newLeadsGenerated: "", salesClosed: "", salesValue: "" },
+  challenges: "", objections: "", supportNeeded: "",
+  competitors: "", competitorPricing: "", marketTrends: "", otherInfo: "",
+  nextWeekPlan: { organisationsToVisit: "", prospectsToFollowUp: "", meetingsPlanned: "", demosPlanned: "", expectedProposals: "", expectedSales: "" },
+  keyTargets: ["", "", ""],
+  declarationConfirmed: false,
+};
+
+// Generic editable table for the report's dynamic row sections (prospects, sales, follow-ups).
+function RowsEditor({ columns, rows, setRows }) {
+  function update(i, key, value) {
+    setRows(rows.map((row, idx) => idx === i ? { ...row, [key]: value } : row));
+  }
+  function addRow() {
+    setRows([...rows, Object.fromEntries(columns.map(c => [c.key, ""]))]);
+  }
+  function removeRow(i) {
+    setRows(rows.filter((_, idx) => idx !== i));
+  }
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
+        <thead>
+          <tr>
+            {columns.map(c => <th key={c.key} style={{ textAlign: "left", fontSize: 11, color: C.textMuted, padding: "4px 6px", whiteSpace: "nowrap" }}>{c.label}</th>)}
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {columns.map(c => (
+                <td key={c.key} style={{ padding: "3px 6px" }}>
+                  {c.type === "select" ? (
+                    <Select value={row[c.key] || ""} onChange={e => update(i, c.key, e.target.value)} style={{ minWidth: 120 }}>
+                      <option value=""></option>
+                      {c.options.map(o => <option key={o} value={o}>{o}</option>)}
+                    </Select>
+                  ) : (
+                    <Input type={c.type || "text"} value={row[c.key] || ""} onChange={e => update(i, c.key, e.target.value)} style={{ minWidth: c.type === "date" ? 130 : 110 }} />
+                  )}
+                </td>
+              ))}
+              <td><button type="button" onClick={() => removeRow(i)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 15 }}>×</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Btn small variant="ghost" onClick={addRow}>+ Add row</Btn>
+    </div>
+  );
+}
+
+function num(v) { return v === "" || v == null ? 0 : Number(v) || 0; }
+
 function ReportsTab({ reports, reload }) {
-  const [form, setForm] = useState({ weekStart: "", weekEnd: "", notes: "" });
-  const [activities, setActivities] = useState([{ description: "", hoursSpent: "" }]);
+  const [form, setForm] = useState(EMPTY_REPORT_FORM);
+  const [prospects, setProspects] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [followUps, setFollowUps] = useState([]);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [expanded, setExpanded] = useState(null);
 
-  function updateActivity(i, field, value) {
-    setActivities(a => a.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
-  }
+  function setTotal(key, value) { setForm(f => ({ ...f, totals: { ...f.totals, [key]: value } })); }
+  function setPlan(key, value) { setForm(f => ({ ...f, nextWeekPlan: { ...f.nextWeekPlan, [key]: value } })); }
+  function setTarget(i, value) { setForm(f => ({ ...f, keyTargets: f.keyTargets.map((t, idx) => idx === i ? value : t) })); }
 
   async function submit() {
     setErr(""); setMsg("");
     if (!form.weekStart || !form.weekEnd) { setErr("Week start and end are required."); return; }
-    const cleanActivities = activities.filter(a => a.description.trim()).map(a => ({ description: a.description, hoursSpent: Number(a.hoursSpent) || 0 }));
-    if (cleanActivities.length === 0) { setErr("Add at least one activity."); return; }
+    if (!form.summary.trim()) { setErr("A summary of the week's main activities is required."); return; }
+    if (!form.declarationConfirmed) { setErr("Please confirm the declaration at the bottom of the form before submitting."); return; }
     setSubmitting(true);
     try {
-      await api("/api/staff/reports", { method: "POST", body: JSON.stringify({ ...form, activities: cleanActivities }) });
+      await api("/api/staff/reports", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          totals: Object.fromEntries(Object.entries(form.totals).map(([k, v]) => [k, num(v)])),
+          nextWeekPlan: Object.fromEntries(Object.entries(form.nextWeekPlan).map(([k, v]) => [k, num(v)])),
+          prospects, sales, followUps,
+        }),
+      });
       setMsg("Report submitted.");
-      setForm({ weekStart: "", weekEnd: "", notes: "" });
-      setActivities([{ description: "", hoursSpent: "" }]);
+      setForm(EMPTY_REPORT_FORM);
+      setProspects([]); setSales([]); setFollowUps([]);
       reload();
     } catch (e) {
       setErr(e.message);
@@ -95,23 +165,109 @@ function ReportsTab({ reports, reload }) {
   return (
     <div>
       <SectionCard style={{ marginBottom: 20 }}>
-        <SectionTitle>Submit weekly report</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+        <SectionTitle>Weekly Sales & Business Development Report</SectionTitle>
+        <p style={{ color: C.textMuted, fontSize: 12.5, marginTop: 6, marginBottom: 16 }}>Every field except the summary and declaration is optional — fill in what applies to your week.</p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
           <div><Label>Week start</Label><Input type="date" value={form.weekStart} onChange={e => setForm(f => ({ ...f, weekStart: e.target.value }))} /></div>
           <div><Label>Week end</Label><Input type="date" value={form.weekEnd} onChange={e => setForm(f => ({ ...f, weekEnd: e.target.value }))} /></div>
-        </div>
-        <Label>Activities</Label>
-        {activities.map((row, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10, marginBottom: 8 }}>
-            <Input placeholder="What did you work on?" value={row.description} onChange={e => updateActivity(i, "description", e.target.value)} />
-            <Input type="number" placeholder="Hours" value={row.hoursSpent} onChange={e => updateActivity(i, "hoursSpent", e.target.value)} />
+          <div><Label>Territory / Location</Label><Input value={form.territory} onChange={e => setForm(f => ({ ...f, territory: e.target.value }))} /></div>
+          <div><Label>Reporting Manager</Label><Input value={form.reportingManager} onChange={e => setForm(f => ({ ...f, reportingManager: e.target.value }))} /></div>
+          <div>
+            <Label>Product / Software focus</Label>
+            <Select value={form.productFocus} onChange={e => setForm(f => ({ ...f, productFocus: e.target.value }))}>
+              {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+            </Select>
           </div>
-        ))}
-        <Btn small variant="ghost" onClick={() => setActivities(a => [...a, { description: "", hoursSpent: "" }])}>+ Add activity</Btn>
-        <div style={{ marginTop: 16, marginBottom: 16 }}>
-          <Label>Notes / blockers</Label>
-          <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Anything blocking you, or notes for your manager" />
         </div>
+
+        <Label>1. Weekly summary — main activities carried out this week</Label>
+        <Textarea value={form.summary} onChange={e => setForm(f => ({ ...f, summary: e.target.value }))} style={{ minHeight: 90 }} />
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginTop: 14, marginBottom: 20 }}>
+          {[
+            ["prospectsContacted", "Prospects contacted"], ["physicalVisits", "Physical visits"],
+            ["meetingsHeld", "Meetings held"], ["productDemos", "Product demos"],
+            ["proposalsSent", "Proposals/quotes sent"], ["newLeadsGenerated", "New leads generated"],
+            ["salesClosed", "Sales closed"], ["salesValue", "Value of sales (₦)"],
+          ].map(([key, label]) => (
+            <div key={key}><Label>{label}</Label><Input type="number" value={form.totals[key]} onChange={e => setTotal(key, e.target.value)} /></div>
+          ))}
+        </div>
+
+        <SectionTitle>2. Prospect & customer activity</SectionTitle>
+        <div style={{ marginTop: 10, marginBottom: 20 }}>
+          <RowsEditor
+            rows={prospects} setRows={setProspects}
+            columns={[
+              { key: "organisation", label: "Organisation" }, { key: "contactPerson", label: "Contact person" },
+              { key: "contactDate", label: "Contact/visit date", type: "date" }, { key: "productInterest", label: "Product/interest" },
+              { key: "status", label: "Status", type: "select", options: ["New Lead", "Contacted", "Meeting Scheduled", "Demo Completed", "Proposal Sent", "Negotiation", "Awaiting Decision", "Won", "Lost"] },
+              { key: "nextAction", label: "Next action" },
+            ]}
+          />
+        </div>
+
+        <SectionTitle>3. Sales & revenue</SectionTitle>
+        <div style={{ marginTop: 10, marginBottom: 20 }}>
+          <RowsEditor
+            rows={sales} setRows={setSales}
+            columns={[
+              { key: "customer", label: "Customer" }, { key: "productPlan", label: "Product/plan" },
+              { key: "saleValue", label: "Sale value (₦)", type: "number" }, { key: "paymentStatus", label: "Payment status" },
+              { key: "onboardingStatus", label: "Onboarding status" }, { key: "expectedCommission", label: "Commission (₦)", type: "number" },
+            ]}
+          />
+        </div>
+
+        <SectionTitle>4. Follow-up required next week</SectionTitle>
+        <div style={{ marginTop: 10, marginBottom: 20 }}>
+          <RowsEditor
+            rows={followUps} setRows={setFollowUps}
+            columns={[
+              { key: "prospect", label: "Prospect" }, { key: "reason", label: "Reason for follow-up" },
+              { key: "plannedDate", label: "Planned date", type: "date" }, { key: "expectedOutcome", label: "Expected outcome" },
+            ]}
+          />
+        </div>
+
+        <SectionTitle>5. Challenges / objections</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 10, marginBottom: 20 }}>
+          <div><Label>Challenges this week</Label><Textarea value={form.challenges} onChange={e => setForm(f => ({ ...f, challenges: e.target.value }))} /></div>
+          <div><Label>Objections raised by prospects</Label><Textarea value={form.objections} onChange={e => setForm(f => ({ ...f, objections: e.target.value }))} /></div>
+          <div><Label>Support needed from manager/company</Label><Textarea value={form.supportNeeded} onChange={e => setForm(f => ({ ...f, supportNeeded: e.target.value }))} /></div>
+        </div>
+
+        <SectionTitle>6. Competitor / market information</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 10, marginBottom: 20 }}>
+          <div><Label>Competitor(s) encountered</Label><Textarea value={form.competitors} onChange={e => setForm(f => ({ ...f, competitors: e.target.value }))} /></div>
+          <div><Label>Competitor pricing/features noticed</Label><Textarea value={form.competitorPricing} onChange={e => setForm(f => ({ ...f, competitorPricing: e.target.value }))} /></div>
+          <div><Label>Customer needs / market trends</Label><Textarea value={form.marketTrends} onChange={e => setForm(f => ({ ...f, marketTrends: e.target.value }))} /></div>
+          <div><Label>Other useful information</Label><Textarea value={form.otherInfo} onChange={e => setForm(f => ({ ...f, otherInfo: e.target.value }))} /></div>
+        </div>
+
+        <SectionTitle>7. Next week's plan</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 10, marginBottom: 14 }}>
+          {[
+            ["organisationsToVisit", "Organisations to visit"], ["prospectsToFollowUp", "Prospects to follow up"],
+            ["meetingsPlanned", "Meetings planned"], ["demosPlanned", "Demonstrations planned"],
+            ["expectedProposals", "Expected proposals"], ["expectedSales", "Expected sales (₦)"],
+          ].map(([key, label]) => (
+            <div key={key}><Label>{label}</Label><Input type="number" value={form.nextWeekPlan[key]} onChange={e => setPlan(key, e.target.value)} /></div>
+          ))}
+        </div>
+        <Label>Key targets for next week</Label>
+        {form.keyTargets.map((t, i) => (
+          <Input key={i} value={t} onChange={e => setTarget(i, e.target.value)} placeholder={`Target ${i + 1}`} style={{ marginBottom: 8 }} />
+        ))}
+
+        <div style={{ marginTop: 20, marginBottom: 16, padding: 14, background: C.surface, borderRadius: 10, border: `1px solid ${C.border}` }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: C.text, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.declarationConfirmed} onChange={e => setForm(f => ({ ...f, declarationConfirmed: e.target.checked }))} style={{ marginTop: 2 }} />
+            I confirm that the information provided in this report is accurate and represents the activities carried out during the reporting period.
+          </label>
+        </div>
+
         <Btn onClick={submit} disabled={submitting}>{submitting ? "Submitting…" : "Submit report"}</Btn>
         {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
         {err && <p style={{ color: C.rose, fontFamily: font, fontSize: 13, marginTop: 10 }}>{err}</p>}
@@ -122,11 +278,20 @@ function ReportsTab({ reports, reload }) {
         {reports.length === 0 && <EmptyState>No reports submitted yet.</EmptyState>}
         {reports.map(r => (
           <div key={r.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 700, color: C.heading, fontFamily: font, fontSize: 14 }}>{r.weekStart} – {r.weekEnd}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(e => e === r.id ? null : r.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontFamily: font, fontSize: 14 }}>{r.weekStart} – {r.weekEnd} {r.productFocus ? `· ${r.productFocus}` : ""}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{r.summary?.slice(0, 80)}{r.summary?.length > 80 ? "…" : ""}</div>
+              </div>
               <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
             </div>
-            <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{r.activities.length} activities logged</div>
+            {expanded === r.id && (
+              <div style={{ marginTop: 10, fontSize: 12.5, color: C.text, lineHeight: 1.7 }}>
+                <div>Prospects contacted: {r.totals?.prospectsContacted || 0} · Meetings: {r.totals?.meetingsHeld || 0} · Sales closed: {r.totals?.salesClosed || 0} ({r.currency || "₦"}{Number(r.totals?.salesValue || 0).toLocaleString()})</div>
+                {r.prospects?.length > 0 && <div style={{ marginTop: 6 }}>{r.prospects.length} prospect{r.prospects.length === 1 ? "" : "s"} logged</div>}
+                {r.sales?.length > 0 && <div>{r.sales.length} sale{r.sales.length === 1 ? "" : "s"} logged</div>}
+              </div>
+            )}
             {r.reviewNotes && <div style={{ fontSize: 12.5, color: C.text, fontFamily: font, marginTop: 6 }}>Reviewer: {r.reviewNotes}</div>}
           </div>
         ))}
@@ -237,12 +402,14 @@ function TeamTab() {
           {reports.map(r => (
             <div key={r.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{r.weekStart} – {r.weekEnd}</div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{r.weekStart} – {r.weekEnd} {r.productFocus ? `· ${r.productFocus}` : ""}</div>
                 <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
               </div>
-              <ul style={{ margin: "8px 0", paddingLeft: 18, color: C.text, fontSize: 13 }}>
-                {r.activities.map((a, i) => <li key={i}>{a.description} {a.hoursSpent ? `(${a.hoursSpent}h)` : ""}</li>)}
-              </ul>
+              <p style={{ margin: "8px 0", color: C.text, fontSize: 13, lineHeight: 1.6 }}>{r.summary}</p>
+              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>
+                Prospects: {r.totals?.prospectsContacted || 0} · Meetings: {r.totals?.meetingsHeld || 0} · Sales closed: {r.totals?.salesClosed || 0}
+                {r.prospects?.length > 0 ? ` · ${r.prospects.length} prospect row(s)` : ""}{r.sales?.length > 0 ? ` · ${r.sales.length} sale row(s)` : ""}
+              </div>
               {r.status === "submitted" && (
                 <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
                   <Input placeholder="Notes (optional)" value={notes[r.id] || ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} style={{ maxWidth: 260 }} />

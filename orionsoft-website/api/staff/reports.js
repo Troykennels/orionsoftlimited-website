@@ -26,14 +26,38 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { weekStart, weekEnd, activities, metrics, notes } = req.body || {};
-    if (!weekStart || !weekEnd || !Array.isArray(activities) || activities.length === 0) {
-      return res.status(400).json({ error: "weekStart, weekEnd, and at least one activity are required" });
+    const {
+      weekStart, weekEnd, territory, reportingManager, productFocus, summary,
+      totals, prospects, sales, followUps, challenges, objections, supportNeeded,
+      competitors, competitorPricing, marketTrends, otherInfo, nextWeekPlan,
+      keyTargets, declarationConfirmed,
+    } = req.body || {};
+    if (!weekStart || !weekEnd || !summary || !declarationConfirmed) {
+      return res.status(400).json({ error: "weekStart, weekEnd, a summary, and the declaration confirmation are required" });
     }
     const id = newId("rpt");
     const report = {
       id, employeeId: session.sub, weekStart, weekEnd,
-      activities, metrics: metrics || {}, notes: notes || "",
+      territory: territory || "", reportingManager: reportingManager || "",
+      productFocus: productFocus || "", summary,
+      totals: {
+        prospectsContacted: 0, physicalVisits: 0, meetingsHeld: 0, productDemos: 0,
+        proposalsSent: 0, newLeadsGenerated: 0, salesClosed: 0, salesValue: 0,
+        ...totals,
+      },
+      prospects: Array.isArray(prospects) ? prospects : [],
+      sales: Array.isArray(sales) ? sales : [],
+      followUps: Array.isArray(followUps) ? followUps : [],
+      challenges: challenges || "", objections: objections || "", supportNeeded: supportNeeded || "",
+      competitors: competitors || "", competitorPricing: competitorPricing || "",
+      marketTrends: marketTrends || "", otherInfo: otherInfo || "",
+      nextWeekPlan: {
+        organisationsToVisit: 0, prospectsToFollowUp: 0, meetingsPlanned: 0, demosPlanned: 0,
+        expectedProposals: 0, expectedSales: 0,
+        ...nextWeekPlan,
+      },
+      keyTargets: Array.isArray(keyTargets) ? keyTargets.filter(Boolean) : [],
+      declarationConfirmed: true,
       status: "submitted", reviewedBy: null, reviewNotes: "",
       submittedAt: new Date().toISOString(), reviewedAt: null,
     };

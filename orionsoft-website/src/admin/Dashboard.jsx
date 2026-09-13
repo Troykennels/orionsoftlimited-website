@@ -2964,6 +2964,7 @@ function WeeklyReportsSection() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState({});
+  const [expanded, setExpanded] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -2997,17 +2998,64 @@ function WeeklyReportsSection() {
         {!loading && reports.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No reports submitted yet.</p>}
         {reports.map(r => (
           <div key={r.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, cursor: "pointer" }} onClick={() => setExpanded(e => e === r.id ? null : r.id)}>
               <div>
-                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{employeeName(r.employeeId)}</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>{r.weekStart} – {r.weekEnd}</div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{employeeName(r.employeeId)} {r.productFocus ? <span style={{ color: C.textMuted, fontWeight: 400 }}>· {r.productFocus}</span> : ""}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{r.weekStart} – {r.weekEnd}{r.territory ? ` · ${r.territory}` : ""}</div>
               </div>
               <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
             </div>
-            <ul style={{ margin: "8px 0", paddingLeft: 18, color: C.text, fontSize: 13 }}>
-              {r.activities.map((a, i) => <li key={i}>{a.description} {a.hoursSpent ? `(${a.hoursSpent}h)` : ""}</li>)}
-            </ul>
-            {r.notes && <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 8 }}>Notes: {r.notes}</div>}
+            <p style={{ margin: "0 0 8px", color: C.text, fontSize: 13, lineHeight: 1.6 }}>{r.summary}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: C.textMuted, marginBottom: 8 }}>
+              <span>Prospects: {r.totals?.prospectsContacted || 0}</span>
+              <span>Visits: {r.totals?.physicalVisits || 0}</span>
+              <span>Meetings: {r.totals?.meetingsHeld || 0}</span>
+              <span>Demos: {r.totals?.productDemos || 0}</span>
+              <span>Sales closed: {r.totals?.salesClosed || 0}</span>
+              <span>Value: ₦{Number(r.totals?.salesValue || 0).toLocaleString()}</span>
+            </div>
+            {expanded === r.id && (
+              <div style={{ marginTop: 10, marginBottom: 10, fontSize: 12.5, color: C.text, lineHeight: 1.8 }}>
+                {r.reportingManager && <div><strong>Reporting manager:</strong> {r.reportingManager}</div>}
+                {r.prospects?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Prospects ({r.prospects.length}):</strong>
+                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                      {r.prospects.map((p, i) => <li key={i}>{p.organisation} — {p.contactPerson} — {p.status} — next: {p.nextAction}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {r.sales?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Sales ({r.sales.length}):</strong>
+                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                      {r.sales.map((s, i) => <li key={i}>{s.customer} — {s.productPlan} — ₦{Number(s.saleValue || 0).toLocaleString()} — {s.paymentStatus}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {r.followUps?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Follow-ups ({r.followUps.length}):</strong>
+                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                      {r.followUps.map((f, i) => <li key={i}>{f.prospect} — {f.reason} — by {f.plannedDate}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {r.challenges && <div style={{ marginTop: 8 }}><strong>Challenges:</strong> {r.challenges}</div>}
+                {r.objections && <div><strong>Objections:</strong> {r.objections}</div>}
+                {r.supportNeeded && <div><strong>Support needed:</strong> {r.supportNeeded}</div>}
+                {r.competitors && <div style={{ marginTop: 8 }}><strong>Competitors:</strong> {r.competitors}</div>}
+                {r.marketTrends && <div><strong>Market trends:</strong> {r.marketTrends}</div>}
+                {r.keyTargets?.filter(Boolean).length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Next week's key targets:</strong>
+                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+                      {r.keyTargets.filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
             {r.status === "submitted" && (
               <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
                 <Input placeholder="Review notes (optional)" value={notes[r.id] || ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} style={{ maxWidth: 300 }} />
