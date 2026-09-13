@@ -26,7 +26,13 @@ async function u(method, path, body) {
   } catch { return null; }
 }
 
-// Push JSON item to front of a Redis list (lpush = newest first)
+// Push JSON item to front of a Redis list (lpush = newest first).
+// Same fix as set(): Upstash's REST API stores the raw POST body verbatim as
+// the single value — it does not unwrap a JSON array into positional args the
+// way a native Redis client would. Wrapping in an array (the previous code)
+// silently corrupted every pushed item, verified directly against the live
+// REST API (this affected leads/conversations tracking before this session
+// too, not just the new records added this session).
 export async function push(key, value) {
   if (!BASE || !TOKEN) {
     const list = mem.get(key) || [];
@@ -34,7 +40,7 @@ export async function push(key, value) {
     mem.set(key, list);
     return { result: list.length };
   }
-  return u("POST", `/lpush/${key}`, [JSON.stringify(value)]);
+  return u("POST", `/lpush/${key}`, value);
 }
 
 // Get up to `limit` items from a Redis list (0-indexed)
