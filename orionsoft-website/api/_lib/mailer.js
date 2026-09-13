@@ -35,9 +35,14 @@ async function sendViaGmail(to, subject, html, attachments) {
       service: "gmail",
       auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
       // Belt-and-suspenders alongside server.js's dns.setDefaultResultOrder:
-      // force IPv4 so hosts without IPv6 egress (e.g. Railway) don't hit
-      // ENETUNREACH connecting to Gmail's IPv6 SMTP address.
+      // force IPv4 so hosts without IPv6 egress don't hit ENETUNREACH.
       family: 4,
+      // Hosts that block outbound SMTP entirely (e.g. Railway's free plan)
+      // would otherwise hang on Node's ~2min default timeout before falling
+      // back to Resend. Fail fast so that fallback is actually fast.
+      connectionTimeout: 6000,
+      greetingTimeout: 6000,
+      socketTimeout: 6000,
     });
     await transporter.sendMail({
       from: `"Orion Soft" <${process.env.GMAIL_USER}>`, to, subject, html,
