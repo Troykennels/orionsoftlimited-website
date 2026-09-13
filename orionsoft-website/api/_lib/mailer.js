@@ -17,8 +17,15 @@ async function sendViaResend(to, subject, html, apiKey, attachments) {
         attachments: attachments?.map(a => ({ filename: a.filename, content: a.content.toString("base64") })),
       }),
     });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      console.error(`[mailer] Resend send to ${to} failed: HTTP ${r.status} ${body}`);
+    }
     return r.ok;
-  } catch { return false; }
+  } catch (err) {
+    console.error(`[mailer] Resend send to ${to} threw:`, err.message);
+    return false;
+  }
 }
 
 async function sendViaGmail(to, subject, html, attachments) {
@@ -33,7 +40,10 @@ async function sendViaGmail(to, subject, html, attachments) {
       attachments: attachments?.map(a => ({ filename: a.filename, content: a.content })),
     });
     return true;
-  } catch { return false; }
+  } catch (err) {
+    console.error(`[mailer] Gmail send to ${to} failed:`, err.message, err.code || "");
+    return false;
+  }
 }
 
 // Gmail first — works for ANY recipient email address. Resend with the default
@@ -47,6 +57,9 @@ export async function sendEmail(to, subject, html, { attachments, kind } = {}) {
   }
   if (!ok && process.env.RESEND_API_KEY) {
     ok = await sendViaResend(to, subject, html, process.env.RESEND_API_KEY, attachments);
+  }
+  if (!ok && !process.env.GMAIL_APP_PASSWORD && !process.env.RESEND_API_KEY) {
+    console.error("[mailer] No email provider configured (GMAIL_APP_PASSWORD/RESEND_API_KEY both unset)");
   }
   try {
     await push("orionsoft:emails:sent", {
