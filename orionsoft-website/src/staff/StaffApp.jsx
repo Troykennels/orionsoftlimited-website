@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { C, font } from "./theme.js";
-import { Btn, Badge, SectionCard, SectionTitle, Label, Input, Textarea, Select, StatCard, EmptyState } from "./components.jsx";
+import { Btn, Badge, SectionCard, SectionTitle, Label, Input, Textarea, Select, StatCard, EmptyState, Avatar } from "./components.jsx";
+import { resizeImageToDataUrl } from "./imageUtils.js";
 import StaffLogin from "./StaffLogin.jsx";
 
 async function api(path, opts) {
@@ -13,7 +14,7 @@ async function api(path, opts) {
   return json;
 }
 
-function TopBar({ user, onLogout, active, setActive }) {
+function TopBar({ user, employee, onLogout, active, setActive }) {
   const tabs = [
     { id: "home", label: "Home" },
     { id: "reports", label: "Weekly Reports" },
@@ -25,10 +26,13 @@ function TopBar({ user, onLogout, active, setActive }) {
   return (
     <div style={{ background: C.surface, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 10 }}>
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.heading }}>Orion<span style={{ color: C.blue }}>Staff</span></div>
-          <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>{user.name} · {user.title || "Team member"}</div>
-        </div>
+        <button type="button" onClick={() => setActive("profile")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}>
+          <Avatar src={employee?.avatarDataUrl} name={user.name} size={34} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: C.heading }}>Orion<span style={{ color: C.blue }}>Staff</span></div>
+            <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>{user.name} · {user.title || "Team member"}</div>
+          </div>
+        </button>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {tabs.map(t => (
             <button key={t.id} type="button" onClick={() => setActive(t.id)} style={{
@@ -465,35 +469,150 @@ function PayslipsTab({ payslips }) {
   );
 }
 
-function ProfileTab({ employee, reload }) {
-  const [form, setForm] = useState({ phone: employee.phone || "", bankName: employee.bankName || "", bankAccountNumber: employee.bankAccountNumber || "", bankAccountName: employee.bankAccountName || "" });
-  const [msg, setMsg] = useState("");
+function PasswordSection() {
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [saving, setSaving] = useState(false);
 
-  async function save() {
-    await api("/api/staff/profile", { method: "PATCH", body: JSON.stringify(form) });
-    setMsg("Profile updated.");
-    reload();
-    setTimeout(() => setMsg(""), 2500);
+  async function submit() {
+    setErr(""); setMsg("");
+    if (!form.currentPassword || !form.newPassword) { setErr("Fill in both password fields."); return; }
+    if (form.newPassword.length < 10) { setErr("New password must be at least 10 characters."); return; }
+    if (form.newPassword !== form.confirmPassword) { setErr("New password and confirmation don't match."); return; }
+    setSaving(true);
+    try {
+      await api("/api/staff/change-password", { method: "POST", body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword }) });
+      setMsg("Password changed.");
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
   }
 
   return (
-    <SectionCard>
-      <SectionTitle>Your profile</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
-        <div><Label>Full name</Label><Input value={employee.fullName} disabled /></div>
-        <div><Label>Email</Label><Input value={employee.email} disabled /></div>
-        <div><Label>Title</Label><Input value={employee.title} disabled /></div>
-        <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-      </div>
-      <SectionTitle>Bank details (for payroll)</SectionTitle>
+    <SectionCard style={{ marginTop: 20 }}>
+      <SectionTitle>Change password</SectionTitle>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
-        <div><Label>Bank name</Label><Input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} /></div>
-        <div><Label>Account number</Label><Input value={form.bankAccountNumber} onChange={e => setForm(f => ({ ...f, bankAccountNumber: e.target.value }))} /></div>
-        <div><Label>Account name</Label><Input value={form.bankAccountName} onChange={e => setForm(f => ({ ...f, bankAccountName: e.target.value }))} /></div>
+        <div><Label>Current password</Label><Input type="password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} /></div>
+        <div><Label>New password</Label><Input type="password" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))} /></div>
+        <div><Label>Confirm new password</Label><Input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} /></div>
       </div>
-      <Btn onClick={save}>Save profile</Btn>
+      <Btn onClick={submit} disabled={saving}>{saving ? "Saving…" : "Change password"}</Btn>
       {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      {err && <p style={{ color: C.rose, fontFamily: font, fontSize: 13, marginTop: 10 }}>{err}</p>}
     </SectionCard>
+  );
+}
+
+function ProfileTab({ employee, reload }) {
+  const [form, setForm] = useState({
+    phone: employee.phone || "", bankName: employee.bankName || "", bankAccountNumber: employee.bankAccountNumber || "", bankAccountName: employee.bankAccountName || "",
+    dateOfBirth: employee.dateOfBirth || "", gender: employee.gender || "", address: employee.address || "", bio: employee.bio || "",
+    emergencyContactName: employee.emergencyContactName || "", emergencyContactPhone: employee.emergencyContactPhone || "", emergencyContactRelationship: employee.emergencyContactRelationship || "",
+  });
+  const [avatarPreview, setAvatarPreview] = useState(employee.avatarDataUrl || "");
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+
+  async function onPhotoSelected(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingPhoto(true); setErr("");
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      await api("/api/staff/profile", { method: "PATCH", body: JSON.stringify({ avatarDataUrl: dataUrl }) });
+      setAvatarPreview(dataUrl);
+      setMsg("Photo updated."); reload();
+      setTimeout(() => setMsg(""), 2500);
+    } catch (ex) {
+      setErr(ex.message || "Could not upload that photo.");
+    } finally { setUploadingPhoto(false); }
+  }
+
+  async function removePhoto() {
+    await api("/api/staff/profile", { method: "PATCH", body: JSON.stringify({ avatarDataUrl: "" }) });
+    setAvatarPreview(""); reload();
+  }
+
+  async function save() {
+    setErr(""); setMsg("");
+    setSaving(true);
+    try {
+      await api("/api/staff/profile", { method: "PATCH", body: JSON.stringify(form) });
+      setMsg("Profile updated.");
+      reload();
+      setTimeout(() => setMsg(""), 2500);
+    } catch (e) { setErr(e.message); } finally { setSaving(false); }
+  }
+
+  return (
+    <div>
+      <SectionCard>
+        <SectionTitle>Your profile</SectionTitle>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 16, marginBottom: 22 }}>
+          <Avatar src={avatarPreview} name={employee.fullName} size={72} />
+          <div>
+            <Btn small variant="ghost" disabled={uploadingPhoto} onClick={() => fileInputRef.current?.click()}>
+              {uploadingPhoto ? "Uploading…" : "Change photo"}
+            </Btn>
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={onPhotoSelected} style={{ display: "none" }} />
+            {avatarPreview && <Btn small variant="ghost" onClick={removePhoto} style={{ marginLeft: 8 }}>Remove</Btn>}
+            <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6 }}>PNG or JPEG, resized automatically.</div>
+          </div>
+        </div>
+
+        <SectionTitle>Employment</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 20 }}>
+          <div><Label>Full name</Label><Input value={employee.fullName} disabled /></div>
+          <div><Label>Email</Label><Input value={employee.email} disabled /></div>
+          <div><Label>Title</Label><Input value={employee.title} disabled /></div>
+          <div><Label>Department</Label><Input value={employee.department || "—"} disabled /></div>
+          <div><Label>Start date</Label><Input value={employee.startDate || "—"} disabled /></div>
+          <div><Label>Role</Label><Input value={employee.staffRole === "manager" ? "Manager" : "Staff"} disabled /></div>
+        </div>
+
+        <SectionTitle>Contact & personal information</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+          <div><Label>Date of birth</Label><Input type="date" value={form.dateOfBirth} onChange={e => setForm(f => ({ ...f, dateOfBirth: e.target.value }))} /></div>
+          <div><Label>Gender</Label>
+            <Select value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+              <option value="">Prefer not to say</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
+            </Select>
+          </div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <Label>Address</Label>
+          <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <Label>Short bio</Label>
+          <Textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="A couple of lines about you" />
+        </div>
+
+        <SectionTitle>Emergency contact</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 20 }}>
+          <div><Label>Name</Label><Input value={form.emergencyContactName} onChange={e => setForm(f => ({ ...f, emergencyContactName: e.target.value }))} /></div>
+          <div><Label>Phone</Label><Input value={form.emergencyContactPhone} onChange={e => setForm(f => ({ ...f, emergencyContactPhone: e.target.value }))} /></div>
+          <div><Label>Relationship</Label><Input value={form.emergencyContactRelationship} onChange={e => setForm(f => ({ ...f, emergencyContactRelationship: e.target.value }))} /></div>
+        </div>
+
+        <SectionTitle>Bank details (for payroll)</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Bank name</Label><Input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} /></div>
+          <div><Label>Account number</Label><Input value={form.bankAccountNumber} onChange={e => setForm(f => ({ ...f, bankAccountNumber: e.target.value }))} /></div>
+          <div><Label>Account name</Label><Input value={form.bankAccountName} onChange={e => setForm(f => ({ ...f, bankAccountName: e.target.value }))} /></div>
+        </div>
+        <Btn onClick={save} disabled={saving}>{saving ? "Saving…" : "Save profile"}</Btn>
+        {msg && <p style={{ color: C.mint, fontFamily: font, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+        {err && <p style={{ color: C.rose, fontFamily: font, fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </SectionCard>
+
+      <PasswordSection />
+    </div>
   );
 }
 
@@ -550,7 +669,7 @@ export default function StaffApp() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
-      <TopBar user={session} onLogout={logout} active={active} setActive={setActive} />
+      <TopBar user={session} employee={employee} onLogout={logout} active={active} setActive={setActive} />
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 20px" }}>
         {active === "home" && <HomeTab reports={reports} leave={leave} />}
         {active === "reports" && <ReportsTab reports={reports} reload={loadAll} />}

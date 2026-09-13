@@ -1,7 +1,11 @@
 import { getRecord, putRecord } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 
-const SELF_EDITABLE = ["phone", "bankName", "bankAccountNumber", "bankAccountName"];
+const SELF_EDITABLE = [
+  "phone", "bankName", "bankAccountNumber", "bankAccountName",
+  "avatarDataUrl", "dateOfBirth", "gender", "address", "bio",
+  "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship",
+];
 
 function publicShape(e) {
   const rest = { ...e };
@@ -28,6 +32,9 @@ export default async function handler(req, res) {
 
   if (req.method === "PATCH") {
     const updates = req.body || {};
+    if (updates.avatarDataUrl && (typeof updates.avatarDataUrl !== "string" || !/^data:image\/(png|jpe?g);base64,/.test(updates.avatarDataUrl) || updates.avatarDataUrl.length > 1_500_000)) {
+      return res.status(400).json({ error: "Photo must be a PNG/JPEG under ~1MB" });
+    }
     for (const key of SELF_EDITABLE) {
       if (updates[key] !== undefined) employee[key] = updates[key];
     }

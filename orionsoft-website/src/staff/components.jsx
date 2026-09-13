@@ -81,3 +81,18 @@ export function EmptyState({ children }) {
     </div>
   );
 }
+
+function initials(name) {
+  return String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "?";
+}
+
+export function Avatar({ src, name, size = 40 }) {
+  const style = {
+    width: size, height: size, borderRadius: "50%", flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: size * 0.38, fontWeight: 700, fontFamily: font, color: C.gold,
+    background: C.goldDim, border: `1px solid ${C.border}`, overflow: "hidden",
+  };
+  if (src) return <img src={src} alt={name || "Avatar"} style={{ ...style, objectFit: "cover" }} />;
+  return <div style={style}>{initials(name)}</div>;
+}

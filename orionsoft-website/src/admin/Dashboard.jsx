@@ -2936,7 +2936,14 @@ function EmployeesSection() {
         {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
           <Table
             cols={[
-              { key: "fullName", label: "Name" },
+              { key: "fullName", label: "Name", render: e => (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {e.avatarDataUrl
+                    ? <img src={e.avatarDataUrl} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
+                    : <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.goldDim, color: C.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700 }}>{(e.fullName || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("")}</div>}
+                  <span>{e.fullName}</span>
+                </div>
+              ) },
               { key: "title", label: "Title" },
               { key: "department", label: "Department" },
               { key: "email", label: "Email" },

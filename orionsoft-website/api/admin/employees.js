@@ -50,6 +50,8 @@ export default async function handler(req, res) {
       status: "active",
       bankName: "", bankAccountNumber: "", bankAccountName: "",
       salaryAmount: salaryAmount || 0, salaryCurrency: salaryCurrency || "NGN",
+      avatarDataUrl: "", dateOfBirth: "", gender: "", address: "", bio: "",
+      emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelationship: "",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: session.sub,
     };
     await putRecord("employees", id, employee);
@@ -66,7 +68,12 @@ export default async function handler(req, res) {
     const employee = await getRecord("employees", id);
     if (!employee) return res.status(404).json({ error: "Employee not found" });
 
-    const allowed = ["fullName", "phone", "title", "department", "status", "staffRole", "salaryAmount", "salaryCurrency", "bankName", "bankAccountNumber", "bankAccountName"];
+    const allowed = [
+      "fullName", "phone", "title", "department", "status", "staffRole", "salaryAmount", "salaryCurrency",
+      "bankName", "bankAccountNumber", "bankAccountName",
+      "dateOfBirth", "gender", "address", "bio",
+      "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship",
+    ];
     for (const key of allowed) {
       if (updates[key] !== undefined) employee[key] = updates[key];
     }
