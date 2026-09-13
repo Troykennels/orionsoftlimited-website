@@ -103,13 +103,18 @@ export async function get(key) {
   try { return JSON.parse(res.result); } catch { return null; }
 }
 
-// Set a single JSON-serialized value by key
+// Set a single JSON-serialized value by key.
+// Unlike LPUSH (variadic — remaining args go in a JSON array), Upstash's REST
+// SET takes the value directly as the raw POST body. u() already does one
+// JSON.stringify, so passing `value` here (not `[JSON.stringify(value)]`)
+// round-trips correctly with get()'s JSON.parse(res.result) — verified against
+// the live REST API directly (double-wrapping silently corrupted every write).
 export async function set(key, value) {
   if (!BASE || !TOKEN) {
     mem.set(key, JSON.stringify(value));
     return { result: "OK" };
   }
-  return u("POST", `/set/${key}`, [JSON.stringify(value)]);
+  return u("POST", `/set/${key}`, value);
 }
 
 // Delete a key
