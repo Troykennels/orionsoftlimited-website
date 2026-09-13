@@ -34,6 +34,10 @@ async function sendViaGmail(to, subject, html, attachments) {
     const transporter = nodemailer.default.createTransport({
       service: "gmail",
       auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+      // Belt-and-suspenders alongside server.js's dns.setDefaultResultOrder:
+      // force IPv4 so hosts without IPv6 egress (e.g. Railway) don't hit
+      // ENETUNREACH connecting to Gmail's IPv6 SMTP address.
+      family: 4,
     });
     await transporter.sendMail({
       from: `"Orion Soft" <${process.env.GMAIL_USER}>`, to, subject, html,

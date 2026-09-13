@@ -8,7 +8,13 @@
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
+import dns from "node:dns";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+// Railway's container network doesn't have IPv6 egress, but Node's default DNS
+// resolution can still return Gmail's SMTP AAAA record first, causing
+// `connect ENETUNREACH` on every outbound email. Prefer IPv4 results process-wide.
+dns.setDefaultResultOrder("ipv4first");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const API_DIR = path.join(__dirname, "api");
