@@ -7,6 +7,7 @@ import {
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { parseRichText } from "../lib/richtext.js";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -1282,7 +1283,22 @@ function ChatSection() {
 }
 
 // ─── Reusable CRUD section ───────────────────────────────────────────────────
-function CrudSection({ title, sk, defaultItem, fields, renderItem, defaultList = [] }) {
+// Two-column "edit here / see the real thing here" layout, used by any editor
+// that has a public-facing visual worth previewing live (letters, product
+// cards, blog posts, etc). Stacks to one column on narrow viewports.
+function SplitEditor({ left, right }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1fr)", gap: 20, alignItems: "start" }}>
+      <div>{left}</div>
+      <div style={{ position: "sticky", top: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", marginBottom: 10 }}>LIVE PREVIEW</div>
+        {right}
+      </div>
+    </div>
+  );
+}
+
+function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview, defaultList = [] }) {
   const [items, setItems] = useState(() => lsGet(sk, defaultList));
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ ...defaultItem });
@@ -1318,34 +1334,38 @@ function CrudSection({ title, sk, defaultItem, fields, renderItem, defaultList =
     setForm({ ...items[i] });
   }
 
+  const formCard = (
+    <SectionCard>
+      <SectionTitle>{editing !== null ? `Edit ${title}` : `Add ${title}`}</SectionTitle>
+      <div style={{ marginTop: 16 }}>
+        {fields.map(f => (
+          <div key={f.key} style={{ marginBottom: 14 }}>
+            <Label>{f.label}</Label>
+            {f.type === "textarea" ? (
+              <Textarea value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} rows={f.rows || 3} />
+            ) : f.type === "select" ? (
+              <Select value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}>
+                {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </Select>
+            ) : f.type === "toggle" ? (
+              <Toggle value={!!form[f.key]} onChange={v => setForm(p => ({ ...p, [f.key]: v }))} label={f.toggleLabel} />
+            ) : (
+              <Input value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} type={f.type || "text"} />
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+        <Btn onClick={save}>{editing !== null ? "Update" : "Save"}</Btn>
+        {editing !== null && <Btn variant="ghost" onClick={() => { setEditing(null); setForm({ ...defaultItem }); }}>Cancel</Btn>}
+      </div>
+      {msg && <p style={{ fontSize: 13, color: C.mint, fontFamily: font, marginTop: 8 }}>{msg}</p>}
+    </SectionCard>
+  );
+
   return (
     <div>
-      <SectionCard>
-        <SectionTitle>{editing !== null ? `Edit ${title}` : `Add ${title}`}</SectionTitle>
-        <div style={{ marginTop: 16 }}>
-          {fields.map(f => (
-            <div key={f.key} style={{ marginBottom: 14 }}>
-              <Label>{f.label}</Label>
-              {f.type === "textarea" ? (
-                <Textarea value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} rows={f.rows || 3} />
-              ) : f.type === "select" ? (
-                <Select value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}>
-                  {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </Select>
-              ) : f.type === "toggle" ? (
-                <Toggle value={!!form[f.key]} onChange={v => setForm(p => ({ ...p, [f.key]: v }))} label={f.toggleLabel} />
-              ) : (
-                <Input value={form[f.key] || ""} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} placeholder={f.placeholder} type={f.type || "text"} />
-              )}
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          <Btn onClick={save}>{editing !== null ? "Update" : "Save"}</Btn>
-          {editing !== null && <Btn variant="ghost" onClick={() => { setEditing(null); setForm({ ...defaultItem }); }}>Cancel</Btn>}
-        </div>
-        {msg && <p style={{ fontSize: 13, color: C.mint, fontFamily: font, marginTop: 8 }}>{msg}</p>}
-      </SectionCard>
+      {renderPreview ? <SplitEditor left={formCard} right={renderPreview(form)} /> : formCard}
 
       <div style={{ marginTop: 20 }}>
         {items.map((item, i) => (
@@ -1415,6 +1435,19 @@ function ProductsSection() {
           {p.desc && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{String(p.desc).slice(0, 120)}{String(p.desc).length > 120 ? "…" : ""}</div>}
         </div>
       )}
+      renderPreview={f => (
+        <div style={{ background: "#fff", borderRadius: 20, border: "1.5px solid #E7E9F0", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}>
+          <div style={{ height: 70, background: `${f.color || "#C8A850"}14`, position: "relative", borderBottom: `3px solid ${f.color || "#C8A850"}` }}>
+            {f.soon && <span style={{ position: "absolute", top: 10, left: 10, background: "#0B1120", color: "#fff", fontSize: 9.5, fontWeight: 800, letterSpacing: "0.1em", padding: "3px 8px", borderRadius: 5 }}>COMING SOON</span>}
+          </div>
+          <div style={{ padding: "22px 22px 26px" }}>
+            {f.tag && <span style={{ fontSize: 10.5, fontWeight: 800, color: f.color || "#C8A850", background: `${f.color || "#C8A850"}14`, padding: "3px 9px", borderRadius: 20, display: "inline-block", marginBottom: 10 }}>{f.tag}</span>}
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: "#0B1120", margin: "0 0 6px" }}>{f.name || "Product name"}</h3>
+            {f.tagline && <div style={{ fontSize: 13, color: "#5B6472", marginBottom: 8, fontWeight: 600 }}>{f.tagline}</div>}
+            <p style={{ fontSize: 13.5, color: "#5B6472", lineHeight: 1.72, margin: 0 }}>{f.desc || "Product description goes here."}</p>
+          </div>
+        </div>
+      )}
     />
   );
 }
@@ -1443,6 +1476,21 @@ function ServicesSection() {
           </div>
           {s.tagline && <div style={{ fontSize: 12, color: C.gold, fontFamily: font, marginBottom: 2 }}>{s.tagline}</div>}
           {s.desc && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{String(s.desc).slice(0, 120)}{String(s.desc).length > 120 ? "…" : ""}</div>}
+        </div>
+      )}
+      renderPreview={f => (
+        <div style={{ background: "#fff", borderRadius: 20, border: "1.5px solid #E7E9F0", overflow: "hidden", boxShadow: "0 20px 40px rgba(0,0,0,0.25)" }}>
+          <div style={{ height: 8, background: "#C8A850" }} />
+          <div style={{ padding: "22px 22px 26px" }}>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: "#0B1120", margin: "0 0 6px" }}>{f.title || "Service name"}</h3>
+            {f.tagline && <div style={{ fontSize: 13, color: "#C8A850", marginBottom: 8, fontWeight: 700 }}>{f.tagline}</div>}
+            <p style={{ fontSize: 13.5, color: "#5B6472", lineHeight: 1.72, margin: "0 0 12px" }}>{f.desc || "What this service covers."}</p>
+            {f.features && (
+              <ul style={{ margin: 0, padding: "0 0 0 18px", color: "#5B6472", fontSize: 13 }}>
+                {String(f.features).split("\n").filter(Boolean).map((l, i) => <li key={i} style={{ marginBottom: 4 }}>{l}</li>)}
+              </ul>
+            )}
+          </div>
         </div>
       )}
     />
@@ -1474,6 +1522,14 @@ function BlogSection() {
           </div>
           <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{p.category} · {p.author}</div>
           {p.excerpt && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{p.excerpt}</div>}
+        </div>
+      )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
+          {f.category && <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{f.category}</div>}
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, margin: "0 0 8px" }}>{f.title || "Post title"}</h3>
+          <p style={{ fontSize: 13.5, color: C.text, margin: "0 0 12px", lineHeight: 1.6 }}>{f.excerpt || "Post excerpt goes here."}</p>
+          <div style={{ fontSize: 12, color: C.textMuted }}>{f.author || "Orion Soft"} · {new Date().toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })}</div>
         </div>
       )}
     />
@@ -1536,6 +1592,15 @@ function TestimonialsSection() {
           {p.quote && <div style={{ fontSize: 13, color: C.text, fontFamily: font, marginTop: 4, fontStyle: "italic" }}>“{p.quote}”</div>}
         </div>
       )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "36px 32px" }}>
+          <div style={{ fontSize: 52, fontFamily: "Georgia, serif", color: C.gold, opacity: 0.5, lineHeight: 1, marginBottom: -8 }}>&ldquo;</div>
+          <blockquote style={{ fontSize: 15.5, color: C.text, lineHeight: 1.78, margin: "0 0 20px", fontStyle: "italic" }}>{f.quote || "Their testimonial will appear here."}</blockquote>
+          <div style={{ width: 32, height: 2, background: C.gold, marginBottom: 10 }} />
+          <div style={{ fontSize: 14.5, fontWeight: 700, color: C.heading }}>{f.name || "Client name"}</div>
+          <div style={{ fontSize: 13, color: C.textMuted }}>{[f.role, f.company].filter(Boolean).join(" · ") || "Role · Company"}</div>
+        </div>
+      )}
     />
   );
 }
@@ -1562,6 +1627,15 @@ function FAQsSection() {
           </div>
           <div style={{ fontSize: 12, color: C.gold, fontFamily: font }}>{p.category}</div>
           {p.answer && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{p.answer}</div>}
+        </div>
+      )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.gold}44`, borderRadius: 12, boxShadow: "0 0 0 3px rgba(200,168,80,0.07)" }}>
+          <div style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <h3 style={{ fontSize: 15.5, fontWeight: 700, color: C.heading, margin: 0 }}>{f.question || "Question goes here"}</h3>
+            <span style={{ fontSize: 20, color: C.gold, transform: "rotate(45deg)", display: "inline-block", flexShrink: 0 }}>+</span>
+          </div>
+          <div style={{ padding: "0 24px 20px", fontSize: 14, color: C.text, lineHeight: 1.8 }}>{f.answer || "Answer goes here."}</div>
         </div>
       )}
     />
@@ -1596,6 +1670,20 @@ function TeamSection() {
           </div>
         </div>
       )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 28, textAlign: "center" }}>
+          {f.photoUrl ? (
+            <img src={f.photoUrl} alt={f.name} style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.gold}44`, margin: "0 auto 14px" }} onError={e => { e.target.style.display = "none"; }} />
+          ) : (
+            <div style={{ width: 80, height: 80, borderRadius: "50%", margin: "0 auto 14px", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg, ${C.gold}20, ${C.gold}40)`, fontSize: 26, fontWeight: 800, color: C.gold }}>
+              {adminInitials(f.name)}
+            </div>
+          )}
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.heading }}>{f.name || "Team member"}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.gold, marginTop: 4 }}>{f.role || "Role / Title"}</div>
+          {f.bio && <p style={{ fontSize: 13, color: C.text, marginTop: 10, lineHeight: 1.6 }}>{f.bio}</p>}
+        </div>
+      )}
     />
   );
 }
@@ -1628,6 +1716,19 @@ function CareersSection() {
           <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{[p.department, p.location, p.salary].filter(Boolean).join(" · ")}</div>
         </div>
       )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: C.heading, margin: "0 0 4px" }}>{f.title || "Job title"}</h2>
+              <div style={{ fontSize: 12.5, color: C.textMuted }}>{[f.type, f.location].filter(Boolean).join(" / ") || "Type / Location"}</div>
+            </div>
+            <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${C.gold}`, flexShrink: 0 }} />
+          </div>
+          <p style={{ fontSize: 13.5, color: C.text, margin: "0 0 10px", lineHeight: 1.6 }}>{f.desc || "Role description goes here."}</p>
+          {f.salary && <div style={{ fontSize: 12.5, fontWeight: 800, color: C.gold }}>{f.salary}</div>}
+        </div>
+      )}
     />
   );
 }
@@ -1655,6 +1756,19 @@ function EventsSection() {
             <Badge color={e.published ? C.mint : C.textMuted}>{e.published ? "Published" : "Draft"}</Badge>
           </div>
           <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{[e.date, e.location].filter(Boolean).join(" · ")}</div>
+        </div>
+      )}
+      renderPreview={f => (
+        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, display: "flex", gap: 16 }}>
+          <div style={{ flexShrink: 0, width: 56, textAlign: "center", background: C.goldDim, borderRadius: 10, padding: "10px 6px", alignSelf: "flex-start" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase" }}>{f.date ? new Date(f.date).toLocaleDateString("en-NG", { month: "short" }) : "TBA"}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.gold }}>{f.date ? new Date(f.date).getDate() : "--"}</div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, margin: "0 0 4px" }}>{f.title || "Event title"}</h3>
+            <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 8 }}>{f.location || "Location"}</div>
+            <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.6 }}>{f.desc || "Event description goes here."}</p>
+          </div>
         </div>
       )}
     />
@@ -3269,6 +3383,63 @@ function SignaturePad({ onChange }) {
   );
 }
 
+// ─── Rich text + letterhead preview (shared by Templates & Contracts) ────────
+function RichText({ text }) {
+  const paragraphs = parseRichText(text);
+  if (paragraphs.length === 0) return <span style={{ color: "#999", fontStyle: "italic" }}>Start typing the letter body on the left…</span>;
+  return paragraphs.map((para, pi) => (
+    <p key={pi} style={{ margin: pi === 0 ? "0 0 12px" : "12px 0" }}>
+      {para.lines.map((runs, li) => (
+        <span key={li}>
+          {li > 0 && <br />}
+          {runs.map((run, ri) => {
+            let node = run.text;
+            if (run.bold) node = <strong key={ri}>{node}</strong>;
+            if (run.italic) node = <em key={ri}>{node}</em>;
+            return <span key={ri}>{node}</span>;
+          })}
+        </span>
+      ))}
+    </p>
+  ));
+}
+
+function fillPlaceholders(text, fillData, recipientName) {
+  return String(text || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (m, key) => {
+    if (key === "recipientName") return recipientName || "[Recipient Name]";
+    const val = fillData?.[key];
+    return val ? val : m;
+  });
+}
+
+function LetterPreview({ bodyMarkup, subject, recipientName }) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
+      <div style={{ background: "#0B1120", padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "0.02em", fontFamily: font }}>Orion<span style={{ color: "#C8A850" }}>Soft</span> Limited</div>
+          <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.6)", marginTop: 3, letterSpacing: "0.08em", fontFamily: font }}>OFFICIAL CORRESPONDENCE</div>
+        </div>
+        <div style={{ width: 4, height: 34, background: "#C8A850", borderRadius: 2 }} />
+      </div>
+      <div style={{ padding: "26px 30px 34px", color: "#1a1a1a", fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+        <div style={{ fontSize: 11.5, color: "#666", marginBottom: 18 }}>
+          {new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
+        </div>
+        <div style={{ fontSize: 13, marginBottom: 14 }}>{recipientName || "Recipient name"}</div>
+        {subject && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>RE: {subject}</div>}
+        <div style={{ fontSize: 12.5, lineHeight: 1.8 }}>
+          <RichText text={bodyMarkup} />
+        </div>
+        <div style={{ marginTop: 40, fontSize: 12.5, lineHeight: 1.6 }}>
+          Yours faithfully,<br /><br /><br />
+          <div style={{ borderTop: "1px solid #999", width: 170, paddingTop: 4 }}>For Orion Soft Limited</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Document Templates ──────────────────────────────────────────────────────
 function TemplatesSection() {
   const [templates, setTemplates] = useState([]);
@@ -3307,14 +3478,19 @@ function TemplatesSection() {
         {!loading && templates.map(t => (
           <div key={t.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
             {editing === t.id ? (
-              <div>
-                <div style={{ marginBottom: 10 }}><Label>Name</Label><Input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></div>
-                <div style={{ marginBottom: 10 }}><Label>Body</Label><Textarea style={{ minHeight: 220, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} /></div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Btn small onClick={save}>Save</Btn>
-                  <Btn small variant="ghost" onClick={() => setEditing(null)}>Cancel</Btn>
-                </div>
-              </div>
+              <SplitEditor
+                left={
+                  <div>
+                    <div style={{ marginBottom: 10 }}><Label>Name</Label><Input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></div>
+                    <div style={{ marginBottom: 10 }}><Label>Body (HTML)</Label><Textarea style={{ minHeight: 260, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} /></div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Btn small onClick={save}>Save</Btn>
+                      <Btn small variant="ghost" onClick={() => setEditing(null)}>Cancel</Btn>
+                    </div>
+                  </div>
+                }
+                right={<LetterPreview bodyMarkup={draft.bodyMarkup} />}
+              />
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
@@ -3510,46 +3686,63 @@ function ContractsSection() {
         </div>
         {showCompose && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ marginBottom: 14 }}>
-              <Label>Template</Label>
-              <Select value={form.templateId} onChange={e => setForm(f => ({ ...f, templateId: e.target.value, fillData: {} }))}>
-                <option value="">Select a template…</option>
-                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </Select>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
-              <div><Label>Recipient email</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
-              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
-            </div>
-            {placeholders.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <Label>Fill in the template fields</Label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {placeholders.map(p => (
-                    <Input key={p} placeholder={p} value={form.fillData[p] || ""} onChange={e => setForm(f => ({ ...f, fillData: { ...f.fillData, [p]: e.target.value } }))} />
-                  ))}
+            <SplitEditor
+              left={
+                <div>
+                  <div style={{ marginBottom: 14 }}>
+                    <Label>Template</Label>
+                    <Select value={form.templateId} onChange={e => setForm(f => ({ ...f, templateId: e.target.value, fillData: {} }))}>
+                      <option value="">Select a template…</option>
+                      {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </Select>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                    <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
+                    <div><Label>Recipient email</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
+                    <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+                    <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+                  </div>
+                  {placeholders.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <Label>Fill in the template fields</Label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        {placeholders.map(p => (
+                          <Input key={p} placeholder={p} value={form.fillData[p] || ""} onChange={e => setForm(f => ({ ...f, fillData: { ...f.fillData, [p]: e.target.value } }))} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ marginBottom: 16 }}>
+                    <Label>Signatories</Label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {signatories.map(s => {
+                        const active = form.signatoryIds.includes(s.id);
+                        return (
+                          <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, signatoryIds: active ? f.signatoryIds.filter(id => id !== s.id) : [...f.signatoryIds, s.id] }))}
+                            style={{ background: active ? C.goldDim : C.surface, border: `1px solid ${active ? C.gold : C.border}`, borderRadius: 8, padding: "6px 12px", color: active ? C.gold : C.text, fontSize: 12.5, cursor: "pointer" }}>
+                            {s.fullName}
+                          </button>
+                        );
+                      })}
+                      {signatories.length === 0 && <span style={{ color: C.textMuted, fontSize: 12.5 }}>No signatories yet — add one under Signatories.</span>}
+                    </div>
+                  </div>
+                  <Btn onClick={compose}>Create draft & generate PDF</Btn>
+                  {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
                 </div>
-              </div>
-            )}
-            <div style={{ marginBottom: 16 }}>
-              <Label>Signatories</Label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {signatories.map(s => {
-                  const active = form.signatoryIds.includes(s.id);
-                  return (
-                    <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, signatoryIds: active ? f.signatoryIds.filter(id => id !== s.id) : [...f.signatoryIds, s.id] }))}
-                      style={{ background: active ? C.goldDim : C.surface, border: `1px solid ${active ? C.gold : C.border}`, borderRadius: 8, padding: "6px 12px", color: active ? C.gold : C.text, fontSize: 12.5, cursor: "pointer" }}>
-                      {s.fullName}
-                    </button>
-                  );
-                })}
-                {signatories.length === 0 && <span style={{ color: C.textMuted, fontSize: 12.5 }}>No signatories yet — add one under Signatories.</span>}
-              </div>
-            </div>
-            <Btn onClick={compose}>Create draft & generate PDF</Btn>
-            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+              }
+              right={
+                selectedTemplate ? (
+                  <LetterPreview
+                    subject={selectedTemplate.name}
+                    recipientName={form.recipientName}
+                    bodyMarkup={fillPlaceholders(selectedTemplate.bodyMarkup, form.fillData, form.recipientName)}
+                  />
+                ) : (
+                  <div style={{ color: C.textMuted, fontSize: 13, fontFamily: font, padding: "40px 0", textAlign: "center" }}>Select a template to preview the letter.</div>
+                )
+              }
+            />
           </div>
         )}
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
