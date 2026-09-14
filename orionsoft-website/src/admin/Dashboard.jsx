@@ -1,4 +1,12 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
+  Home, Megaphone, Package, Wrench, FileText, Briefcase, Star, HelpCircle,
+  Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
+  UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
+  Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
+  ChevronLeft, ChevronRight,
+} from "lucide-react";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -39,6 +47,8 @@ const SK = {
   newsletter:   "orionsoft_newsletter_v1",
   media:        "orionsoft_media_v1",
   conversations:"orionsoft_conversations_v1",
+  services:     "orionsoft_services_v1",
+  events:       "orionsoft_events_v1",
 };
 
 // ─── Auth (server-verified session, see api/_lib/auth.js) ───────────────────
@@ -272,71 +282,73 @@ const NAV_GROUPS = [
   {
     label: "OVERVIEW",
     items: [
-      { id: "dashboard",    label: "Dashboard",        icon: "📊" },
-      { id: "analytics",    label: "Analytics",        icon: "📈" },
-      { id: "live",         label: "Live Visitors",    icon: "🟢" },
-      { id: "activities",   label: "Recent Activity",  icon: "🔔" },
-      { id: "calendar",     label: "Calendar",         icon: "📅" },
+      { id: "dashboard",    label: "Dashboard",        icon: LayoutDashboard },
+      { id: "analytics",    label: "Analytics",        icon: TrendingUp },
+      { id: "live",         label: "Live Visitors",    icon: Radio },
+      { id: "activities",   label: "Recent Activity",  icon: Bell },
+      { id: "calendar",     label: "Calendar",         icon: Calendar },
     ],
   },
   {
     label: "COMMUNICATIONS",
     items: [
-      { id: "leads",        label: "Contact Forms",    icon: "📬" },
-      { id: "newsletter",   label: "Newsletter",       icon: "📰" },
-      { id: "chat",         label: "AI Conversations", icon: "🤖" },
+      { id: "leads",        label: "Contact Forms",    icon: Inbox },
+      { id: "newsletter",   label: "Newsletter",       icon: Newspaper },
+      { id: "chat",         label: "AI Conversations", icon: Bot },
     ],
   },
   {
     label: "CONTENT",
     items: [
-      { id: "homepage",     label: "Homepage",         icon: "🏠" },
-      { id: "announcements",label: "Announcements",    icon: "📢" },
-      { id: "products",     label: "Products",         icon: "📦" },
-      { id: "blog",         label: "Blog",             icon: "📝" },
-      { id: "portfolio",    label: "Case Studies",     icon: "💼" },
-      { id: "testimonials", label: "Testimonials",     icon: "⭐" },
-      { id: "faqs",         label: "FAQs",             icon: "❓" },
-      { id: "team",         label: "Team",             icon: "👥" },
-      { id: "careers",      label: "Careers",          icon: "🎯" },
+      { id: "homepage",     label: "Homepage",         icon: Home },
+      { id: "announcements",label: "Announcements",    icon: Megaphone },
+      { id: "products",     label: "Products",         icon: Package },
+      { id: "services",     label: "Services",         icon: Wrench },
+      { id: "blog",         label: "Blog",             icon: FileText },
+      { id: "portfolio",    label: "Case Studies",     icon: Briefcase },
+      { id: "testimonials", label: "Testimonials",     icon: Star },
+      { id: "faqs",         label: "FAQs",             icon: HelpCircle },
+      { id: "team",         label: "Team",             icon: Users },
+      { id: "careers",      label: "Careers",          icon: Target },
+      { id: "events",       label: "Events",           icon: CalendarDays },
     ],
   },
   {
     label: "SETTINGS",
     items: [
-      { id: "seo",          label: "SEO",              icon: "🔍" },
-      { id: "features",     label: "Feature Flags",    icon: "🚩" },
-      { id: "clients",      label: "Clients",          icon: "🏢" },
-      { id: "menus",        label: "Navigation",       icon: "🔗" },
-      { id: "settings",     label: "Site Settings",    icon: "⚙️" },
+      { id: "seo",          label: "SEO",              icon: Search },
+      { id: "features",     label: "Feature Flags",    icon: Flag },
+      { id: "clients",      label: "Clients",          icon: Building2 },
+      { id: "menus",        label: "Navigation",       icon: Link2 },
+      { id: "settings",     label: "Site Settings",    icon: Settings },
     ],
   },
   {
     label: "STAFF & HR",
     items: [
-      { id: "employees",     label: "Employees",        icon: "🧑‍💼" },
-      { id: "weekly-reports",label: "Weekly Reports",   icon: "🗒️" },
-      { id: "leave-requests",label: "Leave Requests",   icon: "🌴" },
-      { id: "payroll",       label: "Payroll",          icon: "💵" },
+      { id: "employees",     label: "Employees",        icon: UserCog },
+      { id: "weekly-reports",label: "Weekly Reports",   icon: ClipboardList },
+      { id: "leave-requests",label: "Leave Requests",   icon: Palmtree },
+      { id: "payroll",       label: "Payroll",          icon: Wallet },
     ],
   },
   {
     label: "DOCUMENTS",
     items: [
-      { id: "templates",    label: "Templates",         icon: "📄" },
-      { id: "signatories",  label: "Signatories",       icon: "✍️" },
-      { id: "contracts",    label: "Contracts",         icon: "📑" },
-      { id: "email-log",    label: "Email Log",         icon: "✉️" },
+      { id: "templates",    label: "Templates",         icon: File },
+      { id: "signatories",  label: "Signatories",       icon: PenTool },
+      { id: "contracts",    label: "Contracts",         icon: FileSignature },
+      { id: "email-log",    label: "Email Log",         icon: Mail },
     ],
   },
   {
     label: "SYSTEM",
     items: [
-      { id: "health",       label: "System Health",    icon: "💡" },
-      { id: "users",        label: "Users & Roles",    icon: "👤" },
-      { id: "audit",        label: "Audit Logs",       icon: "📋" },
-      { id: "media",        label: "Media Library",    icon: "🖼️" },
-      { id: "backups",      label: "Backups",          icon: "💾" },
+      { id: "health",       label: "System Health",    icon: Activity },
+      { id: "users",        label: "Users & Roles",    icon: ShieldCheck },
+      { id: "audit",        label: "Audit Logs",       icon: ClipboardCheck },
+      { id: "media",        label: "Media Library",    icon: Image },
+      { id: "backups",      label: "Backups",          icon: Database },
     ],
   },
 ];
@@ -1407,6 +1419,36 @@ function ProductsSection() {
   );
 }
 
+// ─── Services ────────────────────────────────────────────────────────────────
+function ServicesSection() {
+  return (
+    <CrudSection
+      title="Service"
+      sk={SK.services}
+      defaultList={[]}
+      defaultItem={{ title: "", tagline: "", desc: "", features: "", order: 99, published: true }}
+      fields={[
+        { key: "title",    label: "Service Name",  placeholder: "e.g. Software Development" },
+        { key: "tagline",  label: "Tagline",       placeholder: "One-line pitch" },
+        { key: "desc",     label: "Description",   type: "textarea", rows: 3, placeholder: "What this service covers" },
+        { key: "features", label: "Highlights (one per line)", type: "textarea", rows: 4, placeholder: "Web Applications\nAPI Development\nBusiness Automation…" },
+        { key: "order",     label: "Display Order", type: "number", placeholder: "1–99 (lower = appears first)" },
+        { key: "published", label: "Published",     type: "toggle", toggleLabel: "Visible on website" },
+      ]}
+      renderItem={s => (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.heading, fontFamily: font }}>{s.title}</span>
+            <Badge color={s.published ? C.mint : C.textMuted}>{s.published ? "Published" : "Draft"}</Badge>
+          </div>
+          {s.tagline && <div style={{ fontSize: 12, color: C.gold, fontFamily: font, marginBottom: 2 }}>{s.tagline}</div>}
+          {s.desc && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{String(s.desc).slice(0, 120)}{String(s.desc).length > 120 ? "…" : ""}</div>}
+        </div>
+      )}
+    />
+  );
+}
+
 // ─── Blog ────────────────────────────────────────────────────────────────────
 function BlogSection() {
   return (
@@ -1584,6 +1626,35 @@ function CareersSection() {
             <Badge color={p.published !== false ? C.mint : C.textMuted}>{p.published !== false ? "Active" : "Closed"}</Badge>
           </div>
           <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{[p.department, p.location, p.salary].filter(Boolean).join(" · ")}</div>
+        </div>
+      )}
+    />
+  );
+}
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+function EventsSection() {
+  return (
+    <CrudSection
+      title="Event"
+      sk={SK.events}
+      defaultList={[]}
+      defaultItem={{ title: "", date: "", location: "", desc: "", registerLink: "", published: true }}
+      fields={[
+        { key: "title",        label: "Event Title",   placeholder: "e.g. Orion Soft Product Demo Day" },
+        { key: "date",         label: "Date",           type: "date" },
+        { key: "location",     label: "Location",       placeholder: "e.g. Lagos / Virtual" },
+        { key: "desc",         label: "Description",    type: "textarea", rows: 4, placeholder: "What the event is about" },
+        { key: "registerLink", label: "Registration Link", placeholder: "https://…" },
+        { key: "published",    label: "Published",      type: "toggle", toggleLabel: "Visible on website" },
+      ]}
+      renderItem={e => (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.heading, fontFamily: font }}>{e.title}</span>
+            <Badge color={e.published ? C.mint : C.textMuted}>{e.published ? "Published" : "Draft"}</Badge>
+          </div>
+          <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{[e.date, e.location].filter(Boolean).join(" · ")}</div>
         </div>
       )}
     />
@@ -3712,12 +3783,14 @@ function DashboardContent({ active, session }) {
     case "homepage":      return <HomepageSection />;
     case "announcements": return <AnnouncementsSection />;
     case "products":      return <ProductsSection />;
+    case "services":      return <ServicesSection />;
     case "blog":          return <BlogSection />;
     case "portfolio":     return <PortfolioSection />;
     case "testimonials":  return <TestimonialsSection />;
     case "faqs":          return <FAQsSection />;
     case "team":          return <TeamSection />;
     case "careers":       return <CareersSection />;
+    case "events":        return <EventsSection />;
     case "seo":           return <SEOSection />;
     case "features":      return <FeatureFlagsSection />;
     case "clients":       return <ClientsSection />;
@@ -3737,6 +3810,58 @@ function DashboardContent({ active, session }) {
     case "backups":       return <BackupsSection />;
     default:              return <DashboardOverview />;
   }
+}
+
+// ─── Top Bar ─────────────────────────────────────────────────────────────────
+function adminInitials(name) {
+  return String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "?";
+}
+
+function TopBar({ session, active, navigate }) {
+  const { data } = useAnalytics();
+  const unread = data?.recentActivities?.length || 0;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 14,
+      padding: "14px clamp(20px, 3vw, 40px)", borderBottom: `1px solid ${C.border}`, background: C.surface,
+    }}>
+      <button type="button" onClick={() => navigate("activities")} title="Recent activity" style={{
+        position: "relative", background: "none", border: `1px solid ${C.border}`, borderRadius: 10,
+        width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center",
+        color: active === "activities" ? C.gold : C.textMuted, cursor: "pointer",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.borderColor = C.borderHover; }}
+      onMouseLeave={e => { e.currentTarget.style.color = active === "activities" ? C.gold : C.textMuted; e.currentTarget.style.borderColor = C.border; }}>
+        <Bell size={17} />
+        {unread > 0 && (
+          <span style={{
+            position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, padding: "0 3px",
+            borderRadius: 999, background: C.rose, color: "#fff", fontSize: 10, fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center", fontFamily: font,
+          }}>
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      <div style={{ width: 1, height: 24, background: C.border }} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.heading, fontFamily: font, lineHeight: 1.2 }}>{session.name}</div>
+          <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, textTransform: "capitalize" }}>{session.adminRole || "Admin"}</div>
+        </div>
+        <div style={{
+          width: 34, height: 34, borderRadius: "50%", background: C.goldDim, border: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 13, fontWeight: 700, color: C.gold, fontFamily: font, flexShrink: 0,
+        }}>
+          {adminInitials(session.name)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Main Dashboard Shell ────────────────────────────────────────────────────
@@ -3793,8 +3918,8 @@ export default function AdminDashboard({ setCurrentPage }) {
               <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Admin Portal</div>
             </div>
           )}
-          <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 4, fontSize: 16 }} title={sidebarOpen ? "Collapse" : "Expand"}>
-            {sidebarOpen ? "←" : "→"}
+          <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 4, display: "flex" }} title={sidebarOpen ? "Collapse" : "Expand"}>
+            {sidebarOpen ? <ChevronLeft size={17} /> : <ChevronRight size={17} />}
           </button>
         </div>
 
@@ -3804,18 +3929,19 @@ export default function AdminDashboard({ setCurrentPage }) {
               {sidebarOpen && <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.1em", padding: "0 8px 8px" }}>{g.label}</div>}
               {g.items.map(item => {
                 const isActive = active === item.id;
+                const Icon = item.icon;
                 return (
                   <button key={item.id} type="button" onClick={() => navigate(item.id)} style={{
                     display: "flex", alignItems: "center", gap: 10, width: "100%", padding: sidebarOpen ? "10px 12px" : "10px 8px",
-                    background: isActive ? C.goldDim : "none", border: isActive ? `1px solid ${C.gold}22` : "1px solid transparent",
-                    borderRadius: 10, cursor: "pointer", color: isActive ? C.gold : C.textMuted, fontFamily: font,
-                    fontSize: 14, fontWeight: isActive ? 600 : 400, marginBottom: 2, textAlign: "left",
-                    transition: "all 0.15s", justifyContent: sidebarOpen ? "flex-start" : "center",
+                    background: isActive ? C.gold : "none", border: "1px solid transparent",
+                    borderRadius: 10, cursor: "pointer", color: isActive ? "#0A0E18" : C.textMuted, fontFamily: font,
+                    fontSize: 14, fontWeight: isActive ? 700 : 400, marginBottom: 2, textAlign: "left",
+                    transition: "all 0.15s", justifyContent: sidebarOpen ? "flex-start" : "center", boxShadow: isActive ? "0 4px 14px rgba(200,168,80,0.28)" : "none",
                   }}
                   title={!sidebarOpen ? item.label : ""}
                   onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = C.card; e.currentTarget.style.color = C.text; } }}
                   onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; } }}>
-                    <span style={{ fontSize: 15, flexShrink: 0 }}>{item.icon}</span>
+                    <Icon size={17} strokeWidth={2} style={{ flexShrink: 0 }} />
                     {sidebarOpen && <span>{item.label}</span>}
                   </button>
                 );
@@ -3836,33 +3962,36 @@ export default function AdminDashboard({ setCurrentPage }) {
             borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
-            <span>🚪</span>{sidebarOpen && "Sign Out"}
+            <LogOut size={15} />{sidebarOpen && "Sign Out"}
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: "32px clamp(20px, 3vw, 40px)", overflowX: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, margin: 0, letterSpacing: "-0.02em" }}>
-              {NAV_GROUPS.flatMap(g => g.items).find(i => i.id === active)?.label || "Dashboard"}
-            </h1>
-            <p style={{ fontSize: 13, color: C.textMuted, margin: "4px 0 0", fontFamily: font }}>
-              Orion Soft Admin · {new Date().toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-            </p>
+      <main style={{ flex: 1, overflowX: "hidden" }}>
+        <TopBar session={session} active={active} navigate={navigate} />
+        <div style={{ padding: "24px clamp(20px, 3vw, 40px) 32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, margin: 0, letterSpacing: "-0.02em" }}>
+                {NAV_GROUPS.flatMap(g => g.items).find(i => i.id === active)?.label || "Dashboard"}
+              </h1>
+              <p style={{ fontSize: 13, color: C.textMuted, margin: "4px 0 0", fontFamily: font }}>
+                Orion Soft Admin · {new Date().toLocaleDateString("en-NG", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              </p>
+            </div>
+            <button type="button" onClick={() => setCurrentPage("home")} style={{
+              background: "none", border: `1px solid ${C.border}`, color: C.textMuted, padding: "9px 16px",
+              borderRadius: 8, fontSize: 13, fontFamily: font, cursor: "pointer", fontWeight: 500,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}>
+              ← Back to website
+            </button>
           </div>
-          <button type="button" onClick={() => setCurrentPage("home")} style={{
-            background: "none", border: `1px solid ${C.border}`, color: C.textMuted, padding: "9px 16px",
-            borderRadius: 8, fontSize: 13, fontFamily: font, cursor: "pointer", fontWeight: 500,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = C.text; }}
-          onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}>
-            ← Back to website
-          </button>
-        </div>
 
-        <DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} />
+          <DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} />
+        </div>
       </main>
     </div>
   );
