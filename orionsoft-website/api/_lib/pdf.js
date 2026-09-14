@@ -39,6 +39,16 @@ async function embedSignatureImage(doc, dataUrl) {
   } catch { return null; }
 }
 
+// The same orbit-ring mark used site-wide (src/App.jsx's OrionLogo), redrawn
+// as PDF vector shapes from the same 64x64 viewBox so the letterhead carries
+// the real brand mark rather than text alone.
+function drawOrionLogoMark(page, cx, cy, size) {
+  const s = size / 64;
+  page.drawEllipse({ x: cx, y: cy, xScale: 24 * s, yScale: 24 * s, borderColor: GOLD, borderWidth: 4 * s });
+  page.drawEllipse({ x: cx, y: cy, xScale: 14 * s, yScale: 14 * s, borderColor: GOLD, borderWidth: 2.8 * s });
+  page.drawEllipse({ x: cx, y: cy, xScale: 4.4 * s, yScale: 4.4 * s, color: GOLD });
+}
+
 // Full-width navy header band with wordmark + contact block, gold rule beneath,
 // and a slim gold spine down the left edge — drawn on every page for continuity.
 function drawPageChrome(page, font, boldFont, { withHeader }) {
@@ -49,11 +59,15 @@ function drawPageChrome(page, font, boldFont, { withHeader }) {
   page.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: NAVY });
   page.drawRectangle({ x: 0, y: PAGE_H - HEADER_H - 3, width: PAGE_W, height: 3, color: GOLD });
 
+  const logoSize = 30;
+  drawOrionLogoMark(page, MARGIN + logoSize / 2, PAGE_H - 48, logoSize);
+  const textX = MARGIN + logoSize + 12;
+
   const wmY = PAGE_H - 42;
-  page.drawText("Orion", { x: MARGIN, y: wmY, size: 22, font: boldFont, color: WHITE });
+  page.drawText("Orion", { x: textX, y: wmY, size: 22, font: boldFont, color: WHITE });
   const orionWidth = boldFont.widthOfTextAtSize("Orion", 22);
-  page.drawText("Soft", { x: MARGIN + orionWidth, y: wmY, size: 22, font: boldFont, color: GOLD });
-  page.drawText("Enterprise Software, Built for Nigeria", { x: MARGIN, y: wmY - 18, size: 9, font, color: WHITE_DIM });
+  page.drawText("Soft", { x: textX + orionWidth, y: wmY, size: 22, font: boldFont, color: GOLD });
+  page.drawText("Enterprise Software, Built for Nigeria", { x: textX, y: wmY - 18, size: 9, font, color: WHITE_DIM });
 
   COMPANY_ADDRESS_LINES.forEach((line, i) => {
     const size = 8.5;

@@ -182,7 +182,7 @@ function HeroSection({ setCurrentPage }) {
   const [tourHov, setTourHov] = useState(false);
   return (
     <section className="hero-enterprise" style={{
-      background: `linear-gradient(115deg, rgba(6,15,26,0.97) 0%, rgba(6,15,26,0.93) 40%, rgba(6,15,26,0.8) 75%, rgba(6,15,26,0.62) 100%), url(/assets/hero-code-dark-bg.jpg)`,
+      background: `linear-gradient(115deg, rgba(6,15,26,0.96) 0%, rgba(6,15,26,0.88) 35%, rgba(6,15,26,0.58) 70%, rgba(6,15,26,0.38) 100%), url(/assets/hero-code-white-bg.jpg)`,
       backgroundSize: "cover",
       backgroundPosition: "center right",
       minHeight: "100vh",

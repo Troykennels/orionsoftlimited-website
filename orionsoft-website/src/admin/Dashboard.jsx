@@ -3723,29 +3723,94 @@ function fillPlaceholders(text, fillData, recipientName) {
   });
 }
 
-function LetterPreview({ bodyMarkup, subject, recipientName }) {
+// Mirrors the real letterhead PDF (api/_lib/pdf.js) as closely as HTML/CSS
+// allows, so this on-screen preview isn't a rough stand-in but an accurate
+// picture of what recipients actually receive: navy header band with the
+// wordmark on the left and the registered company block right-aligned, a
+// gold rule + left spine, formal letter body, a two-column signature block,
+// and the same confidential footer.
+const LETTER_COMPANY_LINES = ["Orion Soft Digital Technologies Ltd", "RC 9535128 · Nigeria", "orionsoftlimited@gmail.com · 08169577059"];
+
+// Same mark used site-wide (src/App.jsx's OrionLogo) — reused here so the
+// letterhead preview carries the real brand mark, not just a text wordmark.
+function OrionLogoMark({ size = 30 }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
-      <div style={{ background: "#0B1120", padding: "18px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "0.02em", fontFamily: font }}>Orion<span style={{ color: "#C8A850" }}>Soft</span> Limited</div>
-          <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.6)", marginTop: 3, letterSpacing: "0.08em", fontFamily: font }}>OFFICIAL CORRESPONDENCE</div>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="letter-logo-gold" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#F8E6B2" />
+          <stop offset="0.46" stopColor="#D6B56D" />
+          <stop offset="1" stopColor="#A77C33" />
+        </linearGradient>
+      </defs>
+      <rect x="4" y="4" width="56" height="56" rx="18" fill="#070809" />
+      <circle cx="32" cy="32" r="24" stroke="url(#letter-logo-gold)" strokeWidth="4" />
+      <circle cx="32" cy="32" r="14" stroke="url(#letter-logo-gold)" strokeWidth="2.8" opacity="0.9" />
+      <path d="M43 30C43 37.2 38.4 42 31.6 42" stroke="url(#letter-logo-gold)" strokeWidth="3.5" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="4.4" fill="url(#letter-logo-gold)" />
+    </svg>
+  );
+}
+
+function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, signatoryName, signatoryTitle, docRef }) {
+  const serif = "'Georgia', 'Times New Roman', serif";
+  return (
+    <div style={{ background: "#fff", borderRadius: 6, overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.35)", position: "relative" }}>
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 5, background: "#C8A850" }} />
+
+      <div style={{ background: "#0A2540", padding: "22px 30px 20px 38px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "3px solid #C8A850" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <OrionLogoMark size={34} />
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: serif, letterSpacing: "-0.01em" }}>
+              <span style={{ color: "#fff" }}>Orion</span><span style={{ color: "#C8A850" }}>Soft</span>
+            </div>
+            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.7)", marginTop: 4, fontFamily: font }}>Enterprise Software, Built for Nigeria</div>
+          </div>
         </div>
-        <div style={{ width: 4, height: 34, background: "#C8A850", borderRadius: 2 }} />
+        <div style={{ textAlign: "right", fontSize: 8.5, color: "rgba(255,255,255,0.7)", fontFamily: font, lineHeight: 1.7 }}>
+          {LETTER_COMPANY_LINES.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
       </div>
-      <div style={{ padding: "26px 30px 34px", color: "#1a1a1a", fontFamily: "'Georgia', 'Times New Roman', serif" }}>
-        <div style={{ fontSize: 11.5, color: "#666", marginBottom: 18 }}>
-          {new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
+
+      <div style={{ padding: "24px 30px 30px 38px", color: "#212934", fontFamily: serif }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: "#6B7A96", fontFamily: font, marginBottom: 20 }}>
+          <span>{docRef || "Ref: —"}</span>
+          <span>{new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}</span>
         </div>
-        <div style={{ fontSize: 13, marginBottom: 14 }}>{recipientName || "Recipient name"}</div>
-        {subject && <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>RE: {subject}</div>}
-        <div style={{ fontSize: 12.5, lineHeight: 1.8 }}>
+
+        <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>{recipientName || "Recipient name"}</div>
+        {recipientEmail && <div style={{ fontSize: 10.5, color: "#6B7A96", fontFamily: font, marginBottom: 14 }}>{recipientEmail}</div>}
+        {!recipientEmail && <div style={{ marginBottom: 14 }} />}
+
+        {subject && <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0A2540", marginBottom: 16 }}>RE: {subject.toUpperCase()}</div>}
+
+        <div style={{ fontSize: 12, lineHeight: 1.8 }}>
           <RichText text={bodyMarkup} />
         </div>
-        <div style={{ marginTop: 40, fontSize: 12.5, lineHeight: 1.6 }}>
-          Yours faithfully,<br /><br /><br />
-          <div style={{ borderTop: "1px solid #999", width: 170, paddingTop: 4 }}>For Orion Soft Limited</div>
+
+        <div style={{ marginTop: 36, fontSize: 9.5, color: "#6B7A96", fontFamily: font }}>Executed by the parties below:</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 18 }}>
+          <div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>FOR ORION SOFT LIMITED</div>
+            <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700 }}>{signatoryName || "Authorized Signatory"}</div>
+              {signatoryTitle && <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>{signatoryTitle}</div>}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>RECIPIENT</div>
+            <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700 }}>{recipientName || "—"}</div>
+              <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>Date: _______________</div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div style={{ borderTop: "1px solid #dce0e6", padding: "10px 30px 14px 38px", display: "flex", justifyContent: "space-between", fontSize: 8, color: "#6B7A96", fontFamily: font }}>
+        <span>Orion Soft Limited — Confidential</span>
+        <span>Page 1 of 1</span>
       </div>
     </div>
   );
@@ -4047,6 +4112,9 @@ function ContractsSection() {
                   <LetterPreview
                     subject={selectedTemplate.name}
                     recipientName={form.recipientName}
+                    recipientEmail={form.recipientEmail}
+                    signatoryName={signatories.find(s => s.id === form.signatoryIds[0])?.fullName}
+                    signatoryTitle={signatories.find(s => s.id === form.signatoryIds[0])?.title}
                     bodyMarkup={fillPlaceholders(selectedTemplate.bodyMarkup, form.fillData, form.recipientName)}
                   />
                 ) : (
