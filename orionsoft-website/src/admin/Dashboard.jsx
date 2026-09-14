@@ -5,7 +5,7 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserPlus,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -310,7 +310,6 @@ const NAV_GROUPS = [
       { id: "testimonials", label: "Testimonials",     icon: Star },
       { id: "faqs",         label: "FAQs",             icon: HelpCircle },
       { id: "team",         label: "Team",             icon: Users },
-      { id: "careers",      label: "Careers",          icon: Target },
       { id: "events",       label: "Events",           icon: CalendarDays },
     ],
   },
@@ -340,6 +339,13 @@ const NAV_GROUPS = [
       { id: "signatories",  label: "Signatories",       icon: PenTool },
       { id: "contracts",    label: "Contracts",         icon: FileSignature },
       { id: "email-log",    label: "Email Log",         icon: Mail },
+    ],
+  },
+  {
+    label: "RECRUITMENT",
+    items: [
+      { id: "careers",      label: "Careers",          icon: Target },
+      { id: "applicants",   label: "Applicants",       icon: UserPlus },
     ],
   },
   {
@@ -1730,6 +1736,241 @@ function CareersSection() {
         </div>
       )}
     />
+  );
+}
+
+// ─── Applicants ──────────────────────────────────────────────────────────────
+const APPLICANT_STAGES = ["applied", "reviewing", "assessment", "interview", "offer", "hired"];
+const APPLICANT_STATUS_LABELS = { applied: "Applied", reviewing: "Reviewing", assessment: "Assessment", interview: "Interview", offer: "Offer", hired: "Hired", rejected: "Rejected" };
+const APPLICANT_STATUS_COLORS = { applied: C.blue, reviewing: C.amber, assessment: C.purple, interview: C.cyan, offer: C.gold, hired: C.mint, rejected: C.rose };
+
+function ApplicantDetail({ applicant: a, onBack, onUpdate }) {
+  const [status, setStatus] = useState(a.status);
+  const [score, setScore] = useState(a.score ?? "");
+  const [reviewer, setReviewer] = useState(a.reviewer || "");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save(extra = {}) {
+    setSaving(true);
+    await onUpdate({ id: a.id, status, score: score === "" ? null : Number(score), reviewer, ...extra });
+    setSaving(false);
+    if (extra.note) setNote("");
+  }
+
+  const stageIndex = APPLICANT_STAGES.indexOf(a.status);
+
+  return (
+    <div>
+      <button type="button" onClick={onBack} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, fontFamily: font, cursor: "pointer", marginBottom: 16, padding: 0, display: "flex", alignItems: "center", gap: 6 }}
+        onMouseEnter={e => e.currentTarget.style.color = C.text} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+        <ChevronLeft size={15} /> Back to applicants
+      </button>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: C.heading, margin: "0 0 4px", fontFamily: font }}>{a.fullName}</h1>
+          <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{a.roleAppliedFor} · Applied {new Date(a.createdAt).toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" })}</div>
+        </div>
+        <Badge color={APPLICANT_STATUS_COLORS[a.status] || C.textMuted}>{APPLICANT_STATUS_LABELS[a.status] || a.status}</Badge>
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Recruitment progress</SectionTitle>
+        {a.status === "rejected" ? (
+          <p style={{ fontSize: 13.5, color: C.rose, marginTop: 12 }}>This application was rejected.</p>
+        ) : (
+          <div style={{ display: "flex", marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
+            {APPLICANT_STAGES.map((s, i) => {
+              const done = stageIndex >= i;
+              return (
+                <div key={s} style={{ flex: 1, minWidth: 96, textAlign: "center", position: "relative" }}>
+                  {i > 0 && <div style={{ position: "absolute", top: 15, left: "-50%", width: "100%", height: 2, background: stageIndex >= i ? C.mint : C.border, zIndex: 0 }} />}
+                  <div style={{ position: "relative", zIndex: 1, width: 32, height: 32, borderRadius: "50%", background: done ? C.mint : C.surface, border: `2px solid ${done ? C.mint : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", color: done ? "#06100E" : C.textMuted, fontWeight: 700, fontSize: 13 }}>
+                    {done ? "✓" : i + 1}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: done ? C.heading : C.textMuted, fontWeight: 600, fontFamily: font }}>{APPLICANT_STATUS_LABELS[s]}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,1.6fr) minmax(260px,1fr)", gap: 20 }}>
+        <div>
+          <ReportDetailCard title="Application">
+            {a.coverNote || "No cover note provided."}
+            <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
+              {a.cvLink && <a href={a.cvLink} target="_blank" rel="noreferrer" style={{ color: C.gold, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>View CV →</a>}
+              {a.portfolio && <a href={a.portfolio} target="_blank" rel="noreferrer" style={{ color: C.gold, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>View Portfolio →</a>}
+            </div>
+          </ReportDetailCard>
+          <ReportDetailCard title="Notes">
+            {(a.notes || []).length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No notes yet.</p>}
+            {(a.notes || []).map((n, i) => (
+              <div key={i} style={{ padding: "10px 0", borderBottom: i < a.notes.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                <div>{n.text}</div>
+                <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 4 }}>{n.by} · {new Date(n.at).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })}</div>
+              </div>
+            ))}
+            <div style={{ marginTop: 12 }}>
+              <Textarea rows={2} placeholder="Add a note…" value={note} onChange={e => setNote(e.target.value)} />
+              <Btn small onClick={() => save({ note })} disabled={!note.trim() || saving} style={{ marginTop: 8 }}>Add note</Btn>
+            </div>
+          </ReportDetailCard>
+        </div>
+
+        <div>
+          <SectionCard style={{ marginBottom: 16 }}>
+            <SectionTitle>Contact & recruitment</SectionTitle>
+            <div style={{ marginTop: 12, fontSize: 13, color: C.text, lineHeight: 2 }}>
+              <div>{a.email}</div>
+              <div>{a.phone || "No phone"}</div>
+              <div>{a.location || "No location"}</div>
+              {a.experience && <div>Experience: {a.experience}</div>}
+              {a.qualification && <div>Qualification: {a.qualification}</div>}
+              {a.availability && <div>Availability: {a.availability}</div>}
+            </div>
+          </SectionCard>
+
+          <SectionCard>
+            <SectionTitle>Review</SectionTitle>
+            <div style={{ marginTop: 12 }}>
+              <Label>Status</Label>
+              <Select value={status} onChange={e => setStatus(e.target.value)}>
+                {[...APPLICANT_STAGES, "rejected"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
+              </Select>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Label>Score (0–100)</Label>
+              <Input type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Label>Reviewer</Label>
+              <Input value={reviewer} onChange={e => setReviewer(e.target.value)} placeholder="Reviewer name" />
+            </div>
+            <Btn onClick={() => save()} disabled={saving} style={{ marginTop: 14 }}>{saving ? "Saving…" : "Save changes"}</Btn>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApplicantsSection() {
+  const [applicants, setApplicants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState(null);
+  const [filters, setFilters] = useState({ status: "", role: "", location: "" });
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ fullName: "", email: "", roleAppliedFor: "", phone: "", location: "" });
+  const [addErr, setAddErr] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/applicants");
+      const j = await r.json();
+      if (r.ok) setApplicants(j.applicants || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function updateApplicant(patch) {
+    const r = await fetch("/api/admin/applicants", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    if (r.ok) { auditLog("update_applicant", patch.id, patch.status || ""); load(); }
+  }
+
+  async function addApplicant() {
+    setAddErr("");
+    if (!addForm.fullName || !addForm.email || !addForm.roleAppliedFor) { setAddErr("Name, email, and role are required."); return; }
+    const r = await fetch("/api/admin/applicants", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(addForm) });
+    const j = await r.json();
+    if (!r.ok) { setAddErr(j.error || "Failed to add applicant."); return; }
+    setShowAdd(false);
+    setAddForm({ fullName: "", email: "", roleAppliedFor: "", phone: "", location: "" });
+    load();
+  }
+
+  const roles = Array.from(new Set(applicants.map(a => a.roleAppliedFor).filter(Boolean)));
+  const locations = Array.from(new Set(applicants.map(a => a.location).filter(Boolean)));
+
+  const filtered = applicants.filter(a =>
+    (!filters.status || a.status === filters.status) &&
+    (!filters.role || a.roleAppliedFor === filters.role) &&
+    (!filters.location || a.location === filters.location)
+  );
+
+  const viewingApplicant = viewing ? applicants.find(a => a.id === viewing) : null;
+  if (viewingApplicant) {
+    return <ApplicantDetail applicant={viewingApplicant} onBack={() => setViewing(null)} onUpdate={updateApplicant} />;
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Applicants" value={applicants.length} color={C.blue} icon="👥" />
+        <StatCard label="Applied" value={applicants.filter(a => a.status === "applied").length} color={C.blue} icon="📥" />
+        <StatCard label="In Process" value={applicants.filter(a => ["reviewing", "assessment", "interview", "offer"].includes(a.status)).length} color={C.amber} icon="⏳" />
+        <StatCard label="Hired" value={applicants.filter(a => a.status === "hired").length} color={C.mint} icon="✅" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <SectionTitle>Applicants</SectionTitle>
+          <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ Add Applicant"}</Btn>
+        </div>
+
+        {showAdd && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div><Label>Full name</Label><Input value={addForm.fullName} onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))} /></div>
+              <div><Label>Email</Label><Input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><Label>Role applied for</Label><Input value={addForm.roleAppliedFor} onChange={e => setAddForm(f => ({ ...f, roleAppliedFor: e.target.value }))} /></div>
+              <div><Label>Phone</Label><Input value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} /></div>
+              <div><Label>Location</Label><Input value={addForm.location} onChange={e => setAddForm(f => ({ ...f, location: e.target.value }))} /></div>
+            </div>
+            <Btn small onClick={addApplicant}>Save Applicant</Btn>
+            {addErr && <p style={{ color: C.rose, fontSize: 13, marginTop: 8 }}>{addErr}</p>}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+          <Select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
+            <option value="">All statuses</option>
+            {[...APPLICANT_STAGES, "rejected"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
+          </Select>
+          <Select value={filters.role} onChange={e => setFilters(f => ({ ...f, role: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
+            <option value="">All roles</option>
+            {roles.map(r => <option key={r} value={r}>{r}</option>)}
+          </Select>
+          <Select value={filters.location} onChange={e => setFilters(f => ({ ...f, location: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
+            <option value="">All locations</option>
+            {locations.map(l => <option key={l} value={l}>{l}</option>)}
+          </Select>
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        {loading && <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p>}
+        {!loading && filtered.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No applicants match these filters.</p>}
+        {filtered.map(a => (
+          <div key={a.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ minWidth: 180 }}>
+              <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{a.fullName}</div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>{a.email}</div>
+            </div>
+            <div style={{ fontSize: 13, color: C.text, minWidth: 140 }}>{a.roleAppliedFor}</div>
+            <div style={{ fontSize: 12.5, color: C.textMuted, minWidth: 100 }}>{a.experience || "—"}</div>
+            <div style={{ fontSize: 12.5, color: C.textMuted, minWidth: 100 }}>{a.location || "—"}</div>
+            <div style={{ fontSize: 12, color: C.textMuted, minWidth: 90 }}>{new Date(a.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</div>
+            <Badge color={APPLICANT_STATUS_COLORS[a.status] || C.textMuted}>{APPLICANT_STATUS_LABELS[a.status] || a.status}</Badge>
+            <Btn small variant="ghost" onClick={() => setViewing(a.id)}>View</Btn>
+          </div>
+        ))}
+      </SectionCard>
+    </div>
   );
 }
 
@@ -3151,12 +3392,131 @@ function EmployeesSection() {
 }
 
 // ─── Weekly Reports (admin review) ───────────────────────────────────────────
+function ReportStat({ label, value }) {
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font }}>{value}</div>
+    </div>
+  );
+}
+
+function ReportDetailCard({ title, children }) {
+  return (
+    <SectionCard style={{ marginBottom: 16 }}>
+      <SectionTitle>{title}</SectionTitle>
+      <div style={{ marginTop: 12, fontSize: 13.5, color: C.text, lineHeight: 1.7 }}>{children}</div>
+    </SectionCard>
+  );
+}
+
+function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide, onBack }) {
+  const activityCount = (r.prospects?.length || 0) + (r.sales?.length || 0) + (r.followUps?.length || 0);
+  return (
+    <div>
+      <button type="button" onClick={onBack} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, fontFamily: font, cursor: "pointer", marginBottom: 16, padding: 0, display: "flex", alignItems: "center", gap: 6 }}
+        onMouseEnter={e => e.currentTarget.style.color = C.text} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+        <ChevronLeft size={15} /> Back to weekly reports
+      </button>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: C.heading, margin: "0 0 4px", fontFamily: font }}>{employeeName(r.employeeId)}</h1>
+          <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>
+            {r.productFocus ? `${r.productFocus} · ` : ""}{r.weekStart} – {r.weekEnd}{r.territory ? ` · ${r.territory}` : ""}
+          </div>
+        </div>
+        <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <ReportStat label="Activities" value={activityCount} />
+        <ReportStat label="Sales Closed" value={r.totals?.salesClosed || 0} />
+        <ReportStat label="Sales Value" value={`₦${Number(r.totals?.salesValue || 0).toLocaleString()}`} />
+        <ReportStat label="Meetings Held" value={r.totals?.meetingsHeld || 0} />
+        <ReportStat label="Reviewed" value={r.reviewedAt ? new Date(r.reviewedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" }) : "—"} />
+      </div>
+
+      <ReportDetailCard title="Summary">
+        {r.summary || "—"}
+        {r.reportingManager && <div style={{ marginTop: 10, fontSize: 12.5, color: C.textMuted }}>Reporting manager: {r.reportingManager}</div>}
+      </ReportDetailCard>
+
+      {r.prospects?.length > 0 && (
+        <ReportDetailCard title={`Prospects (${r.prospects.length})`}>
+          {r.prospects.map((p, i) => (
+            <div key={i} style={{ padding: "10px 0", borderBottom: i < r.prospects.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <strong style={{ color: C.heading }}>{p.organisation}</strong> — {p.contactPerson} <Badge color={C.blue}>{p.status}</Badge>
+              {p.nextAction && <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>Next: {p.nextAction}</div>}
+            </div>
+          ))}
+        </ReportDetailCard>
+      )}
+
+      {r.sales?.length > 0 && (
+        <ReportDetailCard title={`Sales (${r.sales.length})`}>
+          {r.sales.map((s, i) => (
+            <div key={i} style={{ padding: "10px 0", borderBottom: i < r.sales.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <strong style={{ color: C.heading }}>{s.customer}</strong> — {s.productPlan} — ₦{Number(s.saleValue || 0).toLocaleString()} <Badge color={C.mint}>{s.paymentStatus}</Badge>
+            </div>
+          ))}
+        </ReportDetailCard>
+      )}
+
+      {r.followUps?.length > 0 && (
+        <ReportDetailCard title={`Follow-ups (${r.followUps.length})`}>
+          {r.followUps.map((f, i) => (
+            <div key={i} style={{ padding: "10px 0", borderBottom: i < r.followUps.length - 1 ? `1px solid ${C.border}` : "none" }}>
+              <strong style={{ color: C.heading }}>{f.prospect}</strong> — {f.reason} — by {f.plannedDate}
+            </div>
+          ))}
+        </ReportDetailCard>
+      )}
+
+      {(r.challenges || r.objections || r.supportNeeded) && (
+        <ReportDetailCard title="Challenges & support needed">
+          {r.challenges && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Challenges:</strong> {r.challenges}</div>}
+          {r.objections && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Objections:</strong> {r.objections}</div>}
+          {r.supportNeeded && <div><strong style={{ color: C.heading }}>Support needed:</strong> {r.supportNeeded}</div>}
+        </ReportDetailCard>
+      )}
+
+      {(r.competitors || r.marketTrends) && (
+        <ReportDetailCard title="Market intelligence">
+          {r.competitors && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Competitors:</strong> {r.competitors}</div>}
+          {r.marketTrends && <div><strong style={{ color: C.heading }}>Market trends:</strong> {r.marketTrends}</div>}
+        </ReportDetailCard>
+      )}
+
+      {r.keyTargets?.filter(Boolean).length > 0 && (
+        <ReportDetailCard title="Next week's key targets">
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {r.keyTargets.filter(Boolean).map((t, i) => <li key={i} style={{ marginBottom: 4 }}>{t}</li>)}
+          </ul>
+        </ReportDetailCard>
+      )}
+
+      <SectionCard>
+        <SectionTitle>Review</SectionTitle>
+        <div style={{ marginTop: 12 }}>
+          <Label>Review notes</Label>
+          <Textarea rows={3} placeholder="Optional notes for the employee…" value={notes[r.id] ?? r.reviewNotes ?? ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} />
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <Btn onClick={() => onDecide(r, "approved")} disabled={r.status === "approved"}>Approve</Btn>
+            <Btn danger onClick={() => onDecide(r, "rejected")} disabled={r.status === "rejected"}>Reject</Btn>
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
 function WeeklyReportsSection() {
   const [reports, setReports] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState({});
-  const [expanded, setExpanded] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -3177,6 +3537,11 @@ function WeeklyReportsSection() {
     if (r.ok) { auditLog("review_report", employeeName(report.employeeId), status); load(); }
   }
 
+  const viewingReport = viewing ? reports.find(r => r.id === viewing) : null;
+  if (viewingReport) {
+    return <WeeklyReportDetail report={viewingReport} employeeName={employeeName} notes={notes} setNotes={setNotes} onDecide={decide} onBack={() => setViewing(null)} />;
+  }
+
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
@@ -3188,75 +3553,21 @@ function WeeklyReportsSection() {
         <SectionTitle>Weekly reports</SectionTitle>
         {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
         {!loading && reports.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No reports submitted yet.</p>}
-        {reports.map(r => (
-          <div key={r.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, cursor: "pointer" }} onClick={() => setExpanded(e => e === r.id ? null : r.id)}>
+        {reports.map(r => {
+          const activityCount = (r.prospects?.length || 0) + (r.sales?.length || 0) + (r.followUps?.length || 0);
+          return (
+            <div key={r.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
               <div>
                 <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{employeeName(r.employeeId)} {r.productFocus ? <span style={{ color: C.textMuted, fontWeight: 400 }}>· {r.productFocus}</span> : ""}</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>{r.weekStart} – {r.weekEnd}{r.territory ? ` · ${r.territory}` : ""}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{r.weekStart} – {r.weekEnd} · {activityCount} activities{r.submittedAt ? ` · Submitted ${new Date(r.submittedAt).toLocaleDateString("en-NG", { year: "numeric", month: "short", day: "numeric" })}` : ""}</div>
               </div>
-              <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+                <Btn small variant="ghost" onClick={() => setViewing(r.id)}>Open full review</Btn>
+              </div>
             </div>
-            <p style={{ margin: "0 0 8px", color: C.text, fontSize: 13, lineHeight: 1.6 }}>{r.summary}</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12, color: C.textMuted, marginBottom: 8 }}>
-              <span>Prospects: {r.totals?.prospectsContacted || 0}</span>
-              <span>Visits: {r.totals?.physicalVisits || 0}</span>
-              <span>Meetings: {r.totals?.meetingsHeld || 0}</span>
-              <span>Demos: {r.totals?.productDemos || 0}</span>
-              <span>Sales closed: {r.totals?.salesClosed || 0}</span>
-              <span>Value: ₦{Number(r.totals?.salesValue || 0).toLocaleString()}</span>
-            </div>
-            {expanded === r.id && (
-              <div style={{ marginTop: 10, marginBottom: 10, fontSize: 12.5, color: C.text, lineHeight: 1.8 }}>
-                {r.reportingManager && <div><strong>Reporting manager:</strong> {r.reportingManager}</div>}
-                {r.prospects?.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Prospects ({r.prospects.length}):</strong>
-                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                      {r.prospects.map((p, i) => <li key={i}>{p.organisation} — {p.contactPerson} — {p.status} — next: {p.nextAction}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {r.sales?.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Sales ({r.sales.length}):</strong>
-                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                      {r.sales.map((s, i) => <li key={i}>{s.customer} — {s.productPlan} — ₦{Number(s.saleValue || 0).toLocaleString()} — {s.paymentStatus}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {r.followUps?.length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Follow-ups ({r.followUps.length}):</strong>
-                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                      {r.followUps.map((f, i) => <li key={i}>{f.prospect} — {f.reason} — by {f.plannedDate}</li>)}
-                    </ul>
-                  </div>
-                )}
-                {r.challenges && <div style={{ marginTop: 8 }}><strong>Challenges:</strong> {r.challenges}</div>}
-                {r.objections && <div><strong>Objections:</strong> {r.objections}</div>}
-                {r.supportNeeded && <div><strong>Support needed:</strong> {r.supportNeeded}</div>}
-                {r.competitors && <div style={{ marginTop: 8 }}><strong>Competitors:</strong> {r.competitors}</div>}
-                {r.marketTrends && <div><strong>Market trends:</strong> {r.marketTrends}</div>}
-                {r.keyTargets?.filter(Boolean).length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <strong>Next week's key targets:</strong>
-                    <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
-                      {r.keyTargets.filter(Boolean).map((t, i) => <li key={i}>{t}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-            {r.status === "submitted" && (
-              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8 }}>
-                <Input placeholder="Review notes (optional)" value={notes[r.id] || ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} style={{ maxWidth: 300 }} />
-                <Btn small onClick={() => decide(r, "approved")}>Approve</Btn>
-                <Btn small danger onClick={() => decide(r, "rejected")}>Reject</Btn>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </SectionCard>
     </div>
   );
@@ -3983,6 +4294,7 @@ function DashboardContent({ active, session }) {
     case "faqs":          return <FAQsSection />;
     case "team":          return <TeamSection />;
     case "careers":       return <CareersSection />;
+    case "applicants":    return <ApplicantsSection />;
     case "events":        return <EventsSection />;
     case "seo":           return <SEOSection />;
     case "features":      return <FeatureFlagsSection />;

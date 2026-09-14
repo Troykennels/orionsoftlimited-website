@@ -182,12 +182,14 @@ function HeroSection({ setCurrentPage }) {
   const [tourHov, setTourHov] = useState(false);
   return (
     <section className="hero-enterprise" style={{
-      background: "#060F1A",
+      background: `linear-gradient(115deg, rgba(6,15,26,0.97) 0%, rgba(6,15,26,0.93) 40%, rgba(6,15,26,0.8) 75%, rgba(6,15,26,0.62) 100%), url(/assets/hero-code-dark-bg.jpg)`,
+      backgroundSize: "cover",
+      backgroundPosition: "center right",
       minHeight: "100vh",
       display: "grid",
       gridTemplateColumns: "5fr 7fr",
       alignItems: "center",
-      padding: "140px clamp(20px,4vw,72px) 80px",
+      padding: "108px clamp(20px,4vw,72px) 80px",
       gap: "clamp(36px,4vw,64px)",
       position: "relative",
       overflow: "hidden",

@@ -65,6 +65,30 @@ export async function notifyLeaveDecision(leave, employee) {
   return sendEmail(employee.email, `Your leave request was ${leave.status}`, html, { kind: "leave_decision" });
 }
 
+// ─── Recruitment ─────────────────────────────────────────────────────────────
+export async function notifyNewApplicant(applicant) {
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">New job application</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">
+      <strong>${applicant.fullName}</strong> applied for <strong>${applicant.roleAppliedFor || "a role"}</strong>.
+    </p>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">${applicant.email} · ${applicant.phone || "No phone"} · ${applicant.location || "No location"}</p>
+    <p style="margin-top:20px;"><a href="${APP_BASE_URL}/#admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
+  `, { title: "New Job Application" });
+  return sendEmail(ADMIN_EMAIL, `New application — ${applicant.fullName} (${applicant.roleAppliedFor || "role"})`, html, { kind: "applicant_received" });
+}
+
+export async function notifyApplicantStatus(applicant) {
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Update on your application</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">
+      Hi ${applicant.fullName}, your application for <strong>${applicant.roleAppliedFor || "the role"}</strong> has moved to:
+      <strong>${applicant.status.replace(/_/g, " ")}</strong>.
+    </p>
+  `, { title: "Application Update" });
+  return sendEmail(applicant.email, `Your Orion Soft application — ${applicant.status.replace(/_/g, " ")}`, html, { kind: "applicant_status" });
+}
+
 // ─── Employees ───────────────────────────────────────────────────────────────
 export async function sendEmployeeWelcome(employee, tempPassword) {
   const html = brandedShell(`

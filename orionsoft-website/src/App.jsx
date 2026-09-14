@@ -2162,6 +2162,11 @@ function CareersPage({ setCurrentPage }) {
     setSubmitting(true);
     setError("");
     try {
+      fetch("/api/careers/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      }).catch(() => {});
       const result = await sendWebsiteForm("career application", form);
       setDelivery(result);
       setSubmitted(true);

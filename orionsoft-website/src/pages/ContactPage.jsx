@@ -539,7 +539,7 @@ export default function ContactPage({ setCurrentPage }) {
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       {/* Hero */}
       <section style={{
-        padding: "140px clamp(20px, 5vw, 60px) 72px",
+        padding: "108px clamp(20px, 5vw, 60px) 72px",
         background: `radial-gradient(circle at 70% 30%, ${C.blueGlow}, transparent 40%), radial-gradient(circle at 20% 20%, ${C.goldGlow}, transparent 35%), linear-gradient(180deg, #04060C 0%, ${C.bg} 100%)`,
         position: "relative", overflow: "hidden",
       }}>
