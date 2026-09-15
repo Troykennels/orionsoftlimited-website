@@ -4000,6 +4000,14 @@ function ContractsSection() {
   }
   useEffect(() => { load(); }, []);
 
+  // Every signatory is pre-selected by default when the compose panel opens,
+  // so a forgotten click can no longer produce a document with no company
+  // signature (the exact bug that slipped through before this).
+  function openCompose() {
+    setForm(f => ({ ...f, signatoryIds: signatories.map(s => s.id) }));
+    setShowCompose(true);
+  }
+
   async function requestPayment(c) {
     const r = await fetch("/api/payments/initialize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId: c.id }) });
     const json = await r.json();
@@ -4015,11 +4023,14 @@ function ContractsSection() {
   async function compose() {
     setErr(""); setMsg("");
     if (!form.templateId || !form.recipientName) { setErr("Template and recipient name are required."); return; }
+    if (form.signatoryIds.length === 0 && signatories.length > 0) {
+      if (!confirm("No signatory is selected, so this document will have no company signature on it. Continue anyway?")) return;
+    }
     const r = await fetch("/api/admin/contracts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     const json = await r.json();
     if (!r.ok) { setErr(json.error || "Failed to create contract."); return; }
     auditLog("create_contract", form.recipientName);
-    setForm({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: [], fillData: {} });
+    setForm({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: signatories.map(s => s.id), fillData: {} });
     setShowCompose(false);
     setMsg("Draft created.");
     setTimeout(() => setMsg(""), 3000);
@@ -4067,7 +4078,7 @@ function ContractsSection() {
       <SectionCard style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <SectionTitle>Contracts</SectionTitle>
-          <Btn small onClick={() => setShowCompose(s => !s)}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
+          <Btn small onClick={() => showCompose ? setShowCompose(false) : openCompose()}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
         </div>
         {showCompose && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
@@ -4081,15 +4092,14 @@ function ContractsSection() {
                       {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </Select>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>RECIPIENT</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
                     <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
-                    <div><Label>Recipient email</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
-                    <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-                    <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+                    <div><Label>Recipient email (optional)</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
                   </div>
                   {placeholders.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <Label>Fill in the template fields</Label>
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>TEMPLATE FIELDS</div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                         {placeholders.map(p => (
                           <Input key={p} placeholder={p} value={form.fillData[p] || ""} onChange={e => setForm(f => ({ ...f, fillData: { ...f.fillData, [p]: e.target.value } }))} />
@@ -4097,20 +4107,33 @@ function ContractsSection() {
                       </div>
                     </div>
                   )}
+                  <div style={{ marginBottom: 18 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>PAYMENT (OPTIONAL)</div>
+                    <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 10px" }}>Only fill this in if the document has a monetary value attached (e.g. a service contract). Leave blank for letters, NDAs, and other non-paid documents.</p>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                      <div><Label>Amount</Label><Input type="number" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+                      <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+                    </div>
+                  </div>
                   <div style={{ marginBottom: 16 }}>
-                    <Label>Signatories</Label>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>SIGNATORIES</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {signatories.map(s => {
                         const active = form.signatoryIds.includes(s.id);
                         return (
                           <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, signatoryIds: active ? f.signatoryIds.filter(id => id !== s.id) : [...f.signatoryIds, s.id] }))}
                             style={{ background: active ? C.goldDim : C.surface, border: `1px solid ${active ? C.gold : C.border}`, borderRadius: 8, padding: "6px 12px", color: active ? C.gold : C.text, fontSize: 12.5, cursor: "pointer" }}>
-                            {s.fullName}
+                            {active ? "✓ " : ""}{s.fullName}
                           </button>
                         );
                       })}
                       {signatories.length === 0 && <span style={{ color: C.textMuted, fontSize: 12.5 }}>No signatories yet — add one under Signatories.</span>}
                     </div>
+                    <p style={{ fontSize: 12, margin: "8px 0 0", color: form.signatoryIds.length === 0 && signatories.length > 0 ? C.amber : C.textMuted }}>
+                      {form.signatoryIds.length === 0 && signatories.length > 0
+                        ? "No signatory selected: this document will have no company signature on it."
+                        : "Selected signatories are pre-checked automatically; deselect any who shouldn't sign this specific document."}
+                    </p>
                   </div>
                   <Btn onClick={compose}>Create draft & generate PDF</Btn>
                   {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
