@@ -5,6 +5,7 @@
 // lines, and a polished payslip layout — not just plain text on a page.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { parseRichText } from "./richtext.js";
+import { getCompanySettings } from "./settings.js";
 
 const PAGE_W = 595.28, PAGE_H = 841.89; // A4
 const MARGIN = 60;
@@ -19,11 +20,13 @@ const PANEL = rgb(0.965, 0.97, 0.98);
 const WHITE = rgb(1, 1, 1);
 const WHITE_DIM = rgb(0.78, 0.83, 0.89);
 
-const COMPANY_ADDRESS_LINES = [
-  "Orion Soft Limited",
-  "RC 9535128 · Nigeria",
-  "orionsoftlimited@gmail.com · 08169577059",
-];
+function companyAddressLines(company) {
+  return [
+    company.companyName,
+    `RC ${company.rc} · ${company.address}`,
+    `${company.email} · ${company.phone}`,
+  ];
+}
 
 function rightAlignedX(text, font, size, rightEdge) {
   return rightEdge - font.widthOfTextAtSize(text, size);
@@ -51,7 +54,7 @@ function drawOrionLogoMark(page, cx, cy, size) {
 
 // Full-width navy header band with wordmark + contact block, gold rule beneath,
 // and a slim gold spine down the left edge — drawn on every page for continuity.
-function drawPageChrome(page, font, boldFont, { withHeader }) {
+function drawPageChrome(page, font, boldFont, { withHeader }, company) {
   page.drawRectangle({ x: 0, y: 0, width: 5, height: PAGE_H, color: GOLD });
 
   if (!withHeader) return PAGE_H - 44;
@@ -69,7 +72,7 @@ function drawPageChrome(page, font, boldFont, { withHeader }) {
   page.drawText("Soft", { x: textX + orionWidth, y: wmY, size: 22, font: boldFont, color: GOLD });
   page.drawText("Enterprise Software, Built for Africa", { x: textX, y: wmY - 18, size: 9, font, color: WHITE_DIM });
 
-  COMPANY_ADDRESS_LINES.forEach((line, i) => {
+  companyAddressLines(company).forEach((line, i) => {
     const size = 8.5;
     const x = rightAlignedX(line, font, size, PAGE_W - MARGIN);
     page.drawText(line, { x, y: PAGE_H - 34 - i * 12, size, font, color: WHITE_DIM });
@@ -78,9 +81,9 @@ function drawPageChrome(page, font, boldFont, { withHeader }) {
   return PAGE_H - HEADER_H - 34;
 }
 
-function drawFooter(page, font, pageNum, pageCount, docRef) {
+function drawFooter(page, font, pageNum, pageCount, docRef, company) {
   page.drawLine({ start: { x: MARGIN, y: 46 }, end: { x: PAGE_W - MARGIN, y: 46 }, thickness: 0.75, color: HAIRLINE });
-  page.drawText("Orion Soft Limited · Confidential", { x: MARGIN, y: 30, size: 8, font, color: MUTED });
+  page.drawText(`${company.companyName} · Confidential`, { x: MARGIN, y: 30, size: 8, font, color: MUTED });
   if (docRef) {
     const size = 8;
     const x = (PAGE_W - font.widthOfTextAtSize(docRef, size)) / 2;
@@ -90,7 +93,7 @@ function drawFooter(page, font, pageNum, pageCount, docRef) {
   page.drawText(pageLabel, { x: rightAlignedX(pageLabel, font, 8, PAGE_W - MARGIN), y: 30, size: 8, font, color: MUTED });
 }
 
-function makeCursor(doc, fonts, startY) {
+function makeCursor(doc, fonts, startY, company) {
   const page0 = doc.getPages()[0];
   const pages = [page0];
   const state = { page: page0, y: startY };
@@ -99,7 +102,7 @@ function makeCursor(doc, fonts, startY) {
     ensure(minY) {
       if (state.y < minY) {
         const p = doc.addPage([PAGE_W, PAGE_H]);
-        state.y = drawPageChrome(p, fonts.regular, fonts.bold, { withHeader: false });
+        state.y = drawPageChrome(p, fonts.regular, fonts.bold, { withHeader: false }, company);
         pages.push(p);
         state.page = p;
       }
@@ -205,13 +208,14 @@ function docRefFor(contract) {
 }
 
 export async function renderContractPdf(contract, signatories = []) {
+  const company = await getCompanySettings();
   const doc = await PDFDocument.create();
   const fonts = await embedAllFonts(doc);
   const { regular: font, bold: boldFont } = fonts;
   const bodySize = 11, lineHeight = 16.5, maxWidth = PAGE_W - MARGIN * 2;
 
   const firstPage = doc.addPage([PAGE_W, PAGE_H]);
-  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true });
+  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true }, company);
 
   // Reference + date line
   const dateStr = new Date(contract.createdAt || Date.now()).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
@@ -235,7 +239,7 @@ export async function renderContractPdf(contract, signatories = []) {
   firstPage.drawText(`RE: ${contract.title}`, { x: MARGIN, y, size: 12.5, font: boldFont, color: NAVY });
   y -= 28;
 
-  const cursor = makeCursor(doc, fonts, y);
+  const cursor = makeCursor(doc, fonts, y, company);
   const paragraphs = parseRichText(contract.bodyFilled || "");
   drawParagraphs(cursor, fonts, paragraphs, bodySize, lineHeight, maxWidth, TEXT, 190);
 
@@ -246,7 +250,7 @@ export async function renderContractPdf(contract, signatories = []) {
   cursor.y -= 30;
 
   const colWidth = (maxWidth - 40) / 2;
-  cursor.page.drawText("FOR ORION SOFT LIMITED", { x: MARGIN, y: cursor.y, size: 8.5, font: boldFont, color: GOLD });
+  cursor.page.drawText(`FOR ${company.companyName.toUpperCase()}`, { x: MARGIN, y: cursor.y, size: 8.5, font: boldFont, color: GOLD });
   cursor.page.drawText("RECIPIENT", { x: MARGIN + colWidth + 40, y: cursor.y, size: 8.5, font: boldFont, color: GOLD });
   cursor.y -= 48;
 
@@ -293,18 +297,19 @@ export async function renderContractPdf(contract, signatories = []) {
   }
 
   const docRef = docRefFor(contract);
-  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef));
+  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef, company));
   return doc.save();
 }
 
 export async function renderPayslipPdf(payroll, employee) {
+  const company = await getCompanySettings();
   const doc = await PDFDocument.create();
   const fonts = await embedAllFonts(doc);
   const { regular: font, bold: boldFont } = fonts;
   const maxWidth = PAGE_W - MARGIN * 2;
 
   const page = doc.addPage([PAGE_W, PAGE_H]);
-  let y = drawPageChrome(page, font, boldFont, { withHeader: true });
+  let y = drawPageChrome(page, font, boldFont, { withHeader: true }, company);
 
   page.drawText("PAYSLIP", { x: MARGIN, y, size: 18, font: boldFont, color: NAVY });
   const periodLabel = payroll.period;
@@ -369,6 +374,6 @@ export async function renderPayslipPdf(payroll, employee) {
 
   page.drawText("This is a system-generated payslip and does not require a physical signature.", { x: MARGIN, y, size: 8.5, font, color: MUTED });
 
-  drawFooter(page, font, 1, 1, `Ref: PAY-${payroll.id.replace(/^pay_/, "").toUpperCase()}`);
+  drawFooter(page, font, 1, 1, `Ref: PAY-${payroll.id.replace(/^pay_/, "").toUpperCase()}`, company);
   return doc.save();
 }

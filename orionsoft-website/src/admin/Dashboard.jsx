@@ -5,7 +5,7 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2,
+  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -229,13 +229,41 @@ function StatCard({ label, value, sub, color = C.gold, icon }) {
   );
 }
 
-function ConfirmDialog({ open, onClose, onConfirm, message }) {
+function Modal({ children, onClose, title, width = 480 }) {
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
-    <Modal open={open} onClose={onClose} title="Confirm" width={380}>
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(3,6,14,0.72)", backdropFilter: "blur(3px)",
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20,
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: C.card, border: `1px solid ${C.border}`, borderRadius: 16,
+        padding: 26, width: "100%", maxWidth: width, maxHeight: "90vh", overflowY: "auto",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: 0 }}>{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDialog({ open, onClose, onConfirm, message, confirmLabel = "Delete" }) {
+  if (!open) return null;
+  return (
+    <Modal onClose={onClose} title="Confirm" width={380}>
       <p style={{ color: C.text, marginBottom: 22 }}>{message}</p>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <Btn variant="ghost" small onClick={onClose}>Cancel</Btn>
-        <Btn variant="danger" small onClick={() => { onConfirm(); onClose(); }}>Delete</Btn>
+        <Btn danger small onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</Btn>
       </div>
     </Modal>
   );
@@ -296,6 +324,7 @@ const NAV_GROUPS = [
       { id: "leads",        label: "Contact Forms",    icon: Inbox },
       { id: "newsletter",   label: "Newsletter",       icon: Newspaper },
       { id: "chat",         label: "AI Conversations", icon: Bot },
+      { id: "livechat",     label: "Live Chat Widget", icon: MessageCircle },
     ],
   },
   {
@@ -1745,17 +1774,19 @@ const APPLICANT_STAGES = ["applied", "reviewing", "assessment", "interview", "of
 const APPLICANT_STATUS_LABELS = { applied: "Applied", reviewing: "Reviewing", assessment: "Assessment", interview: "Interview", offer: "Offer", hired: "Hired", rejected: "Rejected" };
 const APPLICANT_STATUS_COLORS = { applied: C.blue, reviewing: C.amber, assessment: C.purple, interview: C.cyan, offer: C.gold, hired: C.mint, rejected: C.rose };
 
-function ApplicantDetail({ applicant: a, onBack, onUpdate }) {
+function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
   const [status, setStatus] = useState(a.status);
   const [score, setScore] = useState(a.score ?? "");
   const [reviewer, setReviewer] = useState(a.reviewer || "");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
   async function save(extra = {}) {
-    setSaving(true);
-    await onUpdate({ id: a.id, status, score: score === "" ? null : Number(score), reviewer, ...extra });
+    setSaving(true); setErr("");
+    const result = await onUpdate({ id: a.id, status, score: score === "" ? null : Number(score), reviewer, ...extra });
     setSaving(false);
+    if (!result?.ok) { setErr(result?.error || "Failed to save changes."); return; }
     if (extra.note) setNote("");
   }
 
@@ -1852,7 +1883,11 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate }) {
               <Input value={reviewer} onChange={e => setReviewer(e.target.value)} placeholder="Reviewer name" />
             </div>
             <Btn onClick={() => save()} disabled={saving} style={{ marginTop: 14 }}>{saving ? "Saving…" : "Save changes"}</Btn>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
           </SectionCard>
+          {onDelete && (
+            <Btn small danger onClick={() => onDelete(a)} style={{ marginTop: 16 }}>Delete application</Btn>
+          )}
         </div>
       </div>
     </div>
@@ -1884,7 +1919,21 @@ function ApplicantsSection() {
 
   async function updateApplicant(patch) {
     const r = await fetch("/api/admin/applicants", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-    if (r.ok) { auditLog("update_applicant", patch.id, patch.status || ""); load(); }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: j.error || "Failed to save changes." };
+    auditLog("update_applicant", patch.id, patch.status || "");
+    load();
+    return { ok: true };
+  }
+
+  async function deleteApplicant(a) {
+    if (!confirm(`Delete the application from ${a.fullName}? This cannot be undone.`)) return;
+    const r = await fetch(`/api/admin/applicants?id=${a.id}`, { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { alert(j.error || "Failed to delete applicant."); return; }
+    auditLog("delete_applicant", a.fullName);
+    setViewing(null);
+    load();
   }
 
   async function addApplicant() {
@@ -1909,7 +1958,7 @@ function ApplicantsSection() {
 
   const viewingApplicant = viewing ? applicants.find(a => a.id === viewing) : null;
   if (viewingApplicant) {
-    return <ApplicantDetail applicant={viewingApplicant} onBack={() => setViewing(null)} onUpdate={updateApplicant} />;
+    return <ApplicantDetail applicant={viewingApplicant} onBack={() => setViewing(null)} onUpdate={updateApplicant} onDelete={deleteApplicant} />;
   }
 
   return (
@@ -2381,8 +2430,32 @@ const DEFAULT_SETTINGS = {
 function SettingsSection() {
   const [form, setForm] = useState(() => ({ ...DEFAULT_SETTINGS, ...(lsGet(SK.settings, {}) || {}) }));
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
-  function save() { lsSet(SK.settings, form, "save", "Site Settings"); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  useEffect(() => {
+    fetch("/api/admin/settings").then(r => r.json()).then(j => {
+      if (j.settings) setForm(f => ({ ...f, ...j.settings }));
+    }).catch(() => {});
+  }, []);
+
+  // companyName/email/phone/rc/address also drive the real letterhead/PDF
+  // (api/_lib/pdf.js), so those five sync server-side; the rest (tagline,
+  // socials, CTA copy) are site-content-only and stay in localStorage.
+  const LETTERHEAD_FIELDS = ["companyName", "email", "phone", "rc", "address"];
+
+  async function save() {
+    setErr(""); setSaving(true);
+    try {
+      const letterheadUpdates = Object.fromEntries(LETTERHEAD_FIELDS.map(k => [k, form[k]]));
+      const r = await fetch("/api/admin/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(letterheadUpdates) });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(json.error || "Failed to save company info to the letterhead settings."); return; }
+      lsSet(SK.settings, form, "save", "Site Settings");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
+  }
   const f = (key) => ({ value: form[key] || "", onChange: e => setForm(s => ({ ...s, [key]: e.target.value })) });
 
   return (
@@ -2390,6 +2463,7 @@ function SettingsSection() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <SectionCard>
           <SectionTitle>Company Info</SectionTitle>
+          <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 6 }}>Name, email, phone, RC number, and address also appear on every generated contract, letter, and payslip.</p>
           <div style={{ marginTop: 14 }}>
             {[["companyName", "Company Name"], ["tagline", "Tagline"], ["email", "Email"], ["phone", "Phone"], ["rc", "RC Number"], ["address", "Address"]].map(([k, l]) => (
               <div key={k} style={{ marginBottom: 14 }}><Label>{l}</Label><Input {...f(k)} placeholder={l} /></div>
@@ -2415,8 +2489,9 @@ function SettingsSection() {
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <Btn onClick={save}>Save Settings</Btn>
+        <Btn onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Settings"}</Btn>
         {saved && <Badge color={C.mint}>Saved ✓</Badge>}
+        {err && <span style={{ color: C.rose, fontSize: 13 }}>{err}</span>}
       </div>
     </div>
   );
@@ -2555,17 +2630,22 @@ function UsersSection({ session }) {
   }
 
   async function toggleStatus(a) {
+    setErr("");
     const nextStatus = a.status === "active" ? "disabled" : "active";
     const r = await fetch("/api/admin/admins", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: a.id, status: nextStatus }),
     });
-    if (r.ok) { auditLog("update_admin_status", a.email, nextStatus); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to update admin status."); return; }
+    auditLog("update_admin_status", a.email, nextStatus);
+    load();
   }
 
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
   async function deleteUser(a) {
-    if (!confirm(`Remove admin "${a.username}"?`)) return;
     const r = await fetch(`/api/admin/admins?id=${encodeURIComponent(a.id)}`, { method: "DELETE" });
     const json = await r.json().catch(() => ({}));
     if (!r.ok) { setErr(json.error || "Failed to remove admin."); return; }
@@ -2575,6 +2655,7 @@ function UsersSection({ session }) {
 
   return (
     <div>
+      <ConfirmDialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} onConfirm={() => confirmDelete && deleteUser(confirmDelete)} message={confirmDelete ? `Remove admin "${confirmDelete.username}"? They will immediately lose access.` : ""} confirmLabel="Remove Admin" />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
         <StatCard label="Total Admins" value={admins.length}                                     color={C.blue}   icon="👤" />
         <StatCard label="Active"       value={admins.filter(a => a.status === "active").length}   color={C.mint}   icon="✅" />
@@ -2643,7 +2724,7 @@ function UsersSection({ session }) {
                   <button type="button" onClick={() => toggleStatus(a)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>
                     {a.status === "active" ? "Disable" : "Enable"}
                   </button>
-                  <button type="button" onClick={() => deleteUser(a)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+                  <button type="button" onClick={() => setConfirmDelete(a)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
                 </>
               )}
             </div>
@@ -3385,6 +3466,9 @@ function EmployeesSection() {
   const [form, setForm] = useState({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
   const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -3405,22 +3489,52 @@ function EmployeesSection() {
     if (!r.ok) { setErr(json.error || "Failed to add employee."); return; }
     auditLog("create_employee", form.email);
     setForm({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
-    setMsg("Employee added — welcome email sent.");
+    setMsg("Employee added, welcome email sent.");
     setShowForm(false);
     setTimeout(() => setMsg(""), 4000);
     load();
   }
 
   async function toggleStatus(emp) {
+    setErr("");
     const nextStatus = emp.status === "active" ? "suspended" : "active";
     const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, status: nextStatus }) });
-    if (r.ok) { auditLog("update_employee_status", emp.email, nextStatus); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to update employee status."); return; }
+    auditLog("update_employee_status", emp.email, nextStatus);
+    load();
   }
 
   async function toggleStaffRole(emp) {
+    setErr("");
     const nextRole = emp.staffRole === "manager" ? "staff" : "manager";
     const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, staffRole: nextRole }) });
-    if (r.ok) { auditLog("update_employee_role", emp.email, nextRole); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to update employee role."); return; }
+    auditLog("update_employee_role", emp.email, nextRole);
+    load();
+  }
+
+  function startEdit(emp) {
+    setErr("");
+    setEditingId(emp.id);
+    setEditForm({
+      phone: emp.phone || "", title: emp.title || "", department: emp.department || "",
+      salaryAmount: emp.salaryAmount || "", salaryCurrency: emp.salaryCurrency || "NGN",
+      bankName: emp.bankName || "", bankAccountNumber: emp.bankAccountNumber || "", bankAccountName: emp.bankAccountName || "",
+    });
+  }
+
+  async function saveEdit() {
+    setSaving(true); setErr("");
+    try {
+      const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingId, ...editForm }) });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(json.error || "Failed to save changes."); return; }
+      auditLog("update_employee", editForm.email || editingId);
+      setEditingId(null);
+      load();
+    } finally { setSaving(false); }
   }
 
   return (
@@ -3456,9 +3570,9 @@ function EmployeesSection() {
               </div>
             </div>
             <Btn onClick={addEmployee}>Create employee & send welcome email</Btn>
-            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
           </div>
         )}
+        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
       </SectionCard>
 
@@ -3480,17 +3594,46 @@ function EmployeesSection() {
               { key: "staffRole", label: "Role", render: e => <Badge color={e.staffRole === "manager" ? C.purple : C.textMuted}>{e.staffRole || "staff"}</Badge> },
               { key: "status", label: "Status", render: e => <Badge color={e.status === "active" ? C.mint : C.amber}>{e.status}</Badge> },
               { key: "actions", label: "", render: e => (
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button type="button" onClick={() => startEdit(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>Edit</button>
                   <button type="button" onClick={() => toggleStaffRole(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.staffRole === "manager" ? "Make Staff" : "Make Manager"}</button>
                   <button type="button" onClick={() => toggleStatus(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.status === "active" ? "Suspend" : "Reactivate"}</button>
                 </div>
               ) },
             ]}
             rows={employees}
-            emptyMsg="No employees yet — add your first team member above."
+            emptyMsg="No employees yet. Add your first team member above."
           />
         )}
       </SectionCard>
+
+      {editingId && (() => {
+        const emp = employees.find(e => e.id === editingId);
+        if (!emp) return null;
+        return (
+          <Modal onClose={() => setEditingId(null)} title={`Edit ${emp.fullName}`}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div><Label>Phone</Label><Input value={editForm.phone} onChange={e2 => setEditForm(f => ({ ...f, phone: e2.target.value }))} /></div>
+              <div><Label>Job title</Label><Input value={editForm.title} onChange={e2 => setEditForm(f => ({ ...f, title: e2.target.value }))} /></div>
+              <div><Label>Department</Label><Input value={editForm.department} onChange={e2 => setEditForm(f => ({ ...f, department: e2.target.value }))} /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
+                <div><Label>Salary</Label><Input type="number" value={editForm.salaryAmount} onChange={e2 => setEditForm(f => ({ ...f, salaryAmount: e2.target.value }))} /></div>
+                <div><Label>Currency</Label><Select value={editForm.salaryCurrency} onChange={e2 => setEditForm(f => ({ ...f, salaryCurrency: e2.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>BANK DETAILS (FOR PAYROLL TRANSFER)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
+              <div><Label>Bank name</Label><Input value={editForm.bankName} onChange={e2 => setEditForm(f => ({ ...f, bankName: e2.target.value }))} /></div>
+              <div><Label>Account number</Label><Input value={editForm.bankAccountNumber} onChange={e2 => setEditForm(f => ({ ...f, bankAccountNumber: e2.target.value }))} /></div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn onClick={saveEdit} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Btn>
+              <Btn variant="ghost" onClick={() => setEditingId(null)}>Cancel</Btn>
+            </div>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
@@ -3516,6 +3659,12 @@ function ReportDetailCard({ title, children }) {
 
 function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide, onBack }) {
   const activityCount = (r.prospects?.length || 0) + (r.sales?.length || 0) + (r.followUps?.length || 0);
+  const [err, setErr] = useState("");
+  async function decideClick(status) {
+    setErr("");
+    const result = await onDecide(r, status);
+    if (!result?.ok) setErr(result?.error || "Failed to save this decision.");
+  }
   return (
     <div>
       <button type="button" onClick={onBack} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, fontFamily: font, cursor: "pointer", marginBottom: 16, padding: 0, display: "flex", alignItems: "center", gap: 6 }}
@@ -3606,9 +3755,10 @@ function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide
           <Label>Review notes</Label>
           <Textarea rows={3} placeholder="Optional notes for the employee…" value={notes[r.id] ?? r.reviewNotes ?? ""} onChange={e => setNotes(n => ({ ...n, [r.id]: e.target.value }))} />
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <Btn onClick={() => onDecide(r, "approved")} disabled={r.status === "approved"}>Approve</Btn>
-            <Btn danger onClick={() => onDecide(r, "rejected")} disabled={r.status === "rejected"}>Reject</Btn>
+            <Btn onClick={() => decideClick("approved")} disabled={r.status === "approved"}>Approve</Btn>
+            <Btn danger onClick={() => decideClick("rejected")} disabled={r.status === "rejected"}>Reject</Btn>
           </div>
+          {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         </div>
       </SectionCard>
     </div>
@@ -3642,7 +3792,11 @@ function WeeklyReportsSection() {
 
   async function decide(report, status) {
     const r = await fetch("/api/admin/reports", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: report.id, status, reviewNotes: notes[report.id] || "" }) });
-    if (r.ok) { auditLog("review_report", employeeName(report.employeeId), status); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) return { ok: false, error: json.error || "Failed to save this decision." };
+    auditLog("review_report", employeeName(report.employeeId), status);
+    load();
+    return { ok: true };
   }
 
   const viewingReport = viewing ? reports.find(r => r.id === viewing) : null;
@@ -3687,6 +3841,7 @@ function LeaveRequestsSection() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState({});
+  const [err, setErr] = useState("");
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
@@ -3707,8 +3862,12 @@ function LeaveRequestsSection() {
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
 
   async function decide(item, status) {
+    setErr("");
     const r = await fetch("/api/admin/leave", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id, status, decisionNotes: notes[item.id] || "" }) });
-    if (r.ok) { auditLog("decide_leave", employeeName(item.employeeId), status); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to save this decision."); return; }
+    auditLog("decide_leave", employeeName(item.employeeId), status);
+    load();
   }
 
   return (
@@ -3720,6 +3879,7 @@ function LeaveRequestsSection() {
       </div>
       <SectionCard>
         <SectionTitle>Leave requests</SectionTitle>
+        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
         {!loading && leave.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No leave requests yet.</p>}
         {leave.map(l => (
@@ -3841,7 +4001,10 @@ function fillPlaceholders(text, fillData, recipientName) {
 // wordmark on the left and the registered company block right-aligned, a
 // gold rule + left spine, formal letter body, a two-column signature block,
 // and the same confidential footer.
-const LETTER_COMPANY_LINES = ["Orion Soft Limited", "RC 9535128 · Nigeria", "orionsoftlimited@gmail.com · 08169577059"];
+const DEFAULT_COMPANY_SETTINGS = { companyName: "Orion Soft Limited", rc: "9535128", email: "orionsoftlimited@gmail.com", phone: "08169577059", address: "Nigeria" };
+function letterCompanyLines(company) {
+  return [company.companyName, `RC ${company.rc} · ${company.address}`, `${company.email} · ${company.phone}`];
+}
 
 // Same mark used site-wide (src/App.jsx's OrionLogo) — reused here so the
 // letterhead preview carries the real brand mark, not just a text wordmark.
@@ -3866,6 +4029,10 @@ function OrionLogoMark({ size = 30 }) {
 
 function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, signatoryName, signatoryTitle, docRef }) {
   const serif = "'Georgia', 'Times New Roman', serif";
+  const [company, setCompany] = useState(DEFAULT_COMPANY_SETTINGS);
+  useEffect(() => {
+    fetch("/api/admin/settings").then(r => r.json()).then(j => { if (j.settings) setCompany(j.settings); }).catch(() => {});
+  }, []);
   return (
     <div style={{ background: "#fff", borderRadius: 6, overflow: "hidden", boxShadow: "0 20px 50px rgba(0,0,0,0.35)", position: "relative" }}>
       <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 5, background: "#C8A850" }} />
@@ -3881,13 +4048,13 @@ function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, sig
           </div>
         </div>
         <div style={{ textAlign: "right", fontSize: 8.5, color: "rgba(255,255,255,0.7)", fontFamily: font, lineHeight: 1.7 }}>
-          {LETTER_COMPANY_LINES.map((l, i) => <div key={i}>{l}</div>)}
+          {letterCompanyLines(company).map((l, i) => <div key={i}>{l}</div>)}
         </div>
       </div>
 
       <div style={{ padding: "24px 30px 30px 38px", color: "#212934", fontFamily: serif }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: "#6B7A96", fontFamily: font, marginBottom: 20 }}>
-          <span>{docRef || "Ref: —"}</span>
+          <span>{docRef || "Ref: draft"}</span>
           <span>{new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}</span>
         </div>
 
@@ -4167,28 +4334,51 @@ function ContractsSection() {
   }
 
   async function cancelContract(c) {
-    if (!confirm(`Cancel "${c.title}"?`)) return;
+    setErr("");
     const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "cancel" }) });
-    if (r.ok) { auditLog("cancel_contract", c.title); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to cancel this contract."); return; }
+    auditLog("cancel_contract", c.title);
+    load();
+  }
+  const [confirmCancel, setConfirmCancel] = useState(null);
+
+  async function completeContract(c) {
+    if (!confirm(`Mark "${c.title}" as completed? This closes out the engagement.`)) return;
+    setErr("");
+    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "complete" }) });
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to mark this contract completed."); return; }
+    auditLog("complete_contract", c.title);
+    load();
   }
 
   async function addMilestone(c) {
     const title = milestoneTitle[c.id];
     if (!title) return;
+    setErr("");
     const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "add_milestone", title }) });
-    if (r.ok) { setMilestoneTitle(m => ({ ...m, [c.id]: "" })); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to add milestone."); return; }
+    setMilestoneTitle(m => ({ ...m, [c.id]: "" }));
+    load();
   }
 
   async function toggleMilestone(c, ms) {
+    setErr("");
     const status = ms.status === "completed" ? "pending" : "completed";
     const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "update_milestone", milestoneId: ms.id, status }) });
-    if (r.ok) { auditLog("update_milestone", `${c.title} — ${ms.title}`, status); load(); }
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to update milestone."); return; }
+    auditLog("update_milestone", `${c.title}: ${ms.title}`, status);
+    load();
   }
 
   const statusColor = { draft: C.textMuted, sent: C.blue, signed: C.mint, active: C.mint, completed: C.gold, cancelled: C.rose };
 
   return (
     <div>
+      <ConfirmDialog open={!!confirmCancel} onClose={() => setConfirmCancel(null)} onConfirm={() => confirmCancel && cancelContract(confirmCancel)} message={confirmCancel ? `Cancel "${confirmCancel.title}"? This cannot be undone.` : ""} confirmLabel="Cancel Contract" />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
         <StatCard label="Total Contracts" value={contracts.length} color={C.blue} icon="📑" />
         <StatCard label="Awaiting Signature" value={contracts.filter(c => c.status === "sent").length} color={C.amber} icon="⏳" />
@@ -4280,8 +4470,9 @@ function ContractsSection() {
       </SectionCard>
 
       <SectionCard>
+        {err && !showCompose && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{err}</p>}
         {loading && <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p>}
-        {!loading && contracts.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No contracts yet — compose your first document above.</p>}
+        {!loading && contracts.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No contracts yet. Compose your first document above.</p>}
         {!loading && contracts.map(c => (
           <div key={c.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(e => e === c.id ? null : c.id)}>
@@ -4306,7 +4497,8 @@ function ContractsSection() {
                   )}
                   {c.status === "draft" && <Btn small onClick={() => send(c)}>Send for signature</Btn>}
                   {["signed", "active"].includes(c.status) && c.amount > 0 && <Btn small onClick={() => requestPayment(c)}>Request Payment</Btn>}
-                  {!["signed", "active", "completed", "cancelled"].includes(c.status) && <Btn small danger onClick={() => cancelContract(c)}>Cancel</Btn>}
+                  {["signed", "active"].includes(c.status) && <Btn small variant="ghost" onClick={() => completeContract(c)}>Mark Completed</Btn>}
+                  {!["signed", "active", "completed", "cancelled"].includes(c.status) && <Btn small danger onClick={() => setConfirmCancel(c)}>Cancel</Btn>}
                 </div>
                 {paymentLinks[c.id] && (
                   <div style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5, color: C.text, wordBreak: "break-all" }}>
@@ -4455,13 +4647,18 @@ function PayrollSection({ session }) {
     } finally { setVerifying(false); }
   }
 
-  async function confirmPay(p) {
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
+
+  function confirmPay() {
     const amount = Number(payForm.amount);
     if (!amount || amount <= 0) { setPayErr("Enter a valid amount."); return; }
     if (!payForm.verifiedName) { setPayErr("Verify the account before paying."); return; }
     if (!/^\d{4,6}$/.test(payForm.pin)) { setPayErr("Enter your 4-6 digit approval PIN."); return; }
-    if (!confirm(`Pay ${p.currency} ${amount.toLocaleString()} to ${payForm.verifiedName}?\n\nThis sends real money via Paystack and cannot be undone. Continue?`)) return;
+    setConfirmPayOpen(true);
+  }
 
+  async function doPay(p) {
+    const amount = Number(payForm.amount);
     setPaying(true); setPayErr("");
     try {
       const r = await fetch("/api/admin/payroll", {
@@ -4470,9 +4667,9 @@ function PayrollSection({ session }) {
       });
       const json = await r.json();
       if (!r.ok) { setPayErr(json.error || "Payout failed."); return; }
-      auditLog("pay_salary", `${employeeName(p.employeeId)} — ${p.period}`, `${p.currency} ${amount}`);
+      auditLog("pay_salary", `${employeeName(p.employeeId)}: ${p.period}`, `${p.currency} ${amount}`);
       setPayingId(null);
-      setMsg("Payout initiated — status will update automatically once Paystack confirms it.");
+      setMsg("Payout initiated, status will update automatically once Paystack confirms it.");
       setTimeout(() => setMsg(""), 5000);
       load();
     } finally { setPaying(false); }
@@ -4502,13 +4699,26 @@ function PayrollSection({ session }) {
     } finally { setAddingCommission(false); }
   }
 
+  async function deleteDraft(p) {
+    if (!confirm(`Delete this draft payroll entry for ${employeeName(p.employeeId)} (${p.period})? This cannot be undone.`)) return;
+    setErr("");
+    const r = await fetch(`/api/admin/payroll?id=${p.id}`, { method: "DELETE" });
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to delete this entry."); return; }
+    auditLog("delete_payroll_draft", `${employeeName(p.employeeId)}: ${p.period}`);
+    load();
+  }
+
   async function removeCommission(p, commissionId) {
     if (!confirm("Remove this commission?")) return;
+    setErr("");
     const r = await fetch("/api/admin/payroll", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: p.id, action: "remove_commission", commissionId }),
     });
-    if (r.ok) load();
+    const json = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(json.error || "Failed to remove commission."); return; }
+    load();
   }
 
   const statusColor = { draft: C.textMuted, issued: C.blue, processing: C.amber, paid: C.mint };
@@ -4516,6 +4726,13 @@ function PayrollSection({ session }) {
 
   return (
     <div>
+      <ConfirmDialog
+        open={confirmPayOpen}
+        onClose={() => setConfirmPayOpen(false)}
+        onConfirm={() => payingEntry && doPay(payingEntry)}
+        message={payingEntry ? `Pay ${payingEntry.currency} ${Number(payForm.amount).toLocaleString()} to ${payForm.verifiedName}? This sends real money via Paystack and cannot be undone.` : ""}
+        confirmLabel="Send Payment"
+      />
       <SectionCard style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <SectionTitle>Payroll</SectionTitle>
@@ -4536,9 +4753,9 @@ function PayrollSection({ session }) {
             </div>
             <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 14px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below.</p>
             <Btn onClick={create}>Create draft entry</Btn>
-            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
           </div>
         )}
+        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
       </SectionCard>
 
@@ -4577,7 +4794,7 @@ function PayrollSection({ session }) {
             </div>
             {payErr && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{payErr}</p>}
             <div style={{ display: "flex", gap: 10 }}>
-              <Btn onClick={() => confirmPay(payingEntry)} disabled={paying || !payForm.verifiedName || !payForm.pin}>{paying ? "Paying…" : "Approve & Pay"}</Btn>
+              <Btn onClick={confirmPay} disabled={paying || !payForm.verifiedName || !payForm.pin}>{paying ? "Paying…" : "Approve & Pay"}</Btn>
               <Btn variant="ghost" onClick={() => setPayingId(null)}>Cancel</Btn>
             </div>
           </SectionCard>
@@ -4646,6 +4863,7 @@ function PayrollSection({ session }) {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {p.status === "draft" && <Btn small variant="ghost" onClick={() => openCommission(p)}>+ Add Commission</Btn>}
                   {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
+                  {p.status === "draft" && <Btn small danger onClick={() => deleteDraft(p)}>Delete</Btn>}
                   {p.status === "issued" && p.currency === "NGN" && canPay && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
                   {p.status === "issued" && canPay && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
                   {p.status === "issued" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Only a super admin can pay this</span>}
@@ -4732,6 +4950,7 @@ function DashboardContent({ active, session }) {
     case "leads":         return <LeadsSection />;
     case "newsletter":    return <NewsletterSection />;
     case "chat":          return <ConversationsSection />;
+    case "livechat":      return <ChatSection />;
     case "homepage":      return <HomepageSection />;
     case "announcements": return <AnnouncementsSection />;
     case "products":      return <ProductsSection />;

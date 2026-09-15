@@ -60,7 +60,7 @@ export default async function handler(req, res) {
       status: "draft",
       milestones: [],
       pdfKey: null, signedPdfKey: null,
-      sentAt: null, signedAt: null, signedByName: "", signedIp: "",
+      sentAt: null, signedAt: null, signedByName: "", signedIp: "", completedAt: null,
       createdAt: new Date().toISOString(), createdBy: session.sub, updatedAt: new Date().toISOString(),
     };
 
@@ -122,6 +122,16 @@ export default async function handler(req, res) {
       contract.updatedAt = new Date().toISOString();
       await putRecord("contracts", id, contract);
       await logAudit(session, "cancel_contract", `contract ${contract.id}`, contract.title);
+      return res.json({ ok: true, contract });
+    }
+
+    if (action === "complete") {
+      if (!["signed", "active"].includes(contract.status)) return res.status(400).json({ error: "Only a signed contract can be marked completed." });
+      contract.status = "completed";
+      contract.completedAt = new Date().toISOString();
+      contract.updatedAt = new Date().toISOString();
+      await putRecord("contracts", id, contract);
+      await logAudit(session, "complete_contract", `contract ${contract.id}`, contract.title);
       return res.json({ ok: true, contract });
     }
 

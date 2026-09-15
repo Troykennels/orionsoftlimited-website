@@ -1,4 +1,4 @@
-import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
+import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
 import { requireAuth, verifyPassword } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { set } from "../store.js";
@@ -19,7 +19,7 @@ function commissionsTotal(commissions) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
@@ -230,6 +230,16 @@ export default async function handler(req, res) {
     payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
     await putRecord("payroll", id, payroll);
     return res.json({ ok: true, payroll });
+  }
+
+  if (req.method === "DELETE") {
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: "id is required" });
+    const payroll = await getRecord("payroll", id);
+    if (!payroll) return res.status(404).json({ error: "Payroll entry not found" });
+    if (payroll.status !== "draft") return res.status(400).json({ error: "Only a draft entry can be deleted. Issued, processing, and paid records are financial history." });
+    await deleteRecord("payroll", id);
+    return res.json({ ok: true });
   }
 
   return res.status(405).json({ error: "Method not allowed" });
