@@ -159,13 +159,21 @@ export default function SignContractPage() {
                 Thank you — this document has been signed and a copy has been sent to Orion Soft Limited.
               </p>
               {contract?.pdfKey && (
-                <a
-                  href={`/api/files/download?key=${encodeURIComponent(contract.pdfKey)}&contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}`}
-                  target="_blank" rel="noreferrer"
-                  style={{ display: "inline-block", marginTop: 16, color: C.gold, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}
-                >
-                  View document →
-                </a>
+                <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
+                  <a
+                    href={`/api/files/download?key=${encodeURIComponent(contract.pdfKey)}&contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ color: C.gold, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}
+                  >
+                    View document →
+                  </a>
+                  <a
+                    href={`/api/files/download?key=${encodeURIComponent(contract.pdfKey)}&contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}&download=1`}
+                    style={{ color: C.gold, fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}
+                  >
+                    Download PDF →
+                  </a>
+                </div>
               )}
               {contract?.amount > 0 && (
                 <div style={{ marginTop: 24 }}>

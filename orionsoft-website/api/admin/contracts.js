@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     const bodyFilled = renderTemplate(template.bodyMarkup, { recipientName, ...(fillData || {}) });
     const contract = {
       id, templateId, type: template.type,
-      title: title || `${template.name} — ${recipientName}`,
+      title: title || `${template.name}: ${recipientName}`,
       recipientName, recipientEmail: recipientEmail || "", employeeId: employeeId || null,
       bodyFilled, signatoryIds: signatoryIds || [],
       amount: Number(amount) || 0, currency: currency || "NGN",

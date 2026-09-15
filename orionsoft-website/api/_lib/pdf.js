@@ -80,7 +80,7 @@ function drawPageChrome(page, font, boldFont, { withHeader }) {
 
 function drawFooter(page, font, pageNum, pageCount, docRef) {
   page.drawLine({ start: { x: MARGIN, y: 46 }, end: { x: PAGE_W - MARGIN, y: 46 }, thickness: 0.75, color: HAIRLINE });
-  page.drawText("Orion Soft Limited — Confidential", { x: MARGIN, y: 30, size: 8, font, color: MUTED });
+  page.drawText("Orion Soft Limited · Confidential", { x: MARGIN, y: 30, size: 8, font, color: MUTED });
   if (docRef) {
     const size = 8;
     const x = (PAGE_W - font.widthOfTextAtSize(docRef, size)) / 2;
@@ -175,9 +175,12 @@ function drawParagraphs(cursor, fonts, paragraphs, size, lineHeight, maxWidth, c
 function drawSignatureBlock(page, x, width, y, { name, roleLabel, dateLabel, image, fonts }) {
   if (image) {
     const maxImgW = width * 0.8;
-    const scale = Math.min(0.4, maxImgW / image.width);
+    const maxImgH = 32;
+    const scale = Math.min(0.4, maxImgW / image.width, maxImgH / image.height);
     const dims = image.scale(scale);
-    page.drawImage(image, { x, y: y - dims.height + 4, width: dims.width, height: dims.height });
+    // Sits just above the signature line, growing upward, so it never
+    // overlaps the printed name/title drawn below the line.
+    page.drawImage(image, { x, y: y + 3, width: dims.width, height: dims.height });
   }
   page.drawLine({ start: { x, y }, end: { x: x + width, y }, thickness: 1, color: rgb(0.55, 0.58, 0.63) });
   page.drawText(name, { x, y: y - 15, size: 10.5, font: fonts.bold, color: TEXT });
@@ -195,7 +198,10 @@ async function embedAllFonts(doc) {
 }
 
 function docRefFor(contract) {
-  return `Ref: ${contract.id.replace(/^ctr_/, "CTR-").toUpperCase()}`;
+  const d = new Date(contract.createdAt || Date.now());
+  const datePart = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const shortId = contract.id.replace(/^ctr_/, "").slice(-5).toUpperCase();
+  return `Ref: CTR-${datePart}-${shortId}`;
 }
 
 export async function renderContractPdf(contract, signatories = []) {
@@ -279,7 +285,7 @@ export async function renderContractPdf(contract, signatories = []) {
     const bannerY = cursor.y;
     cursor.page.drawRectangle({ x: MARGIN, y: bannerY - 26, width: maxWidth, height: 30, color: rgb(0.906, 0.961, 0.933) });
     cursor.page.drawText(
-      `SIGNED — Electronically signed by ${contract.signedByName} on ${new Date(contract.signedAt).toLocaleString("en-NG", { dateStyle: "long", timeStyle: "short" })}`,
+      `SIGNED: Electronically signed by ${contract.signedByName} on ${new Date(contract.signedAt).toLocaleString("en-NG", { dateStyle: "long", timeStyle: "short" })}`,
       { x: MARGIN + 10, y: bannerY - 17, size: 9, font: boldFont, color: rgb(0.06, 0.45, 0.28) },
     );
     cursor.y = bannerY - 40;

@@ -25,32 +25,32 @@ const NEXT_STEPS = {
 
 // Product catalogue — used to personalise client emails
 const PRODUCT_INFO = {
-  carecore:       { name: "CareCore",       full: "CareCore — Hospital Management System",    color: "#4F8EF7", emoji: "🏥",
+  carecore:       { name: "CareCore",       full: "CareCore: Hospital Management System",    color: "#4F8EF7", emoji: "🏥",
     tagline: "The complete operating system for your hospital.",
     bullets: ["Patient records & clinical workflows","Pharmacy, laboratory & billing","Ward & bed management","Real-time executive analytics"] },
-  schoolcore:     { name: "SchoolCore",     full: "SchoolCore — School Management System",    color: "#10B981", emoji: "🎓",
+  schoolcore:     { name: "SchoolCore",     full: "SchoolCore: School Management System",    color: "#10B981", emoji: "🎓",
     tagline: "One platform for admissions, results, fees, and parents.",
     bullets: ["Admissions & attendance tracking","Academic results & CBT exams","Fee management & payment receipts","Parent portal & SMS communication"] },
-  compliancecore: { name: "ComplianceCore", full: "ComplianceCore — Compliance & Risk",       color: "#F59E0B", emoji: "✅",
+  compliancecore: { name: "ComplianceCore", full: "ComplianceCore: Compliance & Risk",       color: "#F59E0B", emoji: "✅",
     tagline: "Stay audit-ready across every Nigerian regulation.",
     bullets: ["Policy & risk register management","CAC, NDPR, CBN, NAFDAC tracking","Audit trail & incident reporting","Compliance health dashboard"] },
-  inventorycore:  { name: "InventoryCore",  full: "InventoryCore — Inventory & Supply Chain", color: "#8B5CF6", emoji: "📦",
+  inventorycore:  { name: "InventoryCore",  full: "InventoryCore: Inventory & Supply Chain", color: "#8B5CF6", emoji: "📦",
     tagline: "Real-time stock visibility across every location.",
     bullets: ["Multi-warehouse stock tracking","Purchase orders & supplier management","Barcode/QR scanning & batch tracking","Expiry management & reorder alerts"] },
-  financecore:    { name: "FinanceCore",    full: "FinanceCore — Finance & Accounting",       color: "#C8A850", emoji: "💰",
-    tagline: "Built for Nigerian businesses — PAYE, VAT, pension and all.",
+  financecore:    { name: "FinanceCore",    full: "FinanceCore: Finance & Accounting",       color: "#C8A850", emoji: "💰",
+    tagline: "Built for Nigerian businesses: PAYE, VAT, pension and all.",
     bullets: ["Invoicing & accounts payable/receivable","Payroll with PAYE & pension (PFA)","Bank reconciliation & financial statements","Budget, forecast & tax management"] },
-  hrcore:         { name: "HRCore",         full: "HRCore — Human Resources Management",      color: "#F43F5E", emoji: "👥",
+  hrcore:         { name: "HRCore",         full: "HRCore: Human Resources Management",      color: "#F43F5E", emoji: "👥",
     tagline: "Manage your full team lifecycle in one place.",
     bullets: ["Employee records & recruitment","Leave, attendance & time tracking","Performance reviews & training","Payroll integration with FinanceCore"] },
-  churchcore:     { name: "ChurchCore",     full: "ChurchCore — Church Management System",    color: "#7C3AED", emoji: "⛪",
-    tagline: "Built for Nigerian church culture — zones, units, cell groups.",
+  churchcore:     { name: "ChurchCore",     full: "ChurchCore: Church Management System",    color: "#7C3AED", emoji: "⛪",
+    tagline: "Built for Nigerian church culture: zones, units, cell groups.",
     bullets: ["Member database & attendance","Cell groups & giving/tithe tracking","Events management & SMS/email comms","Volunteer management & leadership reports"] },
-  fleetcore:      { name: "FleetCore",      full: "FleetCore — Fleet Management",             color: "#06B6D4", emoji: "🚗",
+  fleetcore:      { name: "FleetCore",      full: "FleetCore: Fleet Management",             color: "#06B6D4", emoji: "🚗",
     tagline: "Track every vehicle, driver, and trip in real time.",
     bullets: ["Vehicle registry & driver management","Fuel tracking & maintenance scheduling","Trip management & GPS integration","Insurance docs & compliance alerts"] },
-  telehealth:     { name: "TeleHealth",     full: "TeleHealth — Telemedicine Platform",       color: "#4F8EF7", emoji: "💊",
-    tagline: "Extending care beyond hospital walls — coming 2026.",
+  telehealth:     { name: "TeleHealth",     full: "TeleHealth: Telemedicine Platform",       color: "#4F8EF7", emoji: "💊",
+    tagline: "Extending care beyond hospital walls, coming 2026.",
     bullets: ["Video consultations & digital prescriptions","Patient scheduling & remote monitoring","CareCore integration","Specialist referral system"] },
 };
 
@@ -94,7 +94,7 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
       <p style="color:#C8A850;font-size:15px;font-weight:700;margin:0;">📅 ${demoSlot}</p>
     </div>` : "";
 
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orion Soft — ${label}</title></head>
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orion Soft: ${label}</title></head>
 <body style="margin:0;padding:0;background:#060810;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px;">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
@@ -107,7 +107,7 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
   <tr><td style="background:#0F1828;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:36px;">
     <div style="text-align:center;font-size:40px;margin-bottom:16px;">${type === "demo" ? "🗓️" : "✓"}</div>
     <h1 style="color:#F2F6FF;font-size:22px;font-weight:700;margin:0 0 6px;text-align:center;">${p ? p.name + " " : ""}${label} Confirmed</h1>
-    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${name || "there"} — thank you for reaching out to Orion Soft. We're excited to show you what we've built.</p>
+    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${name || "there"}, thank you for reaching out to Orion Soft. We're excited to show you what we've built.</p>
     ${productBlock}
     ${demoSlotBlock}
     <div style="background:#060810;border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:18px;margin-bottom:22px;">
@@ -216,10 +216,10 @@ export default async function handler(req, res) {
   // Build product-aware subject lines
   const productMeta = PRODUCT_INFO[body.product?.toLowerCase?.()];
   const clientSubject = body.type === "demo" && productMeta
-    ? `${productMeta.name} Demo Confirmed — Orion Soft [${ref}]`
-    : `${TYPE_LABELS[body.type] || "Enquiry"} Received — Orion Soft [${ref}]`;
+    ? `${productMeta.name} Demo Confirmed: Orion Soft [${ref}]`
+    : `${TYPE_LABELS[body.type] || "Enquiry"} Received: Orion Soft [${ref}]`;
   const adminSubject = productMeta
-    ? `[${ref}] ${TYPE_LABELS[body.type] || "Lead"} — ${productMeta.name} — ${body.name || body.email}`
+    ? `[${ref}] ${TYPE_LABELS[body.type] || "Lead"}: ${productMeta.name}, ${body.name || body.email}`
     : `[${ref}] New ${TYPE_LABELS[body.type] || "Lead"} from ${body.name || body.email}`;
 
   // Send confirmation to the user (best-effort)

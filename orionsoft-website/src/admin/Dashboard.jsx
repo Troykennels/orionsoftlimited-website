@@ -5,7 +5,7 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight, UserPlus,
+  ChevronLeft, ChevronRight, UserPlus, Download,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -3841,12 +3841,18 @@ function TemplatesSection() {
     if (r.ok) { auditLog("update_template", editing); setEditing(null); setMsg("Template saved."); setTimeout(() => setMsg(""), 3000); load(); }
   }
 
+  async function resetTemplate(t) {
+    if (!confirm(`Reset "${t.name}" back to its original default content? This discards any edits made to it.`)) return;
+    const r = await fetch("/api/admin/templates", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id, resetToDefault: true }) });
+    if (r.ok) { auditLog("reset_template", t.id); setEditing(null); setMsg("Template reset to default."); setTimeout(() => setMsg(""), 3000); load(); }
+  }
+
   return (
     <div>
       <SectionCard>
         <SectionTitle>Document templates</SectionTitle>
         <p style={{ color: C.textMuted, fontSize: 13, marginTop: 6, lineHeight: 1.7 }}>
-          Use <code>{"{{placeholder}}"}</code> tokens — they become fillable fields when composing a document.
+          Use <code>{"{{placeholder}}"}</code> tokens: they become fillable fields when composing a document.
           Basic formatting is supported and renders properly in the PDF and on the signing page: <code>{"<b>bold</b>"}</code>, <code>{"<i>italic</i>"}</code>, <code>{"<br>"}</code> for a line break, and <code>{"<p>...</p>"}</code> or <code>{"<ul><li>...</li></ul>"}</code> for paragraphs and bullet lists. Any other tags are stripped, not shown literally.
         </p>
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 8 }}>{msg}</p>}
@@ -3873,7 +3879,10 @@ function TemplatesSection() {
                   <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{t.name}</div>
                   <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2, textTransform: "capitalize" }}>{t.type.replace(/_/g, " ")}</div>
                 </div>
-                <Btn small variant="ghost" onClick={() => startEdit(t)}>Edit</Btn>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Btn small variant="ghost" onClick={() => resetTemplate(t)}>Reset to default</Btn>
+                  <Btn small variant="ghost" onClick={() => startEdit(t)}>Edit</Btn>
+                </div>
               </div>
             )}
           </div>
@@ -4143,7 +4152,15 @@ function ContractsSection() {
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44` }}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
                   <a href={`/api/files/download?key=${encodeURIComponent(c.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View draft PDF →</a>
+                  <a href={`/api/files/download?key=${encodeURIComponent(c.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                    <Download size={13} /> Download draft
+                  </a>
                   {c.signedPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.mint, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View signed PDF →</a>}
+                  {c.signedPdfKey && (
+                    <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.mint, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
+                      <Download size={13} /> Download signed
+                    </a>
+                  )}
                   {c.status === "draft" && <Btn small onClick={() => send(c)}>Send for signature</Btn>}
                   {["signed", "active"].includes(c.status) && c.amount > 0 && <Btn small onClick={() => requestPayment(c)}>Request Payment</Btn>}
                   {!["signed", "active", "completed", "cancelled"].includes(c.status) && <Btn small danger onClick={() => cancelContract(c)}>Cancel</Btn>}

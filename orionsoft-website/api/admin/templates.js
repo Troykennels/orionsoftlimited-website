@@ -36,12 +36,19 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "PATCH") {
-    const { id, name, bodyMarkup } = req.body || {};
+    const { id, name, bodyMarkup, resetToDefault } = req.body || {};
     if (!id) return res.status(400).json({ error: "id is required" });
     const template = await getRecord("templates", id);
     if (!template) return res.status(404).json({ error: "Template not found" });
-    if (name !== undefined) template.name = name;
-    if (bodyMarkup !== undefined) template.bodyMarkup = bodyMarkup;
+    if (resetToDefault) {
+      const def = DEFAULT_TEMPLATES[template.type];
+      if (!def) return res.status(400).json({ error: "No default exists for this template type" });
+      template.name = def.name;
+      template.bodyMarkup = def.bodyMarkup;
+    } else {
+      if (name !== undefined) template.name = name;
+      if (bodyMarkup !== undefined) template.bodyMarkup = bodyMarkup;
+    }
     template.updatedAt = new Date().toISOString();
     await putRecord("templates", id, template);
     return res.json({ ok: true, template });

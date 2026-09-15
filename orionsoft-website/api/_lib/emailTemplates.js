@@ -22,7 +22,7 @@ export async function notifyReportSubmitted(report, employee) {
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">${report.summary}</p>
     <p style="margin-top:20px;"><a href="${APP_BASE_URL}/#admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
   `, { title: "Weekly Report Submitted" });
-  return sendEmail(ADMIN_EMAIL, `Weekly report submitted — ${employee?.fullName || "Employee"}`, html, { kind: "report_submitted" });
+  return sendEmail(ADMIN_EMAIL, `Weekly report submitted: ${employee?.fullName || "Employee"}`, html, { kind: "report_submitted" });
 }
 
 export async function notifyReportReviewed(report, employee) {
@@ -49,7 +49,7 @@ export async function notifyLeaveSubmitted(leave, employee) {
     ${leave.reason ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Reason:</strong> ${leave.reason}</p>` : ""}
     <p style="margin-top:20px;"><a href="${APP_BASE_URL}/#admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
   `, { title: "Leave Request Submitted" });
-  return sendEmail(ADMIN_EMAIL, `Leave request — ${employee?.fullName || "Employee"}`, html, { kind: "leave_submitted" });
+  return sendEmail(ADMIN_EMAIL, `Leave request: ${employee?.fullName || "Employee"}`, html, { kind: "leave_submitted" });
 }
 
 export async function notifyLeaveDecision(leave, employee) {
@@ -75,7 +75,7 @@ export async function notifyNewApplicant(applicant) {
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">${applicant.email} · ${applicant.phone || "No phone"} · ${applicant.location || "No location"}</p>
     <p style="margin-top:20px;"><a href="${APP_BASE_URL}/#admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
   `, { title: "New Job Application" });
-  return sendEmail(ADMIN_EMAIL, `New application — ${applicant.fullName} (${applicant.roleAppliedFor || "role"})`, html, { kind: "applicant_received" });
+  return sendEmail(ADMIN_EMAIL, `New application: ${applicant.fullName} (${applicant.roleAppliedFor || "role"})`, html, { kind: "applicant_received" });
 }
 
 export async function notifyApplicantStatus(applicant) {
@@ -86,7 +86,7 @@ export async function notifyApplicantStatus(applicant) {
       <strong>${applicant.status.replace(/_/g, " ")}</strong>.
     </p>
   `, { title: "Application Update" });
-  return sendEmail(applicant.email, `Your Orion Soft application — ${applicant.status.replace(/_/g, " ")}`, html, { kind: "applicant_status" });
+  return sendEmail(applicant.email, `Your Orion Soft application: ${applicant.status.replace(/_/g, " ")}`, html, { kind: "applicant_status" });
 }
 
 // ─── Employees ───────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export async function sendEmployeeWelcome(employee, tempPassword) {
     </table>
     <p style="color:#3A4556;font-size:13px;line-height:1.7;">Please sign in and keep your password secure.</p>
   `, { title: "Welcome to the Team" });
-  return sendEmail(employee.email, "Welcome to Orion Soft Limited — your staff portal access", html, { kind: "employee_welcome" });
+  return sendEmail(employee.email, "Welcome to Orion Soft Limited: your staff portal access", html, { kind: "employee_welcome" });
 }
 
 // ─── Contracts ───────────────────────────────────────────────────────────────
@@ -139,13 +139,13 @@ export async function notifyMilestoneCompleted(contract, milestone) {
       "<strong>${milestone.title}</strong>" on contract "${contract.title}" was marked complete.
     </p>
   `, { title: "Milestone Completed" });
-  return sendEmail(ADMIN_EMAIL, `Milestone completed — ${contract.title}`, html, { kind: "milestone_completed" });
+  return sendEmail(ADMIN_EMAIL, `Milestone completed: ${contract.title}`, html, { kind: "milestone_completed" });
 }
 
 // ─── Payments ────────────────────────────────────────────────────────────────
 export async function sendPaymentReceipt(payment, contract) {
   const html = brandedShell(`
-    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Payment received — thank you!</h2>
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Payment received, thank you!</h2>
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">
       We've received your payment of <strong>${payment.currency} ${Number(payment.amount).toLocaleString()}</strong>
       for "${contract.title}".
@@ -155,7 +155,7 @@ export async function sendPaymentReceipt(payment, contract) {
       <tr><td style="font-size:13px;color:#3A4556;padding:4px 0;"><strong>Date:</strong> ${fmtDate(payment.verifiedAt || payment.createdAt)}</td></tr>
     </table>
   `, { title: "Payment Receipt" });
-  return sendEmail(contract.recipientEmail, `Payment receipt — ${contract.title}`, html, { kind: "payment_receipt" });
+  return sendEmail(contract.recipientEmail, `Payment receipt: ${contract.title}`, html, { kind: "payment_receipt" });
 }
 
 // ─── Payroll ─────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ export async function sendPayslipIssued(payroll, employee, pdfBuffer) {
       It's also available under My Payslips in the staff portal.
     </p>
   `, { title: "Payslip Issued" });
-  return sendEmail(employee.email, `Payslip — ${payroll.period}`, html, {
+  return sendEmail(employee.email, `Payslip: ${payroll.period}`, html, {
     kind: "payslip_issued",
     attachments: pdfBuffer ? [{ filename: `payslip-${payroll.period}.pdf`, content: pdfBuffer }] : undefined,
   });

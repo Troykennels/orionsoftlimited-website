@@ -38,7 +38,8 @@ export default async function handler(req, res) {
   if (!base64) return res.status(404).json({ error: "File not found" });
 
   const buffer = Buffer.from(base64, "base64");
+  const disposition = req.query.download ? "attachment" : "inline";
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename="${key.split(":").pop()}.pdf"`);
+  res.setHeader("Content-Disposition", `${disposition}; filename="${key.split(":").pop()}.pdf"`);
   return res.status(200).send(buffer);
 }
