@@ -159,6 +159,15 @@ export default function ChatBot({ setCurrentPage }) {
     if (open) setTimeout(() => inputRef.current?.focus(), 200);
   }, [open]);
 
+  // Lets other parts of the site (e.g. the footer's "Live Chat" link) open
+  // the widget without reaching into its DOM/aria-label, which breaks
+  // silently the moment the label text changes.
+  useEffect(() => {
+    const onOpenRequest = () => setOpen(true);
+    window.addEventListener("orion-open-chat", onOpenRequest);
+    return () => window.removeEventListener("orion-open-chat", onOpenRequest);
+  }, []);
+
   // Mark new when closed
   useEffect(() => {
     if (!open && messages.length > 0) {

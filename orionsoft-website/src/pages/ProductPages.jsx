@@ -546,11 +546,27 @@ export function TeleHealthPage({ setCurrentPage }) {
   const product = PRODUCTS.telehealth;
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!email) return;
-    setDone(true);
+    setSubmitting(true);
+    setError("");
+    try {
+      const r = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "newsletter", email, product: "telehealth", message: "TeleHealth waitlist signup" }),
+      });
+      if (!r.ok) throw new Error("Request failed");
+      setDone(true);
+    } catch {
+      setError("Couldn't join the waitlist right now — please try again in a moment.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -600,26 +616,30 @@ export function TeleHealthPage({ setCurrentPage }) {
                 <span style={{ fontSize: 15, color: C.heading, fontFamily: font, fontWeight: 600 }}>You're on the list. We'll be in touch in {product.comingSoon}.</span>
               </div>
             ) : (
-              <form onSubmit={submit} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", maxWidth: 480, margin: "0 auto" }}>
-                <input
-                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="you@organisation.com" aria-label="Email address"
-                  style={{
-                    flex: "1 1 260px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
-                    padding: "14px 18px", color: C.heading, fontSize: 15, fontFamily: font, outline: "none",
+              <>
+                <form onSubmit={submit} style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", maxWidth: 480, margin: "0 auto" }}>
+                  <input
+                    type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                    placeholder="you@organisation.com" aria-label="Email address"
+                    style={{
+                      flex: "1 1 260px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
+                      padding: "14px 18px", color: C.heading, fontSize: 15, fontFamily: font, outline: "none",
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = product.color; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = C.border; }}
+                  />
+                  <button type="submit" disabled={submitting} style={{
+                    background: product.color, color: "#060810", padding: "14px 28px", borderRadius: 10, border: "none",
+                    fontSize: 15, fontWeight: 700, fontFamily: font, cursor: submitting ? "not-allowed" : "pointer", transition: "all 0.25s",
+                    opacity: submitting ? 0.7 : 1,
                   }}
-                  onFocus={e => { e.currentTarget.style.borderColor = product.color; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = C.border; }}
-                />
-                <button type="submit" style={{
-                  background: product.color, color: "#060810", padding: "14px 28px", borderRadius: 10, border: "none",
-                  fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer", transition: "all 0.25s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}>
-                  Notify me
-                </button>
-              </form>
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}>
+                    {submitting ? "Joining…" : "Notify me"}
+                  </button>
+                </form>
+                {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginTop: 12 }}>{error}</p>}
+              </>
             )}
             <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 14 }}>
               Launching {product.comingSoon}. No spam one email when it's ready.

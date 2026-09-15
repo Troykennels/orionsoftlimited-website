@@ -441,7 +441,7 @@ function HeroSection({ setCurrentPage }) {
             ×
           </button>
           <div style={{ borderRadius:16, overflow:"hidden", boxShadow:"0 30px 90px rgba(0,0,0,0.5)", background:"#07111D" }}>
-            <video controls autoPlay playsInline style={{ width:"100%", aspectRatio:"16 / 9", display:"block" }} aria-label="Orion Soft product tour demo video">
+            <video controls playsInline style={{ width:"100%", aspectRatio:"16 / 9", display:"block" }} aria-label="Orion Soft product tour demo video">
               <source src="/assets/carecore/demo-premium-website.mp4" type="video/mp4" />
             </video>
           </div>

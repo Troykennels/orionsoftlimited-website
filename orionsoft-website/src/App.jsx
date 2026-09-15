@@ -3104,7 +3104,7 @@ function Footer({ setCurrentPage }) {
               { l: "API Reference", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
               { l: "Support Centre", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
-              { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); document.querySelector('[aria-label="Open Orion Soft live chat"]')?.click(); } },
+              { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent("orion-open-chat")); } },
               { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
