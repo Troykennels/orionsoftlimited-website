@@ -1867,15 +1867,19 @@ function ApplicantsSection() {
   const [addForm, setAddForm] = useState({ fullName: "", email: "", roleAppliedFor: "", phone: "", location: "" });
   const [addErr, setAddErr] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/admin/applicants");
       const j = await r.json();
       if (r.ok) setApplicants(j.applicants || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   async function updateApplicant(patch) {
     const r = await fetch("/api/admin/applicants", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
@@ -3518,17 +3522,21 @@ function WeeklyReportsSection() {
   const [notes, setNotes] = useState({});
   const [viewing, setViewing] = useState(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [rReports, rEmp] = await Promise.all([fetch("/api/admin/reports"), fetch("/api/admin/employees")]);
       const [jReports, jEmp] = await Promise.all([rReports.json(), rEmp.json()]);
       if (rReports.ok) setReports(jReports.reports || []);
       if (rEmp.ok) setEmployees(jEmp.employees || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
 
@@ -3580,17 +3588,21 @@ function LeaveRequestsSection() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState({});
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [rLeave, rEmp] = await Promise.all([fetch("/api/admin/leave"), fetch("/api/admin/employees")]);
       const [jLeave, jEmp] = await Promise.all([rLeave.json(), rEmp.json()]);
       if (rLeave.ok) setLeave(jLeave.leave || []);
       if (rEmp.ok) setEmployees(jEmp.employees || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
 
@@ -3987,8 +3999,8 @@ function ContractsSection() {
   const [paymentLinks, setPaymentLinks] = useState({});
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [rC, rT, rS, rP] = await Promise.all([fetch("/api/admin/contracts"), fetch("/api/admin/templates"), fetch("/api/admin/signatories"), fetch("/api/admin/payments")]);
       const [jC, jT, jS, jP] = await Promise.all([rC.json(), rT.json(), rS.json(), rP.json()]);
@@ -3996,9 +4008,17 @@ function ContractsSection() {
       if (rT.ok) setTemplates(jT.templates || []);
       if (rS.ok) setSignatories(jS.signatories || []);
       if (rP.ok) setPayments(jP.payments || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Picks up externally-driven changes (a recipient signing, a webhook
+    // updating payment status) without requiring a manual page reload.
+    // Silent: doesn't toggle the loading flag, so the list doesn't flicker
+    // every cycle, and it never touches the open compose form's state.
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   // Every signatory is pre-selected by default when the compose panel opens,
   // so a forgotten click can no longer produce a document with no company
@@ -4334,15 +4354,19 @@ function EmailLogSection() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/admin/email-log");
       const json = await r.json();
       if (r.ok) setEmails(json.emails || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   const kinds = Array.from(new Set(emails.map(e => e.kind)));
   const filtered = filter ? emails.filter(e => e.kind === filter) : emails;
