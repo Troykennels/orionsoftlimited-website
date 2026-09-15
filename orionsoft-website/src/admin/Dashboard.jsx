@@ -5,7 +5,7 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle,
+  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle, Menu,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -105,6 +105,18 @@ function lsGet(key, fallback = null) {
 }
 
 function uid() { return `i-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+
+// Shared CSV export: headers + row arrays -> a downloaded .csv file, with the
+// standard audit echo. Used across Employees/Contracts/Applicants/Payroll to
+// match the pattern already used for Leads/Newsletter/Audit.
+function downloadCSV(filename, headers, rows, auditLabel) {
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, "'")}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `${filename}-${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  if (auditLabel) auditLog("export", auditLabel, `Exported ${rows.length} rows`);
+}
 
 // Server sync fetches live data from Upstash via /api/admin/data
 // Merges server records into localStorage so admin sees ALL visitors' data
@@ -499,6 +511,32 @@ function useAnalytics() {
   return { data, loading, error, lastUpdated, countdown, refresh: () => loadData(true) };
 }
 
+// Cross-module "needs attention" items (pending leave, unreviewed reports,
+// unsigned contracts, unpaid payroll, new applicants) — single source shared
+// by the Dashboard widget and the notification bell so counts always match.
+const ATTENTION_LASTSEEN_KEY = "orionsoft_attention_lastseen";
+function useAttention() {
+  const [items, setItems] = useState([]);
+  const [counts, setCounts] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    try {
+      const r = await fetch("/api/admin/attention");
+      const json = await r.json();
+      if (r.ok) { setItems(json.items || []); setCounts(json.counts || {}); }
+    } finally { if (!silent) setLoading(false); }
+  }
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  return { items, counts, loading, total: items.length };
+}
+
 // ─── Skeleton loading placeholders ───────────────────────────────────────────
 const shimmerStyle = {
   background: "linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.1) 50%,rgba(255,255,255,0.04) 75%)",
@@ -516,6 +554,23 @@ function SkeletonCard() {
 }
 function SkeletonBlock({ height = 200 }) {
   return <div style={{ ...shimmerStyle, borderRadius: 14, height, border: `1px solid ${C.border}` }}/>;
+}
+// Shimmering placeholder rows for tables/lists — replaces plain "Loading…"
+// text across sections so the loading state feels consistent everywhere.
+function SkeletonRows({ count = 5 }) {
+  return (
+    <div>
+      {Array(count).fill(0).map((_, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 0", borderBottom: i < count - 1 ? `1px solid ${C.border}` : "none" }}>
+          <div style={{ ...shimmerStyle, height: 30, width: 30, borderRadius: "50%", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ ...shimmerStyle, height: 11, width: `${45 + (i % 3) * 10}%`, borderRadius: 4, marginBottom: 8 }} />
+            <div style={{ ...shimmerStyle, height: 9, width: `${25 + (i % 4) * 8}%`, borderRadius: 4 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ─── Inline sparkline for stat cards ────────────────────────────────────────
@@ -706,7 +761,58 @@ function LiveStatCard({ label, value, sub, color = C.gold, icon, spark = [], tre
 }
 
 // ─── Dashboard Overview ──────────────────────────────────────────────────────
-function DashboardOverview() {
+// A cross-module summary of everything currently sitting in someone's
+// queue — the audit found the dashboard home was website-analytics only,
+// with no single place to see what actually needs an admin's attention today.
+function NeedsAttentionWidget({ navigate }) {
+  const { items, counts, loading, total } = useAttention();
+
+  const CATEGORIES = [
+    { key: "leave", label: "Pending Leave", icon: "🌴", color: C.amber, nav: "leave-requests" },
+    { key: "reports", label: "Unreviewed Reports", icon: "📋", color: C.blue, nav: "weekly-reports" },
+    { key: "contracts", label: "Awaiting Signature", icon: "📑", color: C.purple, nav: "contracts" },
+    { key: "payroll", label: "Unpaid Payroll", icon: "💰", color: C.mint, nav: "payroll" },
+    { key: "applicants", label: "New Applicants", icon: "👤", color: C.cyan, nav: "applicants" },
+  ];
+
+  return (
+    <SectionCard style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <SectionTitle>Needs Attention Today</SectionTitle>
+        {!loading && <Badge color={total > 0 ? C.amber : C.mint}>{total > 0 ? `${total} item${total === 1 ? "" : "s"}` : "All caught up"}</Badge>}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 16, marginBottom: total > 0 ? 18 : 0 }}>
+        {CATEGORIES.map(cat => (
+          <button key={cat.key} type="button" onClick={() => navigate(cat.nav)} disabled={!(counts[cat.key] > 0)} style={{
+            textAlign: "left", background: C.surface, border: `1px solid ${counts[cat.key] > 0 ? cat.color + "44" : C.border}`,
+            borderRadius: 10, padding: "12px 14px", cursor: counts[cat.key] > 0 ? "pointer" : "default",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 15 }}>{cat.icon}</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: counts[cat.key] > 0 ? cat.color : C.textMuted, fontFamily: font }}>{loading ? "…" : (counts[cat.key] || 0)}</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, marginTop: 6 }}>{cat.label}</div>
+          </button>
+        ))}
+      </div>
+      {!loading && items.length > 0 && (
+        <div>
+          {items.slice(0, 5).map(item => (
+            <div key={item.id} onClick={() => navigate(item.nav)} style={{
+              display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 0",
+              borderTop: `1px solid ${C.border}`, cursor: "pointer", fontSize: 13, fontFamily: font,
+            }}>
+              <span style={{ color: C.text }}>{item.label}</span>
+              <span style={{ color: C.textMuted, fontSize: 11.5, whiteSpace: "nowrap" }}>{item.at ? new Date(item.at).toLocaleDateString("en-NG", { month: "short", day: "numeric" }) : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function DashboardOverview({ navigate }) {
   const { data, loading, error, lastUpdated, countdown, refresh } = useAnalytics();
   const blog    = lsGet(SK.blog,    []);
   const clients = lsGet(SK.clients, []);
@@ -743,6 +849,8 @@ function DashboardOverview() {
           {loading ? "…" : "↻ Refresh"}
         </Btn>
       </div>
+
+      <NeedsAttentionWidget navigate={navigate} />
 
       {/* 8 live stat cards */}
       <div className="admin-stat-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px,1fr))", gap:14, marginBottom:24 }}>
@@ -1973,7 +2081,13 @@ function ApplicantsSection() {
       <SectionCard style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <SectionTitle>Applicants</SectionTitle>
-          <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ Add Applicant"}</Btn>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn small variant="ghost" onClick={() => downloadCSV("applicants",
+              ["Name", "Email", "Phone", "Role Applied For", "Status", "Score", "Location", "Applied"],
+              applicants.map(a => [a.fullName, a.email, a.phone, a.roleAppliedFor, a.status, a.score, a.location, new Date(a.createdAt).toLocaleDateString("en-NG")]),
+              "applicants")}>Export CSV</Btn>
+            <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ Add Applicant"}</Btn>
+          </div>
         </div>
 
         {showAdd && (
@@ -2007,7 +2121,7 @@ function ApplicantsSection() {
       </SectionCard>
 
       <SectionCard>
-        {loading && <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p>}
+        {loading && <SkeletonRows count={6} />}
         {!loading && filtered.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No applicants match these filters.</p>}
         {filtered.map(a => (
           <div key={a.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -2709,7 +2823,7 @@ function UsersSection({ session }) {
 
       <SectionCard style={{ marginTop: 20 }}>
         <SectionTitle>Admin Accounts</SectionTitle>
-        {loading && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, padding: "14px 0" }}>Loading…</p>}
+        {loading && <SkeletonRows count={4} />}
         {!loading && admins.map(a => (
           <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
             <div>
@@ -2777,7 +2891,7 @@ function AuditSection() {
           <SectionTitle>Audit Logs ({filtered.length})</SectionTitle>
           <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>Recorded server-side, sensitive actions only</span>
         </div>
-        {loading ? <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>Loading…</p> : filtered.length === 0 ? (
+        {loading ? <SkeletonRows count={6} /> : filtered.length === 0 ? (
           <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No log entries yet.</p>
         ) : (
           <div style={{ maxHeight: 600, overflowY: "auto" }}>
@@ -3481,6 +3595,13 @@ function EmployeesSection() {
 
   useEffect(() => { load(); }, []);
 
+  function exportCSV() {
+    downloadCSV("employees",
+      ["Name", "Email", "Phone", "Title", "Department", "Role", "Status", "Salary", "Currency", "Start Date"],
+      employees.map(e => [e.fullName, e.email, e.phone, e.title, e.department, e.staffRole || "staff", e.status, e.salaryAmount, e.salaryCurrency, e.startDate]),
+      "employees");
+  }
+
   async function addEmployee() {
     setErr(""); setMsg("");
     if (!form.fullName || !form.email || !form.title) { setErr("Full name, email, and title are required."); return; }
@@ -3546,9 +3667,12 @@ function EmployeesSection() {
       </div>
 
       <SectionCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <SectionTitle>Employees</SectionTitle>
-          <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ Add Employee"}</Btn>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn small variant="ghost" onClick={exportCSV}>Export CSV</Btn>
+            <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ Add Employee"}</Btn>
+          </div>
         </div>
         {showForm && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
@@ -3577,7 +3701,7 @@ function EmployeesSection() {
       </SectionCard>
 
       <SectionCard>
-        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+        {loading ? <SkeletonRows count={6} /> : (
           <Table
             cols={[
               { key: "fullName", label: "Name", render: e => (
@@ -3813,7 +3937,7 @@ function WeeklyReportsSection() {
       </div>
       <SectionCard>
         <SectionTitle>Weekly reports</SectionTitle>
-        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {loading && <SkeletonRows count={4} />}
         {!loading && reports.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No reports submitted yet.</p>}
         {reports.map(r => {
           const activityCount = (r.prospects?.length || 0) + (r.sales?.length || 0) + (r.followUps?.length || 0);
@@ -3880,7 +4004,7 @@ function LeaveRequestsSection() {
       <SectionCard>
         <SectionTitle>Leave requests</SectionTitle>
         {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
-        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {loading && <SkeletonRows count={4} />}
         {!loading && leave.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No leave requests yet.</p>}
         {leave.map(l => (
           <div key={l.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -4135,7 +4259,7 @@ function TemplatesSection() {
           Basic formatting is supported and renders properly in the PDF and on the signing page: <code>{"<b>bold</b>"}</code>, <code>{"<i>italic</i>"}</code>, <code>{"<br>"}</code> for a line break, and <code>{"<p>...</p>"}</code> or <code>{"<ul><li>...</li></ul>"}</code> for paragraphs and bullet lists. Any other tags are stripped, not shown literally.
         </p>
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 8 }}>{msg}</p>}
-        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {loading && <SkeletonRows count={5} />}
         {!loading && templates.map(t => (
           <div key={t.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
             {editing === t.id ? (
@@ -4225,7 +4349,7 @@ function SignatoriesSection() {
 
       <SectionCard>
         <SectionTitle>Signatories</SectionTitle>
-        {loading && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>Loading…</p>}
+        {loading && <SkeletonRows count={3} />}
         {!loading && signatories.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 12 }}>No signatories yet.</p>}
         {signatories.map(s => (
           <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -4386,9 +4510,15 @@ function ContractsSection() {
       </div>
 
       <SectionCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <SectionTitle>Contracts</SectionTitle>
-          <Btn small onClick={() => showCompose ? setShowCompose(false) : openCompose()}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn small variant="ghost" onClick={() => downloadCSV("contracts",
+              ["Title", "Type", "Recipient", "Email", "Status", "Amount", "Currency", "Created"],
+              contracts.map(c => [c.title, c.type, c.recipientName, c.recipientEmail, c.status, c.amount, c.currency, new Date(c.createdAt).toLocaleDateString("en-NG")]),
+              "contracts")}>Export CSV</Btn>
+            <Btn small onClick={() => showCompose ? setShowCompose(false) : openCompose()}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
+          </div>
         </div>
         {showCompose && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
@@ -4471,7 +4601,7 @@ function ContractsSection() {
 
       <SectionCard>
         {err && !showCompose && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{err}</p>}
-        {loading && <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p>}
+        {loading && <SkeletonRows count={5} />}
         {!loading && contracts.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No contracts yet. Compose your first document above.</p>}
         {!loading && contracts.map(c => (
           <div key={c.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -4734,9 +4864,15 @@ function PayrollSection({ session }) {
         confirmLabel="Send Payment"
       />
       <SectionCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <SectionTitle>Payroll</SectionTitle>
-          <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ New Payroll Entry"}</Btn>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn small variant="ghost" onClick={() => downloadCSV("payroll",
+              ["Employee", "Period", "Base Salary", "Commissions", "Net Pay", "Currency", "Status"],
+              payroll.map(p => [employeeName(p.employeeId), p.period, p.baseSalary, (p.commissions || []).reduce((s, c) => s + Number(c.amount), 0), p.netAmount, p.currency, p.status]),
+              "payroll")}>Export CSV</Btn>
+            <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ New Payroll Entry"}</Btn>
+          </div>
         </div>
         {showForm && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
@@ -4842,7 +4978,7 @@ function PayrollSection({ session }) {
       })()}
 
       <SectionCard>
-        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+        {loading ? <SkeletonRows count={5} /> : (
           <Table
             cols={[
               { key: "employee", label: "Employee", render: p => employeeName(p.employeeId) },
@@ -4920,7 +5056,7 @@ function EmailLogSection() {
             {kinds.map(k => <option key={k} value={k}>{k}</option>)}
           </Select>
         </div>
-        {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
+        {loading ? <SkeletonRows count={6} /> : (
           <Table
             cols={[
               { key: "sentAt", label: "Sent", render: e => new Date(e.sentAt).toLocaleString("en-NG") },
@@ -4939,9 +5075,9 @@ function EmailLogSection() {
 }
 
 // ─── Section router ──────────────────────────────────────────────────────────
-function DashboardContent({ active, session }) {
+function DashboardContent({ active, session, navigate }) {
   switch (active) {
-    case "dashboard":     return <DashboardOverview />;
+    case "dashboard":     return <DashboardOverview navigate={navigate} />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;
@@ -4990,22 +5126,45 @@ function adminInitials(name) {
   return String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "?";
 }
 
-function TopBar({ session, active, navigate }) {
-  const { data } = useAnalytics();
-  const unread = data?.recentActivities?.length || 0;
+function NotificationBell({ navigate }) {
+  const { items, loading } = useAttention();
+  const [open, setOpen] = useState(false);
+  const [lastSeen, setLastSeen] = useState(() => {
+    try { return localStorage.getItem(ATTENTION_LASTSEEN_KEY) || ""; } catch { return ""; }
+  });
+  const boxRef = useRef(null);
+
+  const unread = lastSeen ? items.filter(i => i.at && new Date(i.at) > new Date(lastSeen)).length : items.length;
+
+  useEffect(() => {
+    function onDocClick(e) { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  function toggle() {
+    setOpen(o => {
+      const next = !o;
+      if (next) {
+        const now = new Date().toISOString();
+        try { localStorage.setItem(ATTENTION_LASTSEEN_KEY, now); } catch { /* ignore */ }
+        setLastSeen(now);
+      }
+      return next;
+    });
+  }
+
+  const TYPE_ICON = { leave: "🌴", report: "📋", contract: "📑", payroll: "💰", applicant: "👤" };
 
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 14,
-      padding: "14px clamp(20px, 3vw, 40px)", borderBottom: `1px solid ${C.border}`, background: C.surface,
-    }}>
-      <button type="button" onClick={() => navigate("activities")} title="Recent activity" style={{
+    <div ref={boxRef} style={{ position: "relative" }}>
+      <button type="button" onClick={toggle} title="Needs attention" style={{
         position: "relative", background: "none", border: `1px solid ${C.border}`, borderRadius: 10,
         width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center",
-        color: active === "activities" ? C.gold : C.textMuted, cursor: "pointer",
+        color: open ? C.gold : C.textMuted, cursor: "pointer",
       }}
       onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.borderColor = C.borderHover; }}
-      onMouseLeave={e => { e.currentTarget.style.color = active === "activities" ? C.gold : C.textMuted; e.currentTarget.style.borderColor = C.border; }}>
+      onMouseLeave={e => { e.currentTarget.style.color = open ? C.gold : C.textMuted; e.currentTarget.style.borderColor = C.border; }}>
         <Bell size={17} />
         {unread > 0 && (
           <span style={{
@@ -5017,6 +5176,55 @@ function TopBar({ session, active, navigate }) {
           </span>
         )}
       </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: 46, right: 0, width: 340, maxHeight: 420, overflowY: "auto",
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, boxShadow: "0 20px 50px rgba(0,0,0,0.4)", zIndex: 200,
+        }}>
+          <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font }}>
+            Needs attention {items.length > 0 && <span style={{ color: C.textMuted, fontWeight: 500 }}>({items.length})</span>}
+          </div>
+          {loading ? (
+            <p style={{ padding: 16, fontSize: 13, color: C.textMuted, fontFamily: font }}>Loading…</p>
+          ) : items.length === 0 ? (
+            <p style={{ padding: 16, fontSize: 13, color: C.textMuted, fontFamily: font }}>All caught up. Nothing needs attention right now.</p>
+          ) : (
+            items.slice(0, 12).map(item => (
+              <button key={item.id} type="button" onClick={() => { navigate(item.nav); setOpen(false); }} style={{
+                display: "flex", gap: 10, width: "100%", textAlign: "left", padding: "12px 16px",
+                background: "none", border: "none", borderBottom: `1px solid ${C.border}`, cursor: "pointer",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = C.cardHover}
+              onMouseLeave={e => e.currentTarget.style.background = "none"}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{TYPE_ICON[item.type] || "•"}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: C.text, fontFamily: font, lineHeight: 1.4 }}>{item.label}</div>
+                  {item.detail && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.detail}</div>}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopBar({ session, navigate, onMenuClick }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
+      padding: "14px clamp(20px, 3vw, 40px)", borderBottom: `1px solid ${C.border}`, background: C.surface,
+    }}>
+      <button type="button" className="admin-mobile-toggle" onClick={onMenuClick} aria-label="Open menu" style={{
+        alignItems: "center", justifyContent: "center", background: "none", border: `1px solid ${C.border}`,
+        borderRadius: 10, width: 38, height: 38, color: C.textMuted, cursor: "pointer",
+      }}>
+        <Menu size={17} />
+      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto" }}>
+      <NotificationBell navigate={navigate} />
 
       <div style={{ width: 1, height: 24, background: C.border }} />
 
@@ -5033,6 +5241,7 @@ function TopBar({ session, active, navigate }) {
           {adminInitials(session.name)}
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -5043,6 +5252,7 @@ export default function AdminDashboard({ setCurrentPage }) {
   const [checking, setChecking] = useState(true);
   const [active, setActive] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const applySession = useCallback((user) => {
     setSession(user);
@@ -5073,12 +5283,13 @@ export default function AdminDashboard({ setCurrentPage }) {
     applySession(null);
   }
 
-  const navigate = (id) => { setActive(id); window.scrollTo({ top: 0 }); };
+  const navigate = (id) => { setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: C.bg, fontFamily: font }}>
+      {mobileSidebarOpen && <div className="admin-sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} />}
       {/* Sidebar */}
-      <aside style={{
+      <aside className={`admin-sidebar${mobileSidebarOpen ? " admin-sidebar-open" : ""}`} style={{
         width: sidebarOpen ? 240 : 64, minHeight: "100vh", background: C.surface,
         borderRight: `1px solid ${C.border}`, flexShrink: 0,
         transition: "width 0.25s", overflow: "hidden", position: "sticky", top: 0, maxHeight: "100vh", overflowY: "auto",
@@ -5142,7 +5353,7 @@ export default function AdminDashboard({ setCurrentPage }) {
 
       {/* Main content */}
       <main style={{ flex: 1, overflowX: "hidden" }}>
-        <TopBar session={session} active={active} navigate={navigate} />
+        <TopBar session={session} navigate={navigate} onMenuClick={() => setMobileSidebarOpen(o => !o)} />
         <div style={{ padding: "24px clamp(20px, 3vw, 40px) 32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
             <div>
@@ -5163,7 +5374,7 @@ export default function AdminDashboard({ setCurrentPage }) {
             </button>
           </div>
 
-          <DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} />
+          <DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} navigate={navigate} />
         </div>
       </main>
     </div>
