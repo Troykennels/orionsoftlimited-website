@@ -3729,7 +3729,7 @@ function fillPlaceholders(text, fillData, recipientName) {
 // wordmark on the left and the registered company block right-aligned, a
 // gold rule + left spine, formal letter body, a two-column signature block,
 // and the same confidential footer.
-const LETTER_COMPANY_LINES = ["Orion Soft Digital Technologies Ltd", "RC 9535128 · Nigeria", "orionsoftlimited@gmail.com · 08169577059"];
+const LETTER_COMPANY_LINES = ["Orion Soft Limited", "RC 9535128 · Nigeria", "orionsoftlimited@gmail.com · 08169577059"];
 
 // Same mark used site-wide (src/App.jsx's OrionLogo) — reused here so the
 // letterhead preview carries the real brand mark, not just a text wordmark.
@@ -3765,7 +3765,7 @@ function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, sig
             <div style={{ fontSize: 22, fontWeight: 800, fontFamily: serif, letterSpacing: "-0.01em" }}>
               <span style={{ color: "#fff" }}>Orion</span><span style={{ color: "#C8A850" }}>Soft</span>
             </div>
-            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.7)", marginTop: 4, fontFamily: font }}>Enterprise Software, Built for Nigeria</div>
+            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.7)", marginTop: 4, fontFamily: font }}>Enterprise Software, Built for Africa</div>
           </div>
         </div>
         <div style={{ textAlign: "right", fontSize: 8.5, color: "rgba(255,255,255,0.7)", fontFamily: font, lineHeight: 1.7 }}>

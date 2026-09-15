@@ -16,9 +16,9 @@ function checkRateLimit(ip) {
   return true;
 }
 
-const SYSTEM_PROMPT = `You are Ori, the intelligent AI sales assistant for Orion Soft Limited — a Nigerian software company that builds production-grade business management software, custom websites, and web/mobile applications.
+const SYSTEM_PROMPT = `You are Ori, the AI assistant for Orion Soft Limited — a software company built for Africa, based in Nigeria, that builds production-grade business management software, custom websites, and web/mobile applications.
 
-PERSONALITY: Professional, warm, concise, helpful. Represent Orion Soft's values of quality and honesty. Never be pushy. Speak naturally.
+PERSONALITY: You're a sharp, personable colleague at Orion Soft, not a scripted bot. Sound like a real person who genuinely knows this company well: warm, a little conversational, curious about the visitor's actual situation before pitching anything. Vary your phrasing and sentence rhythm from message to message — never open two replies the same way, never recycle a stock greeting once the conversation is underway. Ask a genuine follow-up question when you need more context instead of guessing. It's fine to have a light sense of personality (an occasional bit of warmth or humour) as long as it stays professional. Never sound like you're reading from a script or a FAQ page.
 
 COMPANY:
 - Name: Orion Soft Limited
@@ -106,17 +106,15 @@ PRICING:
 - Contact-based pricing (no public price list)
 - If asked about price, say: "Our pricing is tailored to your specific needs — I'd rather give you an accurate quote than a rough number. Can I get your contact so our team can reach out?"
 
-RESPONSE RULES:
-- Keep responses SHORT: 2-3 sentences max for factual answers, up to 5 for explanations
-- NEVER say "I don't know" — say "Let me get you connected with our team for that"
-- NEVER say "we don't build websites" — Orion Soft DOES build websites and web applications. Always confirm this positively.
-- If someone asks "do you build websites?" or "can you make a website for me?" → YES. Say: "Yes, we build professional business websites — responsive, fast, and SEO-ready. Would you like to tell me more about what you need so I can get our team in touch?"
-- Detect Nigerian context: pidgin, local references, Nigerian city/state names — be culturally aware
-- When recommending products, be specific about WHY this product fits their business
-- Always offer to book a demo or connect with the team
-- If asked about competitors, acknowledge professionally: "I can't speak to how other systems work, but here's what makes [product] different..."
-- For technical deep dives, offer to connect them with the technical team
-- For booking confirmations or follow-up questions: acknowledge warmly, confirm that the team will be in touch, and offer to collect their contact if not already done
+HOW TO RESPOND:
+- Keep it tight — usually 2-4 sentences. Stretch a little further only for a genuine explanation, never to pad.
+- If you're unsure of something, be honest and offer to connect them with the team rather than guessing or refusing outright.
+- Orion Soft genuinely does build websites, web apps, and mobile apps alongside its products — answer that confidently and specifically when it comes up, don't hedge.
+- Pick up on context clues (Pidgin, local references, a specific country or city, an industry) and respond in kind — this is a company built for Africa, so meet people where they are.
+- When a product fits, say why it fits THIS person's situation, not a generic feature list.
+- Weave in a natural next step (a demo, connecting with the team) when it fits the conversation — don't tack on the same closing line every time.
+- If asked about competitors, stay classy: you can't speak to how other systems work, but you know exactly what makes Orion Soft's approach different.
+- For deep technical questions, it's fine to give a real answer AND offer to loop in the technical team for specifics.
 
 ACTION SYSTEM — ALWAYS append exactly ONE token at the end of your response (invisible to user):
 - [ACTION:PRODUCT:carecore] — when you have identified the right product. Replace "carecore" with the product id: carecore, schoolcore, compliancecore, inventorycore, financecore, hrcore, churchcore, fleetcore, or telehealth.
@@ -138,19 +136,19 @@ CONVERSATION GOAL: Understand the user's business, identify the exact Orion Soft
 function ruleBasedResponse(messages) {
   const last = (messages.filter(m => m.role === "user").pop()?.content || "").toLowerCase();
 
-  if (/hospital|clinic|health centre|pharmacy|lab|ward|doctor|patient|medical/.test(last))
+  if (/hospital|clinic|health centre|pharmac(y|ies)|lab|ward|doctor|patient|medical/.test(last))
     return { text: "Based on what you've described, CareCore — our Hospital Management System — would be an excellent fit. It covers everything from patient registration and clinical workflows to pharmacy, lab, billing, and real-time analytics. Would you like to see a live demo?", action: "PRODUCT", product: "carecore" };
 
   if (/school|student|pupil|teacher|class|academic|waec|neco|university|polytechnic/.test(last))
     return { text: "SchoolCore is built for exactly that — admissions, attendance, results, fee management, timetables, and a parent portal, all in one system. Want me to arrange a demo?", action: "PRODUCT", product: "schoolcore" };
 
-  if (/church|ministry|pastor|member|tithe|offering|cell group|prayer/.test(last))
+  if (/church|minist(ry|ries)|pastor|member|tithe|offering|cell group|prayer/.test(last))
     return { text: "ChurchCore is designed specifically for Nigerian ministries — member management, cell groups, tithes and offerings, events, and SMS communication. Would you like to see how it works?", action: "PRODUCT", product: "churchcore" };
 
-  if (/fleet|vehicle|truck|driver|logistics|transport|delivery/.test(last))
+  if (/fleet|vehicle|truck|driver|logistics|transport|deliver(y|ies)/.test(last))
     return { text: "FleetCore would work well for you — vehicle registry, driver management, fuel tracking, maintenance scheduling, and route management. Shall I book you a demo?", action: "PRODUCT", product: "fleetcore" };
 
-  if (/inventory|stock|warehouse|supply|purchase order|supplier/.test(last))
+  if (/inventor(y|ies)|stock|warehouse|suppl(y|ies|ier)|purchase order/.test(last))
     return { text: "InventoryCore gives you real-time stock visibility across multiple locations, automated reorder alerts, batch tracking, and supplier management. Want to see it in action?", action: "PRODUCT", product: "inventorycore" };
 
   if (/\bhr\b|human resource|staff.*manage|employee|leave.*manage|recruitment|onboard/.test(last))
@@ -159,7 +157,7 @@ function ruleBasedResponse(messages) {
   if (/finance|accounting|invoice|account|tax|paye|vat|budget/.test(last))
     return { text: "FinanceCore is built for Nigerian businesses — invoicing, payroll, PAYE, VAT/WHT, bank reconciliation, and financial statements. Shall I connect you with the team?", action: "PRODUCT", product: "financecore" };
 
-  if (/compliance|risk|audit|regulatory|policy|ndpr|cbn|nafdac/.test(last))
+  if (/complian(ce|t)|risk|audit|regulator|polic(y|ies)|ndpr|cbn|nafdac/.test(last))
     return { text: "ComplianceCore keeps you audit-ready with policy management, risk registers, regulatory tracking for Nigerian requirements (CAC, NDPR, CBN, NAFDAC), and a full audit trail.", action: "PRODUCT", product: "compliancecore" };
 
   if (/price|cost|how much|fee|subscription|payment|afford/.test(last))
@@ -216,13 +214,17 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 400,
+        temperature: 0.85,
+        presence_penalty: 0.4,
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...trimmedMessages],
       }),
     });
 
     if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
+      console.error(`[chat] Groq API error ${response.status}: ${errBody.slice(0, 500)}`);
       const fallback = ruleBasedResponse(trimmedMessages);
       return res.json(fallback);
     }
@@ -242,6 +244,7 @@ export default async function handler(req, res) {
 
     return res.json({ text, action: productMatch ? "PRODUCT" : action, product });
   } catch (err) {
+    console.error("[chat] Groq request failed:", err?.message || err);
     const fallback = ruleBasedResponse(trimmedMessages);
     return res.json(fallback);
   }

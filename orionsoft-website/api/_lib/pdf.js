@@ -20,7 +20,7 @@ const WHITE = rgb(1, 1, 1);
 const WHITE_DIM = rgb(0.78, 0.83, 0.89);
 
 const COMPANY_ADDRESS_LINES = [
-  "Orion Soft Digital Technologies Ltd",
+  "Orion Soft Limited",
   "RC 9535128 · Nigeria",
   "orionsoftlimited@gmail.com · 08169577059",
 ];
@@ -67,7 +67,7 @@ function drawPageChrome(page, font, boldFont, { withHeader }) {
   page.drawText("Orion", { x: textX, y: wmY, size: 22, font: boldFont, color: WHITE });
   const orionWidth = boldFont.widthOfTextAtSize("Orion", 22);
   page.drawText("Soft", { x: textX + orionWidth, y: wmY, size: 22, font: boldFont, color: GOLD });
-  page.drawText("Enterprise Software, Built for Nigeria", { x: textX, y: wmY - 18, size: 9, font, color: WHITE_DIM });
+  page.drawText("Enterprise Software, Built for Africa", { x: textX, y: wmY - 18, size: 9, font, color: WHITE_DIM });
 
   COMPANY_ADDRESS_LINES.forEach((line, i) => {
     const size = 8.5;

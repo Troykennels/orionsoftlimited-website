@@ -180,7 +180,9 @@ function HeroDashboard() {
 
 function HeroSection({ setCurrentPage }) {
   const [tourHov, setTourHov] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
   return (
+    <>
     <section className="hero-enterprise" style={{
       background: `linear-gradient(115deg, rgba(6,15,26,0.96) 0%, rgba(6,15,26,0.88) 35%, rgba(6,15,26,0.58) 70%, rgba(6,15,26,0.38) 100%), url(/assets/hero-code-white-bg.jpg)`,
       backgroundSize: "cover",
@@ -250,6 +252,7 @@ function HeroSection({ setCurrentPage }) {
           </button>
           {/* Watch Tour */}
           <button type="button"
+            onClick={() => setTourOpen(true)}
             onMouseEnter={() => setTourHov(true)}
             onMouseLeave={() => setTourHov(false)}
             style={{ background:"none", border:"none", color:tourHov?"rgba(200,210,226,0.92)":"rgba(200,210,226,0.55)", fontSize:13.5, fontWeight:600, fontFamily:font, cursor:"pointer", display:"flex", alignItems:"center", gap:9, padding:"4px 0", transition:"color 0.2s" }}>
@@ -427,6 +430,25 @@ function HeroSection({ setCurrentPage }) {
 
       </div>
     </section>
+
+    {tourOpen && (
+      <div role="dialog" aria-modal="true" aria-label="Product tour video"
+        onClick={() => setTourOpen(false)}
+        style={{ position:"fixed", inset:0, zIndex:9500, background:"rgba(4,12,24,0.9)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:900, position:"relative" }}>
+          <button type="button" onClick={() => setTourOpen(false)} aria-label="Close video"
+            style={{ position:"absolute", top:-44, right:0, background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)", color:"#fff", width:34, height:34, borderRadius:"50%", cursor:"pointer", fontSize:18, lineHeight:1 }}>
+            ×
+          </button>
+          <div style={{ borderRadius:16, overflow:"hidden", boxShadow:"0 30px 90px rgba(0,0,0,0.5)", background:"#07111D" }}>
+            <video controls autoPlay playsInline style={{ width:"100%", aspectRatio:"16 / 9", display:"block" }} aria-label="Orion Soft product tour demo video">
+              <source src="/assets/carecore/demo-premium-website.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
