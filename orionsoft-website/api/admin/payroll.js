@@ -3,6 +3,7 @@ import { requireAuth } from "../_lib/auth.js";
 import { set } from "../store.js";
 import { renderPayslipPdf } from "../_lib/pdf.js";
 import { sendPayslipIssued } from "../_lib/emailTemplates.js";
+import { resolveAccount, createRecipient, initiateTransfer } from "../_lib/paystackTransfer.js";
 
 function computeNet(gross, deductions) {
   const totalDeductions = (deductions || []).reduce((s, d) => s + (Number(d.amount) || 0), 0);
@@ -40,6 +41,7 @@ export default async function handler(req, res) {
       netAmount: computeNet(grossAmount, deductions),
       currency: currency || employee.salaryCurrency || "NGN",
       status: "draft", payslipPdfKey: null, issuedAt: null,
+      paidAmount: null, transferReference: null, transferRecipientCode: null, paidAt: null, payoutError: null,
     };
     await putRecord("payroll", id, payroll);
     return res.json({ ok: true, payroll });
@@ -75,6 +77,66 @@ export default async function handler(req, res) {
       payroll.status = "paid";
       await putRecord("payroll", id, payroll);
       return res.json({ ok: true, payroll });
+    }
+
+    // Read-only: lets the admin see the real, Paystack-verified account
+    // holder name before committing to a payout, without changing anything.
+    if (action === "resolve_bank") {
+      const { bankCode, accountNumber } = req.body;
+      if (!bankCode || !accountNumber) return res.status(400).json({ error: "bankCode and accountNumber are required" });
+      try {
+        const resolved = await resolveAccount(accountNumber, bankCode);
+        return res.json({ ok: true, ...resolved });
+      } catch (err) {
+        return res.status(502).json({ error: err.message });
+      }
+    }
+
+    if (action === "pay") {
+      if (payroll.status !== "issued") return res.status(400).json({ error: "Only issued entries awaiting payment can be paid" });
+      if (payroll.currency !== "NGN") return res.status(400).json({ error: "Automatic bank transfer only supports NGN. Use \"Mark Paid\" to record this payment manually." });
+
+      const { amount, bankCode } = req.body;
+      const payAmount = Number(amount);
+      if (!payAmount || payAmount <= 0) return res.status(400).json({ error: "A valid amount is required" });
+      if (!bankCode) return res.status(400).json({ error: "bankCode is required" });
+
+      const employee = await getRecord("employees", payroll.employeeId);
+      if (!employee) return res.status(404).json({ error: "Employee not found" });
+      if (!employee.bankAccountNumber) return res.status(400).json({ error: "This employee has no bank account number on file" });
+
+      try {
+        const resolved = await resolveAccount(employee.bankAccountNumber, bankCode);
+
+        let recipientCode = employee.paystackRecipientCode;
+        if (!recipientCode || employee.bankCode !== bankCode) {
+          recipientCode = await createRecipient({ name: resolved.accountName, accountNumber: employee.bankAccountNumber, bankCode });
+          employee.bankCode = bankCode;
+          employee.paystackRecipientCode = recipientCode;
+          await putRecord("employees", employee.id, employee);
+        }
+
+        const reference = `payroll_${payroll.id}`;
+        const transfer = await initiateTransfer({
+          amount: payAmount, recipientCode, reference,
+          reason: `Salary — ${payroll.period}`,
+        });
+
+        if (transfer.status === "otp") {
+          return res.status(409).json({ error: "Your Paystack account still requires OTP for transfers. Go to your Paystack Dashboard → Settings → Preferences and disable OTP for transfers, then try again." });
+        }
+
+        payroll.status = "processing";
+        payroll.paidAmount = payAmount;
+        payroll.transferReference = reference;
+        payroll.transferRecipientCode = recipientCode;
+        payroll.payoutError = null;
+        await putRecord("payroll", id, payroll);
+
+        return res.json({ ok: true, payroll });
+      } catch (err) {
+        return res.status(502).json({ error: err.message || "Payout failed" });
+      }
     }
 
     if (payroll.status !== "draft") {

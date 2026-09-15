@@ -4248,23 +4248,35 @@ function ContractsSection() {
 function PayrollSection() {
   const [payroll, setPayroll] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ employeeId: "", period: "", grossAmount: "", currency: "NGN" });
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
 
-  async function load() {
-    setLoading(true);
+  const [payingId, setPayingId] = useState(null);
+  const [payForm, setPayForm] = useState({ bankCode: "", amount: "", verifiedName: "" });
+  const [verifying, setVerifying] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [payErr, setPayErr] = useState("");
+
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     try {
       const [rP, rE] = await Promise.all([fetch("/api/admin/payroll"), fetch("/api/admin/employees")]);
       const [jP, jE] = await Promise.all([rP.json(), rE.json()]);
       if (rP.ok) setPayroll(jP.payroll || []);
       if (rE.ok) setEmployees(jE.employees || []);
-    } finally { setLoading(false); }
+    } finally { if (!silent) setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
+  function employeeOf(id) { return employees.find(e => e.id === id); }
 
   async function create() {
     setErr(""); setMsg("");
@@ -4294,7 +4306,57 @@ function PayrollSection() {
     if (r.ok) { auditLog("mark_paid", `${employeeName(p.employeeId)} — ${p.period}`); load(); }
   }
 
-  const statusColor = { draft: C.textMuted, issued: C.blue, paid: C.mint };
+  async function openPay(p) {
+    setPayingId(p.id);
+    setPayErr("");
+    const employee = employeeOf(p.employeeId);
+    setPayForm({ bankCode: employee?.bankCode || "", amount: String(p.netAmount), verifiedName: "" });
+    if (banks.length === 0) {
+      const r = await fetch("/api/admin/banks");
+      const json = await r.json();
+      if (r.ok) setBanks(json.banks || []);
+    }
+  }
+
+  async function verifyAccount(p) {
+    const employee = employeeOf(p.employeeId);
+    if (!payForm.bankCode || !employee?.bankAccountNumber) return;
+    setVerifying(true); setPayErr("");
+    try {
+      const r = await fetch("/api/admin/payroll", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, action: "resolve_bank", bankCode: payForm.bankCode, accountNumber: employee.bankAccountNumber }),
+      });
+      const json = await r.json();
+      if (!r.ok) { setPayErr(json.error || "Could not verify this account."); return; }
+      setPayForm(f => ({ ...f, verifiedName: json.accountName }));
+    } finally { setVerifying(false); }
+  }
+
+  async function confirmPay(p) {
+    const amount = Number(payForm.amount);
+    if (!amount || amount <= 0) { setPayErr("Enter a valid amount."); return; }
+    if (!payForm.verifiedName) { setPayErr("Verify the account before paying."); return; }
+    if (!confirm(`Pay ${p.currency} ${amount.toLocaleString()} to ${payForm.verifiedName}?\n\nThis sends real money via Paystack and cannot be undone. Continue?`)) return;
+
+    setPaying(true); setPayErr("");
+    try {
+      const r = await fetch("/api/admin/payroll", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, action: "pay", amount, bankCode: payForm.bankCode }),
+      });
+      const json = await r.json();
+      if (!r.ok) { setPayErr(json.error || "Payout failed."); return; }
+      auditLog("pay_salary", `${employeeName(p.employeeId)} — ${p.period}`, `${p.currency} ${amount}`);
+      setPayingId(null);
+      setMsg("Payout initiated — status will update automatically once Paystack confirms it.");
+      setTimeout(() => setMsg(""), 5000);
+      load();
+    } finally { setPaying(false); }
+  }
+
+  const statusColor = { draft: C.textMuted, issued: C.blue, processing: C.amber, paid: C.mint };
+  const payingEntry = payingId ? payroll.find(p => p.id === payingId) : null;
 
   return (
     <div>
@@ -4323,6 +4385,44 @@ function PayrollSection() {
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
       </SectionCard>
 
+      {payingEntry && (() => {
+        const employee = employeeOf(payingEntry.employeeId);
+        return (
+          <SectionCard style={{ marginBottom: 20, border: `1px solid ${C.gold}44` }}>
+            <SectionTitle>Pay {employeeName(payingEntry.employeeId)} — {payingEntry.period}</SectionTitle>
+            <p style={{ fontSize: 12.5, color: C.textMuted, margin: "6px 0 16px" }}>
+              {employee?.bankName || "No bank name on file"} · Account ending {String(employee?.bankAccountNumber || "").slice(-4).padStart(String(employee?.bankAccountNumber || "").length, "•")}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div>
+                <Label>Bank</Label>
+                <Select value={payForm.bankCode} onChange={e => setPayForm(f => ({ ...f, bankCode: e.target.value, verifiedName: "" }))}>
+                  <option value="">Select bank…</option>
+                  {banks.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+                </Select>
+              </div>
+              <div>
+                <Label>Amount (editable)</Label>
+                <Input type="number" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value, verifiedName: f.verifiedName }))} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <Btn small variant="ghost" onClick={() => verifyAccount(payingEntry)} disabled={!payForm.bankCode || verifying}>
+                {verifying ? "Verifying…" : "Verify account"}
+              </Btn>
+              {payForm.verifiedName && (
+                <span style={{ marginLeft: 12, fontSize: 13, color: C.mint, fontWeight: 700 }}>✓ {payForm.verifiedName}</span>
+              )}
+            </div>
+            {payErr && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{payErr}</p>}
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn onClick={() => confirmPay(payingEntry)} disabled={paying || !payForm.verifiedName}>{paying ? "Paying…" : "Approve & Pay"}</Btn>
+              <Btn variant="ghost" onClick={() => setPayingId(null)}>Cancel</Btn>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
       <SectionCard>
         {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
           <Table
@@ -4330,11 +4430,17 @@ function PayrollSection() {
               { key: "employee", label: "Employee", render: p => employeeName(p.employeeId) },
               { key: "period", label: "Period" },
               { key: "netAmount", label: "Net Pay", render: p => `${p.currency} ${Number(p.netAmount).toLocaleString()}` },
-              { key: "status", label: "Status", render: p => <Badge color={statusColor[p.status]}>{p.status}</Badge> },
+              { key: "status", label: "Status", render: p => (
+                <div>
+                  <Badge color={statusColor[p.status]}>{p.status === "processing" ? "paying…" : p.status}</Badge>
+                  {p.payoutError && <div style={{ fontSize: 11, color: C.rose, marginTop: 4, maxWidth: 200 }}>{p.payoutError}</div>}
+                </div>
+              ) },
               { key: "actions", label: "", render: p => (
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
-                  {p.status === "issued" && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid</Btn>}
+                  {p.status === "issued" && p.currency === "NGN" && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
+                  {p.status === "issued" && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
                   {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12, fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>PDF</a>}
                 </div>
               ) },

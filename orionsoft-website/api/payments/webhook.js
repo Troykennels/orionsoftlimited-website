@@ -31,6 +31,23 @@ export default async function handler(req, res) {
   let event;
   try { event = JSON.parse(rawBody.toString("utf8")); } catch { return res.status(400).json({ error: "Invalid payload" }); }
 
+  if (event.event === "transfer.success" || event.event === "transfer.failed" || event.event === "transfer.reversed") {
+    const reference = event.data?.reference;
+    const payrollEntries = await listRecords("payroll");
+    const payroll = payrollEntries.find(p => p.transferReference === reference);
+    if (payroll && payroll.status === "processing") {
+      if (event.event === "transfer.success") {
+        payroll.status = "paid";
+        payroll.paidAt = new Date().toISOString();
+        payroll.payoutError = null;
+      } else {
+        payroll.status = "issued"; // back to retryable
+        payroll.payoutError = event.data?.reason || event.data?.message || `Transfer ${event.event === "transfer.failed" ? "failed" : "was reversed"}`;
+      }
+      await putRecord("payroll", payroll.id, payroll);
+    }
+  }
+
   if (event.event === "charge.success") {
     const reference = event.data?.reference;
     const payments = await listRecords("payments");
