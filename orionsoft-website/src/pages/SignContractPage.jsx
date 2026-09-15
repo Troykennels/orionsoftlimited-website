@@ -1,5 +1,68 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { parseRichText } from "../lib/richtext.js";
+
+// Lets the recipient draw their own signature at signing time (rather than
+// relying only on a typed name), matching the same canvas pattern used for
+// internal signatories in the admin panel.
+function SignaturePad({ onChange, borderColor }) {
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
+  function pos(e, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  }
+  function start(e) {
+    e.preventDefault();
+    drawing.current = true;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = pos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+  function move(e) {
+    if (!drawing.current) return;
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const { x, y } = pos(e, canvas);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = "#0A2540";
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.stroke();
+    setHasDrawn(true);
+  }
+  function end() {
+    drawing.current = false;
+    if (hasDrawn) onChange(canvasRef.current.toDataURL("image/png"));
+  }
+  function clear() {
+    const canvas = canvasRef.current;
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+    onChange(null);
+  }
+
+  return (
+    <div>
+      <canvas
+        ref={canvasRef} width={360} height={130}
+        style={{ background: "#fff", borderRadius: 10, border: `1px solid ${borderColor}`, touchAction: "none", cursor: "crosshair", width: "100%", maxWidth: 360, display: "block" }}
+        onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
+        onTouchStart={start} onTouchMove={move} onTouchEnd={end}
+      />
+      {hasDrawn && (
+        <button type="button" onClick={clear} style={{ marginTop: 8, background: "none", border: "none", color: "#6B7A96", fontSize: 12.5, cursor: "pointer", padding: 0, textDecoration: "underline" }}>
+          Clear and redraw
+        </button>
+      )}
+    </div>
+  );
+}
 
 function RichText({ text }) {
   const paragraphs = parseRichText(text);
@@ -45,6 +108,7 @@ export default function SignContractPage() {
   const [loading, setLoading] = useState(true);
   const [signedByName, setSignedByName] = useState("");
   const [consent, setConsent] = useState(false);
+  const [signatureImage, setSignatureImage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -83,14 +147,14 @@ export default function SignContractPage() {
   }
 
   async function submit() {
-    if (!signedByName.trim() || !consent) return;
+    if (!signedByName.trim() || !consent || !signatureImage) return;
     setSubmitting(true);
     setError("");
     try {
       const r = await fetch("/api/contracts/sign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contractId, token, signedByName: signedByName.trim(), consent }),
+        body: JSON.stringify({ contractId, token, signedByName: signedByName.trim(), consent, signatureImageDataUrl: signatureImage }),
       });
       const json = await r.json();
       if (!r.ok) { setError(json.error || "Could not sign this document."); return; }
@@ -128,22 +192,27 @@ export default function SignContractPage() {
               <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: C.muted, marginBottom: 6 }}>Type your full name to sign</label>
               <input
                 value={signedByName} onChange={e => setSignedByName(e.target.value)} placeholder="Full name"
-                style={{ width: "100%", background: "#0B1120", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "12px 14px", fontSize: 14, fontFamily: font, outline: "none", boxSizing: "border-box", marginBottom: 14 }}
+                style={{ width: "100%", background: "#0B1120", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "12px 14px", fontSize: 14, fontFamily: font, outline: "none", boxSizing: "border-box", marginBottom: 20 }}
               />
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, color: C.text, marginBottom: 20, lineHeight: 1.6 }}>
+
+              <label style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: C.muted, marginBottom: 6 }}>Draw your signature</label>
+              <p style={{ fontSize: 12, color: C.muted, margin: "0 0 10px", lineHeight: 1.5 }}>Use your mouse or finger to sign in the box below. This is what appears on the document.</p>
+              <SignaturePad onChange={setSignatureImage} borderColor={C.border} />
+
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12.5, color: C.text, margin: "20px 0", lineHeight: 1.6 }}>
                 <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{ marginTop: 3 }} />
-                I have read and agree to the terms of this document, and understand that typing my name above constitutes my electronic signature.
+                I have read and agree to the terms of this document, and understand that my typed name and drawn signature above constitute my electronic signature.
               </label>
 
               {error && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{error}</p>}
 
               <button
-                type="button" onClick={submit} disabled={submitting || !signedByName.trim() || !consent}
+                type="button" onClick={submit} disabled={submitting || !signedByName.trim() || !consent || !signatureImage}
                 style={{
                   width: "100%", padding: "13px", background: C.gold, color: "#060810", border: "none", borderRadius: 10,
                   fontSize: 15, fontWeight: 700, fontFamily: font,
-                  cursor: submitting || !signedByName.trim() || !consent ? "not-allowed" : "pointer",
-                  opacity: submitting || !signedByName.trim() || !consent ? 0.6 : 1,
+                  cursor: submitting || !signedByName.trim() || !consent || !signatureImage ? "not-allowed" : "pointer",
+                  opacity: submitting || !signedByName.trim() || !consent || !signatureImage ? 0.6 : 1,
                 }}
               >
                 {submitting ? "Signing…" : "Sign Document"}

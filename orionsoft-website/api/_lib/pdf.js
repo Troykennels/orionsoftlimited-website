@@ -261,12 +261,13 @@ export async function renderContractPdf(contract, signatories = []) {
     image: sigImage,
   });
 
+  const recipientSigImage = contract.signedSignatureImageDataUrl ? await embedSignatureImage(doc, contract.signedSignatureImageDataUrl) : null;
   drawSignatureBlock(cursor.page, MARGIN + colWidth + 40, colWidth, rowTopY, {
     name: contract.signedByName || "",
-    roleLabel: contract.recipientName,
+    roleLabel: contract.recipientEmail || "",
+    image: recipientSigImage,
     dateLabel: contract.signedAt ? new Date(contract.signedAt).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }) : "Date: _______________",
     fonts,
-    image: null,
   });
   cursor.y = rowTopY - 60;
 

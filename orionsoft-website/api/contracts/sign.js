@@ -45,14 +45,18 @@ export default async function handler(req, res) {
     if (contract.status === "signed" || contract.status === "active" || contract.status === "completed") {
       return res.status(400).json({ error: "This contract has already been signed" });
     }
-    const { signedByName, consent } = req.body || {};
+    const { signedByName, consent, signatureImageDataUrl } = req.body || {};
     if (!signedByName || !consent) {
       return res.status(400).json({ error: "Your name and consent are required to sign" });
+    }
+    if (signatureImageDataUrl && (typeof signatureImageDataUrl !== "string" || !/^data:image\/(png|jpe?g);base64,/.test(signatureImageDataUrl) || signatureImageDataUrl.length > 1_500_000)) {
+      return res.status(400).json({ error: "Signature image is invalid" });
     }
 
     contract.status = "signed";
     contract.signedAt = new Date().toISOString();
     contract.signedByName = signedByName;
+    contract.signedSignatureImageDataUrl = signatureImageDataUrl || "";
     contract.signedIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
 
     const allSignatories = await listRecords("signatories");
