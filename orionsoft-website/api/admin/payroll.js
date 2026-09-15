@@ -1,9 +1,10 @@
 import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAuth, verifyPassword } from "../_lib/auth.js";
+import { logAudit } from "../_lib/audit.js";
 import { set } from "../store.js";
 import { renderPayslipPdf } from "../_lib/pdf.js";
 import { sendPayslipIssued } from "../_lib/emailTemplates.js";
-import { resolveAccount, createRecipient, initiateTransfer } from "../_lib/paystackTransfer.js";
+import { resolveAccount, createRecipient, initiateTransfer, verifyTransfer } from "../_lib/paystackTransfer.js";
 import { notifyCommissionAdded } from "../_lib/emailTemplates.js";
 
 function computeNet(gross, deductions) {
@@ -80,9 +81,11 @@ export default async function handler(req, res) {
     }
 
     if (action === "mark_paid") {
+      if (session.adminRole !== "superadmin") return res.status(403).json({ error: "Only a super admin can mark payroll as paid" });
       if (payroll.status !== "issued") return res.status(400).json({ error: "Only issued entries can be marked paid" });
       payroll.status = "paid";
       await putRecord("payroll", id, payroll);
+      await logAudit(session, "mark_paid", `payroll ${payroll.id}`, `${payroll.currency} ${payroll.netAmount} for ${payroll.period} (manual)`);
       return res.json({ ok: true, payroll });
     }
 
@@ -100,13 +103,22 @@ export default async function handler(req, res) {
     }
 
     if (action === "pay") {
+      if (session.adminRole !== "superadmin") return res.status(403).json({ error: "Only a super admin can send a bank transfer" });
       if (payroll.status !== "issued") return res.status(400).json({ error: "Only issued entries awaiting payment can be paid" });
       if (payroll.currency !== "NGN") return res.status(400).json({ error: "Automatic bank transfer only supports NGN. Use \"Mark Paid\" to record this payment manually." });
 
-      const { amount, bankCode } = req.body;
+      const { amount, bankCode, pin } = req.body;
       const payAmount = Number(amount);
       if (!payAmount || payAmount <= 0) return res.status(400).json({ error: "A valid amount is required" });
       if (!bankCode) return res.status(400).json({ error: "bankCode is required" });
+
+      const actingAdmin = await getRecord("admins", session.sub);
+      if (!actingAdmin?.securityPinHash) {
+        return res.status(403).json({ error: "Set an approval PIN under My Account before sending a bank transfer." });
+      }
+      if (!pin || !(await verifyPassword(pin, actingAdmin.securityPinHash))) {
+        return res.status(401).json({ error: "Incorrect approval PIN." });
+      }
 
       const employee = await getRecord("employees", payroll.employeeId);
       if (!employee) return res.status(404).json({ error: "Employee not found" });
@@ -126,7 +138,7 @@ export default async function handler(req, res) {
         const reference = `payroll_${payroll.id}`;
         const transfer = await initiateTransfer({
           amount: payAmount, recipientCode, reference,
-          reason: `Salary — ${payroll.period}`,
+          reason: `Salary: ${payroll.period}`,
         });
 
         if (transfer.status === "otp") {
@@ -139,10 +151,38 @@ export default async function handler(req, res) {
         payroll.transferRecipientCode = recipientCode;
         payroll.payoutError = null;
         await putRecord("payroll", id, payroll);
+        await logAudit(session, "pay_salary", `payroll ${payroll.id}`, `${payroll.currency} ${payAmount} to ${resolved.accountName} (${payroll.period})`);
 
         return res.json({ ok: true, payroll });
       } catch (err) {
         return res.status(502).json({ error: err.message || "Payout failed" });
+      }
+    }
+
+    // Lets an admin manually re-check a transfer stuck in "processing" —
+    // e.g. the confirming webhook never arrived — instead of it being a
+    // permanent dead end with no way to know if the employee got paid.
+    if (action === "check_status") {
+      if (payroll.status !== "processing") return res.status(400).json({ error: "Only a payment in progress can be checked" });
+      if (!payroll.transferReference) return res.status(400).json({ error: "This entry has no transfer to check" });
+      try {
+        const result = await verifyTransfer(payroll.transferReference);
+        if (result.status === "success") {
+          payroll.status = "paid";
+          payroll.paidAt = new Date().toISOString();
+          payroll.payoutError = null;
+          await putRecord("payroll", id, payroll);
+          await logAudit(session, "check_status", `payroll ${payroll.id}`, "Transfer confirmed successful");
+        } else if (result.status === "failed" || result.status === "reversed") {
+          payroll.status = "issued"; // back to retryable
+          payroll.payoutError = `Transfer ${result.status}`;
+          await putRecord("payroll", id, payroll);
+          await logAudit(session, "check_status", `payroll ${payroll.id}`, `Transfer ${result.status}, reset to issued`);
+        }
+        // still pending — leave as "processing", nothing to update
+        return res.json({ ok: true, payroll, transferStatus: result.status });
+      } catch (err) {
+        return res.status(502).json({ error: err.message || "Could not check transfer status" });
       }
     }
 

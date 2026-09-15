@@ -12,11 +12,18 @@ export default async function handler(req, res) {
   const session = requireAuth(req, res, "staff");
   if (!session) return;
 
+  // staffRole/department are re-checked against the live employee record,
+  // not trusted from the (up to 8h old) session token — otherwise a manager
+  // demoted or moved to another department keeps their old approval powers
+  // until their session naturally expires.
+  const actingEmployee = await getRecord("employees", session.sub);
+  if (!actingEmployee) return res.status(404).json({ error: "Employee record not found" });
+
   if (req.method === "GET") {
     if (req.query.scope === "team") {
-      if (session.staffRole !== "manager") return res.status(403).json({ error: "Only managers can view team leave requests" });
+      if (actingEmployee.staffRole !== "manager") return res.status(403).json({ error: "Only managers can view team leave requests" });
       const employees = await listRecords("employees");
-      const teamIds = employees.filter(e => e.department === session.department && e.id !== session.sub).map(e => e.id);
+      const teamIds = employees.filter(e => e.department === actingEmployee.department && e.id !== session.sub).map(e => e.id);
       const allLeave = await listRecords("leave");
       const teamLeave = allLeave.filter(l => teamIds.includes(l.employeeId));
       return res.json({ ok: true, leave: teamLeave.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });
@@ -51,7 +58,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "PATCH") {
-    if (session.staffRole !== "manager") return res.status(403).json({ error: "Only managers can decide on leave requests" });
+    if (actingEmployee.staffRole !== "manager") return res.status(403).json({ error: "Only managers can decide on leave requests" });
     const { id, status, decisionNotes } = req.body || {};
     if (!id || !["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "id and a valid status are required" });
@@ -59,7 +66,7 @@ export default async function handler(req, res) {
     const leave = await getRecord("leave", id);
     if (!leave) return res.status(404).json({ error: "Leave request not found" });
     const targetEmployee = await getRecord("employees", leave.employeeId);
-    if (!targetEmployee || targetEmployee.department !== session.department) {
+    if (!targetEmployee || targetEmployee.department !== actingEmployee.department) {
       return res.status(403).json({ error: "You can only decide on leave requests from your own department" });
     }
 

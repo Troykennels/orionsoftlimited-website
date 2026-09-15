@@ -12,11 +12,16 @@ export default async function handler(req, res) {
   const session = requireAuth(req, res, "staff");
   if (!session) return;
 
+  // Re-checked against the live employee record, not the (up to 8h old)
+  // session token — see api/staff/leave.js for the same fix and why.
+  const actingEmployee = await getRecord("employees", session.sub);
+  if (!actingEmployee) return res.status(404).json({ error: "Employee record not found" });
+
   if (req.method === "GET") {
     if (req.query.scope === "team") {
-      if (session.staffRole !== "manager") return res.status(403).json({ error: "Only managers can view team reports" });
+      if (actingEmployee.staffRole !== "manager") return res.status(403).json({ error: "Only managers can view team reports" });
       const employees = await listRecords("employees");
-      const teamIds = employees.filter(e => e.department === session.department && e.id !== session.sub).map(e => e.id);
+      const teamIds = employees.filter(e => e.department === actingEmployee.department && e.id !== session.sub).map(e => e.id);
       const allReports = await listRecords("reports");
       const teamReports = allReports.filter(r => teamIds.includes(r.employeeId));
       return res.json({ ok: true, reports: teamReports.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });

@@ -4,6 +4,7 @@ import { get, set } from "../store.js";
 import { renderTemplate } from "../_lib/templates.js";
 import { renderContractPdf } from "../_lib/pdf.js";
 import { sendContractEmail, notifyMilestoneCompleted } from "../_lib/emailTemplates.js";
+import { logAudit } from "../_lib/audit.js";
 
 const SIGN_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
@@ -77,6 +78,7 @@ export default async function handler(req, res) {
     if (!contract) return res.status(404).json({ error: "Contract not found" });
 
     if (action === "send") {
+      if (contract.status !== "draft") return res.status(400).json({ error: "Only a draft contract can be sent. This one has already been sent, signed, or cancelled." });
       if (!contract.recipientEmail) return res.status(400).json({ error: "Contract has no recipient email" });
       const signToken = signSession({ sub: contract.id, role: "contract-sign", contractId: contract.id }, SIGN_TOKEN_TTL_SECONDS);
       const signLink = `${process.env.APP_BASE_URL || ""}/sign/${contract.id}?token=${signToken}`;
@@ -87,6 +89,7 @@ export default async function handler(req, res) {
       contract.sentAt = new Date().toISOString();
       contract.updatedAt = new Date().toISOString();
       await putRecord("contracts", id, contract);
+      await logAudit(session, "send_contract", `contract ${contract.id}`, contract.title);
       return res.json({ ok: true, contract });
     }
 
@@ -118,6 +121,7 @@ export default async function handler(req, res) {
       contract.status = "cancelled";
       contract.updatedAt = new Date().toISOString();
       await putRecord("contracts", id, contract);
+      await logAudit(session, "cancel_contract", `contract ${contract.id}`, contract.title);
       return res.json({ ok: true, contract });
     }
 

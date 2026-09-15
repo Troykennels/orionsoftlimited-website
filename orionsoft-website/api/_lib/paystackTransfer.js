@@ -68,3 +68,13 @@ export async function initiateTransfer({ amount, recipientCode, reference, reaso
   // disabled in the dashboard — see api/admin/payroll.js's handling of this).
   return { status: json.data.status, transferCode: json.data.transfer_code, reference: json.data.reference };
 }
+
+// Lets an admin manually re-check a transfer that's been stuck in
+// "processing" (e.g. its confirmation webhook never arrived) instead of it
+// being a permanent dead end.
+export async function verifyTransfer(reference) {
+  const r = await fetch(`${BASE}/transfer/verify/${encodeURIComponent(reference)}`, { headers: authHeaders() });
+  const json = await r.json();
+  if (!r.ok || !json.status) throw new Error(json.message || "Could not verify this transfer");
+  return { status: json.data.status, transferCode: json.data.transfer_code, reference: json.data.reference };
+}

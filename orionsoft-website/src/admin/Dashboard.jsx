@@ -5,7 +5,7 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight, UserPlus, Download,
+  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -351,6 +351,7 @@ const NAV_GROUPS = [
   {
     label: "SYSTEM",
     items: [
+      { id: "my-account",   label: "My Account",       icon: KeyRound },
       { id: "health",       label: "System Health",    icon: Activity },
       { id: "users",        label: "Users & Roles",    icon: ShieldCheck },
       { id: "audit",        label: "Audit Logs",       icon: ClipboardCheck },
@@ -2421,6 +2422,94 @@ function SettingsSection() {
   );
 }
 
+// ─── My Account ──────────────────────────────────────────────────────────────
+function MyAccountSection({ session }) {
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [saving, setSaving] = useState(false);
+
+  const [hasPin, setHasPin] = useState(null);
+  const [pinForm, setPinForm] = useState({ currentPassword: "", pin: "", confirmPin: "" });
+  const [pinMsg, setPinMsg] = useState(""); const [pinErr, setPinErr] = useState(""); const [savingPin, setSavingPin] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/security-pin").then(r => r.json()).then(j => setHasPin(!!j.hasPin)).catch(() => setHasPin(false));
+  }, []);
+
+  async function submit() {
+    setErr(""); setMsg("");
+    if (!form.currentPassword || !form.newPassword) { setErr("Fill in both password fields."); return; }
+    if (form.newPassword.length < 10) { setErr("New password must be at least 10 characters."); return; }
+    if (form.newPassword !== form.confirmPassword) { setErr("New password and confirmation don't match."); return; }
+    setSaving(true);
+    try {
+      const r = await fetch("/api/admin/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword }) });
+      const json = await r.json();
+      if (!r.ok) { setErr(json.error || "Failed to change password."); return; }
+      setMsg("Password changed.");
+      setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } finally { setSaving(false); }
+  }
+
+  async function submitPin() {
+    setPinErr(""); setPinMsg("");
+    if (!pinForm.currentPassword || !pinForm.pin) { setPinErr("Fill in your password and a new PIN."); return; }
+    if (!/^\d{4,6}$/.test(pinForm.pin)) { setPinErr("PIN must be 4 to 6 digits."); return; }
+    if (pinForm.pin !== pinForm.confirmPin) { setPinErr("PIN and confirmation don't match."); return; }
+    setSavingPin(true);
+    try {
+      const r = await fetch("/api/admin/security-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: pinForm.currentPassword, pin: pinForm.pin }) });
+      const json = await r.json();
+      if (!r.ok) { setPinErr(json.error || "Failed to set PIN."); return; }
+      setPinMsg(hasPin ? "PIN changed." : "PIN set — you'll need it to approve payroll bank transfers.");
+      setHasPin(true);
+      setPinForm({ currentPassword: "", pin: "", confirmPin: "" });
+    } finally { setSavingPin(false); }
+  }
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Signed in as</SectionTitle>
+        <div style={{ marginTop: 14, fontSize: 14, color: C.text }}>
+          <div><strong style={{ color: C.heading }}>{session.name}</strong></div>
+          <div style={{ color: C.textMuted, marginTop: 2 }}>{session.email} · <span style={{ textTransform: "capitalize" }}>{session.adminRole}</span></div>
+        </div>
+      </SectionCard>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Change password</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 16, marginBottom: 14 }}>
+          <div><Label>Current password</Label><Input type="password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} /></div>
+          <div><Label>New password</Label><Input type="password" value={form.newPassword} onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))} /></div>
+          <div><Label>Confirm new password</Label><Input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} /></div>
+        </div>
+        <Btn onClick={submit} disabled={saving}>{saving ? "Saving…" : "Change password"}</Btn>
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+      </SectionCard>
+
+      {session.adminRole === "superadmin" && (
+        <SectionCard>
+          <SectionTitle>Approval PIN</SectionTitle>
+          <p style={{ fontSize: 12.5, color: C.textMuted, margin: "6px 0 16px", lineHeight: 1.6 }}>
+            A short PIN required to approve payroll bank transfers, separate from your password — proves you specifically mean to send *this* payment right now, even if your session is still logged in.
+            {hasPin === true && <span style={{ color: C.mint, fontWeight: 700 }}> · PIN is set.</span>}
+            {hasPin === false && <span style={{ color: C.amber, fontWeight: 700 }}> · No PIN set yet — bank transfers are blocked until you set one.</span>}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div><Label>Current password</Label><Input type="password" value={pinForm.currentPassword} onChange={e => setPinForm(f => ({ ...f, currentPassword: e.target.value }))} /></div>
+            <div><Label>{hasPin ? "New PIN" : "Set PIN"} (4-6 digits)</Label><Input type="password" inputMode="numeric" maxLength={6} value={pinForm.pin} onChange={e => setPinForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, "") }))} /></div>
+            <div><Label>Confirm PIN</Label><Input type="password" inputMode="numeric" maxLength={6} value={pinForm.confirmPin} onChange={e => setPinForm(f => ({ ...f, confirmPin: e.target.value.replace(/\D/g, "") }))} /></div>
+          </div>
+          <Btn onClick={submitPin} disabled={savingPin}>{savingPin ? "Saving…" : hasPin ? "Change PIN" : "Set PIN"}</Btn>
+          {pinMsg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{pinMsg}</p>}
+          {pinErr && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{pinErr}</p>}
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
 // ─── Users & Roles ───────────────────────────────────────────────────────────
 const ROLE_PERMS = {
   superadmin: "Full access all sections, system settings, admin & staff management",
@@ -2567,56 +2656,67 @@ function UsersSection({ session }) {
 
 // ─── Audit Logs ──────────────────────────────────────────────────────────────
 function AuditSection() {
-  const [logs, setLogs] = useState(() => lsGet(SK.audit, []));
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
-  function clearLogs() {
-    if (!confirm("Clear all audit logs? This cannot be undone.")) return;
-    setLogs([]);
-    lsSet(SK.audit, []);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    try {
+      const r = await fetch("/api/admin/audit");
+      const json = await r.json();
+      if (r.ok) setLogs((json.entries || []).slice().reverse());
+    } finally { if (!silent) setLoading(false); }
   }
+  useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 15000);
+    return () => clearInterval(t);
+  }, []);
 
   function exportLogs() {
-    const rows = [["Timestamp", "User", "Role", "Action", "Target", "Details"], ...logs.map(l => [l.ts, l.user, l.role, l.action, l.target, l.details || ""])];
+    const rows = [["Timestamp", "User", "Action", "Subject", "Details"], ...logs.map(l => [l.at, l.by, l.action, l.subject, l.detail || ""])];
     const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.download = `audit-${new Date().toISOString().split("T")[0]}.csv`; a.click();
   }
 
-  const filtered = filter ? logs.filter(l => l.action?.includes(filter) || l.target?.includes(filter) || l.user?.includes(filter)) : logs;
+  const filtered = filter ? logs.filter(l => l.action?.includes(filter) || l.subject?.includes(filter) || l.by?.includes(filter)) : logs;
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <Input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by action, target, or user…" />
+          <Input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter by action, subject, or user…" />
         </div>
         <Btn variant="ghost" small onClick={exportLogs}>Export CSV</Btn>
-        <Btn small danger onClick={clearLogs}>Clear All</Btn>
       </div>
 
       <SectionCard>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
           <SectionTitle>Audit Logs ({filtered.length})</SectionTitle>
-          <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>Last 500 entries</span>
+          <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>Recorded server-side, sensitive actions only</span>
         </div>
-        {filtered.length === 0 && <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No log entries yet.</p>}
-        <div style={{ maxHeight: 600, overflowY: "auto" }}>
-          {filtered.map((entry, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", minWidth: 140 }}>
-                {new Date(entry.ts).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <Badge color={entry.role === "superadmin" ? C.gold : C.blue}>{entry.user}</Badge>
-              <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 13.5, color: C.text, fontFamily: font }}>
-                  <strong style={{ color: C.heading }}>{entry.action?.replace(/_/g, " ")}</strong>
-                  {entry.target && entry.target !== "admin" && <span style={{ color: C.textMuted }}> · {entry.target}</span>}
+        {loading ? <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>Loading…</p> : filtered.length === 0 ? (
+          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No log entries yet.</p>
+        ) : (
+          <div style={{ maxHeight: 600, overflowY: "auto" }}>
+            {filtered.map((entry) => (
+              <div key={entry.id} style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+                <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", minWidth: 140 }}>
+                  {new Date(entry.at).toLocaleString("en-NG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
-                {entry.details && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{entry.details}</div>}
+                <Badge color={C.blue}>{entry.by}</Badge>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13.5, color: C.text, fontFamily: font }}>
+                    <strong style={{ color: C.heading }}>{entry.action?.replace(/_/g, " ")}</strong>
+                    {entry.subject && <span style={{ color: C.textMuted }}> · {entry.subject}</span>}
+                  </span>
+                  {entry.detail && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{entry.detail}</div>}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );
@@ -4245,7 +4345,8 @@ function ContractsSection() {
 }
 
 // ─── Payroll ─────────────────────────────────────────────────────────────────
-function PayrollSection() {
+function PayrollSection({ session }) {
+  const canPay = session?.adminRole === "superadmin";
   const [payroll, setPayroll] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [banks, setBanks] = useState([]);
@@ -4255,7 +4356,7 @@ function PayrollSection() {
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
 
   const [payingId, setPayingId] = useState(null);
-  const [payForm, setPayForm] = useState({ bankCode: "", amount: "", verifiedName: "" });
+  const [payForm, setPayForm] = useState({ bankCode: "", amount: "", verifiedName: "", pin: "" });
   const [verifying, setVerifying] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState("");
@@ -4264,6 +4365,7 @@ function PayrollSection() {
   const [commissionForm, setCommissionForm] = useState({ amount: "", label: "" });
   const [commissionErr, setCommissionErr] = useState("");
   const [addingCommission, setAddingCommission] = useState(false);
+  const [checkingId, setCheckingId] = useState(null);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
@@ -4308,14 +4410,29 @@ function PayrollSection() {
 
   async function markPaid(p) {
     const r = await fetch("/api/admin/payroll", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, action: "mark_paid" }) });
-    if (r.ok) { auditLog("mark_paid", `${employeeName(p.employeeId)} — ${p.period}`); load(); }
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to mark as paid."); return; }
+    auditLog("mark_paid", `${employeeName(p.employeeId)} — ${p.period}`);
+    load();
+  }
+
+  async function checkStatus(p) {
+    setCheckingId(p.id); setErr("");
+    try {
+      const r = await fetch("/api/admin/payroll", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, action: "check_status" }) });
+      const json = await r.json();
+      if (!r.ok) { setErr(json.error || "Could not check transfer status."); return; }
+      if (json.transferStatus === "pending") { setMsg("Still pending at Paystack — try again shortly."); setTimeout(() => setMsg(""), 4000); }
+      else { auditLog("check_status", `${employeeName(p.employeeId)} — ${p.period}`, json.transferStatus); }
+      load();
+    } finally { setCheckingId(null); }
   }
 
   async function openPay(p) {
     setPayingId(p.id);
     setPayErr("");
     const employee = employeeOf(p.employeeId);
-    setPayForm({ bankCode: employee?.bankCode || "", amount: String(p.netAmount), verifiedName: "" });
+    setPayForm({ bankCode: employee?.bankCode || "", amount: String(p.netAmount), verifiedName: "", pin: "" });
     if (banks.length === 0) {
       const r = await fetch("/api/admin/banks");
       const json = await r.json();
@@ -4342,13 +4459,14 @@ function PayrollSection() {
     const amount = Number(payForm.amount);
     if (!amount || amount <= 0) { setPayErr("Enter a valid amount."); return; }
     if (!payForm.verifiedName) { setPayErr("Verify the account before paying."); return; }
+    if (!/^\d{4,6}$/.test(payForm.pin)) { setPayErr("Enter your 4-6 digit approval PIN."); return; }
     if (!confirm(`Pay ${p.currency} ${amount.toLocaleString()} to ${payForm.verifiedName}?\n\nThis sends real money via Paystack and cannot be undone. Continue?`)) return;
 
     setPaying(true); setPayErr("");
     try {
       const r = await fetch("/api/admin/payroll", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: p.id, action: "pay", amount, bankCode: payForm.bankCode }),
+        body: JSON.stringify({ id: p.id, action: "pay", amount, bankCode: payForm.bankCode, pin: payForm.pin }),
       });
       const json = await r.json();
       if (!r.ok) { setPayErr(json.error || "Payout failed."); return; }
@@ -4453,9 +4571,13 @@ function PayrollSection() {
                 <span style={{ marginLeft: 12, fontSize: 13, color: C.mint, fontWeight: 700 }}>✓ {payForm.verifiedName}</span>
               )}
             </div>
+            <div style={{ marginBottom: 16, maxWidth: 200 }}>
+              <Label>Approval PIN</Label>
+              <Input type="password" inputMode="numeric" maxLength={6} placeholder="••••" value={payForm.pin} onChange={e => setPayForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, "") }))} />
+            </div>
             {payErr && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{payErr}</p>}
             <div style={{ display: "flex", gap: 10 }}>
-              <Btn onClick={() => confirmPay(payingEntry)} disabled={paying || !payForm.verifiedName}>{paying ? "Paying…" : "Approve & Pay"}</Btn>
+              <Btn onClick={() => confirmPay(payingEntry)} disabled={paying || !payForm.verifiedName || !payForm.pin}>{paying ? "Paying…" : "Approve & Pay"}</Btn>
               <Btn variant="ghost" onClick={() => setPayingId(null)}>Cancel</Btn>
             </div>
           </SectionCard>
@@ -4524,8 +4646,11 @@ function PayrollSection() {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {p.status === "draft" && <Btn small variant="ghost" onClick={() => openCommission(p)}>+ Add Commission</Btn>}
                   {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
-                  {p.status === "issued" && p.currency === "NGN" && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
-                  {p.status === "issued" && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
+                  {p.status === "issued" && p.currency === "NGN" && canPay && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
+                  {p.status === "issued" && canPay && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
+                  {p.status === "issued" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Only a super admin can pay this</span>}
+                  {p.status === "processing" && canPay && <Btn small variant="ghost" onClick={() => checkStatus(p)} disabled={checkingId === p.id}>{checkingId === p.id ? "Checking…" : "Check Status"}</Btn>}
+                  {p.status === "processing" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Payment in progress…</span>}
                   {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12, fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>PDF</a>}
                 </div>
               ) },
@@ -4627,11 +4752,12 @@ function DashboardContent({ active, session }) {
     case "employees":      return <EmployeesSection />;
     case "weekly-reports": return <WeeklyReportsSection />;
     case "leave-requests": return <LeaveRequestsSection />;
-    case "payroll":        return <PayrollSection />;
+    case "payroll":        return <PayrollSection session={session} />;
     case "templates":      return <TemplatesSection />;
     case "signatories":    return <SignatoriesSection />;
     case "contracts":      return <ContractsSection />;
     case "email-log":      return <EmailLogSection />;
+    case "my-account":    return <MyAccountSection session={session} />;
     case "users":         return <UsersSection session={session} />;
     case "audit":         return <AuditSection />;
     case "media":         return <MediaSection />;

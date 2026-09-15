@@ -34,6 +34,7 @@ export default async function handler(req, res) {
   if (!isAuthorized(req, contract)) return res.status(401).json({ error: "Unauthorized" });
   if (!contract.recipientEmail) return res.status(400).json({ error: "Contract has no recipient email" });
   if (!contract.amount || contract.amount <= 0) return res.status(400).json({ error: "Contract has no payable amount" });
+  if (!["signed", "active"].includes(contract.status)) return res.status(400).json({ error: "This contract must be signed before a payment can be requested" });
 
   const paymentId = newId("pmt");
   const reference = `orionsoft_${paymentId}`;
