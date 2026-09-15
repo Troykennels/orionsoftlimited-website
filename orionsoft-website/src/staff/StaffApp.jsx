@@ -451,9 +451,33 @@ function TeamTab() {
   );
 }
 
-function PayslipsTab({ payslips }) {
+function PayslipsTab({ payslips, currentDraft }) {
   return (
     <SectionCard>
+      {currentDraft && (
+        <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+          <SectionTitle>{currentDraft.period} — in progress</SectionTitle>
+          <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: "4px 0 14px" }}>
+            Updates live as commissions are added through the month. Finalized once payroll issues your payslip.
+          </p>
+          <div style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.9 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Base salary</span>
+              <span>{currentDraft.currency} {Number(currentDraft.baseSalary || 0).toLocaleString()}</span>
+            </div>
+            {(currentDraft.commissions || []).map(c => (
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", color: C.mint }}>
+                <span>{c.label}</span>
+                <span>+{currentDraft.currency} {Number(c.amount).toLocaleString()}</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: C.heading, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+              <span>Running total</span>
+              <span>{currentDraft.currency} {Number(currentDraft.grossAmount).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      )}
       <SectionTitle>Your payslips</SectionTitle>
       {payslips.length === 0 && <EmptyState>No payslips issued yet.</EmptyState>}
       {payslips.map(p => (
@@ -624,6 +648,7 @@ export default function StaffApp() {
   const [reports, setReports] = useState([]);
   const [leave, setLeave] = useState([]);
   const [payslips, setPayslips] = useState([]);
+  const [currentDraft, setCurrentDraft] = useState(null);
 
   const loadAll = useCallback(async () => {
     try {
@@ -638,9 +663,24 @@ export default function StaffApp() {
       try {
         const payslipsRes = await api("/api/staff/payslips");
         setPayslips(payslipsRes.payslips || []);
-      } catch { setPayslips([]); }
+        setCurrentDraft(payslipsRes.currentDraft || null);
+      } catch { setPayslips([]); setCurrentDraft(null); }
     } catch { /* not logged in or transient error — handled by session check */ }
   }, []);
+
+  // Lets a newly-added commission show up on its own, without the employee
+  // needing to log out/in or manually refresh to see it.
+  useEffect(() => {
+    if (!session) return;
+    const t = setInterval(async () => {
+      try {
+        const payslipsRes = await api("/api/staff/payslips");
+        setPayslips(payslipsRes.payslips || []);
+        setCurrentDraft(payslipsRes.currentDraft || null);
+      } catch { /* transient — next tick will retry */ }
+    }, 20000);
+    return () => clearInterval(t);
+  }, [session]);
 
   useEffect(() => {
     let cancelled = false;
@@ -675,7 +715,7 @@ export default function StaffApp() {
         {active === "reports" && <ReportsTab reports={reports} reload={loadAll} />}
         {active === "leave" && <LeaveTab leave={leave} reload={loadAll} />}
         {active === "team" && session.staffRole === "manager" && <TeamTab />}
-        {active === "payslips" && <PayslipsTab payslips={payslips} />}
+        {active === "payslips" && <PayslipsTab payslips={payslips} currentDraft={currentDraft} />}
         {active === "profile" && <ProfileTab employee={employee} reload={loadAll} />}
       </div>
     </div>

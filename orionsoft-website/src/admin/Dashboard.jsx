@@ -4251,7 +4251,7 @@ function PayrollSection() {
   const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ employeeId: "", period: "", grossAmount: "", currency: "NGN" });
+  const [form, setForm] = useState({ employeeId: "", period: "", baseSalary: "", currency: "NGN" });
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
 
   const [payingId, setPayingId] = useState(null);
@@ -4259,6 +4259,11 @@ function PayrollSection() {
   const [verifying, setVerifying] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payErr, setPayErr] = useState("");
+
+  const [commissionForId, setCommissionForId] = useState(null);
+  const [commissionForm, setCommissionForm] = useState({ amount: "", label: "" });
+  const [commissionErr, setCommissionErr] = useState("");
+  const [addingCommission, setAddingCommission] = useState(false);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
@@ -4280,12 +4285,12 @@ function PayrollSection() {
 
   async function create() {
     setErr(""); setMsg("");
-    if (!form.employeeId || !form.period || !form.grossAmount) { setErr("Employee, period, and gross amount are required."); return; }
+    if (!form.employeeId || !form.period || !form.baseSalary) { setErr("Employee, period, and base salary are required."); return; }
     const r = await fetch("/api/admin/payroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     const json = await r.json();
     if (!r.ok) { setErr(json.error || "Failed to create payroll entry."); return; }
     auditLog("create_payroll", `${employeeName(form.employeeId)} — ${form.period}`);
-    setForm({ employeeId: "", period: "", grossAmount: "", currency: "NGN" });
+    setForm({ employeeId: "", period: "", baseSalary: "", currency: "NGN" });
     setShowForm(false);
     setMsg("Draft payroll entry created.");
     setTimeout(() => setMsg(""), 3000);
@@ -4355,6 +4360,39 @@ function PayrollSection() {
     } finally { setPaying(false); }
   }
 
+  function openCommission(p) {
+    setCommissionForId(p.id);
+    setCommissionForm({ amount: "", label: "" });
+    setCommissionErr("");
+  }
+
+  async function addCommission(p) {
+    setCommissionErr("");
+    const amount = Number(commissionForm.amount);
+    if (!amount || amount <= 0) { setCommissionErr("Enter a valid amount."); return; }
+    setAddingCommission(true);
+    try {
+      const r = await fetch("/api/admin/payroll", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, action: "add_commission", amount, label: commissionForm.label || "Commission" }),
+      });
+      const json = await r.json();
+      if (!r.ok) { setCommissionErr(json.error || "Failed to add commission."); return; }
+      auditLog("add_commission", `${employeeName(p.employeeId)} — ${p.period}`, `${p.currency} ${amount}`);
+      setCommissionForm({ amount: "", label: "" });
+      load();
+    } finally { setAddingCommission(false); }
+  }
+
+  async function removeCommission(p, commissionId) {
+    if (!confirm("Remove this commission?")) return;
+    const r = await fetch("/api/admin/payroll", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: p.id, action: "remove_commission", commissionId }),
+    });
+    if (r.ok) load();
+  }
+
   const statusColor = { draft: C.textMuted, issued: C.blue, processing: C.amber, paid: C.mint };
   const payingEntry = payingId ? payroll.find(p => p.id === payingId) : null;
 
@@ -4375,9 +4413,10 @@ function PayrollSection() {
                 </Select>
               </div>
               <div><Label>Period (e.g. 2026-09)</Label><Input value={form.period} onChange={e => setForm(f => ({ ...f, period: e.target.value }))} placeholder="YYYY-MM" /></div>
-              <div><Label>Gross amount</Label><Input type="number" value={form.grossAmount} onChange={e => setForm(f => ({ ...f, grossAmount: e.target.value }))} /></div>
+              <div><Label>Base salary</Label><Input type="number" value={form.baseSalary} onChange={e => setForm(f => ({ ...f, baseSalary: e.target.value }))} /></div>
               <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
             </div>
+            <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 14px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below.</p>
             <Btn onClick={create}>Create draft entry</Btn>
             {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
           </div>
@@ -4423,13 +4462,58 @@ function PayrollSection() {
         );
       })()}
 
+      {commissionForId && (() => {
+        const p = payroll.find(x => x.id === commissionForId);
+        if (!p) return null;
+        return (
+          <SectionCard style={{ marginBottom: 20, border: `1px solid ${C.gold}44` }}>
+            <SectionTitle>Commissions — {employeeName(p.employeeId)} · {p.period}</SectionTitle>
+            {(p.commissions || []).length > 0 && (
+              <div style={{ margin: "14px 0" }}>
+                {p.commissions.map(c => (
+                  <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+                    <div>
+                      <span style={{ color: C.heading, fontWeight: 600, fontSize: 13.5 }}>{c.label}</span>
+                      <span style={{ color: C.textMuted, fontSize: 12, marginLeft: 10 }}>{new Date(c.addedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ color: C.mint, fontWeight: 700, fontSize: 13.5 }}>+{p.currency} {Number(c.amount).toLocaleString()}</span>
+                      <button type="button" onClick={() => removeCommission(p, c.id)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14, marginBottom: 14 }}>
+              <div><Label>Amount</Label><Input type="number" value={commissionForm.amount} onChange={e => setCommissionForm(f => ({ ...f, amount: e.target.value }))} /></div>
+              <div><Label>Label (optional)</Label><Input value={commissionForm.label} onChange={e => setCommissionForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. September sales bonus" /></div>
+            </div>
+            {commissionErr && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{commissionErr}</p>}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Btn small onClick={() => addCommission(p)} disabled={addingCommission}>{addingCommission ? "Adding…" : "+ Add Commission"}</Btn>
+                <Btn small variant="ghost" onClick={() => setCommissionForId(null)}>Done</Btn>
+              </div>
+              <span style={{ fontSize: 13, color: C.textMuted }}>
+                Base {p.currency} {Number(p.baseSalary || 0).toLocaleString()} + Commissions {p.currency} {(p.commissions || []).reduce((s, c) => s + Number(c.amount), 0).toLocaleString()} = <strong style={{ color: C.heading }}>{p.currency} {Number(p.grossAmount).toLocaleString()}</strong>
+              </span>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
       <SectionCard>
         {loading ? <p style={{ color: C.textMuted, fontSize: 13 }}>Loading…</p> : (
           <Table
             cols={[
               { key: "employee", label: "Employee", render: p => employeeName(p.employeeId) },
               { key: "period", label: "Period" },
-              { key: "netAmount", label: "Net Pay", render: p => `${p.currency} ${Number(p.netAmount).toLocaleString()}` },
+              { key: "baseSalary", label: "Base Salary", render: p => p.baseSalary != null ? `${p.currency} ${Number(p.baseSalary).toLocaleString()}` : "—" },
+              { key: "commissions", label: "Commissions", render: p => {
+                const total = (p.commissions || []).reduce((s, c) => s + Number(c.amount), 0);
+                return (p.commissions || []).length > 0 ? `${p.currency} ${total.toLocaleString()} (${p.commissions.length})` : "—";
+              } },
+              { key: "netAmount", label: "Total (Net Pay)", render: p => `${p.currency} ${Number(p.netAmount).toLocaleString()}` },
               { key: "status", label: "Status", render: p => (
                 <div>
                   <Badge color={statusColor[p.status]}>{p.status === "processing" ? "paying…" : p.status}</Badge>
@@ -4438,6 +4522,7 @@ function PayrollSection() {
               ) },
               { key: "actions", label: "", render: p => (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {p.status === "draft" && <Btn small variant="ghost" onClick={() => openCommission(p)}>+ Add Commission</Btn>}
                   {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
                   {p.status === "issued" && p.currency === "NGN" && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
                   {p.status === "issued" && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}

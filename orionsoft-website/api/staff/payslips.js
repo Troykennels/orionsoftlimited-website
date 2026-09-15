@@ -12,8 +12,11 @@ export default async function handler(req, res) {
   if (!session) return;
 
   const all = await listRecords("payroll");
-  const mine = all
-    .filter(p => p.employeeId === session.sub && p.status !== "draft")
-    .sort((a, b) => b.period.localeCompare(a.period));
-  return res.json({ ok: true, payslips: mine });
+  const mine = all.filter(p => p.employeeId === session.sub);
+  const payslips = mine.filter(p => p.status !== "draft").sort((a, b) => b.period.localeCompare(a.period));
+  // The current in-progress period (if one exists) is surfaced separately so
+  // staff can watch commissions accumulate live, without it appearing mixed
+  // into their history of finalized payslips.
+  const currentDraft = mine.filter(p => p.status === "draft").sort((a, b) => b.period.localeCompare(a.period))[0] || null;
+  return res.json({ ok: true, payslips, currentDraft });
 }

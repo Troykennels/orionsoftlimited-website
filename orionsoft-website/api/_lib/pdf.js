@@ -345,7 +345,15 @@ export async function renderPayslipPdf(payroll, employee) {
     y -= rowH;
   }
 
-  row("Gross Salary", `${payroll.currency} ${Number(payroll.grossAmount).toLocaleString()}`, { bold: true, shaded: true });
+  if (payroll.baseSalary != null) {
+    row("Base Salary", `${payroll.currency} ${Number(payroll.baseSalary).toLocaleString()}`, { bold: true });
+    for (const c of payroll.commissions || []) {
+      row(c.label || "Commission", `+ ${payroll.currency} ${Number(c.amount).toLocaleString()}`, { color: rgb(0.06, 0.45, 0.28) });
+    }
+    row("Gross Salary", `${payroll.currency} ${Number(payroll.grossAmount).toLocaleString()}`, { bold: true, shaded: true });
+  } else {
+    row("Gross Salary", `${payroll.currency} ${Number(payroll.grossAmount).toLocaleString()}`, { bold: true, shaded: true });
+  }
   for (const d of payroll.deductions || []) {
     row(d.label, `- ${payroll.currency} ${Number(d.amount).toLocaleString()}`, { color: rgb(0.72, 0.2, 0.24) });
   }

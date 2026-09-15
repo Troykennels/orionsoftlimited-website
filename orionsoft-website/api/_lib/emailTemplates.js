@@ -173,3 +173,21 @@ export async function sendPayslipIssued(payroll, employee, pdfBuffer) {
     attachments: pdfBuffer ? [{ filename: `payslip-${payroll.period}.pdf`, content: pdfBuffer }] : undefined,
   });
 }
+
+export async function notifyCommissionAdded(payroll, employee, commission) {
+  const commissionsSoFar = (payroll.commissions || []).length;
+  const commissionsTotal = (payroll.commissions || []).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">A commission was added to your ${payroll.period} pay</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">
+      Hi ${employee.fullName}, <strong>${payroll.currency} ${Number(commission.amount).toLocaleString()}</strong> (${commission.label}) was just added to your earnings for ${payroll.period}.
+    </p>
+    <table role="presentation" style="background:#F4F6FA;border-radius:10px;padding:16px;margin:16px 0;width:100%;">
+      <tr><td style="font-size:13px;color:#3A4556;padding:4px 0;"><strong>Base salary:</strong> ${payroll.currency} ${Number(payroll.baseSalary || 0).toLocaleString()}</td></tr>
+      <tr><td style="font-size:13px;color:#3A4556;padding:4px 0;"><strong>Commissions this month (${commissionsSoFar}):</strong> ${payroll.currency} ${commissionsTotal.toLocaleString()}</td></tr>
+      <tr><td style="font-size:13px;color:#0A2540;font-weight:700;padding:8px 0 0;border-top:1px solid #E5E9F0;margin-top:8px;">Running total: ${payroll.currency} ${Number(payroll.grossAmount).toLocaleString()}</td></tr>
+    </table>
+    <p style="color:#6B7A96;font-size:12.5px;line-height:1.6;">This updates live under My Payslips in the staff portal. Your final payslip is issued at month-end.</p>
+  `, { title: "Commission Added" });
+  return sendEmail(employee.email, `Commission added: ${payroll.currency} ${Number(commission.amount).toLocaleString()} (${payroll.period})`, html, { kind: "commission_added" });
+}

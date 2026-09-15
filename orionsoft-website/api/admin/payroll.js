@@ -4,10 +4,15 @@ import { set } from "../store.js";
 import { renderPayslipPdf } from "../_lib/pdf.js";
 import { sendPayslipIssued } from "../_lib/emailTemplates.js";
 import { resolveAccount, createRecipient, initiateTransfer } from "../_lib/paystackTransfer.js";
+import { notifyCommissionAdded } from "../_lib/emailTemplates.js";
 
 function computeNet(gross, deductions) {
   const totalDeductions = (deductions || []).reduce((s, d) => s + (Number(d.amount) || 0), 0);
   return Number(gross) - totalDeductions;
+}
+
+function commissionsTotal(commissions) {
+  return (commissions || []).reduce((s, c) => s + (Number(c.amount) || 0), 0);
 }
 
 export default async function handler(req, res) {
@@ -27,18 +32,20 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { employeeId, period, grossAmount, deductions, currency } = req.body || {};
-    if (!employeeId || !period || grossAmount == null) {
-      return res.status(400).json({ error: "employeeId, period, and grossAmount are required" });
+    const { employeeId, period, baseSalary, deductions, currency } = req.body || {};
+    if (!employeeId || !period || baseSalary == null) {
+      return res.status(400).json({ error: "employeeId, period, and baseSalary are required" });
     }
     const employee = await getRecord("employees", employeeId);
     if (!employee) return res.status(404).json({ error: "Employee not found" });
 
     const id = newId("pay");
+    const gross = Number(baseSalary);
     const payroll = {
       id, employeeId, period,
-      grossAmount: Number(grossAmount), deductions: deductions || [],
-      netAmount: computeNet(grossAmount, deductions),
+      baseSalary: gross, commissions: [], // commissions accrue via the add_commission action through the month
+      grossAmount: gross, deductions: deductions || [],
+      netAmount: computeNet(gross, deductions),
       currency: currency || employee.salaryCurrency || "NGN",
       status: "draft", payslipPdfKey: null, issuedAt: null,
       paidAmount: null, transferReference: null, transferRecipientCode: null, paidAt: null, payoutError: null,
@@ -139,13 +146,47 @@ export default async function handler(req, res) {
       }
     }
 
+    // Logs one commission against a draft entry, recomputes totals, and
+    // emails the employee right away so nothing gets discovered as a
+    // surprise at month-end — matches how the running total accrues.
+    if (action === "add_commission") {
+      if (payroll.status !== "draft") return res.status(400).json({ error: "Commissions can only be added to a draft (not-yet-issued) payroll entry" });
+      const { amount, label } = req.body;
+      const commissionAmount = Number(amount);
+      if (!commissionAmount || commissionAmount <= 0) return res.status(400).json({ error: "A valid commission amount is required" });
+
+      const commission = { id: newId("com"), amount: commissionAmount, label: label || "Commission", addedAt: new Date().toISOString(), addedBy: session.sub };
+      payroll.commissions = [...(payroll.commissions || []), commission];
+      payroll.grossAmount = Number(payroll.baseSalary || 0) + commissionsTotal(payroll.commissions);
+      payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
+      await putRecord("payroll", id, payroll);
+
+      const employee = await getRecord("employees", payroll.employeeId);
+      if (employee) {
+        try { await notifyCommissionAdded(payroll, employee, commission); } catch { /* best-effort */ }
+      }
+
+      return res.json({ ok: true, payroll });
+    }
+
+    if (action === "remove_commission") {
+      if (payroll.status !== "draft") return res.status(400).json({ error: "Commissions can only be edited on a draft entry" });
+      const { commissionId } = req.body;
+      payroll.commissions = (payroll.commissions || []).filter(c => c.id !== commissionId);
+      payroll.grossAmount = Number(payroll.baseSalary || 0) + commissionsTotal(payroll.commissions);
+      payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
+      await putRecord("payroll", id, payroll);
+      return res.json({ ok: true, payroll });
+    }
+
     if (payroll.status !== "draft") {
       return res.status(400).json({ error: "Only draft entries can be edited directly" });
     }
-    const { grossAmount, deductions, currency } = req.body;
-    if (grossAmount != null) payroll.grossAmount = Number(grossAmount);
+    const { baseSalary, deductions, currency } = req.body;
+    if (baseSalary != null) payroll.baseSalary = Number(baseSalary);
     if (deductions !== undefined) payroll.deductions = deductions;
     if (currency !== undefined) payroll.currency = currency;
+    payroll.grossAmount = Number(payroll.baseSalary || 0) + commissionsTotal(payroll.commissions);
     payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
     await putRecord("payroll", id, payroll);
     return res.json({ ok: true, payroll });
