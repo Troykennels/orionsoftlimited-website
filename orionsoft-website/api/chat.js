@@ -238,7 +238,10 @@ export default async function handler(req, res) {
     // Extract action token
     const actionMatch = raw.match(/\[ACTION:([^\]]+)\]/);
     const action = actionMatch ? actionMatch[1] : null;
-    const text = raw.replace(/\[ACTION:[^\]]+\]/g, "").trim();
+    // The system prompt tells the model not to use em dashes, but that's a
+    // soft instruction the model doesn't always follow, so strip any that
+    // slip through rather than relying on it alone.
+    const text = raw.replace(/\[ACTION:[^\]]+\]/g, "").replace(/\s*—\s*/g, ", ").replace(/,(\s*,)+/g, ",").trim();
 
     // Extract product recommendation
     let product = null;
