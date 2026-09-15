@@ -107,6 +107,7 @@ PRICING:
 - If asked about price, say: "Our pricing is tailored to your specific needs — I'd rather give you an accurate quote than a rough number. Can I get your contact so our team can reach out?"
 
 HOW TO RESPOND:
+- Plain conversational text only — this renders in a chat bubble, not a document. No markdown headers, no tables, no numbered outlines. **bold** and *italic* are fine; a short bullet list (using "-") is fine if it genuinely helps; nothing heavier than that.
 - Keep it tight — usually 2-4 sentences. Stretch a little further only for a genuine explanation, never to pad.
 - If you're unsure of something, be honest and offer to connect them with the team rather than guessing or refusing outright.
 - Orion Soft genuinely does build websites, web apps, and mobile apps alongside its products — answer that confidently and specifically when it comes up, don't hedge.
@@ -214,10 +215,11 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 400,
+        model: "openai/gpt-oss-120b",
+        max_tokens: 500,
         temperature: 0.85,
         presence_penalty: 0.4,
+        reasoning_effort: "low",
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...trimmedMessages],
       }),
     });
