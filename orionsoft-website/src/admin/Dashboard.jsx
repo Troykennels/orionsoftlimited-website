@@ -350,7 +350,7 @@ const NAV_GROUPS = [
       { id: "portfolio",    label: "Case Studies",     icon: Briefcase },
       { id: "testimonials", label: "Testimonials",     icon: Star },
       { id: "faqs",         label: "FAQs",             icon: HelpCircle },
-      { id: "team",         label: "Team",             icon: Users },
+      { id: "team",         label: "Team (Website)",   icon: Users },
       { id: "events",       label: "Events",           icon: CalendarDays },
     ],
   },
@@ -4887,7 +4887,10 @@ function PayrollSection({ session }) {
               <div><Label>Base salary</Label><Input type="number" value={form.baseSalary} onChange={e => setForm(f => ({ ...f, baseSalary: e.target.value }))} /></div>
               <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
             </div>
-            <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 14px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below.</p>
+            <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 8px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below.</p>
+            {form.currency !== "NGN" && (
+              <p style={{ fontSize: 12, color: C.amber, margin: "0 0 14px" }}>Only NGN payroll can be paid automatically via bank transfer. A {form.currency} entry will need to be paid through your own channel and recorded with "Mark Paid."</p>
+            )}
             <Btn onClick={create}>Create draft entry</Btn>
           </div>
         )}
@@ -4996,16 +4999,23 @@ function PayrollSection({ session }) {
                 </div>
               ) },
               { key: "actions", label: "", render: p => (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {p.status === "draft" && <Btn small variant="ghost" onClick={() => openCommission(p)}>+ Add Commission</Btn>}
-                  {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
-                  {p.status === "draft" && <Btn small danger onClick={() => deleteDraft(p)}>Delete</Btn>}
-                  {p.status === "issued" && p.currency === "NGN" && canPay && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
-                  {p.status === "issued" && canPay && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
-                  {p.status === "issued" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Only a super admin can pay this</span>}
-                  {p.status === "processing" && canPay && <Btn small variant="ghost" onClick={() => checkStatus(p)} disabled={checkingId === p.id}>{checkingId === p.id ? "Checking…" : "Check Status"}</Btn>}
-                  {p.status === "processing" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Payment in progress…</span>}
-                  {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12, fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>PDF</a>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 180 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {p.status === "draft" && <Btn small variant="ghost" onClick={() => openCommission(p)}>+ Add Commission</Btn>}
+                    {p.status === "draft" && <Btn small onClick={() => issue(p)}>Issue & Email</Btn>}
+                    {p.status === "draft" && <Btn small danger onClick={() => deleteDraft(p)}>Delete</Btn>}
+                    {p.status === "issued" && p.currency === "NGN" && canPay && <Btn small onClick={() => openPay(p)}>Pay via Bank Transfer</Btn>}
+                    {p.status === "issued" && canPay && <Btn small variant="ghost" onClick={() => markPaid(p)}>Mark Paid{p.currency !== "NGN" ? " (manual)" : ""}</Btn>}
+                    {p.status === "issued" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Only a super admin can pay this</span>}
+                    {p.status === "processing" && canPay && <Btn small variant="ghost" onClick={() => checkStatus(p)} disabled={checkingId === p.id}>{checkingId === p.id ? "Checking…" : "Check Status"}</Btn>}
+                    {p.status === "processing" && !canPay && <span style={{ fontSize: 11.5, color: C.textMuted, alignSelf: "center" }}>Payment in progress…</span>}
+                    {p.payslipPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(p.payslipPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12, fontWeight: 700, textDecoration: "none", alignSelf: "center" }}>PDF</a>}
+                  </div>
+                  {p.status === "issued" && canPay && p.currency !== "NGN" && (
+                    <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4, maxWidth: 260 }}>
+                      Automatic bank transfer only supports NGN payouts (Paystack does not offer local-bank transfers in {p.currency}). Pay this employee through your own {p.currency} channel, then click Mark Paid to record it.
+                    </div>
+                  )}
                 </div>
               ) },
             ]}
