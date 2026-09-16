@@ -1380,16 +1380,15 @@ function NewsletterSection() {
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 function ChatSection() {
-  const settings = lsGet(SK.settings, {});
-  const tawkProp = import.meta.env.VITE_TAWK_PROPERTY_ID || settings.tawkPropertyId || "";
-  const tawkWidget = import.meta.env.VITE_TAWK_WIDGET_ID || settings.tawkWidgetId || "";
+  const tawkProp = import.meta.env.VITE_TAWK_PROPERTY_ID || "";
+  const tawkWidget = import.meta.env.VITE_TAWK_WIDGET_ID || "";
 
   return (
     <div>
       <SectionCard>
         <SectionTitle>Live Chat via Tawk.to</SectionTitle>
         <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font, lineHeight: 1.7, marginTop: 8, marginBottom: 20 }}>
-          The website uses Tawk.to for live chat. Chat conversations, visitor monitoring, and transcripts are managed directly in the Tawk.to dashboard.
+          Tawk.to runs alongside the built-in Ori AI assistant (Ori's launcher is bottom-right, Tawk's bubble is bottom-left). Chat conversations, visitor monitoring, and transcripts for Tawk are managed directly in the Tawk.to dashboard.
         </p>
         {tawkProp ? (
           <a href={`https://dashboard.tawk.to/#/dashboard`} target="_blank" rel="noopener noreferrer"
@@ -1408,7 +1407,7 @@ function ChatSection() {
       <SectionCard style={{ marginTop: 20 }}>
         <SectionTitle>Tawk.to Configuration</SectionTitle>
         <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginBottom: 16 }}>
-          You can also set these in Site Settings. Environment variables take priority.
+          These are read directly from Vercel environment variables — there's no separate field for them in Site Settings.
         </p>
         <div style={{ marginBottom: 14 }}>
           <Label>Property ID (VITE_TAWK_PROPERTY_ID)</Label>
@@ -3264,9 +3263,9 @@ function ConversationsSection() {
       </div>
 
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginTop: 20 }}>
-        <h3 style={{ color: C.heading, fontSize: 16, fontWeight: 700, margin: 0 }}>Legacy Tawk.to (Deprecated)</h3>
+        <h3 style={{ color: C.heading, fontSize: 16, fontWeight: 700, margin: 0 }}>Tawk.to Live Chat (also active)</h3>
         <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 8, lineHeight: 1.6 }}>
-          The site now uses the built-in Ori AI assistant. If you previously used Tawk.to, remove the VITE_TAWK_PROPERTY_ID and VITE_TAWK_WIDGET_ID environment variables from Vercel to disable it.
+          Tawk.to now runs alongside the built-in Ori AI assistant — Ori's launcher sits bottom-right, Tawk's bubble sits bottom-left. Manage it under Live Chat Widget, or remove VITE_TAWK_PROPERTY_ID and VITE_TAWK_WIDGET_ID from Vercel to disable it again.
         </p>
       </div>
     </div>

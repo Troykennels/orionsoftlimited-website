@@ -2625,6 +2625,15 @@ function TawkLiveChat() {
 
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
+    // The site also has its own AI chat launcher fixed at bottom-right, so
+    // Tawk's bubble is pinned bottom-left instead of its bottom-right
+    // default, otherwise the two would overlap.
+    window.Tawk_API.customStyle = {
+      visibility: {
+        desktop: { position: "bl", xOffset: 24, yOffset: 24 },
+        mobile: { position: "bl", xOffset: 8, yOffset: 8 },
+      },
+    };
 
     const scriptId = "orionsoft-tawk-widget";
     if (document.getElementById(scriptId)) return;
@@ -5957,6 +5966,7 @@ export default function App() {
 
       {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
       {currentPage !== "admin" && <ChatBot setCurrentPage={navSetPage} />}
+      {currentPage !== "admin" && <TawkLiveChat />}
     </div>
   </CMSContext.Provider>
   );
