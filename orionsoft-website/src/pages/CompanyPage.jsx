@@ -153,7 +153,7 @@ export default function CompanyPage({ setCurrentPage }) {
 
       {/* ── OPENING STATEMENT — dark, centred, large ─────────────────── */}
       <section style={{
-        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDeep} 100%), url(/assets/business-team-laptop.jpg)`,
+        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDeep} 100%), url(/assets/code-editor-macbook-white-desk.jpg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         padding: "120px clamp(20px,5vw,60px) 100px",
@@ -361,7 +361,7 @@ export default function CompanyPage({ setCurrentPage }) {
 
           <Reveal delay={0.05}>
             <figure style={{ margin:"0 0 56px", borderRadius:18, overflow:"hidden", border:`1px solid ${T.borderW}`, boxShadow:"0 24px 60px rgba(0,0,0,0.35)" }}>
-              <img src="/assets/team-review-session.jpg" alt="The Orion Soft team reviewing a build together" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:420, objectFit:"cover", display:"block" }} />
+              <img src="/assets/memory-chip-white-background.jpg" alt="Hardware detail representing the engineering behind Orion Soft's platforms" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:420, objectFit:"cover", display:"block" }} />
             </figure>
           </Reveal>
 

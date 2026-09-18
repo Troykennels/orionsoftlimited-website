@@ -6400,12 +6400,12 @@ export default function AdminDashboard({ setCurrentPage }) {
       {mobileSidebarOpen && <div className="admin-sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} />}
       {/* Sidebar */}
       <aside className={`admin-sidebar${mobileSidebarOpen ? " admin-sidebar-open" : ""}`} style={{
-        width: sidebarOpen ? 240 : 64, minHeight: "100vh", background: C.surface,
+        width: sidebarOpen ? 240 : 64, height: "100vh", background: C.surface,
         borderRight: `1px solid ${C.border}`, flexShrink: 0,
-        transition: "width 0.25s", overflow: "hidden", position: "sticky", top: 0, maxHeight: "100vh", overflowY: "auto",
-        display: "flex", flexDirection: "column",
+        transition: "width 0.25s", position: "sticky", top: 0,
+        display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: sidebarOpen ? "20px 20px 16px" : "20px 12px 16px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: sidebarOpen ? "20px 20px 16px" : "20px 12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           {sidebarOpen && (
             <div>
               <div style={{ fontSize: 15, fontWeight: 800, color: C.heading, letterSpacing: "-0.02em" }}>Orion<span style={{ color: C.gold }}>Soft</span></div>
@@ -6417,7 +6417,7 @@ export default function AdminDashboard({ setCurrentPage }) {
           </button>
         </div>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
           {NAV_GROUPS.map(g => (
             <div key={g.label} style={{ padding: sidebarOpen ? "16px 12px 8px" : "16px 8px 8px" }}>
               {sidebarOpen && <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.1em", padding: "0 8px 8px" }}>{g.label}</div>}
@@ -6444,7 +6444,7 @@ export default function AdminDashboard({ setCurrentPage }) {
           ))}
         </div>
 
-        <div style={{ position: "sticky", bottom: 0, padding: sidebarOpen ? "16px 20px" : "16px 8px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
+        <div style={{ flexShrink: 0, padding: sidebarOpen ? "16px 20px" : "16px 8px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
           {sidebarOpen && (
             <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>
               <span style={{ color: C.text, fontWeight: 600 }}>{session.name}</span>

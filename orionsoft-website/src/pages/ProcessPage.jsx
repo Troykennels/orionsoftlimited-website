@@ -264,7 +264,7 @@ export default function ProcessPage({ setCurrentPage }) {
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section style={{
-        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDeep} 100%), url(/assets/developer-code-workstation.jpg)`,
+        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDeep} 100%), url(/assets/memory-chip-white-background.jpg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         padding: "120px clamp(20px,5vw,60px) 90px",
@@ -569,7 +569,7 @@ export default function ProcessPage({ setCurrentPage }) {
 
           <Reveal delay={0.05}>
             <figure style={{ margin:"0 0 48px", borderRadius:18, overflow:"hidden", border:`1px solid ${T.borderW}`, boxShadow:"0 24px 60px rgba(0,0,0,0.35)" }}>
-              <img src="/assets/remote-engineer-workspace.jpg" alt="Engineers reviewing a build together before it ships" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:360, objectFit:"cover", display:"block" }} />
+              <img src="/assets/minimal-tech-devices-white.jpg" alt="Clean, deliberate tooling — the same standard applied at every deployment stage" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:360, objectFit:"cover", display:"block" }} />
             </figure>
           </Reveal>
 

@@ -408,7 +408,7 @@ function Sidebar({ activeTab }) {
       </a>
 
       <figure style={{ margin: 0, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}` }}>
-        <img src="/assets/laptop-collaboration.jpg" alt="Orion Soft team member walking a client through a build" loading="lazy" decoding="async" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+        <img src="/assets/hero-code-white-bg.jpg" alt="The engineering behind every Orion Soft deployment" loading="lazy" decoding="async" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
       </figure>
 
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
@@ -544,7 +544,7 @@ export default function ContactPage({ setCurrentPage }) {
       {/* Hero */}
       <section style={{
         padding: "108px clamp(20px, 5vw, 60px) 72px",
-        background: `radial-gradient(circle at 70% 30%, ${C.blueGlow}, transparent 40%), radial-gradient(circle at 20% 20%, ${C.goldGlow}, transparent 35%), linear-gradient(180deg, rgba(4,6,12,0.93) 0%, rgba(6,8,16,0.93) 100%), url(/assets/cloud-infrastructure-team.jpg)`,
+        background: `radial-gradient(circle at 70% 30%, ${C.blueGlow}, transparent 40%), radial-gradient(circle at 20% 20%, ${C.goldGlow}, transparent 35%), linear-gradient(180deg, rgba(4,6,12,0.93) 0%, rgba(6,8,16,0.93) 100%), url(/assets/minimal-tech-devices-white.jpg)`,
         backgroundSize: "cover", backgroundPosition: "center",
         position: "relative", overflow: "hidden",
       }}>

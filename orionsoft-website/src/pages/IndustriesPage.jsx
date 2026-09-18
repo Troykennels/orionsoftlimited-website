@@ -821,7 +821,7 @@ export default function IndustriesPage({ setCurrentPage }) {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section style={{
-        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDark} 100%), url(/assets/team-review-session.jpg)`,
+        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDark} 100%), url(/assets/hero-code-white-bg.jpg)`,
         backgroundSize: "cover", backgroundPosition: "center",
         padding: "120px clamp(24px,5vw,80px) 100px", position: "relative", overflow: "hidden",
       }}>
@@ -898,10 +898,6 @@ export default function IndustriesPage({ setCurrentPage }) {
       <section style={{ background: T.bgDark, padding: "88px clamp(24px,5vw,80px)" }}>
         <Reveal>
           <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-              <img src="/assets/focused-workspace-headphones.jpg" alt="An Orion Soft consultant preparing for a client walkthrough" loading="lazy" decoding="async"
-                style={{ width: 84, height: 84, borderRadius: "50%", objectFit: "cover", border: `3px solid ${T.gold}`, boxShadow: "0 8px 28px rgba(0,0,0,0.4)" }} />
-            </div>
             <div style={{ fontSize: 11, fontWeight: 800, color: T.gold, fontFamily: font, letterSpacing: "0.14em", marginBottom: 16 }}>NOT SURE WHERE TO START?</div>
             <h2 style={{ fontSize: "clamp(28px,3.5vw,48px)", fontWeight: 900, color: "#F2F6FF", fontFamily: font, letterSpacing: "-0.03em", lineHeight: 1.06, margin: "0 0 16px" }}>
               Tell us about your business.
