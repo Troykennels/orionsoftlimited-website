@@ -352,9 +352,15 @@ export default function CompanyPage({ setCurrentPage }) {
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <Reveal>
             <span style={{ fontSize:11, fontWeight:800, color:T.gold, fontFamily:font, letterSpacing:"0.14em" }}>COMPANY MILESTONES</span>
-            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)", fontWeight:800, color:"#F2F6FF", fontFamily:font, letterSpacing:"-0.035em", lineHeight:1.15, margin:"12px 0 64px", maxWidth:500 }}>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)", fontWeight:800, color:"#F2F6FF", fontFamily:font, letterSpacing:"-0.035em", lineHeight:1.15, margin:"12px 0 40px", maxWidth:500 }}>
               How we got here
             </h2>
+          </Reveal>
+
+          <Reveal delay={0.05}>
+            <figure style={{ margin:"0 0 56px", borderRadius:18, overflow:"hidden", border:`1px solid ${T.borderW}`, boxShadow:"0 24px 60px rgba(0,0,0,0.35)" }}>
+              <img src="/assets/team-review-session.jpg" alt="The Orion Soft team reviewing a build together" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:420, objectFit:"cover", display:"block" }} />
+            </figure>
           </Reveal>
 
           <div style={{ display:"flex", flexDirection:"column", gap:0 }}>

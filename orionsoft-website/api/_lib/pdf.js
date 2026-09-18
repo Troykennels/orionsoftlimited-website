@@ -301,6 +301,233 @@ export async function renderContractPdf(contract, signatories = []) {
   return doc.save();
 }
 
+function docRefGeneric(prefix, id, createdAt) {
+  const d = new Date(createdAt || Date.now());
+  const datePart = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const shortId = String(id).replace(/^[a-z]+_/, "").slice(-5).toUpperCase();
+  return `Ref: ${prefix}-${datePart}-${shortId}`;
+}
+
+// A free-form formal letter — no template, no placeholders: whatever the
+// admin typed is the whole body. Still carries the real letterhead, a proper
+// recipient block, and a single (sender-side) signature, matching normal
+// business-letter convention rather than the two-party contract layout.
+export async function renderLetterPdf(letter, signatory) {
+  const company = await getCompanySettings();
+  const doc = await PDFDocument.create();
+  const fonts = await embedAllFonts(doc);
+  const { regular: font, bold: boldFont } = fonts;
+  const bodySize = 11, lineHeight = 16.5, maxWidth = PAGE_W - MARGIN * 2;
+
+  const firstPage = doc.addPage([PAGE_W, PAGE_H]);
+  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true }, company);
+
+  const dateStr = new Date(letter.createdAt || Date.now()).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
+  const docRef = docRefGeneric("LTR", letter.id, letter.createdAt);
+  firstPage.drawText(docRef, { x: MARGIN, y, size: 9, font, color: MUTED });
+  firstPage.drawText(dateStr, { x: rightAlignedX(dateStr, font, 9, PAGE_W - MARGIN), y, size: 9, font, color: MUTED });
+  y -= 30;
+
+  firstPage.drawText(letter.recipientName || "", { x: MARGIN, y, size: 11, font: boldFont, color: TEXT });
+  y -= 15;
+  const addrLines = String(letter.recipientAddress || "").split("\n").map(l => l.trim()).filter(Boolean);
+  for (const line of addrLines) {
+    firstPage.drawText(line, { x: MARGIN, y, size: 9.5, font, color: MUTED });
+    y -= 13;
+  }
+  if (letter.recipientEmail) {
+    firstPage.drawText(letter.recipientEmail, { x: MARGIN, y, size: 9.5, font, color: MUTED });
+    y -= 13;
+  }
+  y -= 14;
+
+  if (letter.subject) {
+    firstPage.drawLine({ start: { x: MARGIN, y: y + 6 }, end: { x: PAGE_W - MARGIN, y: y + 6 }, thickness: 0.75, color: HAIRLINE });
+    y -= 10;
+    firstPage.drawText(`RE: ${letter.subject}`, { x: MARGIN, y, size: 12.5, font: boldFont, color: NAVY });
+    y -= 26;
+  }
+
+  const cursor = makeCursor(doc, fonts, y, company);
+  const paragraphs = parseRichText(letter.bodyMarkup || "");
+  drawParagraphs(cursor, fonts, paragraphs, bodySize, lineHeight, maxWidth, TEXT, 150);
+
+  cursor.ensure(140);
+  cursor.y -= 8;
+  cursor.page.drawText("Yours sincerely,", { x: MARGIN, y: cursor.y, size: bodySize, font, color: TEXT });
+  cursor.y -= 46;
+
+  const sigImage = signatory ? await embedSignatureImage(doc, signatory.signatureImageDataUrl) : null;
+  drawSignatureBlock(cursor.page, MARGIN, 220, cursor.y, {
+    name: signatory?.fullName || "Authorised Signatory",
+    roleLabel: signatory?.title || "",
+    fonts,
+    image: sigImage,
+  });
+  cursor.y -= 60;
+
+  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef, company));
+  return doc.save();
+}
+
+// Shared table drawer for invoices / purchase orders: a 4-column
+// (description, qty, unit price, amount) itemised table with a navy header
+// band, zebra shading, and a running cursor so it paginates like the body text.
+function drawLineItemsTable(cursor, fonts, items, currency, { qtyLabel = "QTY", priceLabel = "UNIT PRICE" } = {}) {
+  const { regular: font, bold: boldFont } = fonts;
+  const maxWidth = PAGE_W - MARGIN * 2;
+  const colDescW = maxWidth * 0.5, colQtyW = maxWidth * 0.12, colPriceW = maxWidth * 0.19, colAmtW = maxWidth * 0.19;
+  const xDesc = MARGIN, xQty = xDesc + colDescW, xPrice = xQty + colQtyW, xAmt = xPrice + colPriceW;
+  const amtRight = MARGIN + maxWidth;
+
+  cursor.ensure(140);
+  const headerY = cursor.y;
+  cursor.page.drawRectangle({ x: MARGIN, y: headerY - 22, width: maxWidth, height: 22, color: NAVY });
+  cursor.page.drawText("DESCRIPTION", { x: xDesc + 10, y: headerY - 15, size: 8.5, font: boldFont, color: WHITE });
+  cursor.page.drawText(qtyLabel, { x: xQty, y: headerY - 15, size: 8.5, font: boldFont, color: WHITE });
+  cursor.page.drawText(priceLabel, { x: xPrice, y: headerY - 15, size: 8.5, font: boldFont, color: WHITE });
+  cursor.page.drawText("AMOUNT", { x: rightAlignedX("AMOUNT", boldFont, 8.5, amtRight - 10), y: headerY - 15, size: 8.5, font: boldFont, color: WHITE });
+  cursor.y = headerY - 22;
+
+  let subtotal = 0;
+  items.forEach((it, i) => {
+    const qty = Number(it.qty) || 0;
+    const unit = Number(it.unitPrice ?? it.unitCost) || 0;
+    const amount = qty * unit;
+    subtotal += amount;
+    const rowH = 24;
+    cursor.ensure(rowH + 60);
+    const rowTop = cursor.y;
+    if (i % 2 === 1) cursor.page.drawRectangle({ x: MARGIN, y: rowTop - rowH, width: maxWidth, height: rowH, color: PANEL });
+    cursor.page.drawText(String(it.description || "").slice(0, 60), { x: xDesc + 10, y: rowTop - rowH + 8, size: 9.5, font, color: TEXT });
+    cursor.page.drawText(String(qty), { x: xQty, y: rowTop - rowH + 8, size: 9.5, font, color: TEXT });
+    const priceText = `${currency} ${unit.toLocaleString()}`;
+    cursor.page.drawText(priceText, { x: xPrice, y: rowTop - rowH + 8, size: 9.5, font, color: TEXT });
+    const amtText = `${currency} ${amount.toLocaleString()}`;
+    cursor.page.drawText(amtText, { x: rightAlignedX(amtText, font, 9.5, amtRight - 10), y: rowTop - rowH + 8, size: 9.5, font, color: TEXT });
+    cursor.page.drawLine({ start: { x: MARGIN, y: rowTop - rowH }, end: { x: MARGIN + maxWidth, y: rowTop - rowH }, thickness: 0.5, color: HAIRLINE });
+    cursor.y = rowTop - rowH;
+  });
+
+  return { subtotal, amtRight };
+}
+
+function drawTotalsBlock(cursor, fonts, rows, amtRight) {
+  const { regular: font, bold: boldFont } = fonts;
+  cursor.y -= 6;
+  for (const r of rows.slice(0, -1)) {
+    cursor.ensure(70);
+    cursor.page.drawText(r.label, { x: rightAlignedX(r.label, font, 10, amtRight - 150), y: cursor.y, size: 10, font, color: MUTED });
+    cursor.page.drawText(r.value, { x: rightAlignedX(r.value, font, 10, amtRight - 10), y: cursor.y, size: 10, font, color: TEXT });
+    cursor.y -= 20;
+  }
+  const total = rows.at(-1);
+  cursor.ensure(60);
+  const barW = 240, barH = 40;
+  const barX = amtRight - barW;
+  cursor.page.drawRectangle({ x: barX, y: cursor.y - barH + 10, width: barW, height: barH, color: NAVY });
+  cursor.page.drawRectangle({ x: barX, y: cursor.y - barH + 10, width: 5, height: barH, color: GOLD });
+  cursor.page.drawText(total.label, { x: barX + 18, y: cursor.y - barH / 2 + 5, size: 11, font: boldFont, color: WHITE_DIM });
+  cursor.page.drawText(total.value, { x: rightAlignedX(total.value, boldFont, 15, amtRight - 14), y: cursor.y - barH / 2 + 4, size: 15, font: boldFont, color: GOLD });
+  cursor.y -= barH + 20;
+}
+
+export async function renderInvoicePdf(invoice) {
+  const company = await getCompanySettings();
+  const doc = await PDFDocument.create();
+  const fonts = await embedAllFonts(doc);
+  const { regular: font, bold: boldFont } = fonts;
+
+  const firstPage = doc.addPage([PAGE_W, PAGE_H]);
+  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true }, company);
+
+  firstPage.drawText("INVOICE", { x: MARGIN, y, size: 20, font: boldFont, color: NAVY });
+  const numLabel = invoice.invoiceNumber;
+  firstPage.drawText(numLabel, { x: rightAlignedX(numLabel, boldFont, 13, PAGE_W - MARGIN), y: y + 2, size: 13, font: boldFont, color: GOLD });
+  y -= 26;
+  const meta = `Issued ${new Date(invoice.issueDate || invoice.createdAt).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" })}  ·  Due ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }) : "on receipt"}`;
+  firstPage.drawText(meta, { x: rightAlignedX(meta, font, 9, PAGE_W - MARGIN), y, size: 9, font, color: MUTED });
+  y -= 30;
+
+  const panelH = 60;
+  firstPage.drawRectangle({ x: MARGIN, y: y - panelH, width: PAGE_W - MARGIN * 2, height: panelH, color: PANEL, borderColor: HAIRLINE, borderWidth: 1 });
+  firstPage.drawText("BILL TO", { x: MARGIN + 16, y: y - 18, size: 7.5, font, color: MUTED });
+  firstPage.drawText(invoice.clientName || "", { x: MARGIN + 16, y: y - 32, size: 11.5, font: boldFont, color: TEXT });
+  firstPage.drawText([invoice.clientAddress, invoice.clientEmail].filter(Boolean).join("  ·  "), { x: MARGIN + 16, y: y - 46, size: 9, font, color: MUTED });
+  y -= panelH + 24;
+
+  const cursor = makeCursor(doc, fonts, y, company);
+  const { subtotal, amtRight } = drawLineItemsTable(cursor, fonts, invoice.items || [], invoice.currency || "NGN");
+
+  const discount = Number(invoice.discount) || 0;
+  const taxable = Math.max(subtotal - discount, 0);
+  const taxAmount = taxable * ((Number(invoice.taxPercent) || 0) / 100);
+  const total = taxable + taxAmount;
+  const rows = [
+    { label: "Subtotal", value: `${invoice.currency} ${subtotal.toLocaleString()}` },
+    ...(discount > 0 ? [{ label: "Discount", value: `- ${invoice.currency} ${discount.toLocaleString()}` }] : []),
+    ...(invoice.taxPercent ? [{ label: `Tax (${invoice.taxPercent}%)`, value: `${invoice.currency} ${taxAmount.toLocaleString()}` }] : []),
+    { label: "TOTAL DUE", value: `${invoice.currency} ${total.toLocaleString()}` },
+  ];
+  drawTotalsBlock(cursor, fonts, rows, amtRight);
+
+  if (invoice.notes) {
+    cursor.ensure(80);
+    cursor.page.drawText("NOTES", { x: MARGIN, y: cursor.y, size: 8, font: boldFont, color: MUTED });
+    cursor.y -= 14;
+    drawParagraphs(cursor, fonts, parseRichText(invoice.notes), 9.5, 14, PAGE_W - MARGIN * 2, MUTED, 60);
+  }
+
+  const docRef = `Ref: ${invoice.invoiceNumber}`;
+  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef, company));
+  return doc.save();
+}
+
+export async function renderPurchaseOrderPdf(po) {
+  const company = await getCompanySettings();
+  const doc = await PDFDocument.create();
+  const fonts = await embedAllFonts(doc);
+  const { regular: font, bold: boldFont } = fonts;
+
+  const firstPage = doc.addPage([PAGE_W, PAGE_H]);
+  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true }, company);
+
+  firstPage.drawText("PURCHASE ORDER", { x: MARGIN, y, size: 18, font: boldFont, color: NAVY });
+  const numLabel = po.poNumber;
+  firstPage.drawText(numLabel, { x: rightAlignedX(numLabel, boldFont, 13, PAGE_W - MARGIN), y: y + 2, size: 13, font: boldFont, color: GOLD });
+  y -= 26;
+  const meta = `Issued ${new Date(po.createdAt).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" })}  ·  Delivery by ${po.deliveryDate ? new Date(po.deliveryDate).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }) : "TBC"}`;
+  firstPage.drawText(meta, { x: rightAlignedX(meta, font, 9, PAGE_W - MARGIN), y, size: 9, font, color: MUTED });
+  y -= 30;
+
+  const panelH = 60;
+  firstPage.drawRectangle({ x: MARGIN, y: y - panelH, width: PAGE_W - MARGIN * 2, height: panelH, color: PANEL, borderColor: HAIRLINE, borderWidth: 1 });
+  firstPage.drawText("VENDOR", { x: MARGIN + 16, y: y - 18, size: 7.5, font, color: MUTED });
+  firstPage.drawText(po.vendorName || "", { x: MARGIN + 16, y: y - 32, size: 11.5, font: boldFont, color: TEXT });
+  if (po.vendorEmail) firstPage.drawText(po.vendorEmail, { x: MARGIN + 16, y: y - 46, size: 9, font, color: MUTED });
+  y -= panelH + 24;
+
+  const cursor = makeCursor(doc, fonts, y, company);
+  const { subtotal, amtRight } = drawLineItemsTable(cursor, fonts, po.items || [], po.currency || "NGN", { priceLabel: "UNIT COST" });
+  drawTotalsBlock(cursor, fonts, [{ label: "TOTAL", value: `${po.currency} ${subtotal.toLocaleString()}` }], amtRight);
+
+  if (po.terms) {
+    cursor.ensure(80);
+    cursor.page.drawText("TERMS", { x: MARGIN, y: cursor.y, size: 8, font: boldFont, color: MUTED });
+    cursor.y -= 14;
+    drawParagraphs(cursor, fonts, parseRichText(po.terms), 9.5, 14, PAGE_W - MARGIN * 2, MUTED, 90);
+  }
+
+  cursor.ensure(80);
+  cursor.y -= 10;
+  cursor.page.drawText(`Approved by: ${po.approvedBy || "_______________________"}`, { x: MARGIN, y: cursor.y, size: 9.5, font, color: TEXT });
+  cursor.y -= 20;
+
+  const docRef = `Ref: ${po.poNumber}`;
+  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef, company));
+  return doc.save();
+}
+
 export async function renderPayslipPdf(payroll, employee) {
   const company = await getCompanySettings();
   const doc = await PDFDocument.create();

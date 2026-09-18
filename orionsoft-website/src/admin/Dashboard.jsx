@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
   Home, Megaphone, Package, Wrench, FileText, Briefcase, Star, HelpCircle,
@@ -6,6 +6,7 @@ import {
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle, Menu,
+  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus,
 } from "lucide-react";
 import { parseRichText } from "../lib/richtext.js";
 
@@ -190,16 +191,17 @@ function Input({ value, onChange, placeholder = "", type = "text", style = {} })
   );
 }
 
-function Textarea({ value, onChange, placeholder = "", rows = 4, style = {} }) {
+const Textarea = forwardRef(function Textarea({ value, onChange, placeholder = "", rows = 4, style = {} }, ref) {
   return (
     <textarea
+      ref={ref}
       value={value} onChange={onChange} placeholder={placeholder} rows={rows}
       style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: font, outline: "none", resize: "vertical", boxSizing: "border-box", ...style }}
       onFocus={e => e.target.style.borderColor = C.gold}
       onBlur={e => e.target.style.borderColor = C.border}
     />
   );
-}
+});
 
 function Select({ value, onChange, children, style = {} }) {
   return (
@@ -370,7 +372,17 @@ const NAV_GROUPS = [
       { id: "employees",     label: "Employees",        icon: UserCog },
       { id: "weekly-reports",label: "Weekly Reports",   icon: ClipboardList },
       { id: "leave-requests",label: "Leave Requests",   icon: Palmtree },
+      { id: "appraisals",    label: "Performance Reviews", icon: Award },
       { id: "payroll",       label: "Payroll",          icon: Wallet },
+    ],
+  },
+  {
+    label: "OFFICE & OPERATIONS",
+    items: [
+      { id: "tasks",         label: "Tasks & Projects", icon: Kanban },
+      { id: "expenses",      label: "Expenses",         icon: Receipt },
+      { id: "assets",        label: "Assets & Inventory", icon: Boxes },
+      { id: "tickets",       label: "Helpdesk",         icon: LifeBuoy },
     ],
   },
   {
@@ -379,6 +391,9 @@ const NAV_GROUPS = [
       { id: "templates",    label: "Templates",         icon: File },
       { id: "signatories",  label: "Signatories",       icon: PenTool },
       { id: "contracts",    label: "Contracts",         icon: FileSignature },
+      { id: "letters",      label: "Letter Composer",   icon: ScrollText },
+      { id: "invoices",     label: "Invoices",          icon: CreditCard },
+      { id: "purchase-orders", label: "Purchase Orders", icon: ShoppingCart },
       { id: "email-log",    label: "Email Log",         icon: Mail },
     ],
   },
@@ -773,6 +788,9 @@ function NeedsAttentionWidget({ navigate }) {
     { key: "contracts", label: "Awaiting Signature", icon: "📑", color: C.purple, nav: "contracts" },
     { key: "payroll", label: "Unpaid Payroll", icon: "💰", color: C.mint, nav: "payroll" },
     { key: "applicants", label: "New Applicants", icon: "👤", color: C.cyan, nav: "applicants" },
+    { key: "expenses", label: "Pending Expenses", icon: "🧾", color: C.rose, nav: "expenses" },
+    { key: "tickets", label: "Open Tickets", icon: "🎫", color: C.blue, nav: "tickets" },
+    { key: "invoices", label: "Overdue Invoices", icon: "💳", color: C.rose, nav: "invoices" },
   ];
 
   return (
@@ -4150,7 +4168,7 @@ function OrionLogoMark({ size = 30 }) {
   );
 }
 
-function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, signatoryName, signatoryTitle, docRef }) {
+function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, recipientAddress, signatoryName, signatoryTitle, docRef, plain = false }) {
   const serif = "'Georgia', 'Times New Roman', serif";
   const [company, setCompany] = useState(DEFAULT_COMPANY_SETTINGS);
   useEffect(() => {
@@ -4182,7 +4200,10 @@ function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, sig
         </div>
 
         <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2 }}>{recipientName || "Recipient name"}</div>
-        {recipientEmail && <div style={{ fontSize: 10.5, color: "#6B7A96", fontFamily: font, marginBottom: 14 }}>{recipientEmail}</div>}
+        {plain && recipientAddress && String(recipientAddress).split("\n").filter(Boolean).map((l, i) => (
+          <div key={i} style={{ fontSize: 10.5, color: "#6B7A96", fontFamily: font }}>{l}</div>
+        ))}
+        {recipientEmail && <div style={{ fontSize: 10.5, color: "#6B7A96", fontFamily: font, marginTop: plain ? 2 : 0, marginBottom: 14 }}>{recipientEmail}</div>}
         {!recipientEmail && <div style={{ marginBottom: 14 }} />}
 
         {subject && <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0A2540", marginBottom: 16 }}>RE: {subject.toUpperCase()}</div>}
@@ -4191,23 +4212,35 @@ function LetterPreview({ bodyMarkup, subject, recipientName, recipientEmail, sig
           <RichText text={bodyMarkup} />
         </div>
 
-        <div style={{ marginTop: 36, fontSize: 9.5, color: "#6B7A96", fontFamily: font }}>Executed by the parties below:</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 18 }}>
-          <div>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>FOR ORION SOFT LIMITED</div>
-            <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
+        {plain ? (
+          <div style={{ marginTop: 36 }}>
+            <div style={{ fontSize: 12, marginBottom: 40 }}>Yours sincerely,</div>
+            <div style={{ borderTop: "1px solid #999", paddingTop: 6, width: 220 }}>
               <div style={{ fontSize: 10.5, fontWeight: 700 }}>{signatoryName || "Authorized Signatory"}</div>
               {signatoryTitle && <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>{signatoryTitle}</div>}
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>RECIPIENT</div>
-            <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700 }}>{recipientName || "—"}</div>
-              <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>Date: _______________</div>
+        ) : (
+          <>
+            <div style={{ marginTop: 36, fontSize: 9.5, color: "#6B7A96", fontFamily: font }}>Executed by the parties below:</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 18 }}>
+              <div>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>FOR ORION SOFT LIMITED</div>
+                <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700 }}>{signatoryName || "Authorized Signatory"}</div>
+                  {signatoryTitle && <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>{signatoryTitle}</div>}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 8.5, fontWeight: 700, color: "#C8A850", fontFamily: font, letterSpacing: "0.05em", marginBottom: 26 }}>RECIPIENT</div>
+                <div style={{ borderTop: "1px solid #999", paddingTop: 6 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700 }}>{recipientName || "—"}</div>
+                  <div style={{ fontSize: 9, color: "#6B7A96", fontFamily: font, marginTop: 2 }}>Date: _______________</div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       <div style={{ borderTop: "1px solid #dce0e6", padding: "10px 30px 14px 38px", display: "flex", justifyContent: "space-between", fontSize: 8, color: "#6B7A96", fontFamily: font }}>
@@ -5083,6 +5116,1066 @@ function EmailLogSection() {
   );
 }
 
+// ─── Shared helpers for the office modules below ─────────────────────────────
+function useEmployees() {
+  const [employees, setEmployees] = useState([]);
+  useEffect(() => {
+    fetch("/api/admin/employees").then(r => r.json()).then(j => { if (j.ok) setEmployees(j.employees || []); }).catch(() => {});
+  }, []);
+  return employees;
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function LineItemsEditor({ items, onChange, priceLabel = "Unit Price" }) {
+  function update(i, key, val) { onChange(items.map((it, idx) => idx === i ? { ...it, [key]: val } : it)); }
+  function add() { onChange([...items, { description: "", qty: 1, unitPrice: 0 }]); }
+  function remove(i) { onChange(items.filter((_, idx) => idx !== i)); }
+  const total = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice ?? it.unitCost) || 0), 0);
+  return (
+    <div>
+      {items.map((it, i) => (
+        <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 70px 110px 28px", gap: 8, marginBottom: 8, alignItems: "center" }}>
+          <Input value={it.description} onChange={e => update(i, "description", e.target.value)} placeholder="Description" />
+          <Input type="number" value={it.qty} onChange={e => update(i, "qty", e.target.value)} placeholder="Qty" />
+          <Input type="number" value={it.unitPrice ?? it.unitCost ?? ""} onChange={e => update(i, priceLabel === "Unit Cost" ? "unitCost" : "unitPrice", e.target.value)} placeholder={priceLabel} />
+          <button type="button" onClick={() => remove(i)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
+        </div>
+      ))}
+      <Btn small variant="ghost" onClick={add}><Plus size={13} style={{ marginRight: 4, verticalAlign: -2 }} />Add line item</Btn>
+      <div style={{ marginTop: 10, fontSize: 13, color: C.textMuted, fontFamily: font }}>Running total: <strong style={{ color: C.heading }}>{total.toLocaleString()}</strong></div>
+    </div>
+  );
+}
+
+// ─── Tasks & Projects (Kanban) ────────────────────────────────────────────────
+function TasksSection() {
+  const employees = useEmployees();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", project: "", assigneeId: "", priority: "medium", dueDate: "" });
+  const [dragId, setDragId] = useState(null);
+
+  const COLUMNS = [
+    { key: "todo", label: "To Do", color: C.textMuted },
+    { key: "in_progress", label: "In Progress", color: C.blue },
+    { key: "review", label: "Review", color: C.amber },
+    { key: "done", label: "Done", color: C.mint },
+  ];
+  const PRIORITY_COLOR = { low: C.textMuted, medium: C.blue, high: C.amber, urgent: C.rose };
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/tasks");
+      const json = await r.json();
+      if (r.ok) setTasks(json.tasks || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    if (!form.title) return;
+    const r = await fetch("/api/admin/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) { auditLog("create_task", form.title); setForm({ title: "", description: "", project: "", assigneeId: "", priority: "medium", dueDate: "" }); setShowAdd(false); load(); }
+  }
+
+  async function setStatus(task, status) {
+    const r = await fetch("/api/admin/tasks", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: task.id, status }) });
+    if (r.ok) load();
+  }
+
+  async function remove(task) {
+    if (!confirm(`Delete task "${task.title}"?`)) return;
+    const r = await fetch(`/api/admin/tasks?id=${encodeURIComponent(task.id)}`, { method: "DELETE" });
+    if (r.ok) { auditLog("delete_task", task.title); load(); }
+  }
+
+  const employeeName = id => employees.find(e => e.id === id)?.fullName || "";
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+        <SectionTitle>Tasks & Projects</SectionTitle>
+        <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ New Task"}</Btn>
+      </div>
+
+      {showAdd && (
+        <SectionCard style={{ marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+            <div><Label>Project</Label><Input value={form.project} onChange={e => setForm(f => ({ ...f, project: e.target.value }))} placeholder="e.g. CareCore rollout" /></div>
+            <div>
+              <Label>Assignee</Label>
+              <Select value={form.assigneeId} onChange={e => setForm(f => ({ ...f, assigneeId: e.target.value }))}>
+                <option value="">Unassigned</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+              </Select>
+            </div>
+            <div>
+              <Label>Priority</Label>
+              <Select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
+              </Select>
+            </div>
+            <div><Label>Due date</Label><Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
+          </div>
+          <div style={{ marginTop: 14 }}><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
+          <div style={{ marginTop: 14 }}><Btn onClick={create}>Create task</Btn></div>
+        </SectionCard>
+      )}
+
+      {loading ? <SkeletonBlock height={300} /> : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(220px, 1fr))", gap: 14, overflowX: "auto" }}>
+          {COLUMNS.map(col => (
+            <div key={col.key}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => { if (dragId) { const t = tasks.find(t => t.id === dragId); if (t) setStatus(t, col.key); setDragId(null); } }}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, minHeight: 200 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.color }} />
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.heading, fontFamily: font }}>{col.label}</span>
+                <span style={{ fontSize: 11, color: C.textMuted, marginLeft: "auto" }}>{tasks.filter(t => t.status === col.key).length}</span>
+              </div>
+              {tasks.filter(t => t.status === col.key).map(t => (
+                <div key={t.id} draggable onDragStart={() => setDragId(t.id)}
+                  style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, cursor: "grab" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.heading, fontFamily: font }}>{t.title}</span>
+                    <button type="button" onClick={() => remove(t)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>×</button>
+                  </div>
+                  {t.project && <div style={{ fontSize: 10.5, color: C.gold, marginTop: 3 }}>{t.project}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    <Badge color={PRIORITY_COLOR[t.priority]}>{t.priority}</Badge>
+                    {t.assigneeId && <span style={{ fontSize: 11, color: C.textMuted }}>{employeeName(t.assigneeId)}</span>}
+                    {t.dueDate && <span style={{ fontSize: 11, color: C.textMuted, marginLeft: "auto" }}>{new Date(t.dueDate).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Expenses & Reimbursements ────────────────────────────────────────────────
+function ExpensesSection() {
+  const employees = useEmployees();
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ employeeId: "", category: "Travel", amount: "", currency: "NGN", description: "", expenseDate: "", receiptDataUrl: "" });
+  const [filter, setFilter] = useState("");
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const CATEGORIES = ["Travel", "Meals & Entertainment", "Office Supplies", "Software & Subscriptions", "Client Costs", "Other"];
+  const STATUS_COLOR = { pending: C.amber, approved: C.mint, rejected: C.rose, reimbursed: C.blue };
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/expenses");
+      const json = await r.json();
+      if (r.ok) setExpenses(json.expenses || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function handleReceipt(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 800 * 1024) { setErr("Receipt image too large (max 800 KB)."); return; }
+    const dataUrl = await fileToDataUrl(file);
+    setForm(f => ({ ...f, receiptDataUrl: dataUrl }));
+  }
+
+  async function create() {
+    setErr(""); setMsg("");
+    if (!form.employeeId || !form.amount) { setErr("Employee and amount are required."); return; }
+    const r = await fetch("/api/admin/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to submit expense."); return; }
+    auditLog("submit_expense", form.employeeId);
+    setForm({ employeeId: "", category: "Travel", amount: "", currency: "NGN", description: "", expenseDate: "", receiptDataUrl: "" });
+    setShowAdd(false); setMsg("Expense logged."); setTimeout(() => setMsg(""), 3000); load();
+  }
+
+  async function decide(exp, action) {
+    const decisionNotes = action === "reject" ? (prompt("Reason for rejection (optional):") || "") : "";
+    const r = await fetch("/api/admin/expenses", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: exp.id, action, decisionNotes }) });
+    if (r.ok) { auditLog(`${action}_expense`, exp.employeeName); load(); }
+  }
+
+  async function remove(exp) {
+    if (!confirm("Delete this expense record?")) return;
+    const r = await fetch(`/api/admin/expenses?id=${encodeURIComponent(exp.id)}`, { method: "DELETE" });
+    if (r.ok) load();
+  }
+
+  const filtered = filter ? expenses.filter(e => e.status === filter) : expenses;
+  const totalPending = expenses.filter(e => e.status === "pending").reduce((s, e) => s + e.amount, 0);
+  const totalApproved = expenses.filter(e => e.status === "approved").reduce((s, e) => s + e.amount, 0);
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Pending" value={expenses.filter(e => e.status === "pending").length} sub={`₦${totalPending.toLocaleString()}`} color={C.amber} icon="🧾" />
+        <StatCard label="Approved (unpaid)" value={expenses.filter(e => e.status === "approved").length} sub={`₦${totalApproved.toLocaleString()}`} color={C.mint} icon="✅" />
+        <StatCard label="Reimbursed" value={expenses.filter(e => e.status === "reimbursed").length} color={C.blue} icon="💸" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Expenses</SectionTitle>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Select value={filter} onChange={e => setFilter(e.target.value)} style={{ width: "auto" }}>
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="reimbursed">Reimbursed</option>
+            </Select>
+            <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ Log Expense"}</Btn>
+          </div>
+        </div>
+        {showAdd && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <Label>Employee</Label>
+                <Select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}>
+                  <option value="">Select employee…</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </Select>
+              </div>
+              <div>
+                <Label>Category</Label>
+                <Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </Select>
+              </div>
+              <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+              <div><Label>Expense date</Label><Input type="date" value={form.expenseDate} onChange={e => setForm(f => ({ ...f, expenseDate: e.target.value }))} /></div>
+              <div><Label>Receipt (optional)</Label><input type="file" accept="image/*" onChange={handleReceipt} style={{ color: C.text, fontSize: 12.5 }} /></div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
+            <div style={{ marginTop: 14 }}><Btn onClick={create}>Submit</Btn></div>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading ? <SkeletonRows count={5} /> : (
+          <Table
+            cols={[
+              { key: "employeeName", label: "Employee" },
+              { key: "category", label: "Category" },
+              { key: "amount", label: "Amount", render: e => `${e.currency} ${e.amount.toLocaleString()}` },
+              { key: "expenseDate", label: "Date", render: e => e.expenseDate ? new Date(e.expenseDate).toLocaleDateString("en-NG") : "—" },
+              { key: "receipt", label: "Receipt", render: e => e.receiptDataUrl ? <a href={e.receiptDataUrl} target="_blank" rel="noreferrer" style={{ color: C.blue }}>View</a> : "—" },
+              { key: "status", label: "Status", render: e => <Badge color={STATUS_COLOR[e.status]}>{e.status}</Badge> },
+              { key: "actions", label: "", render: e => (
+                <div style={{ display: "flex", gap: 6 }}>
+                  {e.status === "pending" && <><Btn small onClick={() => decide(e, "approve")}>Approve</Btn><Btn small variant="ghost" onClick={() => decide(e, "reject")}>Reject</Btn></>}
+                  {e.status === "approved" && <Btn small onClick={() => decide(e, "mark_reimbursed")}>Mark Reimbursed</Btn>}
+                  <Btn small danger onClick={() => remove(e)}>Delete</Btn>
+                </div>
+              )},
+            ]}
+            rows={filtered}
+            emptyMsg="No expenses logged yet."
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Performance Reviews / Appraisals ────────────────────────────────────────
+function AppraisalsSection() {
+  const employees = useEmployees();
+  const [appraisals, setAppraisals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const RUBRIC = [["communication", "Communication"], ["quality", "Quality of Work"], ["teamwork", "Teamwork"], ["ownership", "Ownership"], ["initiative", "Initiative"]];
+  const [form, setForm] = useState({ employeeId: "", cycle: "", reviewerName: "", ratings: {}, strengths: "", areasForImprovement: "", goalsText: "" });
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/appraisals");
+      const json = await r.json();
+      if (r.ok) setAppraisals(json.appraisals || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    setErr(""); setMsg("");
+    if (!form.employeeId || !form.cycle) { setErr("Employee and review cycle are required."); return; }
+    const goals = form.goalsText.split("\n").map(g => g.trim()).filter(Boolean);
+    const r = await fetch("/api/admin/appraisals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, goals }) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to create appraisal."); return; }
+    auditLog("create_appraisal", form.employeeId);
+    setForm({ employeeId: "", cycle: "", reviewerName: "", ratings: {}, strengths: "", areasForImprovement: "", goalsText: "" });
+    setShowAdd(false); setMsg("Appraisal saved."); setTimeout(() => setMsg(""), 3000); load();
+  }
+
+  async function finalize(a) {
+    if (!confirm(`Finalize the appraisal for ${a.employeeName}? It becomes read-only after this.`)) return;
+    const r = await fetch("/api/admin/appraisals", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: a.id, action: "finalize" }) });
+    if (r.ok) { auditLog("finalize_appraisal", a.employeeName); load(); }
+  }
+
+  async function remove(a) {
+    if (!confirm("Delete this appraisal?")) return;
+    const r = await fetch(`/api/admin/appraisals?id=${encodeURIComponent(a.id)}`, { method: "DELETE" });
+    if (r.ok) load();
+  }
+
+  const STATUS_COLOR = { draft: C.textMuted, finalized: C.mint, acknowledged: C.blue };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <SectionTitle>Performance Reviews</SectionTitle>
+        <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ New Review"}</Btn>
+      </div>
+
+      {showAdd && (
+        <SectionCard style={{ marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <Label>Employee</Label>
+              <Select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}>
+                <option value="">Select employee…</option>
+                {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+              </Select>
+            </div>
+            <div><Label>Review cycle</Label><Input value={form.cycle} onChange={e => setForm(f => ({ ...f, cycle: e.target.value }))} placeholder="e.g. 2026 H1" /></div>
+            <div><Label>Reviewer</Label><Input value={form.reviewerName} onChange={e => setForm(f => ({ ...f, reviewerName: e.target.value }))} placeholder="Defaults to you" /></div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>RATINGS (1–5)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+              {RUBRIC.map(([key, label]) => (
+                <div key={key}>
+                  <Label>{label}</Label>
+                  <Select value={form.ratings[key] || ""} onChange={e => setForm(f => ({ ...f, ratings: { ...f.ratings, [key]: e.target.value } }))}>
+                    <option value="">—</option>
+                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 16 }}>
+            <div><Label>Strengths</Label><Textarea value={form.strengths} onChange={e => setForm(f => ({ ...f, strengths: e.target.value }))} rows={3} /></div>
+            <div><Label>Areas for improvement</Label><Textarea value={form.areasForImprovement} onChange={e => setForm(f => ({ ...f, areasForImprovement: e.target.value }))} rows={3} /></div>
+          </div>
+          <div style={{ marginTop: 14 }}><Label>Goals for next cycle (one per line)</Label><Textarea value={form.goalsText} onChange={e => setForm(f => ({ ...f, goalsText: e.target.value }))} rows={3} /></div>
+          <div style={{ marginTop: 14 }}><Btn onClick={create}>Save review</Btn></div>
+          {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+        </SectionCard>
+      )}
+      {msg && <p style={{ color: C.mint, fontSize: 13, marginBottom: 14 }}>{msg}</p>}
+
+      <SectionCard>
+        {loading && <SkeletonRows count={4} />}
+        {!loading && appraisals.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No performance reviews yet.</p>}
+        {!loading && appraisals.map(a => (
+          <div key={a.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(x => x === a.id ? null : a.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{a.employeeName} <span style={{ color: C.textMuted, fontWeight: 500 }}>· {a.cycle}</span></div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reviewer: {a.reviewerName} · Overall {a.overallRating || "—"}/5</div>
+              </div>
+              <Badge color={STATUS_COLOR[a.status]}>{a.status}</Badge>
+            </div>
+            {expanded === a.id && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44`, fontSize: 13, color: C.text }}>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+                  {RUBRIC.map(([key, label]) => (
+                    <div key={key} style={{ fontSize: 12 }}><span style={{ color: C.textMuted }}>{label}:</span> <strong style={{ color: C.gold }}>{a.ratings?.[key] || "—"}/5</strong></div>
+                  ))}
+                </div>
+                {a.strengths && <p style={{ marginBottom: 8 }}><strong>Strengths:</strong> {a.strengths}</p>}
+                {a.areasForImprovement && <p style={{ marginBottom: 8 }}><strong>Areas for improvement:</strong> {a.areasForImprovement}</p>}
+                {a.goals?.length > 0 && (
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Goals:</strong>
+                    <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>{a.goals.map((g, i) => <li key={i}>{g}</li>)}</ul>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  {a.status === "draft" && <Btn small onClick={() => finalize(a)}>Finalize</Btn>}
+                  <Btn small danger onClick={() => remove(a)}>Delete</Btn>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Company Assets & Inventory ──────────────────────────────────────────────
+function AssetsSection() {
+  const employees = useEmployees();
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: "", category: "Laptop", serialNumber: "", assignedToId: "", purchaseDate: "", purchaseCost: "", currency: "NGN", warrantyExpiry: "", notes: "" });
+  const CATEGORIES = ["Laptop", "Phone", "Monitor", "Furniture", "Software License", "Networking", "Other"];
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/assets");
+      const json = await r.json();
+      if (r.ok) setAssets(json.assets || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    if (!form.name) return;
+    const r = await fetch("/api/admin/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) { auditLog("create_asset", form.name); setForm({ name: "", category: "Laptop", serialNumber: "", assignedToId: "", purchaseDate: "", purchaseCost: "", currency: "NGN", warrantyExpiry: "", notes: "" }); setShowAdd(false); load(); }
+  }
+
+  async function reassign(asset, assignedToId) {
+    const r = await fetch("/api/admin/assets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: asset.id, assignedToId: assignedToId || null }) });
+    if (r.ok) load();
+  }
+
+  async function setStatus(asset, status) {
+    const r = await fetch("/api/admin/assets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: asset.id, status }) });
+    if (r.ok) load();
+  }
+
+  async function remove(asset) {
+    if (!confirm(`Delete asset "${asset.name}"?`)) return;
+    const r = await fetch(`/api/admin/assets?id=${encodeURIComponent(asset.id)}`, { method: "DELETE" });
+    if (r.ok) { auditLog("delete_asset", asset.name); load(); }
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Assets" value={assets.length} color={C.blue} icon="💻" />
+        <StatCard label="In Use" value={assets.filter(a => a.status === "in_use").length} color={C.mint} icon="✅" />
+        <StatCard label="In Repair" value={assets.filter(a => a.status === "in_repair").length} color={C.amber} icon="🔧" />
+        <StatCard label="Available" value={assets.filter(a => a.status === "available").length} color={C.textMuted} icon="📦" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Assets & Inventory</SectionTitle>
+          <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ Add Asset"}</Btn>
+        </div>
+        {showAdd && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div><Label>Name</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Dell Latitude 5420" /></div>
+              <div><Label>Category</Label><Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</Select></div>
+              <div><Label>Serial number</Label><Input value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} /></div>
+              <div>
+                <Label>Assign to</Label>
+                <Select value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}>
+                  <option value="">Unassigned</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </Select>
+              </div>
+              <div><Label>Purchase date</Label><Input type="date" value={form.purchaseDate} onChange={e => setForm(f => ({ ...f, purchaseDate: e.target.value }))} /></div>
+              <div><Label>Purchase cost</Label><Input type="number" value={form.purchaseCost} onChange={e => setForm(f => ({ ...f, purchaseCost: e.target.value }))} /></div>
+              <div><Label>Warranty expiry</Label><Input type="date" value={form.warrantyExpiry} onChange={e => setForm(f => ({ ...f, warrantyExpiry: e.target.value }))} /></div>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+            <div style={{ marginTop: 14 }}><Btn onClick={create}>Add asset</Btn></div>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard>
+        {loading ? <SkeletonRows count={5} /> : (
+          <Table
+            cols={[
+              { key: "name", label: "Asset", render: a => <div><div style={{ fontWeight: 700 }}>{a.name}</div><div style={{ fontSize: 11, color: C.textMuted }}>{a.category}{a.serialNumber ? ` · ${a.serialNumber}` : ""}</div></div> },
+              { key: "assignedToName", label: "Assigned to", render: a => (
+                <Select value={a.assignedToId || ""} onChange={e => reassign(a, e.target.value)} style={{ width: "auto", fontSize: 12.5 }}>
+                  <option value="">Unassigned</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </Select>
+              )},
+              { key: "status", label: "Status", render: a => (
+                <Select value={a.status} onChange={e => setStatus(a, e.target.value)} style={{ width: "auto", fontSize: 12.5 }}>
+                  <option value="available">Available</option><option value="in_use">In Use</option><option value="in_repair">In Repair</option><option value="retired">Retired</option>
+                </Select>
+              )},
+              { key: "warrantyExpiry", label: "Warranty", render: a => a.warrantyExpiry ? new Date(a.warrantyExpiry).toLocaleDateString("en-NG") : "—" },
+              { key: "actions", label: "", render: a => <Btn small danger onClick={() => remove(a)}>Delete</Btn> },
+            ]}
+            rows={assets}
+            emptyMsg="No assets registered yet."
+          />
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Internal Helpdesk / Tickets ─────────────────────────────────────────────
+function TicketsSection() {
+  const employees = useEmployees();
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [expanded, setExpanded] = useState(null);
+  const [commentDraft, setCommentDraft] = useState({});
+  const [form, setForm] = useState({ subject: "", description: "", category: "IT", priority: "medium", raisedByName: "", assignedToId: "" });
+  const CATEGORIES = ["IT", "HR", "Facilities", "Finance", "Other"];
+  const STATUS_COLOR = { open: C.amber, in_progress: C.blue, resolved: C.mint, closed: C.textMuted };
+  const PRIORITY_COLOR = { low: C.textMuted, medium: C.blue, high: C.amber, urgent: C.rose };
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/tickets");
+      const json = await r.json();
+      if (r.ok) setTickets(json.tickets || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    if (!form.subject) return;
+    const r = await fetch("/api/admin/tickets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (r.ok) { auditLog("create_ticket", form.subject); setForm({ subject: "", description: "", category: "IT", priority: "medium", raisedByName: "", assignedToId: "" }); setShowAdd(false); load(); }
+  }
+
+  async function setStatus(t, status) {
+    const r = await fetch("/api/admin/tickets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id, action: status }) });
+    if (r.ok) { auditLog(`ticket_${status}`, t.subject); load(); }
+  }
+  async function assign(t, assignedToId) {
+    const r = await fetch("/api/admin/tickets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id, action: "assign", assignedToId: assignedToId || null }) });
+    if (r.ok) load();
+  }
+  async function addComment(t) {
+    const text = commentDraft[t.id];
+    if (!text) return;
+    const r = await fetch("/api/admin/tickets", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: t.id, action: "add_comment", text }) });
+    if (r.ok) { setCommentDraft(d => ({ ...d, [t.id]: "" })); load(); }
+  }
+  async function remove(t) {
+    if (!confirm(`Delete ticket "${t.subject}"?`)) return;
+    const r = await fetch(`/api/admin/tickets?id=${encodeURIComponent(t.id)}`, { method: "DELETE" });
+    if (r.ok) load();
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Open" value={tickets.filter(t => t.status === "open").length} color={C.amber} icon="🎫" />
+        <StatCard label="In Progress" value={tickets.filter(t => t.status === "in_progress").length} color={C.blue} icon="🔧" />
+        <StatCard label="Resolved" value={tickets.filter(t => t.status === "resolved").length} color={C.mint} icon="✅" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <SectionTitle>Helpdesk Tickets</SectionTitle>
+          <Btn small onClick={() => setShowAdd(s => !s)}>{showAdd ? "Cancel" : "+ New Ticket"}</Btn>
+        </div>
+        {showAdd && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div><Label>Subject</Label><Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} /></div>
+              <div><Label>Raised by</Label><Input value={form.raisedByName} onChange={e => setForm(f => ({ ...f, raisedByName: e.target.value }))} placeholder="Defaults to you" /></div>
+              <div><Label>Category</Label><Select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</Select></div>
+              <div><Label>Priority</Label><Select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option></Select></div>
+              <div>
+                <Label>Assign to</Label>
+                <Select value={form.assignedToId} onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}>
+                  <option value="">Unassigned</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                </Select>
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
+            <div style={{ marginTop: 14 }}><Btn onClick={create}>Raise ticket</Btn></div>
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard>
+        {loading && <SkeletonRows count={4} />}
+        {!loading && tickets.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No tickets yet.</p>}
+        {!loading && tickets.map(t => (
+          <div key={t.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", gap: 10 }} onClick={() => setExpanded(x => x === t.id ? null : t.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{t.subject}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{t.category} · {t.raisedByName}{t.assignedToName ? ` → ${t.assignedToName}` : ""}</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <Badge color={PRIORITY_COLOR[t.priority]}>{t.priority}</Badge>
+                <Badge color={STATUS_COLOR[t.status]}>{t.status.replace("_", " ")}</Badge>
+              </div>
+            </div>
+            {expanded === t.id && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44` }}>
+                {t.description && <p style={{ fontSize: 13, color: C.text, marginBottom: 14 }}>{t.description}</p>}
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+                  <Select value={t.assignedToId || ""} onChange={e => assign(t, e.target.value)} style={{ width: "auto", fontSize: 12.5 }}>
+                    <option value="">Unassigned</option>
+                    {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                  </Select>
+                  {t.status !== "in_progress" && t.status !== "resolved" && t.status !== "closed" && <Btn small onClick={() => setStatus(t, "in_progress")}>Start Work</Btn>}
+                  {t.status !== "resolved" && t.status !== "closed" && <Btn small onClick={() => setStatus(t, "resolved")}>Resolve</Btn>}
+                  {t.status !== "closed" && <Btn small variant="ghost" onClick={() => setStatus(t, "closed")}>Close</Btn>}
+                  <Btn small danger onClick={() => remove(t)}>Delete</Btn>
+                </div>
+                <Label>Comments</Label>
+                {(t.comments || []).map(c => (
+                  <div key={c.id} style={{ fontSize: 12.5, padding: "6px 0", borderBottom: `1px solid ${C.border}33` }}>
+                    <strong style={{ color: C.gold }}>{c.author}</strong> <span style={{ color: C.textMuted }}>· {new Date(c.at).toLocaleString("en-NG")}</span>
+                    <div style={{ color: C.text, marginTop: 2 }}>{c.text}</div>
+                  </div>
+                ))}
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <Input placeholder="Add a comment…" value={commentDraft[t.id] || ""} onChange={e => setCommentDraft(d => ({ ...d, [t.id]: e.target.value }))} />
+                  <Btn small variant="ghost" onClick={() => addComment(t)}>Post</Btn>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Invoices & Billing ───────────────────────────────────────────────────────
+function invoiceTotal(inv) {
+  const subtotal = (inv.items || []).reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  const taxable = Math.max(subtotal - (Number(inv.discount) || 0), 0);
+  return taxable + taxable * ((Number(inv.taxPercent) || 0) / 100);
+}
+
+function InvoicesSection() {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
+  const [form, setForm] = useState({ clientName: "", clientEmail: "", clientAddress: "", items: [{ description: "", qty: 1, unitPrice: 0 }], currency: "NGN", taxPercent: "", discount: "", dueDate: "", notes: "" });
+  const [expanded, setExpanded] = useState(null);
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const STATUS_COLOR = { draft: C.textMuted, sent: C.blue, paid: C.mint, cancelled: C.rose };
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/invoices");
+      const json = await r.json();
+      if (r.ok) setInvoices(json.invoices || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function isOverdue(inv) { return inv.status === "sent" && inv.dueDate && new Date(inv.dueDate).getTime() < Date.now(); }
+
+  async function create() {
+    setErr(""); setMsg("");
+    if (!form.clientName || form.items.every(it => !it.description)) { setErr("Client name and at least one line item are required."); return; }
+    const r = await fetch("/api/admin/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to create invoice."); return; }
+    auditLog("create_invoice", json.invoice.invoiceNumber);
+    setForm({ clientName: "", clientEmail: "", clientAddress: "", items: [{ description: "", qty: 1, unitPrice: 0 }], currency: "NGN", taxPercent: "", discount: "", dueDate: "", notes: "" });
+    setShowCompose(false); setMsg("Invoice created."); setTimeout(() => setMsg(""), 3000); load();
+  }
+
+  async function send(inv) {
+    if (!confirm(`Send invoice ${inv.invoiceNumber} to ${inv.clientEmail}?`)) return;
+    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "send" }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Failed to send."); return; }
+    auditLog("send_invoice", inv.invoiceNumber); load();
+  }
+  async function markPaid(inv) {
+    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "mark_paid" }) });
+    if (r.ok) { auditLog("mark_invoice_paid", inv.invoiceNumber); load(); }
+  }
+  async function cancelInvoice(inv) {
+    if (!confirm(`Cancel invoice ${inv.invoiceNumber}?`)) return;
+    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "cancel" }) });
+    if (r.ok) load();
+  }
+  async function remove(inv) {
+    if (!confirm(`Delete draft invoice ${inv.invoiceNumber}?`)) return;
+    const r = await fetch(`/api/admin/invoices?id=${encodeURIComponent(inv.id)}`, { method: "DELETE" });
+    if (r.ok) load();
+  }
+
+  const totalOutstanding = invoices.filter(i => i.status === "sent").reduce((s, i) => s + invoiceTotal(i), 0);
+  const totalPaid = invoices.filter(i => i.status === "paid").reduce((s, i) => s + invoiceTotal(i), 0);
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total Invoices" value={invoices.length} color={C.blue} icon="📄" />
+        <StatCard label="Outstanding" value={`₦${totalOutstanding.toLocaleString()}`} color={C.amber} icon="⏳" />
+        <StatCard label="Paid" value={`₦${totalPaid.toLocaleString()}`} color={C.mint} icon="✅" />
+        <StatCard label="Overdue" value={invoices.filter(isOverdue).length} color={C.rose} icon="⚠️" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <SectionTitle>Invoices</SectionTitle>
+          <Btn small onClick={() => setShowCompose(s => !s)}>{showCompose ? "Cancel" : "+ New Invoice"}</Btn>
+        </div>
+        {showCompose && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div><Label>Client name</Label><Input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))} /></div>
+              <div><Label>Client email (optional)</Label><Input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} /></div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Client address</Label><Input value={form.clientAddress} onChange={e => setForm(f => ({ ...f, clientAddress: e.target.value }))} /></div>
+            <div style={{ marginTop: 18 }}>
+              <Label>Line items</Label>
+              <LineItemsEditor items={form.items} onChange={items => setForm(f => ({ ...f, items }))} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginTop: 18 }}>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+              <div><Label>Tax %</Label><Input type="number" value={form.taxPercent} onChange={e => setForm(f => ({ ...f, taxPercent: e.target.value }))} /></div>
+              <div><Label>Discount</Label><Input type="number" value={form.discount} onChange={e => setForm(f => ({ ...f, discount: e.target.value }))} /></div>
+              <div><Label>Due date</Label><Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Notes / payment instructions</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
+            <div style={{ marginTop: 14 }}><Btn onClick={create}>Create draft & generate PDF</Btn></div>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading && <SkeletonRows count={5} />}
+        {!loading && invoices.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No invoices yet.</p>}
+        {!loading && invoices.map(inv => (
+          <div key={inv.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(x => x === inv.id ? null : inv.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{inv.invoiceNumber} — {inv.clientName}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{inv.currency} {invoiceTotal(inv).toLocaleString()} · Due {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-NG") : "on receipt"}</div>
+              </div>
+              <Badge color={isOverdue(inv) ? C.rose : STATUS_COLOR[inv.status]}>{isOverdue(inv) ? "overdue" : inv.status}</Badge>
+            </div>
+            {expanded === inv.id && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44`, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a href={`/api/files/download?key=${encodeURIComponent(inv.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View PDF →</a>
+                <a href={`/api/files/download?key=${encodeURIComponent(inv.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}><Download size={13} /> Download</a>
+                {inv.status === "draft" && inv.clientEmail && <Btn small onClick={() => send(inv)}>Send to client</Btn>}
+                {inv.status === "sent" && <Btn small onClick={() => markPaid(inv)}>Mark Paid</Btn>}
+                {!["paid", "cancelled"].includes(inv.status) && <Btn small variant="ghost" onClick={() => cancelInvoice(inv)}>Cancel</Btn>}
+                {inv.status === "draft" && <Btn small danger onClick={() => remove(inv)}>Delete</Btn>}
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Purchase Orders / Procurement ───────────────────────────────────────────
+function PurchaseOrdersSection() {
+  const [pos, setPos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
+  const [form, setForm] = useState({ vendorName: "", vendorEmail: "", items: [{ description: "", qty: 1, unitCost: 0 }], currency: "NGN", deliveryDate: "", terms: "" });
+  const [expanded, setExpanded] = useState(null);
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const STATUS_COLOR = { draft: C.textMuted, approved: C.gold, sent: C.blue, received: C.mint, cancelled: C.rose };
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch("/api/admin/purchase-orders");
+      const json = await r.json();
+      if (r.ok) setPos(json.purchaseOrders || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function create() {
+    setErr(""); setMsg("");
+    if (!form.vendorName || form.items.every(it => !it.description)) { setErr("Vendor name and at least one line item are required."); return; }
+    const r = await fetch("/api/admin/purchase-orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to create purchase order."); return; }
+    auditLog("create_po", json.po.poNumber);
+    setForm({ vendorName: "", vendorEmail: "", items: [{ description: "", qty: 1, unitCost: 0 }], currency: "NGN", deliveryDate: "", terms: "" });
+    setShowCompose(false); setMsg("Purchase order created."); setTimeout(() => setMsg(""), 3000); load();
+  }
+
+  async function act(po, action) {
+    const r = await fetch("/api/admin/purchase-orders", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: po.id, action }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Action failed."); return; }
+    auditLog(`${action}_po`, po.poNumber); load();
+  }
+  async function remove(po) {
+    if (!confirm(`Delete draft PO ${po.poNumber}?`)) return;
+    const r = await fetch(`/api/admin/purchase-orders?id=${encodeURIComponent(po.id)}`, { method: "DELETE" });
+    if (r.ok) load();
+  }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Total POs" value={pos.length} color={C.blue} icon="🛒" />
+        <StatCard label="Awaiting Approval" value={pos.filter(p => p.status === "draft").length} color={C.amber} icon="⏳" />
+        <StatCard label="Received" value={pos.filter(p => p.status === "received").length} color={C.mint} icon="📦" />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <SectionTitle>Purchase Orders</SectionTitle>
+          <Btn small onClick={() => setShowCompose(s => !s)}>{showCompose ? "Cancel" : "+ New PO"}</Btn>
+        </div>
+        {showCompose && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div><Label>Vendor name</Label><Input value={form.vendorName} onChange={e => setForm(f => ({ ...f, vendorName: e.target.value }))} /></div>
+              <div><Label>Vendor email (optional)</Label><Input type="email" value={form.vendorEmail} onChange={e => setForm(f => ({ ...f, vendorEmail: e.target.value }))} /></div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <Label>Line items</Label>
+              <LineItemsEditor items={form.items} onChange={items => setForm(f => ({ ...f, items }))} priceLabel="Unit Cost" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 18 }}>
+              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
+              <div><Label>Delivery date</Label><Input type="date" value={form.deliveryDate} onChange={e => setForm(f => ({ ...f, deliveryDate: e.target.value }))} /></div>
+            </div>
+            <div style={{ marginTop: 14 }}><Label>Terms</Label><Textarea value={form.terms} onChange={e => setForm(f => ({ ...f, terms: e.target.value }))} rows={2} /></div>
+            <div style={{ marginTop: 14 }}><Btn onClick={create}>Create draft & generate PDF</Btn></div>
+            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        {loading && <SkeletonRows count={5} />}
+        {!loading && pos.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No purchase orders yet.</p>}
+        {!loading && pos.map(po => (
+          <div key={po.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(x => x === po.id ? null : po.id)}>
+              <div>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{po.poNumber} — {po.vendorName}</div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{po.currency} {(po.items || []).reduce((s, it) => s + it.qty * it.unitCost, 0).toLocaleString()}</div>
+              </div>
+              <Badge color={STATUS_COLOR[po.status]}>{po.status}</Badge>
+            </div>
+            {expanded === po.id && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44`, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a href={`/api/files/download?key=${encodeURIComponent(po.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View PDF →</a>
+                <a href={`/api/files/download?key=${encodeURIComponent(po.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}><Download size={13} /> Download</a>
+                {po.status === "draft" && <Btn small onClick={() => act(po, "approve")}>Approve</Btn>}
+                {po.status === "approved" && po.vendorEmail && <Btn small onClick={() => act(po, "send")}>Send to vendor</Btn>}
+                {po.status === "sent" && <Btn small onClick={() => act(po, "receive")}>Mark Received</Btn>}
+                {!["received", "cancelled"].includes(po.status) && <Btn small variant="ghost" onClick={() => act(po, "cancel")}>Cancel</Btn>}
+                {po.status === "draft" && <Btn small danger onClick={() => remove(po)}>Delete</Btn>}
+              </div>
+            )}
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
+// ─── Letter Composer — free-form letterhead letters, no templates ───────────
+function wrapSelection(ref, before, after, value, setValue) {
+  const ta = ref.current;
+  if (!ta) { setValue(value + before + after); return; }
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const next = value.slice(0, s) + before + value.slice(s, e) + after + value.slice(e);
+  setValue(next);
+  requestAnimationFrame(() => { ta.focus(); ta.selectionStart = s + before.length; ta.selectionEnd = e + before.length; });
+}
+
+function bulletListify(ref, value, setValue) {
+  const ta = ref.current;
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const selected = value.slice(s, e) || "List item";
+  const lis = selected.split("\n").filter(Boolean).map(l => `<li>${l}</li>`).join("");
+  const next = value.slice(0, s) + `<ul>${lis}</ul>` + value.slice(e);
+  setValue(next);
+}
+
+function LettersSection() {
+  const [letters, setLetters] = useState([]);
+  const [signatories, setSignatories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ subject: "", recipientName: "", recipientAddress: "", recipientEmail: "", signatoryId: "", bodyMarkup: "" });
+  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const bodyRef = useRef(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [rL, rS] = await Promise.all([fetch("/api/admin/letters"), fetch("/api/admin/signatories")]);
+      const [jL, jS] = await Promise.all([rL.json(), rS.json()]);
+      if (rL.ok) setLetters(jL.letters || []);
+      if (rS.ok) setSignatories(jS.signatories || []);
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { load(); }, []);
+
+  function resetForm() {
+    setForm({ subject: "", recipientName: "", recipientAddress: "", recipientEmail: "", signatoryId: signatories[0]?.id || "", bodyMarkup: "" });
+    setEditingId(null);
+  }
+
+  function startNew() { resetForm(); setShowCompose(true); }
+  function startEdit(l) {
+    setForm({ subject: l.subject || "", recipientName: l.recipientName || "", recipientAddress: l.recipientAddress || "", recipientEmail: l.recipientEmail || "", signatoryId: l.signatoryId || "", bodyMarkup: l.bodyMarkup || "" });
+    setEditingId(l.id); setShowCompose(true);
+  }
+
+  async function save() {
+    setErr(""); setMsg("");
+    if (!form.recipientName || !form.bodyMarkup) { setErr("Recipient name and letter body are required."); return; }
+    const url = "/api/admin/letters";
+    const method = editingId ? "PATCH" : "POST";
+    const body = editingId ? { id: editingId, ...form } : form;
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const json = await r.json();
+    if (!r.ok) { setErr(json.error || "Failed to save letter."); return; }
+    auditLog(editingId ? "update_letter" : "create_letter", form.recipientName);
+    resetForm(); setShowCompose(false);
+    setMsg("Letter saved & letterhead PDF generated."); setTimeout(() => setMsg(""), 3000);
+    load();
+  }
+
+  async function sendLetter(l) {
+    if (!confirm(`Email this letter to ${l.recipientEmail}?`)) return;
+    const r = await fetch("/api/admin/letters", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: l.id, action: "send" }) });
+    const json = await r.json();
+    if (!r.ok) { alert(json.error || "Failed to send."); return; }
+    auditLog("send_letter", l.recipientName); load();
+  }
+
+  async function remove(l) {
+    if (!confirm(`Delete this letter to ${l.recipientName}?`)) return;
+    const r = await fetch(`/api/admin/letters?id=${encodeURIComponent(l.id)}`, { method: "DELETE" });
+    if (r.ok) { auditLog("delete_letter", l.recipientName); load(); }
+  }
+
+  const selectedSignatory = signatories.find(s => s.id === form.signatoryId);
+
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <SectionTitle>Letter Composer</SectionTitle>
+            <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 4 }}>Write any letter from scratch — no template needed. It's rendered onto the real Orion Soft Limited letterhead.</p>
+          </div>
+          <Btn small onClick={() => showCompose ? setShowCompose(false) : startNew()}>{showCompose ? "Cancel" : "+ New Letter"}</Btn>
+        </div>
+
+        {showCompose && (
+          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
+            <SplitEditor
+              left={
+                <div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                    <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
+                    <div><Label>Recipient email (optional)</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ marginBottom: 14 }}><Label>Recipient address (optional, one line per address line)</Label><Textarea rows={2} value={form.recipientAddress} onChange={e => setForm(f => ({ ...f, recipientAddress: e.target.value }))} /></div>
+                  <div style={{ marginBottom: 14 }}><Label>Subject (optional)</Label><Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Confirmation of Employment" /></div>
+                  <div style={{ marginBottom: 14 }}>
+                    <Label>Signed by</Label>
+                    <Select value={form.signatoryId} onChange={e => setForm(f => ({ ...f, signatoryId: e.target.value }))}>
+                      <option value="">No signatory</option>
+                      {signatories.map(s => <option key={s.id} value={s.id}>{s.fullName} — {s.title}</option>)}
+                    </Select>
+                  </div>
+                  <Label>Letter body</Label>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<b>", "</b>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><b>B</b></Btn>
+                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<i>", "</i>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><i>I</i></Btn>
+                    <Btn small variant="ghost" onClick={() => bulletListify(bodyRef, form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>• List</Btn>
+                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "", "\n\n", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>¶ Paragraph</Btn>
+                  </div>
+                  <Textarea ref={bodyRef} style={{ minHeight: 260, fontSize: 13.5 }} value={form.bodyMarkup} onChange={e => setForm(f => ({ ...f, bodyMarkup: e.target.value }))} placeholder="Dear Sir/Madam,&#10;&#10;Type the full letter here in your own words. Select text and use Bold/Italic above, or leave a blank line between paragraphs." />
+                  <div style={{ marginTop: 14 }}><Btn onClick={save}>{editingId ? "Save changes" : "Save & generate letterhead PDF"}</Btn></div>
+                  {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+                </div>
+              }
+              right={
+                <LetterPreview
+                  plain
+                  subject={form.subject}
+                  recipientName={form.recipientName}
+                  recipientAddress={form.recipientAddress}
+                  recipientEmail={form.recipientEmail}
+                  signatoryName={selectedSignatory?.fullName}
+                  signatoryTitle={selectedSignatory?.title}
+                  bodyMarkup={form.bodyMarkup}
+                />
+              }
+            />
+          </div>
+        )}
+        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Past letters</SectionTitle>
+        {loading && <SkeletonRows count={4} />}
+        {!loading && letters.length === 0 && <p style={{ color: C.textMuted, fontSize: 13, marginTop: 10 }}>No letters yet. Compose your first one above.</p>}
+        {!loading && letters.map(l => (
+          <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: `1px solid ${C.border}`, gap: 10, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{l.subject || "(no subject)"} <span style={{ color: C.textMuted, fontWeight: 500 }}>→ {l.recipientName}</span></div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{new Date(l.createdAt).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" })} <Badge color={l.status === "sent" ? C.mint : C.textMuted}>{l.status}</Badge></div>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href={`/api/files/download?key=${encodeURIComponent(l.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View →</a>
+              <a href={`/api/files/download?key=${encodeURIComponent(l.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}><Download size={13} /> Download</a>
+              <Btn small variant="ghost" onClick={() => startEdit(l)}>Edit</Btn>
+              {l.recipientEmail && <Btn small variant="ghost" onClick={() => sendLetter(l)}>Email</Btn>}
+              <Btn small danger onClick={() => remove(l)}>Delete</Btn>
+            </div>
+          </div>
+        ))}
+      </SectionCard>
+    </div>
+  );
+}
+
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ active, session, navigate }) {
   switch (active) {
@@ -5120,7 +6213,15 @@ function DashboardContent({ active, session, navigate }) {
     case "templates":      return <TemplatesSection />;
     case "signatories":    return <SignatoriesSection />;
     case "contracts":      return <ContractsSection />;
+    case "letters":        return <LettersSection />;
+    case "invoices":       return <InvoicesSection />;
+    case "purchase-orders":return <PurchaseOrdersSection />;
     case "email-log":      return <EmailLogSection />;
+    case "appraisals":     return <AppraisalsSection />;
+    case "tasks":          return <TasksSection />;
+    case "expenses":       return <ExpensesSection />;
+    case "assets":         return <AssetsSection />;
+    case "tickets":        return <TicketsSection />;
     case "my-account":    return <MyAccountSection session={session} />;
     case "users":         return <UsersSection session={session} />;
     case "audit":         return <AuditSection />;
@@ -5163,7 +6264,7 @@ function NotificationBell({ navigate }) {
     });
   }
 
-  const TYPE_ICON = { leave: "🌴", report: "📋", contract: "📑", payroll: "💰", applicant: "👤" };
+  const TYPE_ICON = { leave: "🌴", report: "📋", contract: "📑", payroll: "💰", applicant: "👤", expense: "🧾", ticket: "🎫", invoice: "💳" };
 
   return (
     <div ref={boxRef} style={{ position: "relative" }}>

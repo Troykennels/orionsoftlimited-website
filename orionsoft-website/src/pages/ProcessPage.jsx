@@ -560,9 +560,15 @@ export default function ProcessPage({ setCurrentPage }) {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <Reveal>
             <span style={{ fontSize:11, fontWeight:800, color:T.gold, fontFamily:font, letterSpacing:"0.14em" }}>DEPLOYMENT WORKFLOW</span>
-            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)", fontWeight:800, color:"#F2F6FF", fontFamily:font, letterSpacing:"-0.035em", lineHeight:1.15, margin:"12px 0 56px", maxWidth:560 }}>
+            <h2 style={{ fontSize:"clamp(26px,3.5vw,42px)", fontWeight:800, color:"#F2F6FF", fontFamily:font, letterSpacing:"-0.035em", lineHeight:1.15, margin:"12px 0 32px", maxWidth:560 }}>
               From development machine to production server
             </h2>
+          </Reveal>
+
+          <Reveal delay={0.05}>
+            <figure style={{ margin:"0 0 48px", borderRadius:18, overflow:"hidden", border:`1px solid ${T.borderW}`, boxShadow:"0 24px 60px rgba(0,0,0,0.35)" }}>
+              <img src="/assets/remote-engineer-workspace.jpg" alt="Engineers reviewing a build together before it ships" loading="lazy" decoding="async" style={{ width:"100%", maxHeight:360, objectFit:"cover", display:"block" }} />
+            </figure>
           </Reveal>
 
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap:0, border:`1px solid ${T.borderW}`, borderRadius:16, overflow:"hidden" }}>

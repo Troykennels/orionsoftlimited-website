@@ -407,6 +407,10 @@ function Sidebar({ activeTab }) {
         </div>
       </a>
 
+      <figure style={{ margin: 0, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}` }}>
+        <img src="/assets/laptop-collaboration.jpg" alt="Orion Soft team member walking a client through a build" loading="lazy" decoding="async" style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+      </figure>
+
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
         <p style={{ color: C.textMuted, fontFamily: font, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", margin: "0 0 14px" }}>CONTACT DETAILS</p>
         {[

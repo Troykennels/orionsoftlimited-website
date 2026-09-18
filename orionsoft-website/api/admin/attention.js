@@ -17,9 +17,10 @@ export default async function handler(req, res) {
   const session = requireAuth(req, res, "admin");
   if (!session) return;
 
-  const [leave, reports, contracts, payroll, applicants, employees] = await Promise.all([
+  const [leave, reports, contracts, payroll, applicants, employees, expenses, tickets, invoices] = await Promise.all([
     listRecords("leave"), listRecords("reports"), listRecords("contracts"),
     listRecords("payroll"), listRecords("applicants"), listRecords("employees"),
+    listRecords("expenses"), listRecords("tickets"), listRecords("invoices"),
   ]);
 
   const employeeName = (id) => employees.find(e => e.id === id)?.fullName || "Unknown";
@@ -41,6 +42,16 @@ export default async function handler(req, res) {
   for (const a of applicants.filter(a => a.status === "applied")) {
     items.push({ id: `applicant_${a.id}`, type: "applicant", label: `${a.fullName} applied for ${a.roleAppliedFor}`, detail: a.email, at: a.createdAt, nav: "applicants" });
   }
+  for (const e of expenses.filter(e => e.status === "pending")) {
+    items.push({ id: `expense_${e.id}`, type: "expense", label: `${e.employeeName} submitted a ${e.category} expense`, detail: `${e.currency} ${e.amount}`, at: e.createdAt, nav: "expenses" });
+  }
+  for (const t of tickets.filter(t => t.status === "open")) {
+    items.push({ id: `ticket_${t.id}`, type: "ticket", label: `New ${t.category} ticket: ${t.subject}`, detail: t.raisedByName, at: t.createdAt, nav: "tickets" });
+  }
+  const now = Date.now();
+  for (const i of invoices.filter(i => i.status === "sent" && i.dueDate && new Date(i.dueDate).getTime() < now)) {
+    items.push({ id: `invoice_${i.id}`, type: "invoice", label: `Invoice ${i.invoiceNumber} is overdue`, detail: i.clientName, at: i.dueDate, nav: "invoices" });
+  }
 
   items.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
 
@@ -50,6 +61,9 @@ export default async function handler(req, res) {
     contracts: contracts.filter(c => c.status === "sent").length,
     payroll: payroll.filter(p => p.status === "issued").length,
     applicants: applicants.filter(a => a.status === "applied").length,
+    expenses: expenses.filter(e => e.status === "pending").length,
+    tickets: tickets.filter(t => t.status === "open").length,
+    invoices: invoices.filter(i => i.status === "sent" && i.dueDate && new Date(i.dueDate).getTime() < now).length,
   };
 
   return res.json({ ok: true, items, counts, total: items.length });
