@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle, Menu,
   Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus,
 } from "lucide-react";
-import { parseRichText } from "../lib/richtext.js";
+import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -4299,7 +4299,14 @@ function TemplatesSection() {
                 left={
                   <div>
                     <div style={{ marginBottom: 10 }}><Label>Name</Label><Input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></div>
-                    <div style={{ marginBottom: 10 }}><Label>Body (HTML)</Label><Textarea style={{ minHeight: 260, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} /></div>
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Label>Body (HTML)</Label>
+                        <Btn small variant="ghost" onClick={() => setDraft(d => ({ ...d, bodyMarkup: sanitizeToAllowedHtml(d.bodyMarkup) }))} title="Strips pasted CSS/markup (from Word, Google Docs, AI tools, etc.) down to clean formatted text">✨ Clean & Format</Btn>
+                      </div>
+                      <Textarea style={{ minHeight: 260, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} />
+                      <p style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6 }}>Pasted a full HTML page or document by mistake? Click <strong>Clean & Format</strong> — it strips out style/script blocks, tables, and stray markup, keeping <code>{"{{placeholders}}"}</code> and only clean text, bold, italics, and paragraphs.</p>
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <Btn small onClick={save}>Save</Btn>
                       <Btn small variant="ghost" onClick={() => setEditing(null)}>Cancel</Btn>
@@ -6130,13 +6137,15 @@ function LettersSection() {
                     </Select>
                   </div>
                   <Label>Letter body</Label>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
                     <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<b>", "</b>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><b>B</b></Btn>
                     <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<i>", "</i>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><i>I</i></Btn>
                     <Btn small variant="ghost" onClick={() => bulletListify(bodyRef, form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>• List</Btn>
                     <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "", "\n\n", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>¶ Paragraph</Btn>
+                    <Btn small variant="ghost" onClick={() => setForm(f => ({ ...f, bodyMarkup: sanitizeToAllowedHtml(f.bodyMarkup) }))} title="Strips pasted CSS/markup (from Word, Google Docs, AI tools, etc.) down to clean formatted text">✨ Clean & Format</Btn>
                   </div>
-                  <Textarea ref={bodyRef} style={{ minHeight: 260, fontSize: 13.5 }} value={form.bodyMarkup} onChange={e => setForm(f => ({ ...f, bodyMarkup: e.target.value }))} placeholder="Dear Sir/Madam,&#10;&#10;Type the full letter here in your own words. Select text and use Bold/Italic above, or leave a blank line between paragraphs." />
+                  <Textarea ref={bodyRef} style={{ minHeight: 260, fontSize: 13.5 }} value={form.bodyMarkup} onChange={e => setForm(f => ({ ...f, bodyMarkup: e.target.value }))} placeholder="Dear Sir/Madam,&#10;&#10;Type the full letter here in your own words, or paste from Word/Google Docs/an AI tool and click “Clean & Format” to strip it down to plain, well-formatted text. Select text and use Bold/Italic above, or leave a blank line between paragraphs." />
+                  <p style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6 }}>Pasted a full HTML page or document by mistake? Click <strong>Clean & Format</strong> — it strips out style/script blocks, tables, and stray markup, keeping only clean text, bold, italics, and paragraphs.</p>
                   <div style={{ marginTop: 14 }}><Btn onClick={save}>{editingId ? "Save changes" : "Save & generate letterhead PDF"}</Btn></div>
                   {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
                 </div>
