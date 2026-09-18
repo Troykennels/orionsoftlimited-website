@@ -6,7 +6,7 @@ import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/
 import { requireAuth } from "../_lib/auth.js";
 import { get, set } from "../store.js";
 import { renderLetterPdf } from "../_lib/pdf.js";
-import { sendEmail, brandedShell } from "../_lib/emailTemplates.js";
+import { sendEmail, brandedShell } from "../_lib/mailer.js";
 import { logAudit } from "../_lib/audit.js";
 
 async function storePdf(key, pdfBytes) {

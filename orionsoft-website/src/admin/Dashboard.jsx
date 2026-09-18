@@ -6062,6 +6062,13 @@ function LettersSection() {
     setEditingId(l.id); setShowCompose(true);
   }
 
+  // Reuse a past letter as the starting point for a new one — same content,
+  // but saving creates a fresh letter rather than overwriting the original.
+  function duplicateLetter(l) {
+    setForm({ subject: l.subject || "", recipientName: l.recipientName || "", recipientAddress: l.recipientAddress || "", recipientEmail: l.recipientEmail || "", signatoryId: l.signatoryId || "", bodyMarkup: l.bodyMarkup || "" });
+    setEditingId(null); setShowCompose(true);
+  }
+
   async function save() {
     setErr(""); setMsg("");
     if (!form.recipientName || !form.bodyMarkup) { setErr("Recipient name and letter body are required."); return; }
@@ -6166,6 +6173,7 @@ function LettersSection() {
               <a href={`/api/files/download?key=${encodeURIComponent(l.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View →</a>
               <a href={`/api/files/download?key=${encodeURIComponent(l.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}><Download size={13} /> Download</a>
               <Btn small variant="ghost" onClick={() => startEdit(l)}>Edit</Btn>
+              <Btn small variant="ghost" onClick={() => duplicateLetter(l)}>Duplicate</Btn>
               {l.recipientEmail && <Btn small variant="ghost" onClick={() => sendLetter(l)}>Email</Btn>}
               <Btn small danger onClick={() => remove(l)}>Delete</Btn>
             </div>
