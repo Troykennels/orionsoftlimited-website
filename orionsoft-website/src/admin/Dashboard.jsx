@@ -6396,13 +6396,16 @@ export default function AdminDashboard({ setCurrentPage }) {
   const navigate = (id) => { setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: C.bg, fontFamily: font }}>
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
       {mobileSidebarOpen && <div className="admin-sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} />}
-      {/* Sidebar */}
+      {/* Sidebar — position:fixed (not sticky) so it's always pinned to the
+          viewport and can never "detach" and scroll away once the page
+          content is only a little taller than 100vh, which is what sticky
+          positioning does near the end of its containing block. */}
       <aside className={`admin-sidebar${mobileSidebarOpen ? " admin-sidebar-open" : ""}`} style={{
         width: sidebarOpen ? 240 : 64, height: "100vh", background: C.surface,
-        borderRight: `1px solid ${C.border}`, flexShrink: 0,
-        transition: "width 0.25s", position: "sticky", top: 0,
+        borderRight: `1px solid ${C.border}`,
+        transition: "width 0.25s", position: "fixed", top: 0, left: 0, zIndex: 300,
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: sidebarOpen ? "20px 20px 16px" : "20px 12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
@@ -6462,7 +6465,7 @@ export default function AdminDashboard({ setCurrentPage }) {
       </aside>
 
       {/* Main content */}
-      <main style={{ flex: 1, overflowX: "hidden" }}>
+      <main className="admin-main" style={{ marginLeft: sidebarOpen ? 240 : 64, overflowX: "hidden", transition: "margin-left 0.25s" }}>
         <TopBar session={session} navigate={navigate} onMenuClick={() => setMobileSidebarOpen(o => !o)} />
         <div style={{ padding: "24px clamp(20px, 3vw, 40px) 32px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
