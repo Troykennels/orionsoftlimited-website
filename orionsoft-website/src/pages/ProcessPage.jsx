@@ -264,7 +264,9 @@ export default function ProcessPage({ setCurrentPage }) {
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section style={{
-        background: T.bgDeep,
+        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDeep} 100%), url(/assets/developer-code-workstation.jpg)`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         padding: "120px clamp(20px,5vw,60px) 90px",
         position: "relative",
         overflow: "hidden",

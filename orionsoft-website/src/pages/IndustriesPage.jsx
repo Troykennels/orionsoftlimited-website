@@ -820,7 +820,11 @@ export default function IndustriesPage({ setCurrentPage }) {
     <div style={{ background: T.bg, overflowX: "hidden" }}>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section style={{ background: T.bgDark, padding: "120px clamp(24px,5vw,80px) 100px", position: "relative", overflow: "hidden" }}>
+      <section style={{
+        background: `linear-gradient(180deg, rgba(6,15,26,0.94) 0%, rgba(6,15,26,0.90) 45%, ${T.bgDark} 100%), url(/assets/team-review-session.jpg)`,
+        backgroundSize: "cover", backgroundPosition: "center",
+        padding: "120px clamp(24px,5vw,80px) 100px", position: "relative", overflow: "hidden",
+      }}>
         <div aria-hidden="true" style={{ position: "absolute", top: "-20%", right: "-5%", width: 560, height: 560, borderRadius: "50%", background: "radial-gradient(circle, rgba(200,168,80,0.08) 0%, transparent 65%)" }}/>
         <div aria-hidden="true" style={{ position: "absolute", bottom: "-20%", left: "-5%", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,142,247,0.06) 0%, transparent 65%)" }}/>
         <div style={{ maxWidth: 1360, margin: "0 auto", position: "relative", zIndex: 1 }}>

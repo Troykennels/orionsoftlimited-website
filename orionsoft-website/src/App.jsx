@@ -687,11 +687,24 @@ function Nav({ currentPage, setCurrentPage }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [mobileProducts, setMobileProducts] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 48);
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
+  }, []);
+
+  // Below 768px the nav is otherwise transparent-until-scrolled, which on
+  // phones left the bar effectively invisible (white text on whatever
+  // section happened to sit behind it). Force a solid, always-legible white
+  // bar with dark text on small screens instead.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const h = () => setIsMobile(mq.matches);
+    h();
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
   }, []);
 
   useEffect(() => {
@@ -715,13 +728,18 @@ function Nav({ currentPage, setCurrentPage }) {
       onMouseLeave={() => setMegaOpen(false)}
       style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-        background: isHome
+        background: isMobile
+          ? "#FFFFFF"
+          : isHome
           ? (scrolled || megaOpen) ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.82)"
           : (scrolled || megaOpen) ? "rgba(6,8,16,0.92)" : "transparent",
-        backdropFilter: (scrolled || megaOpen) ? "blur(20px) saturate(1.4)" : "none",
-        borderBottom: (scrolled || megaOpen)
+        backdropFilter: isMobile ? "none" : (scrolled || megaOpen) ? "blur(20px) saturate(1.4)" : "none",
+        borderBottom: isMobile
+          ? "1px solid rgba(6,24,40,0.08)"
+          : (scrolled || megaOpen)
           ? `1px solid ${isHome ? "rgba(6,24,40,0.08)" : "rgba(255,255,255,0.06)"}`
           : "none",
+        boxShadow: isMobile ? "0 2px 12px rgba(6,24,40,0.06)" : "none",
         transition: "all 0.4s ease",
       }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 clamp(20px, 4vw, 40px)", display: "flex", justifyContent: "space-between", alignItems: "center", height: 70 }}>
@@ -729,7 +747,7 @@ function Nav({ currentPage, setCurrentPage }) {
         <button type="button" onClick={() => go("home")}
           style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
           <OrionLogo size={30} gradientId="nav-logo" />
-          <span style={{ fontSize: 18, fontWeight: 800, color: isHome ? "#061828" : C.white, fontFamily: font, letterSpacing: "-0.04em" }}>
+          <span style={{ fontSize: 18, fontWeight: 800, color: (isHome || isMobile) ? "#061828" : C.white, fontFamily: font, letterSpacing: "-0.04em" }}>
             Orion<span style={{ color: C.gold }}>Soft</span>
           </span>
         </button>
@@ -793,7 +811,7 @@ function Nav({ currentPage, setCurrentPage }) {
           style={{ display: "none", background: "none", border: "none", cursor: "pointer", padding: 8 }}>
           {[0,1,2].map(i => (
             <div key={i} style={{
-              width: 22, height: 1.5, background: isHome ? "#061828" : C.white, marginBottom: i < 2 ? 6 : 0,
+              width: 22, height: 1.5, background: (isHome || isMobile) ? "#061828" : C.white, marginBottom: i < 2 ? 6 : 0,
               transition: "all 0.3s",
               transform: menuOpen ? (i===0 ? "rotate(45deg) translate(5px,5px)" : i===1 ? "scaleX(0)" : "rotate(-45deg) translate(5px,-5px)") : "none",
               opacity: menuOpen && i===1 ? 0 : 1,
@@ -5767,7 +5785,7 @@ export default function App() {
 
   return (
   <CMSContext.Provider value={cms}>
-    <div style={{ overflowX: "hidden", background: C.bg, minHeight: "100vh" }}>
+    <div style={{ background: C.bg, minHeight: "100vh" }}>
       {/* Global styles are in src/App.css */}
 
       {currentPage !== "admin" && <AnnouncementBar />}

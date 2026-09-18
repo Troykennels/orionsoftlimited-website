@@ -544,7 +544,8 @@ export default function ContactPage({ setCurrentPage }) {
       {/* Hero */}
       <section style={{
         padding: "108px clamp(20px, 5vw, 60px) 72px",
-        background: `radial-gradient(circle at 70% 30%, ${C.blueGlow}, transparent 40%), radial-gradient(circle at 20% 20%, ${C.goldGlow}, transparent 35%), linear-gradient(180deg, #04060C 0%, ${C.bg} 100%)`,
+        background: `radial-gradient(circle at 70% 30%, ${C.blueGlow}, transparent 40%), radial-gradient(circle at 20% 20%, ${C.goldGlow}, transparent 35%), linear-gradient(180deg, rgba(4,6,12,0.93) 0%, rgba(6,8,16,0.93) 100%), url(/assets/cloud-infrastructure-team.jpg)`,
+        backgroundSize: "cover", backgroundPosition: "center",
         position: "relative", overflow: "hidden",
       }}>
         <div style={{ position: "absolute", inset: 0, opacity: 0.06, backgroundImage: "linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)", backgroundSize: "72px 72px", maskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)", pointerEvents: "none" }} aria-hidden="true" />
