@@ -79,6 +79,29 @@ function VisitDetail({ id, onClose }) {
   );
 }
 
+const KIND_LABEL = { overlay: "pop-up blocked by another app", denied: "location blocked", camera_denied: "camera blocked", off: "GPS switched off", timeout: "no GPS signal", no_camera: "no camera", camera_busy: "camera busy", notif_denied: "notifications blocked", unsupported: "browser not supported", insecure: "not on https", unknown: "not tested" };
+
+function SpotDetail({ id, onClose }) {
+  const [s, setS] = useState(null);
+  useEffect(() => { call(`/api/admin/field?view=spotchecks&id=${encodeURIComponent(id)}`).then(j => setS(j.spotcheck)).catch(e => toast(e.message, "err")); }, [id]);
+  if (!s) return <Modal title="Loading…" onClose={onClose}><EmptyState>Loading evidence…</EmptyState></Modal>;
+  const r = s.response;
+  return (
+    <Modal title={`Location check · ${s.employeeName}`} onClose={onClose} width={640}>
+      <div style={{ fontSize: 13, color: C.text, lineHeight: 1.8, marginBottom: 10 }}>
+        <div><strong style={{ color: C.heading }}>Sent:</strong> {dt(s.issuedAt)} · {s.reason} · due {time(s.dueAt)}</div>
+        <div><strong style={{ color: C.heading }}>Status:</strong> {s.status}{r?.at ? ` · answered at ${time(r.at)}` : ""}</div>
+        {r?.geo && <div><strong style={{ color: C.heading }}>Location:</strong> <a href={maps(r.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>open map (±{r.geo.accuracy}m)</a></div>}
+        {s.distanceFromLastVisit != null && <div><strong style={{ color: C.heading }}>Distance from checked-in visit ({s.lastVisitOrganisation}):</strong> {s.distanceFromLastVisit >= 1000 ? `${(s.distanceFromLastVisit / 1000).toFixed(1)}km` : `${s.distanceFromLastVisit}m`}</div>}
+        {r && <div><strong style={{ color: C.heading }}>Device:</strong> {device(r.ua)} · {r.ip}</div>}
+      </div>
+      {r?.photoDataUrl ? <img src={r.photoDataUrl} alt="Location check photo" style={{ width: "100%", borderRadius: 12 }} /> : <EmptyState>{r ? "Answered without a photo" : "No response yet"}</EmptyState>}
+      {r && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 6 }}>Photo: {r.photoSource === "camera" ? "taken live with the camera" : "uploaded from gallery"}</div>}
+      {(s.flags || []).map(f => <div key={f.code} style={{ fontSize: 13, color: C.rose, marginTop: 6 }}>• {f.label}</div>)}
+    </Modal>
+  );
+}
+
 export function AttendanceFieldSection() {
   const [tab, setTab] = useState("today");
   const [range, setRange] = useState({ from: monthStart(), to: lagosToday() });
@@ -87,6 +110,7 @@ export function AttendanceFieldSection() {
   const [visits, setVisits] = useState(null);
   const [spots, setSpots] = useState(null);
   const [openVisit, setOpenVisit] = useState(null);
+  const [openSpot, setOpenSpot] = useState(null);
   const [openDay, setOpenDay] = useState(null);
 
   const load = useCallback(async () => {
@@ -139,7 +163,8 @@ export function AttendanceFieldSection() {
           <Btn small variant="ghost" icon={Download} onClick={() => csv("field-visits", ["Date", "Name", "Organisation", "Purpose", "Check-in", "Check-out", "Minutes", "Latitude", "Longitude", "Accuracy", "Trust", "Level", "Client confirmation", "Flags"], visits.visits.map(v => [v.checkIn.at.slice(0, 10), v.employeeName, v.organisation, v.purpose, time(v.checkIn.at), time(v.checkOut?.at), v.durationMin ?? "", v.checkIn.geo?.lat ?? "", v.checkIn.geo?.lng ?? "", v.checkIn.geo?.accuracy ?? "", v.trust, v.level, v.confirmation?.status, (v.flags || []).filter(f => f.penalty < 0).map(f => f.code).join(" ")]))}>Visits CSV</Btn>
         </div>
       </SectionCard>
-      <Tabs active={tab} onChange={setTab} tabs={[{ id: "today", label: "Today" }, { id: "timesheet", label: "Timesheet" }, { id: "visits", label: "Field visits", count: flaggedVisits.length }, { id: "map", label: "Map" }, { id: "spots", label: "Location checks" }]} />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}><Btn small variant="ghost" onClick={() => { load(); toast("Refreshed"); }}>Refresh</Btn></div>
+      <Tabs active={tab} onChange={id => { setTab(id); load(); }} tabs={[{ id: "today", label: "Today" }, { id: "timesheet", label: "Timesheet" }, { id: "visits", label: "Field visits", count: flaggedVisits.length }, { id: "map", label: "Map" }, { id: "spots", label: "Location checks" }]} />
 
       {tab === "today" && (
         <Grid min={320}>
@@ -162,6 +187,22 @@ export function AttendanceFieldSection() {
             <SectionCard>
               <SectionTitle>Not clocked in ({att.absentToday.length})</SectionTitle>
               {att.absentToday.length === 0 ? <EmptyState>Everyone is in.</EmptyState> : att.absentToday.map(p => <div key={p.id} style={{ fontSize: 13.5, color: C.text, padding: "5px 0" }}>• {p.fullName}</div>)}
+            </SectionCard>
+            <SectionCard>
+              <SectionTitle sub="From each person's 'Set up your phone' test. Fix problems before sending a location check.">Phone readiness</SectionTitle>
+              {(att.devices || []).length === 0 && <EmptyState>No staff yet.</EmptyState>}
+              {(att.devices || []).map(d => {
+                const c = d.check;
+                const problem = c && !c.ready ? [c.location !== "ok" && `GPS: ${KIND_LABEL[c.location] || c.location}`, c.camera !== "ok" && `camera: ${KIND_LABEL[c.camera] || c.camera}`].filter(Boolean).join(" · ") : "";
+                return (
+                  <div key={d.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "6px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13, flexWrap: "wrap" }}>
+                    <span style={{ color: C.text }}>{d.fullName}</span>
+                    {!c ? <Badge color={C.textMuted}>not set up yet</Badge>
+                      : c.ready ? <Badge color={C.mint}>ready{c.notifications === "ok" ? " · alerts on" : ""}{c.accuracy ? ` · ±${c.accuracy}m` : ""}</Badge>
+                      : <Badge color={C.rose}>{problem}</Badge>}
+                  </div>
+                );
+              })}
             </SectionCard>
             {noGps.length > 0 && <SectionCard style={{ borderColor: `${C.amber}55` }}><SectionTitle>Clocked in without location</SectionTitle>{noGps.map(r => <div key={r.id} style={{ fontSize: 13.5, color: C.text, padding: "4px 0" }}>• {r.employeeName} at {time(r.clockIn)}</div>)}</SectionCard>}
             {att.onLeaveToday.length > 0 && <SectionCard><SectionTitle>On leave</SectionTitle>{att.onLeaveToday.map(p => <div key={p.id} style={{ fontSize: 13.5, color: C.text, padding: "4px 0" }}>• {p.fullName}</div>)}</SectionCard>}
@@ -247,6 +288,7 @@ export function AttendanceFieldSection() {
                 </div>
                 <div style={{ fontSize: 12, color: C.textMuted }}>{dt(s.issuedAt)} · {s.reason}{s.response?.at ? ` · answered ${time(s.response.at)}` : ""}{s.response?.geo ? " · " : ""}{s.response?.geo && <a href={maps(s.response.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map</a>}</div>
                 {(s.flags || []).map(f => <div key={f.code} style={{ fontSize: 12, color: C.rose }}>• {f.label}</div>)}
+                {s.response && <Btn small variant="ghost" icon={Eye} onClick={() => setOpenSpot(s.id)} style={{ marginTop: 6 }}>Evidence</Btn>}
               </div>
             ))}
           </SectionCard>
@@ -254,6 +296,7 @@ export function AttendanceFieldSection() {
       )}
 
       {openVisit && <VisitDetail id={openVisit} onClose={() => setOpenVisit(null)} />}
+      {openSpot && <SpotDetail id={openSpot} onClose={() => setOpenSpot(null)} />}
       {openDay && (
         <Modal title={`${openDay.employeeName} · ${openDay.date}`} onClose={() => setOpenDay(null)} width={640}>
           {(openDay.events || []).length === 0 && <EmptyState>No event trail for this day.</EmptyState>}

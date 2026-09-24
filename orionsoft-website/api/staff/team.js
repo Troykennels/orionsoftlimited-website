@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       attendanceToday: attendance.find(a => a.employeeId === e.id && a.date === today) || null,
       leaveUsed: annualUsed, leaveAllowance: Number(e.leaveAllowance) || 20,
       points: board.find(b => b.id === e.id)?.points || 0,
+      deviceCheck: e.deviceCheck ? { at: e.deviceCheck.at, ready: e.deviceCheck.ready, location: e.deviceCheck.location, camera: e.deviceCheck.camera } : null,
     };
   });
 

@@ -188,12 +188,15 @@ export default async function handler(req, res) {
 
 export async function issueSpotCheck(employee, reason = "Random daily check", requestedBy = null) {
   const now = Date.now();
+  const { get } = await import("../store.js");
+  const { OFFICE_CONFIG_KEY } = await import("./office.js");
+  const windowMin = Math.min(60, Math.max(10, Number((await get(OFFICE_CONFIG_KEY))?.spotWindowMinutes) || SPOT_WINDOW_MIN));
   const s = {
-    id: newId("spot"), employeeId: employee.id, issuedAt: new Date(now).toISOString(), dueAt: new Date(now + SPOT_WINDOW_MIN * 60000).toISOString(),
+    id: newId("spot"), employeeId: employee.id, issuedAt: new Date(now).toISOString(), dueAt: new Date(now + windowMin * 60000).toISOString(),
     status: "pending", reason, requestedBy, response: null, flags: [],
   };
   await putRecord("spotchecks", s.id, s);
-  await notify([employee.id], { type: "spotcheck", title: `📍 Location check: respond within ${SPOT_WINDOW_MIN} minutes`, body: "Open the Staff Office and tap Confirm my location.", link: "visits" });
+  await notify([employee.id], { type: "spotcheck", title: `📍 Location check: respond within ${windowMin} minutes`, body: "Tap to open the Staff Office and confirm where you are.", link: "visits" });
   try { await notifySpotCheck(employee, s); } catch { /* best-effort */ }
   return s;
 }

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { MapPin, LogIn, LogOut, ShieldCheck, ShieldAlert, Send, Copy, Clock, Crosshair } from "lucide-react";
+import { MapPin, LogIn, LogOut, ShieldCheck, ShieldAlert, Send, Copy, Clock } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, fmtDateTime, timeAgo, waLink, copyText, firstName } from "../api.js";
 import { Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Field, Grid, Modal, EmptyState, PageHeader, toast } from "../components.jsx";
 import { getDeviceId, getLocation, mapsLink } from "../geo.js";
+import LocationStep from "../LocationStep.jsx";
+import PhoneCheck from "../PhoneCheck.jsx";
 import CameraCapture from "../CameraCapture.jsx";
 import { useOffice } from "../office.js";
 
@@ -44,16 +46,9 @@ export function useConsent() {
   return { ensure, modal };
 }
 
-function GeoStatus({ state }) {
-  if (state.loading) return <div style={{ fontSize: 13, color: C.textMuted, display: "flex", gap: 6, alignItems: "center" }}><Crosshair size={14} /> Getting your GPS location…</div>;
-  if (state.geo) return <div style={{ fontSize: 13, color: state.geo.accuracy > 150 ? C.amber : C.mint, display: "flex", gap: 6, alignItems: "center" }}><MapPin size={14} /> Location captured (±{Math.round(state.geo.accuracy)}m){state.geo.accuracy > 150 ? ". Move outside or turn on GPS for a better fix" : ""}</div>;
-  if (state.error) return <div style={{ fontSize: 13, color: C.rose }}>⚠ {state.error}. The visit will be recorded without location and will score lower.</div>;
-  return null;
-}
-
 function CheckInFlow({ onClose, onDone }) {
   const { me, can } = useOffice();
-  const [geoState, setGeoState] = useState({ loading: true });
+  const [loc, setLoc] = useState(null); // { geo } | { error, kind } once resolved
   const [photo, setPhoto] = useState(null);
   const [orgs, setOrgs] = useState([]);
   const [f, setF] = useState({ organisation: "", ref: "", purpose: "", contactName: "", contactPhone: "", contactEmail: "", notes: "" });
@@ -61,7 +56,6 @@ function CheckInFlow({ onClose, onDone }) {
   const [done, setDone] = useState(null);
 
   useEffect(() => {
-    getLocation().then(r => setGeoState({ loading: false, ...r }));
     (async () => {
       const list = [];
       if (can("pipeline") || can("pipeline.all")) {
@@ -87,7 +81,7 @@ function CheckInFlow({ onClose, onDone }) {
         action: "check-in", organisation: f.organisation, purpose: f.purpose, notes: f.notes,
         contactName: f.contactName, contactPhone: f.contactPhone, contactEmail: f.contactEmail,
         dealId: kind === "deal" ? id : null, stakeholderId: kind === "stk" ? id : null,
-        geo: geoState.geo || null, geoError: geoState.error || null,
+        geo: loc?.geo || null, geoError: loc?.error || null,
         photoDataUrl: photo?.dataUrl || "", photoHash: photo?.hash || "", photoSource: photo?.source || null,
         deviceId: getDeviceId(),
       } });
@@ -120,12 +114,11 @@ function CheckInFlow({ onClose, onDone }) {
       <div style={{ display: "grid", gap: 14 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>1 · LOCATION</div>
-          <GeoStatus state={geoState} />
-          {!geoState.loading && <Btn small variant="ghost" icon={Crosshair} onClick={() => { setGeoState({ loading: true }); getLocation().then(r => setGeoState({ loading: false, ...r })); }} style={{ marginTop: 6 }}>Refresh location</Btn>}
+          <LocationStep onChange={setLoc} />
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>2 · PHOTO AT THE SITE (signboard, reception or meeting)</div>
-          <CameraCapture name={me.fullName} geo={geoState.geo} onCapture={setPhoto} />
+          <CameraCapture name={me.fullName} geo={loc?.geo} onCapture={setPhoto} />
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>3 · WHO ARE YOU VISITING?</div>
@@ -138,7 +131,8 @@ function CheckInFlow({ onClose, onDone }) {
           </Grid>
           <Input value={f.purpose} onChange={e => setF(x => ({ ...x, purpose: e.target.value }))} placeholder="Purpose (demo, follow-up, training…)" style={{ marginTop: 8 }} />
         </div>
-        <Btn icon={LogIn} disabled={busy || geoState.loading || !f.organisation.trim()} onClick={submit}>{busy ? "Checking in…" : "Check in"}</Btn>
+        {!loc && <div style={{ fontSize: 12.5, color: C.textMuted }}>Share your location first (step 1).</div>}
+        <Btn icon={LogIn} disabled={busy || !loc || !f.organisation.trim()} onClick={submit}>{busy ? "Checking in…" : "Check in"}</Btn>
       </div>
     </Modal>
   );
@@ -146,26 +140,32 @@ function CheckInFlow({ onClose, onDone }) {
 
 function SpotCheckResponder({ spot, onDone }) {
   const { me } = useOffice();
-  const [geoState, setGeoState] = useState({ loading: true });
+  const [loc, setLoc] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [left, setLeft] = useState(() => Math.max(0, Date.parse(spot.dueAt) - Date.now()));
-  useEffect(() => { getLocation().then(r => setGeoState({ loading: false, ...r })); }, []);
   useEffect(() => { const t = setInterval(() => setLeft(Math.max(0, Date.parse(spot.dueAt) - Date.now())), 1000); return () => clearInterval(t); }, [spot.dueAt]);
   async function send() {
     setBusy(true);
     try {
-      await api("/api/staff/visits", { method: "POST", body: { action: "spot-respond", id: spot.id, geo: geoState.geo || null, photoDataUrl: photo?.dataUrl || "", photoHash: photo?.hash || "", photoSource: photo?.source || null, deviceId: getDeviceId() } });
+      await api("/api/staff/visits", { method: "POST", body: { action: "spot-respond", id: spot.id, geo: loc?.geo || null, photoDataUrl: photo?.dataUrl || "", photoHash: photo?.hash || "", photoSource: photo?.source || null, deviceId: getDeviceId() } });
       toast("Location confirmed. Thank you!");
       onDone();
     } catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
   }
   return (
     <SectionCard style={{ borderColor: `${C.amber}88`, background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(15,24,40,0.95))", marginBottom: 16 }}>
-      <SectionTitle sub={`${spot.reason}. Take a quick live photo of where you are.`}>📍 Location check · {Math.floor(left / 60000)}:{String(Math.floor(left / 1000) % 60).padStart(2, "0")} left</SectionTitle>
-      <GeoStatus state={geoState} />
-      <div style={{ maxWidth: 420, marginTop: 10 }}><CameraCapture name={me.fullName} geo={geoState.geo} onCapture={setPhoto} selfie /></div>
-      <Btn style={{ marginTop: 10 }} disabled={busy || geoState.loading} onClick={send}>{busy ? "Sending…" : "Confirm my location"}</Btn>
+      <SectionTitle sub={`${spot.reason}. Two quick steps: share your location, then take a live photo.`}>📍 Location check · {Math.floor(left / 60000)}:{String(Math.floor(left / 1000) % 60).padStart(2, "0")} left</SectionTitle>
+      <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "4px 0 6px" }}>1 · LOCATION</div>
+      <LocationStep onChange={setLoc} />
+      {loc && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "14px 0 6px" }}>2 · PHOTO OF WHERE YOU ARE</div>
+          <div style={{ maxWidth: 420 }}><CameraCapture name={me.fullName} geo={loc.geo} onCapture={setPhoto} selfie /></div>
+          <Btn style={{ marginTop: 12 }} disabled={busy || !photo} onClick={send}>{busy ? "Sending…" : "Confirm my location"}</Btn>
+          {!photo && <Btn small variant="ghost" style={{ marginTop: 12, marginLeft: 8 }} disabled={busy} onClick={send}>Send without photo</Btn>}
+        </>
+      )}
     </SectionCard>
   );
 }
@@ -206,6 +206,7 @@ export default function FieldVisits() {
       <PageHeader title="Field Visits" sub="Check in at every client visit with GPS and a live photo. Client-confirmed visits count the most toward your performance."
         action={!a && <Btn icon={LogIn} onClick={startCheckIn}>Check in at a client</Btn>} />
       {data.pendingSpotChecks.map(s => <SpotCheckResponder key={s.id} spot={s} onDone={load} />)}
+      <PhoneCheck />
 
       <Grid min={160} style={{ marginBottom: 16 }}>
         <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Visits today</div><div style={{ fontSize: 24, fontWeight: 800, color: C.blue }}>{todays.length}</div></SectionCard>

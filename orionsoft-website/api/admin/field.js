@@ -46,7 +46,9 @@ export default async function handler(req, res) {
       const absentToday = weekday === 0 || weekday === 6 ? [] : employees
         .filter(e => e.status === "active" && e.staffRole !== "owner" && !onLeave.has(e.id) && !attendance.some(a => a.employeeId === e.id && a.date === today && a.clockIn))
         .map(e => ({ id: e.id, fullName: e.fullName }));
-      return res.json({ ok: true, from, to, today, rows, absentToday, onLeaveToday: [...onLeave].map(id => ({ id, fullName: name(id) })) });
+      const devices = employees.filter(e => e.status === "active" && e.staffRole !== "owner")
+        .map(e => ({ id: e.id, fullName: e.fullName, check: e.deviceCheck || null }));
+      return res.json({ ok: true, from, to, today, rows, absentToday, onLeaveToday: [...onLeave].map(id => ({ id, fullName: name(id) })), devices });
     }
 
     if (view === "visits") {

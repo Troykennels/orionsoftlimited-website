@@ -13,17 +13,86 @@ export function getDeviceId() {
   } catch { return ""; }
 }
 
-// One high-accuracy GPS fix. Resolves { geo } or { error } (never throws), so
-// a denied permission is recorded honestly instead of blocking the action.
-export function getLocation({ timeout = 15000 } = {}) {
+export async function permissionState(name) {
+  try { return (await navigator.permissions.query({ name })).state; } catch { return "unknown"; }
+}
+
+// Why location failed, so the phone owner gets the right fix:
+//  overlay    Android refused to show the prompt (another app is drawing on
+//             top: chat bubbles, Truecaller, screen filters, floating windows)
+//  denied     location is blocked for this site (or for the browser)
+//  off        the phone's GPS/location service is switched off
+//  timeout    no fix in time (indoors, weak signal)
+//  unsupported / insecure  browser can't do it
+async function classify(err) {
+  if (!window.isSecureContext) return "insecure";
+  if (!err) return "unsupported";
+  if (err.code === 1) {
+    const state = await permissionState("geolocation");
+    // Denied while the permission is still "prompt" = the prompt never showed.
+    return state === "prompt" ? "overlay" : "denied";
+  }
+  if (err.code === 2) return "off";
+  if (err.code === 3) return "timeout";
+  return "unsupported";
+}
+const MESSAGES = {
+  overlay: "Your phone blocked the location prompt because another app is showing on top of the screen",
+  denied: "Location is blocked for this site",
+  off: "Your phone's location (GPS) is switched off",
+  timeout: "Couldn't get a GPS signal in time",
+  insecure: "Location only works on the secure https site",
+  unsupported: "This browser can't share location",
+};
+
+// Best GPS fix within a short window: phones often report a rough network
+// position first (±1-2 km) and sharpen over a few seconds, so we watch and
+// keep the most accurate reading, stopping early once it's good enough.
+// Resolves { geo } or { error, kind } and never throws.
+export function getLocation({ maxWait = 12000, goodEnough = 30, onProgress } = {}) {
   return new Promise(resolve => {
-    if (!navigator.geolocation) { resolve({ error: "This browser can't share location" }); return; }
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ geo: { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() } }),
-      err => resolve({ error: err.code === 1 ? "Location permission was denied" : err.code === 3 ? "Location timed out" : "Location unavailable" }),
-      { enableHighAccuracy: true, timeout, maximumAge: 0 },
+    if (!navigator.geolocation) { resolve({ error: MESSAGES.unsupported, kind: "unsupported" }); return; }
+    let best = null, done = false, watchId = null;
+    const finish = async (err) => {
+      if (done) return;
+      done = true;
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timer);
+      if (best) { resolve({ geo: best }); return; }
+      const kind = await classify(err);
+      resolve({ error: MESSAGES[kind], kind });
+    };
+    const timer = setTimeout(() => finish({ code: 3 }), maxWait);
+    watchId = navigator.geolocation.watchPosition(
+      p => {
+        const g = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() };
+        if (!best || g.accuracy < best.accuracy) { best = g; onProgress?.(g); }
+        if (g.accuracy <= goodEnough) finish();
+      },
+      err => finish(err),
+      { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 },
     );
   });
+}
+
+// Camera failures classified the same way.
+export async function classifyCameraError(e) {
+  if (!window.isSecureContext) return "insecure";
+  if (e?.name === "NotAllowedError") return (await permissionState("camera")) === "prompt" ? "overlay" : "camera_denied";
+  if (e?.name === "NotFoundError" || e?.name === "OverconstrainedError") return "no_camera";
+  if (e?.name === "NotReadableError") return "camera_busy";
+  return "camera_unknown";
+}
+
+export function phoneInfo() {
+  const ua = navigator.userAgent || "";
+  return {
+    ios: /iPhone|iPad|iPod/.test(ua),
+    android: /Android/.test(ua),
+    transsion: /TECNO|Infinix|itel/i.test(ua),
+    samsung: /SM-|Samsung/i.test(ua),
+    chrome: /Chrome\//.test(ua) && !/Edg\//.test(ua),
+  };
 }
 
 export const mapsLink = g => (g ? `https://www.google.com/maps?q=${g.lat},${g.lng}` : "");

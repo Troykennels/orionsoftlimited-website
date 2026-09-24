@@ -86,3 +86,8 @@
   .so-chat.has-active .so-chat-list { display: none; }
   .so-chat:not(.has-active) .so-chat-pane { display: none; }
 }
+
+/* "Finding your location" indicator */
+@keyframes so-pulse-kf { 0% { box-shadow: 0 0 0 0 rgba(79,142,247,0.6); } 70% { box-shadow: 0 0 0 10px rgba(79,142,247,0); } 100% { box-shadow: 0 0 0 0 rgba(79,142,247,0); } }
+.so-pulse { animation: so-pulse-kf 1.4s infinite; }
+@media (prefers-reduced-motion: reduce) { .so-pulse { animation: none; } }

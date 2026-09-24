@@ -445,6 +445,7 @@ function OfficeSettings({ data, reload }) {
         <Grid min={200}>
           <Field label="Work starts at"><Input type="time" value={cfg.workStart || "09:00"} onChange={e => setCfg(c => ({ ...c, workStart: e.target.value }))} /></Field>
           <Field label="Grace period (minutes before 'late')"><Input type="number" min="0" max="120" value={cfg.graceMinutes ?? 15} onChange={e => setCfg(c => ({ ...c, graceMinutes: e.target.value }))} /></Field>
+          <Field label="Location check: minutes to respond (10–60)"><Input type="number" min="10" max="60" value={cfg.spotWindowMinutes ?? 20} onChange={e => setCfg(c => ({ ...c, spotWindowMinutes: e.target.value }))} /></Field>
         </Grid>
         <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: C.text, marginTop: 12 }}>
           <input type="checkbox" checked={cfg.spotChecks !== false} onChange={e => setCfg(c => ({ ...c, spotChecks: e.target.checked }))} />

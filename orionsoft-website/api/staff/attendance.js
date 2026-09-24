@@ -50,6 +50,20 @@ export default async function handler(req, res) {
     const meta = { ...requestMeta(req), deviceId: String(b.deviceId || "").slice(0, 64) };
     const geo = cleanGeo(b.geo);
 
+    // Result of the in-app "Check my phone" test, so admin/managers can see
+    // who is ready for GPS/camera verification before sending a check.
+    if (b.action === "device-check") {
+      const ok = v => (v === "ok" ? "ok" : String(v || "unknown").slice(0, 30));
+      const fresh = await getRecord("employees", me.id);
+      fresh.deviceCheck = {
+        at: new Date().toISOString(), location: ok(b.location), accuracy: Number.isFinite(Number(b.accuracy)) ? Math.round(b.accuracy) : null,
+        camera: ok(b.camera), notifications: ok(b.notifications), ua: meta.ua,
+        ready: b.location === "ok" && b.camera === "ok",
+      };
+      await putRecord("employees", fresh.id, fresh);
+      return res.json({ ok: true, deviceCheck: fresh.deviceCheck });
+    }
+
     if (b.action === "consent") {
       const fresh = await getRecord("employees", me.id);
       fresh.locationConsentAt = new Date().toISOString();

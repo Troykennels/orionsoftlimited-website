@@ -18,6 +18,7 @@ export const DEFAULT_OFFICE_CONFIG = {
   workStart: "09:00",
   graceMinutes: 15,
   spotChecks: true,
+  spotWindowMinutes: 20,
   whatsappGroupLink: "",
   quickLinks: [
     { label: "Company website", url: "https://orionsoftlimited.com" },

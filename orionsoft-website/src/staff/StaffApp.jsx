@@ -11,6 +11,7 @@ import { OfficeContext } from "./office.js";
 import StaffLogin, { loadGoogleIdentity } from "./StaffLogin.jsx";
 import PersonDrawer from "./modules/PersonDrawer.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
+import { registerServiceWorker, applyStaffManifest } from "./push.js";
 import "./staff.css";
 
 const Lobby = lazy(() => import("./modules/Lobby.jsx"));
@@ -198,6 +199,9 @@ export default function StaffApp() {
     const t = setInterval(poll, 20_000);
     return () => { clearTimeout(first); clearInterval(t); };
   }, [session]);
+
+  // Installable app + phone notifications for the office.
+  useEffect(() => { applyStaffManifest(); registerServiceWorker(); }, []);
 
   useEffect(() => {
     function onPop() { setRoute(parseRoute()); }

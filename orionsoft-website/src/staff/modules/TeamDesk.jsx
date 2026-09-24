@@ -33,7 +33,7 @@ export default function TeamDesk() {
           <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Filter by name, department or role…" style={{ maxWidth: 340, marginBottom: 12 }} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760, fontFamily: font }}>
-              <thead><tr>{["Person", "Status", "Today", "Tasks", "Goals", "Annual leave", "Points"].map(h => <th key={h} style={{ textAlign: "left", fontSize: 11.5, color: C.textMuted, padding: "8px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Person", "Status", "Today", "Phone", "Tasks", "Goals", "Annual leave", "Points"].map(h => <th key={h} style={{ textAlign: "left", fontSize: 11.5, color: C.textMuted, padding: "8px", borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
               <tbody>
                 {people.map(p => {
                   const pres = PRESENCE[p.presence?.status] || PRESENCE.offline;
@@ -43,6 +43,7 @@ export default function TeamDesk() {
                       <td style={{ padding: 8 }}><div style={{ display: "flex", gap: 8, alignItems: "center" }}><Avatar src={p.avatarDataUrl} name={p.fullName} size={30} presence={p.presence?.status} /><div><div style={{ fontSize: 13.5, fontWeight: 700, color: C.heading }}>{p.fullName}</div><div style={{ fontSize: 11.5, color: C.textMuted }}>{p.roleLabel} · {p.department || "—"}</div></div></div></td>
                       <td style={{ padding: 8 }}>{p.onLeaveToday ? <Badge color={C.rose}>On leave</Badge> : <Badge color={pres.color}>{pres.label}</Badge>}</td>
                       <td style={{ padding: 8, fontSize: 12.5, color: C.text }}>{att?.clockIn ? `In ${new Date(att.clockIn).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}${att.clockOut ? " · out" : ""}${att.standup ? " · standup ✓" : ""}` : <span style={{ color: C.textMuted }}>Not in yet</span>}</td>
+                      <td style={{ padding: 8 }}>{!p.deviceCheck ? <Badge color={C.textMuted}>not set up</Badge> : p.deviceCheck.ready ? <Badge color={C.mint}>ready</Badge> : <Badge color={C.rose}>{p.deviceCheck.location !== "ok" ? "GPS problem" : "camera problem"}</Badge>}</td>
                       <td style={{ padding: 8, fontSize: 12.5 }}><span style={{ color: C.text }}>{p.openTasks} open</span>{p.overdueTasks ? <span style={{ color: C.rose, fontWeight: 700 }}> · {p.overdueTasks} overdue</span> : null}</td>
                       <td style={{ padding: 8, minWidth: 110 }}>{p.goalProgress === null ? <span style={{ fontSize: 12, color: C.textMuted }}>No goals</span> : <><div style={{ fontSize: 11.5, color: C.text, marginBottom: 3 }}>{p.goalCount} · {p.goalProgress}%</div><Progress value={p.goalProgress} height={5} /></>}</td>
                       <td style={{ padding: 8, fontSize: 12.5, color: C.text }}>{p.leaveUsed}/{p.leaveAllowance} days</td>

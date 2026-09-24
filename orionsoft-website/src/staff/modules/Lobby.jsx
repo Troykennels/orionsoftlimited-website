@@ -9,6 +9,8 @@ import { Avatar, Badge, Btn, SectionCard, SectionTitle, StatCard, Textarea, Sele
 import { useOffice } from "../office.js";
 import { getDeviceId, getLocation } from "../geo.js";
 import { useConsent } from "./FieldVisits.jsx";
+import DeviceHelp from "../DeviceHelp.jsx";
+import PhoneCheck from "../PhoneCheck.jsx";
 
 function greeting() {
   const h = Number(new Date().toLocaleString("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", hour12: false }));
@@ -34,18 +36,26 @@ function DayFlow({ onChanged }) {
   const load = useCallback(() => api("/api/staff/attendance").then(setAtt).catch(() => {}), []);
   useEffect(() => { load(); }, [load]);
   const { ensure, modal } = useConsent();
+  const [locMsg, setLocMsg] = useState("");
+  const [locFail, setLocFail] = useState(null); // { kind, body, okMsg }
 
-  async function act(body, okMsg) {
+  async function act(body, okMsg, { skipLocation = false } = {}) {
     const locate = body.action === "clock-in" || body.action === "clock-out";
-    if (locate && !(await ensure())) return false;
+    if (locate && !skipLocation && !(await ensure())) return false;
     setBusy(true);
     try {
       let extra = {};
       if (locate) {
-        const loc = await getLocation();
-        extra = { geo: loc.geo || null, deviceId: getDeviceId() };
-        if (!loc.geo) toast(`${loc.error}. Your ${body.action === "clock-in" ? "clock-in" : "clock-out"} was recorded without location.`, "err");
+        extra = { geo: null, deviceId: getDeviceId() };
+        if (!skipLocation) {
+          setLocMsg("Getting your location…");
+          const loc = await getLocation({ maxWait: 10000, goodEnough: 50, onProgress: g => setLocMsg(`Getting your location… ±${Math.round(g.accuracy)}m`) });
+          setLocMsg("");
+          if (!loc.geo) { setLocFail({ kind: loc.kind, body, okMsg }); return false; }
+          extra.geo = loc.geo;
+        }
       }
+      setLocFail(null);
       await api("/api/staff/attendance", { method: "POST", body: { ...body, ...extra } });
       toast(okMsg);
       await load(); onChanged();
@@ -60,7 +70,16 @@ function DayFlow({ onChanged }) {
   return (
     <div style={{ background: "rgba(6,8,16,0.55)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(10px)", borderRadius: 14, padding: 16, minWidth: 260 }}>
       {modal}
+      {locFail && (
+        <Modal title={locFail.body.action === "clock-in" ? "Clock in: location needed" : "Clock out: location needed"} onClose={() => setLocFail(null)} width={520}>
+          <DeviceHelp kind={locFail.kind}
+            onRetry={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg).then(ok => ok && f.body.action === "clock-in" && !rec?.standup && setStandupOpen(true)); }}
+            onSkip={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg, { skipLocation: true }); }}
+            skipLabel={`${locFail.body.action === "clock-in" ? "Clock in" : "Clock out"} without location (flagged)`} />
+        </Modal>
+      )}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.gold, marginBottom: 8 }}>MY DAY</div>
+      {locMsg && <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontSize: 13, marginBottom: 8 }}><span className="so-pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: C.blue }} />{locMsg}</div>}
       {!att && <div style={{ color: C.textMuted, fontSize: 13 }}>Loading…</div>}
       {att && !clockedIn && (
         <>
@@ -142,6 +161,7 @@ export default function Lobby() {
   const { office, me, directory, navigate, openPerson, person, can, reload, openLink } = useOffice();
   const [tasks, setTasks] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [phoneReady, setPhoneReady] = useState(() => { try { return !!localStorage.getItem("so_phone_ready"); } catch { return true; } });
   const [anns, setAnns] = useState([]);
 
   useEffect(() => {
@@ -189,6 +209,8 @@ export default function Lobby() {
           <DayFlow onChanged={reload} />
         </div>
       </section>
+
+      {!phoneReady && <PhoneCheck compact onReady={() => { try { localStorage.setItem("so_phone_ready", "1"); } catch { /* ignore */ } setTimeout(() => setPhoneReady(true), 1500); }} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 20 }}>
         {quick.map(q => (

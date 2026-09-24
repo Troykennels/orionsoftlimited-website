@@ -200,7 +200,11 @@ export function RichText({ text, directory, onMention, style = {} }) {
   return (
     <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6, ...style }}>
       {splitRichText(text, directory).map((p, i) => {
-        if (p.t === "mention") return <button key={i} type="button" onClick={() => onMention?.(p.id)} style={{ background: C.blueDim, color: C.blue, border: "none", borderRadius: 5, padding: "0 4px", font: "inherit", fontWeight: 700, cursor: "pointer" }}>{p.v}</button>;
+        // Mentions are only buttons when they do something; inside an already
+        // clickable row they render as highlighted text (no nested buttons).
+        if (p.t === "mention") return onMention
+          ? <button key={i} type="button" onClick={e => { e.stopPropagation(); onMention(p.id); }} style={{ background: C.blueDim, color: C.blue, border: "none", borderRadius: 5, padding: "0 4px", font: "inherit", fontWeight: 700, cursor: "pointer" }}>{p.v}</button>
+          : <span key={i} style={{ background: C.blueDim, color: C.blue, borderRadius: 5, padding: "0 4px", fontWeight: 700 }}>{p.v}</span>;
         if (p.t === "link") return <a key={i} href={p.v} target="_blank" rel="noreferrer noopener" style={{ color: C.blue, wordBreak: "break-all" }}>{p.v}</a>;
         return <span key={i}>{p.v}</span>;
       })}

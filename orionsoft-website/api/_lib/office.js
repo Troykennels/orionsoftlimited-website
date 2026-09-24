@@ -110,6 +110,11 @@ export async function notify(userIds, { type, title, body = "", link = "", actor
       await push(notifKey(id), { id: newId("ntf"), type, title, body: String(body).slice(0, 240), link, actorId, at: new Date().toISOString() });
       await ltrim(notifKey(id), 200);
     } catch { /* notifications are best-effort */ }
+    // Also buzz their phone (if they turned on phone notifications).
+    try {
+      const { sendPush } = await import("./push.js");
+      await sendPush(id, { title, body, link, type });
+    } catch { /* push is best-effort */ }
   }));
 }
 
