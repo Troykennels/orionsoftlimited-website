@@ -113,6 +113,58 @@ async function dailyJobs(today) {
   }
 }
 
+// Field verification: one unannounced spot check per weekday for staff who
+// are clocked in on field work, at a random time between 10:30 and 15:30
+// Lagos (the time is chosen fresh each day and never shown to staff).
+async function spotChecks(now) {
+  const today = lagosDate(now);
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
+  const { get: kget, set: kset } = await import("../store.js");
+  const { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } = await import("../staff/office.js");
+  const cfg = { ...DEFAULT_OFFICE_CONFIG, ...((await kget(OFFICE_CONFIG_KEY)) || {}) };
+  const spots = await listRecords("spotchecks");
+
+  // Close anything past its deadline and tell the manager.
+  for (const s of spots.filter(x => x.status === "pending" && Date.parse(x.dueAt) < Date.now())) {
+    s.status = "missed";
+    await putRecord("spotchecks", s.id, s);
+    const [employees, { getRoleCatalog, managerChain }] = await Promise.all([listRecords("employees"), import("./roles.js")]);
+    const emp = employees.find(e => e.id === s.employeeId);
+    const mgr = emp ? managerChain(emp, employees, await getRoleCatalog())[0] : null;
+    await notify([mgr?.id].filter(Boolean), { type: "field", title: `${emp?.fullName || "A staff member"} missed a location check`, body: "No response within the 20-minute window.", link: "team" });
+  }
+
+  if (!cfg.spotChecks || weekday === 0 || weekday === 6) return;
+  const planKey = `orionsoft:spot:plan:${today}`;
+  let plan = await kget(planKey);
+  if (!plan) {
+    plan = { minute: 630 + Math.floor(Math.random() * 300), done: false }; // 10:30–15:30
+    await kset(planKey, plan);
+  }
+  const minuteNow = now.getUTCHours() * 60 + now.getUTCMinutes();
+  if (plan.done || minuteNow < plan.minute) return;
+  plan.done = true;
+  await kset(planKey, plan);
+  const [employees, attendance] = await Promise.all([listRecords("employees"), listRecords("attendance")]);
+  const { issueSpotCheck } = await import("../staff/visits.js");
+  for (const a of attendance.filter(x => x.date === today && x.clockIn && !x.clockOut && ["field", "client_site", "hybrid"].includes(x.mode))) {
+    const emp = employees.find(e => e.id === a.employeeId && e.status === "active");
+    if (emp && !spots.some(s => s.employeeId === emp.id && s.issuedAt.slice(0, 10) === new Date().toISOString().slice(0, 10))) await issueSpotCheck(emp);
+  }
+}
+
+// Anyone still clocked in from a previous day forgot to clock out: close the
+// record at their last activity (no free hours) and flag it.
+async function forgottenClockOuts(today) {
+  for (const a of (await listRecords("attendance")).filter(x => x.date < today && x.clockIn && !x.clockOut)) {
+    a.clockOut = a.resumedAt || a.clockIn;
+    a.forgotClockOut = true;
+    a.events = [...(a.events || []), { type: "auto_close", at: new Date().toISOString() }];
+    await putRecord("attendance", a.id, a);
+    await notify([a.employeeId], { type: "attendance", title: `You didn't clock out on ${a.date}`, body: "Hours after your last activity weren't counted. Remember to clock out at the end of the day.", link: "home" });
+  }
+}
+
 // 15-minute meeting reminders (runs every tick, flag prevents repeats).
 async function meetingReminders() {
   const meetings = await listRecords("meetings");
@@ -138,6 +190,8 @@ export async function runAutomations() {
     // Daily jobs wait until 07:00 Lagos time so greetings land in the morning.
     if (now.getUTCHours() >= 7) await once(`orionsoft:automation:daily:${today}`, () => dailyJobs(today));
     await meetingReminders();
+    await spotChecks(now);
+    await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
   } catch (err) {
     console.error("[automations]", err.message);
   } finally { running = false; }

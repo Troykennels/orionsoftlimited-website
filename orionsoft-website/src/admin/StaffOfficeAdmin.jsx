@@ -441,6 +441,17 @@ function OfficeSettings({ data, reload }) {
         </Grid>
       </SectionCard>
       <SectionCard>
+        <SectionTitle sub="Used to measure lateness and to run field verification.">Working hours & field checks</SectionTitle>
+        <Grid min={200}>
+          <Field label="Work starts at"><Input type="time" value={cfg.workStart || "09:00"} onChange={e => setCfg(c => ({ ...c, workStart: e.target.value }))} /></Field>
+          <Field label="Grace period (minutes before 'late')"><Input type="number" min="0" max="120" value={cfg.graceMinutes ?? 15} onChange={e => setCfg(c => ({ ...c, graceMinutes: e.target.value }))} /></Field>
+        </Grid>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: C.text, marginTop: 12 }}>
+          <input type="checkbox" checked={cfg.spotChecks !== false} onChange={e => setCfg(c => ({ ...c, spotChecks: e.target.checked }))} />
+          Send one random location check each weekday to staff clocked in on field work
+        </label>
+      </SectionCard>
+      <SectionCard>
         <SectionTitle action={<Btn small icon={Plus} onClick={() => setCfg(c => ({ ...c, quickLinks: [...c.quickLinks, { label: "", url: "" }] }))}>Add link</Btn>}>Quick links</SectionTitle>
         {cfg.quickLinks.map((l, i) => (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 6, marginBottom: 6 }}>

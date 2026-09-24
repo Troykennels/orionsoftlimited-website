@@ -12,9 +12,13 @@ const StaffApp = isStaffPath ? React.lazy(() => import('./staff/StaffApp.jsx')) 
 const SignContractPage = isSignPath ? React.lazy(() => import('./pages/SignContractPage.jsx')) : null
 const PaymentCallbackPage = isPayCallbackPath ? React.lazy(() => import('./pages/PaymentCallbackPage.jsx')) : null
 const ApplicantPortal = isApplicantPath ? React.lazy(() => import('./pages/ApplicantPortal.jsx')) : null
+const isVisitConfirmPath = path.startsWith('/confirm-visit/')
+const VisitConfirm = isVisitConfirmPath ? React.lazy(() => import('./pages/VisitConfirm.jsx')) : null
 
 let root
-if (isStaffPath) {
+if (isVisitConfirmPath) {
+  root = <React.Suspense fallback={null}><VisitConfirm /></React.Suspense>
+} else if (isStaffPath) {
   root = <React.Suspense fallback={null}><StaffApp /></React.Suspense>
 } else if (isApplicantPath) {
   root = <React.Suspense fallback={null}><ApplicantPortal /></React.Suspense>

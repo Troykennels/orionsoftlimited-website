@@ -6,13 +6,14 @@ import {
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
-  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus,
+  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge,
 } from "lucide-react";
 import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
+import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -375,6 +376,8 @@ const NAV_GROUPS = [
     items: [
       { id: "employees",     label: "Employees & Roles", icon: UserCog },
       { id: "staff-office",  label: "Staff Office",     icon: Building2 },
+      { id: "attendance",    label: "Attendance & Field", icon: MapPin },
+      { id: "performance",   label: "Performance",      icon: Gauge },
       { id: "weekly-reports",label: "Weekly Reports",   icon: ClipboardList },
       { id: "leave-requests",label: "Leave Requests",   icon: Palmtree },
       { id: "appraisals",    label: "Performance Reviews", icon: Award },
@@ -6064,6 +6067,8 @@ function DashboardContent({ active, session, navigate }) {
     case "settings":      return <SettingsSection />;
     case "employees":      return <EmployeesSection session={session} />;
     case "staff-office":   return <StaffOfficeSection />;
+    case "attendance":     return <AttendanceFieldSection />;
+    case "performance":    return <PerformanceSection />;
     case "weekly-reports": return <WeeklyReportsSection />;
     case "leave-requests": return <LeaveRequestsSection />;
     case "payroll":        return <PayrollSection session={session} />;

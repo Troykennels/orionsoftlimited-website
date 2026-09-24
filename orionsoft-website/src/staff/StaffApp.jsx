@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import {
   Home, Newspaper, MessagesSquare, CalendarClock, ListChecks, Target, Share2, TrendingUp, Handshake,
   Users, CheckCheck, ClipboardList, Palmtree, Receipt, Wallet, Network, BookOpen, UserCircle, Bell,
-  Menu, LogOut, Search, Building2,
+  Menu, LogOut, Search, Building2, MapPin, Gauge,
 } from "lucide-react";
 import { C, font, PRESENCE } from "./theme.js";
 import { api, timeAgo } from "./api.js";
@@ -31,6 +31,8 @@ const Reports = lazy(() => import("./modules/Reports.jsx"));
 const Leave = lazy(() => import("./modules/Leave.jsx"));
 const Payslips = lazy(() => import("./modules/Payslips.jsx"));
 const Profile = lazy(() => import("./modules/Profile.jsx"));
+const FieldVisits = lazy(() => import("./modules/FieldVisits.jsx"));
+const Performance = lazy(() => import("./modules/Performance.jsx"));
 
 // Navigation, filtered by what the signed-in person's role allows.
 function buildNav(can, counts) {
@@ -45,6 +47,8 @@ function buildNav(can, counts) {
       { id: "tasks", label: "Tasks", icon: ListChecks, badge: counts.tasks },
       { id: "goals", label: "Goals & Progress", icon: Target },
       { id: "social", label: "Social & Advocacy", icon: Share2 },
+      { id: "visits", label: "Field Visits", icon: MapPin, badge: counts.spotChecks },
+      { id: "performance", label: "Performance", icon: Gauge },
     ] },
     { group: "MY ROLE", items: [
       (can("pipeline") || can("pipeline.all")) && { id: "pipeline", label: "BD Pipeline", icon: TrendingUp },
@@ -251,13 +255,13 @@ export default function StaffApp() {
   if (!session) return <StaffLogin notice={loginNotice} onLogin={u => { setLoginNotice(""); setSession(u); }} />;
   if (!ctx) return <div className="so-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: font }}>Opening the office…</div>;
 
-  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals };
+  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, spotChecks: (office.pendingSpotChecks || []).length };
   const nav = buildNav(ctx.can, counts);
   const allowed = new Set(nav.flatMap(g => g.items.map(i => i.id)));
   const mod = allowed.has(route.module) ? route.module : "home";
   const me = office.me;
 
-  const MODULES = { home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
+  const MODULES = { visits: FieldVisits, performance: Performance, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
   const Active = MODULES[mod];
 
   return (
@@ -306,6 +310,11 @@ export default function StaffApp() {
               <Avatar src={me.avatarDataUrl} name={me.fullName} size={34} presence={me.presence?.status} onClick={() => navigate("profile")} />
             </header>
             <main className="so-content">
+              {(office.pendingSpotChecks || []).length > 0 && mod !== "visits" && (
+                <button type="button" onClick={() => navigate("visits")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: C.amberDim, border: `1px solid ${C.amber}88`, color: C.heading, borderRadius: 12, padding: "12px 16px", marginBottom: 16, cursor: "pointer", fontFamily: font, fontSize: 14, fontWeight: 700, textAlign: "left" }}>
+                  <MapPin size={18} color={C.amber} /> Location check requested. Tap here to confirm where you are before the timer runs out.
+                </button>
+              )}
               <Suspense fallback={<div style={{ color: C.textMuted, padding: 30 }}>Loading…</div>}>
                 <ErrorBoundary resetKey={mod}><Active key={mod} param={route.param} /></ErrorBoundary>
               </Suspense>

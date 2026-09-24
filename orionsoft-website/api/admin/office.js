@@ -74,6 +74,9 @@ export default async function handler(req, res) {
       const cfg = {
         welcome: String(c.welcome || "").slice(0, 600),
         managementWhatsapp: waNumber(c.managementWhatsapp),
+        workStart: /^\d{2}:\d{2}$/.test(String(c.workStart || "")) ? c.workStart : "09:00",
+        graceMinutes: Math.min(120, Math.max(0, parseInt(c.graceMinutes, 10) || 0)),
+        spotChecks: c.spotChecks !== false,
         whatsappGroupLink: /^https:\/\/chat\.whatsapp\.com\//.test(String(c.whatsappGroupLink || "")) ? String(c.whatsappGroupLink).slice(0, 200) : "",
         quickLinks: (c.quickLinks || []).filter(l => l?.label && cleanUrl(l.url)).slice(0, 30).map(l => ({ label: String(l.label).slice(0, 60), url: cleanUrl(l.url) })),
         resources: (c.resources || []).filter(r => r?.title).slice(0, 60).map(r => ({

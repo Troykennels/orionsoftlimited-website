@@ -7,6 +7,8 @@ import { C, font, PRESENCE } from "../theme.js";
 import { api, timeAgo, firstName, waLink, fmtDate } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, StatCard, Textarea, Select, EmptyState, Modal, Field, RichText, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
+import { getDeviceId, getLocation } from "../geo.js";
+import { useConsent } from "./FieldVisits.jsx";
 
 function greeting() {
   const h = Number(new Date().toLocaleString("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", hour12: false }));
@@ -31,11 +33,20 @@ function DayFlow({ onChanged }) {
 
   const load = useCallback(() => api("/api/staff/attendance").then(setAtt).catch(() => {}), []);
   useEffect(() => { load(); }, [load]);
+  const { ensure, modal } = useConsent();
 
   async function act(body, okMsg) {
+    const locate = body.action === "clock-in" || body.action === "clock-out";
+    if (locate && !(await ensure())) return false;
     setBusy(true);
     try {
-      await api("/api/staff/attendance", { method: "POST", body });
+      let extra = {};
+      if (locate) {
+        const loc = await getLocation();
+        extra = { geo: loc.geo || null, deviceId: getDeviceId() };
+        if (!loc.geo) toast(`${loc.error}. Your ${body.action === "clock-in" ? "clock-in" : "clock-out"} was recorded without location.`, "err");
+      }
+      await api("/api/staff/attendance", { method: "POST", body: { ...body, ...extra } });
       toast(okMsg);
       await load(); onChanged();
       return true;
@@ -48,6 +59,7 @@ function DayFlow({ onChanged }) {
 
   return (
     <div style={{ background: "rgba(6,8,16,0.55)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(10px)", borderRadius: 14, padding: 16, minWidth: 260 }}>
+      {modal}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.gold, marginBottom: 8 }}>MY DAY</div>
       {!att && <div style={{ color: C.textMuted, fontSize: 13 }}>Loading…</div>}
       {att && !clockedIn && (
@@ -66,7 +78,7 @@ function DayFlow({ onChanged }) {
       )}
       {att && clockedIn && (
         <>
-          <div style={{ color: "#fff", fontSize: 14, marginBottom: 4 }}>You're in · since {new Date(rec.clockIn).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}</div>
+          <div style={{ color: "#fff", fontSize: 14, marginBottom: 4 }}>You're in · since {new Date(rec.clockIn).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}{rec.lateMinutes > 0 ? <span style={{ color: C.amber }}> · {rec.lateMinutes >= 60 ? `${Math.floor(rec.lateMinutes / 60)}h ${rec.lateMinutes % 60}m` : `${rec.lateMinutes} min`} late</span> : null}{rec.clockInGeo ? " · 📍" : ""}</div>
           <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 12.5, marginBottom: 10 }}>{Math.floor(mins / 60)}h {mins % 60}m today · {rec.standup ? "standup posted ✓" : "standup not posted yet"}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {!rec.standup && <Btn small icon={Coffee} onClick={() => setStandupOpen(true)}>Post standup</Btn>}

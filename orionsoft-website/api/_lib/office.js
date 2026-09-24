@@ -133,7 +133,7 @@ export function mentionedIds(text, employees) {
 export const POINTS = {
   post: 5, comment: 2, like_received: 1, kudos_received: 10, kudos_given: 2, reshare: 3,
   social_share: 5, social_activity: 8, goal_checkin: 3, goal_completed: 25, report: 10,
-  standup: 3, deal_won: 30, task_done: 4, meeting_hosted: 3,
+  standup: 3, deal_won: 30, task_done: 4, meeting_hosted: 3, field_visit: 6, visit_confirmed: 10,
 };
 
 function monthKey(d = new Date()) { return d.toISOString().slice(0, 7); }

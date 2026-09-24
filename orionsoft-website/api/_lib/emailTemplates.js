@@ -142,6 +142,31 @@ export async function notifyAdminCandidateUpdate(applicant, what) {
   return sendEmail(ADMIN_EMAIL, `Candidate update: ${applicant.fullName}`, html, { kind: "applicant_update" });
 }
 
+// ─── Field verification ─────────────────────────────────────────────────────
+export async function sendVisitConfirmation(visit, employee, link) {
+  const when = new Date(visit.checkIn.at).toLocaleString("en-NG", { timeZone: "Africa/Lagos", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Please confirm our visit</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">
+      ${esc(employee.fullName)} (${esc(employee.title || "Orion Soft")}) recorded a visit to <strong>${esc(visit.organisation)}</strong> on ${esc(when)}${visit.purpose ? ` about <em>${esc(visit.purpose)}</em>` : ""}.
+    </p>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">It takes 10 seconds: tell us whether this visit happened and how it went. This helps us serve you better.</p>
+    ${btn(link, "Confirm the visit →")}
+    <p style="color:#6B7A96;font-size:12px;">If nobody from Orion Soft visited you, please use the link and choose "No". Thank you.</p>
+  `, { title: "Visit Confirmation" });
+  return sendEmail(visit.contactEmail, `Did ${employee.fullName} from Orion Soft visit you?`, html, { kind: "visit_confirmation" });
+}
+
+export async function notifySpotCheck(employee, spot) {
+  const due = new Date(spot.dueAt).toLocaleTimeString("en-NG", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit" });
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">📍 Location check</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">Hi ${esc(employee.fullName)}, please confirm your location with a quick photo before <strong>${esc(due)}</strong>.</p>
+    ${btn(`${APP_BASE_URL}/staff/visits`, "Confirm my location →")}
+  `, { title: "Location Check" });
+  return sendEmail(employee.email, `Location check: please respond by ${due}`, html, { kind: "spot_check" });
+}
+
 // ─── Staff Office announcements ─────────────────────────────────────────────
 export async function sendAnnouncementEmail(employee, text, from) {
   const html = brandedShell(`

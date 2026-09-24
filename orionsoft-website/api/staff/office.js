@@ -14,6 +14,10 @@ export const OFFICE_CONFIG_KEY = "orionsoft:office:config";
 export const DEFAULT_OFFICE_CONFIG = {
   welcome: "Welcome to the Orion Soft virtual office. This is where we work, collaborate and celebrate together.",
   managementWhatsapp: "2348169577059",
+  // Attendance & field verification
+  workStart: "09:00",
+  graceMinutes: 15,
+  spotChecks: true,
   whatsappGroupLink: "",
   quickLinks: [
     { label: "Company website", url: "https://orionsoftlimited.com" },
@@ -54,10 +58,10 @@ export default async function handler(req, res) {
       runAutomations().catch(() => {}); // lazy trigger; idempotent
       await ensureSlugs(employees);
       const today = lagosDate();
-      const [config, notif, board, tasks, meetings, leave, reports, acks, expenses] = await Promise.all([
+      const [config, notif, board, tasks, meetings, leave, reports, acks, expenses, spots] = await Promise.all([
         get(OFFICE_CONFIG_KEY), listNotifications(me.id, 30), leaderboard("month"),
         listRecords("tasks"), listRecords("meetings"), listRecords("leave"), listRecords("reports"),
-        get(`orionsoft:office:acks:${me.id}`), listRecords("expenses"),
+        get(`orionsoft:office:acks:${me.id}`), listRecords("expenses"), listRecords("spotchecks"),
       ]);
       const cfg = { ...DEFAULT_OFFICE_CONFIG, ...(config || {}) };
       const canApprove = target => canApproveFor(me, target, employees, catalog);
@@ -82,6 +86,7 @@ export default async function handler(req, res) {
         todaysMeetings: meetings.filter(m => toLagos(m.startsAt).slice(0, 10) === today && m.status !== "cancelled"
           && (m.hostId === me.id || (m.attendeeIds || []).includes(me.id))).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
         approvals,
+        pendingSpotChecks: spots.filter(s => s.employeeId === me.id && s.status === "pending" && Date.parse(s.dueAt) > Date.now()).map(s => ({ id: s.id, dueAt: s.dueAt })),
         today,
       });
     }
