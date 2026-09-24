@@ -41,7 +41,24 @@ function steps(kind) {
       } : {
         title: kind === "denied" ? "Location is blocked for this site" : "Camera is blocked for this site",
         why: "It was set to Block for orionsoftlimited.com, so the site can't ask again by itself.",
-        list: [...chromeSite, `If it's still blocked: phone Settings → Apps → ${browser} → Permissions → allow Location and Camera.`],
+        list: [
+          ...chromeSite,
+          ...(p.edge ? ["Also in Edge: tap ⋯ (menu) → Settings → Privacy and security → Site permissions → Location, turn on \"Ask before accessing\" and remove orionsoftlimited.com from Blocked."] : []),
+          `If it's still blocked: phone Settings → Apps → ${browser} → Permissions → Location → Allow only while using the app.`,
+        ],
+      };
+    case "app_denied":
+      return {
+        title: `Your phone is blocking ${browser} from using location`,
+        why: `This website is allowed, but Android has location switched off for the ${browser} app itself, so every try fails until it's allowed.`,
+        list: [
+          `Open phone Settings → Apps → ${browser} → Permissions → Location.`,
+          "Choose \"Allow only while using the app\" and make sure \"Use precise location\" is on.",
+          ...(p.transsion ? [`Tecno/Infinix/itel: Settings → Apps → App management → ${browser} → Permissions → Location → Allow.`] : []),
+          ...(p.edge ? ["In Edge also check: ⋯ (menu) → Settings → Privacy and security → Site permissions → Location is set to \"Ask before accessing\"."] : []),
+          "Make sure Location is on (swipe down from the top of the screen).",
+          "Come back here and tap Try again.",
+        ],
       };
     case "notif_denied":
       return p.ios ? {
@@ -96,7 +113,7 @@ function steps(kind) {
   }
 }
 
-export default function DeviceHelp({ kind, onRetry, onSkip, skipLabel = "Continue without it" }) {
+export default function DeviceHelp({ kind, detail, onRetry, onSkip, skipLabel = "Continue without it" }) {
   if (!kind) return null;
   const s = steps(kind);
   return (
@@ -110,6 +127,7 @@ export default function DeviceHelp({ kind, onRetry, onSkip, skipLabel = "Continu
         {onRetry && <Btn small icon={RefreshCw} onClick={onRetry}>Try again</Btn>}
         {onSkip && <Btn small variant="ghost" onClick={onSkip}>{skipLabel}</Btn>}
       </div>
+      {detail && <div style={{ marginTop: 10, fontSize: 11.5, color: C.textMuted, wordBreak: "break-word" }}>{detail}</div>}
     </div>
   );
 }

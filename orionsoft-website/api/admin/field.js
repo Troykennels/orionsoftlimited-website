@@ -47,7 +47,7 @@ export default async function handler(req, res) {
         .filter(e => e.status === "active" && e.staffRole !== "owner" && !onLeave.has(e.id) && !attendance.some(a => a.employeeId === e.id && a.date === today && a.clockIn))
         .map(e => ({ id: e.id, fullName: e.fullName }));
       const devices = employees.filter(e => e.status === "active" && e.staffRole !== "owner")
-        .map(e => ({ id: e.id, fullName: e.fullName, check: e.deviceCheck || null }));
+        .map(e => ({ id: e.id, fullName: e.fullName, check: e.deviceCheck || null, geo: (e.geoDiag || []).slice(0, 5) }));
       return res.json({ ok: true, from, to, today, rows, absentToday, onLeaveToday: [...onLeave].map(id => ({ id, fullName: name(id) })), devices });
     }
 

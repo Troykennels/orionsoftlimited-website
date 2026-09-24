@@ -7,7 +7,7 @@ import { C, font, PRESENCE } from "../theme.js";
 import { api, timeAgo, firstName, waLink, fmtDate } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, StatCard, Textarea, Select, EmptyState, Modal, Field, RichText, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
-import { getDeviceId, getLocation } from "../geo.js";
+import { getDeviceId, getLocation, techDetail } from "../geo.js";
 import { useConsent } from "./FieldVisits.jsx";
 import DeviceHelp from "../DeviceHelp.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
@@ -49,9 +49,9 @@ function DayFlow({ onChanged }) {
         extra = { geo: null, deviceId: getDeviceId() };
         if (!skipLocation) {
           setLocMsg("Getting your location…");
-          const loc = await getLocation({ maxWait: 10000, goodEnough: 50, onProgress: g => setLocMsg(`Getting your location… ±${Math.round(g.accuracy)}m`) });
+          const loc = await getLocation({ where: "clock-in/out", goodEnough: 50, onProgress: g => setLocMsg(`Getting your location… ±${Math.round(g.accuracy)}m`) });
           setLocMsg("");
-          if (!loc.geo) { setLocFail({ kind: loc.kind, body, okMsg }); return false; }
+          if (!loc.geo) { setLocFail({ kind: loc.kind, detail: techDetail(loc), body, okMsg }); return false; }
           extra.geo = loc.geo;
         }
       }
@@ -72,7 +72,7 @@ function DayFlow({ onChanged }) {
       {modal}
       {locFail && (
         <Modal title={locFail.body.action === "clock-in" ? "Clock in: location needed" : "Clock out: location needed"} onClose={() => setLocFail(null)} width={520}>
-          <DeviceHelp kind={locFail.kind}
+          <DeviceHelp kind={locFail.kind} detail={locFail.detail}
             onRetry={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg).then(ok => ok && f.body.action === "clock-in" && !rec?.standup && setStandupOpen(true)); }}
             onSkip={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg, { skipLocation: true }); }}
             skipLabel={`${locFail.body.action === "clock-in" ? "Clock in" : "Clock out"} without location (flagged)`} />

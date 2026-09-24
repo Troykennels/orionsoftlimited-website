@@ -79,7 +79,27 @@ function VisitDetail({ id, onClose }) {
   );
 }
 
-const KIND_LABEL = { overlay: "pop-up blocked by another app", denied: "location blocked", camera_denied: "camera blocked", off: "GPS switched off", timeout: "no GPS signal", no_camera: "no camera", camera_busy: "camera busy", notif_denied: "notifications blocked", unsupported: "browser not supported", insecure: "not on https", unknown: "not tested", idle: "not tested", busy: "not finished", camera_unknown: "camera error" };
+const KIND_LABEL = { overlay: "pop-up blocked by another app", denied: "location blocked", camera_denied: "camera blocked", off: "GPS switched off", timeout: "no GPS signal", no_camera: "no camera", camera_busy: "camera busy", notif_denied: "notifications blocked", unsupported: "browser not supported", insecure: "not on https", unknown: "not tested", idle: "not tested", busy: "not finished", camera_unknown: "camera error", app_denied: "phone blocks the browser app from location" };
+
+// "Edge · Android 13" from a user-agent string.
+function deviceName(ua = "") {
+  const b = /EdgA|Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "Samsung Internet" : /OPR|Opera/.test(ua) ? "Opera" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "browser";
+  const os = ua.match(/Android [\d.]+/)?.[0] || (/iPhone|iPad/.test(ua) ? "iPhone" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "Mac" : "");
+  return [b, os].filter(Boolean).join(" · ");
+}
+
+// The most recent location attempt from someone's phone, with the raw reason.
+function GeoAttempt({ g }) {
+  const when = new Date(g.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return (
+    <div style={{ flexBasis: "100%", fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
+      Last location try {when}{g.where ? ` (${g.where})` : ""}:{" "}
+      {g.ok ? <span style={{ color: C.mint }}>worked, ±{g.accuracy}m in {Math.round(g.ms / 1000)}s</span>
+        : <span style={{ color: C.rose }}>{KIND_LABEL[g.kind] || g.kind} · error {g.code || "–"}, site permission {g.perm || "?"}{g.message ? ` · "${g.message}"` : ""}</span>}
+      {" · "}{deviceName(g.ua)}
+    </div>
+  );
+}
 
 function SpotDetail({ id, onClose }) {
   const [s, setS] = useState(null);
@@ -200,6 +220,7 @@ export function AttendanceFieldSection() {
                     {!c ? <Badge color={C.textMuted}>not set up yet</Badge>
                       : c.ready ? <Badge color={C.mint}>ready{c.notifications === "ok" ? " · alerts on" : ""}{c.accuracy ? ` · ±${c.accuracy}m` : ""}</Badge>
                       : <Badge color={C.rose}>{problem}</Badge>}
+                    {d.geo?.[0] && <GeoAttempt g={d.geo[0]} />}
                   </div>
                 );
               })}

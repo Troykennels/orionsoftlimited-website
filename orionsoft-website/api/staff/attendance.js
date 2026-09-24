@@ -64,6 +64,21 @@ export default async function handler(req, res) {
       return res.json({ ok: true, deviceCheck: fresh.deviceCheck });
     }
 
+    // Every location attempt from the phone (success or failure, with the
+    // browser's raw error), so managers can see exactly why a phone fails.
+    if (b.action === "geo-diag") {
+      const s = (v, n = 60) => String(v ?? "").slice(0, n);
+      const entry = {
+        at: new Date().toISOString(), ok: !!b.ok, kind: s(b.kind, 30), code: Number(b.code) || 0, message: s(b.message, 120),
+        perm: s(b.perm, 20), accuracy: Number.isFinite(Number(b.accuracy)) ? Math.round(b.accuracy) : null,
+        ms: Math.round(Number(b.ms) || 0), where: s(b.where, 30), ua: meta.ua,
+      };
+      const fresh = await getRecord("employees", me.id);
+      fresh.geoDiag = [entry, ...(fresh.geoDiag || [])].slice(0, 10);
+      await putRecord("employees", fresh.id, fresh);
+      return res.json({ ok: true });
+    }
+
     if (b.action === "consent") {
       const fresh = await getRecord("employees", me.id);
       fresh.locationConsentAt = new Date().toISOString();

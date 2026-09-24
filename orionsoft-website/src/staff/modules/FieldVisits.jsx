@@ -114,7 +114,7 @@ function CheckInFlow({ onClose, onDone }) {
       <div style={{ display: "grid", gap: 14 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>1 · LOCATION</div>
-          <LocationStep onChange={setLoc} />
+          <LocationStep onChange={setLoc} where="visit check-in" />
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>2 · PHOTO AT THE SITE (signboard, reception or meeting)</div>
@@ -157,7 +157,7 @@ function SpotCheckResponder({ spot, onDone }) {
     <SectionCard style={{ borderColor: `${C.amber}88`, background: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(15,24,40,0.95))", marginBottom: 16 }}>
       <SectionTitle sub={`${spot.reason}. Two quick steps: share your location, then take a live photo.`}>📍 Location check · {Math.floor(left / 60000)}:{String(Math.floor(left / 1000) % 60).padStart(2, "0")} left</SectionTitle>
       <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "4px 0 6px" }}>1 · LOCATION</div>
-      <LocationStep onChange={setLoc} />
+      <LocationStep onChange={setLoc} where="location check" />
       {loc && (
         <>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "14px 0 6px" }}>2 · PHOTO OF WHERE YOU ARE</div>
@@ -185,7 +185,7 @@ export default function FieldVisits() {
   async function startCheckIn() { if (await ensure()) setCheckIn(true); }
   async function checkOut() {
     setBusy(true);
-    const loc = await getLocation();
+    const loc = await getLocation({ where: "visit check-out" });
     try { await api("/api/staff/visits", { method: "POST", body: { action: "check-out", id: data.active.id, geo: loc.geo || null, outcome: out.outcome, nextStep: out.nextStep, deviceId: getDeviceId() } }); toast("Checked out"); setOut({ outcome: "", nextStep: "" }); load(); }
     catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
   }

@@ -3,7 +3,7 @@ import { Crosshair, Camera, Bell, Download, CheckCircle2, Smartphone } from "luc
 import { C, font } from "./theme.js";
 import { api } from "./api.js";
 import { Btn, SectionCard, SectionTitle, toast } from "./components.jsx";
-import { getLocation, classifyCameraError, phoneInfo } from "./geo.js";
+import { getLocation, classifyCameraError, phoneInfo, techDetail } from "./geo.js";
 import { pushState, enablePush, sendTestPush, canInstall, promptInstall, isInstalled } from "./push.js";
 import DeviceHelp from "./DeviceHelp.jsx";
 
@@ -37,8 +37,8 @@ export default function PhoneCheck({ compact = false, onReady }) {
 
   async function testLocation() {
     setLoc({ s: "busy", accuracy: null });
-    const r = await getLocation({ onProgress: g => setLoc({ s: "busy", accuracy: Math.round(g.accuracy) }) });
-    const next = r.geo ? { s: "ok", accuracy: Math.round(r.geo.accuracy) } : { s: "error", kind: r.kind };
+    const r = await getLocation({ where: "phone setup", onProgress: g => setLoc({ s: "busy", accuracy: Math.round(g.accuracy) }) });
+    const next = r.geo ? { s: "ok", accuracy: Math.round(r.geo.accuracy) } : { s: "error", kind: r.kind, detail: techDetail(r) };
     setLoc(next); report({ location: next });
   }
   async function testCamera() {
@@ -81,7 +81,7 @@ export default function PhoneCheck({ compact = false, onReady }) {
       {row(<Crosshair size={18} />, "Location (GPS)", loc,
         loc.s !== "busy" && <Btn small variant={loc.s === "ok" ? "ghost" : "primary"} onClick={testLocation}>{loc.s === "ok" ? "Test again" : "Test location"}</Btn>,
         loc.s === "ok" ? `Working, accurate to ±${loc.accuracy}m` : loc.s === "busy" ? (loc.accuracy ? `Improving… ±${loc.accuracy}m` : "Finding you… allow location if asked") : "Needed for clock-in and client visits")}
-      {loc.s === "error" && <DeviceHelp kind={loc.kind} onRetry={testLocation} />}
+      {loc.s === "error" && <DeviceHelp kind={loc.kind} detail={loc.detail} onRetry={testLocation} />}
 
       {row(<Camera size={18} />, "Camera", cam,
         cam.s !== "busy" && <Btn small variant={cam.s === "ok" ? "ghost" : "primary"} onClick={testCamera}>{cam.s === "ok" ? "Test again" : "Test camera"}</Btn>,

@@ -1,4 +1,5 @@
 // Field-verification helpers used on staff phones.
+import { api } from "./api.js";
 
 // A random id stored on this browser. It identifies Staff Office devices so a
 // "client confirmation" made on a staff phone can be recognised.
@@ -30,7 +31,11 @@ async function classify(err) {
   if (err.code === 1) {
     const state = await permissionState("geolocation");
     // Denied while the permission is still "prompt" = the prompt never showed.
-    return state === "prompt" ? "overlay" : "denied";
+    if (state === "prompt") return "overlay";
+    // Denied although the site IS allowed = Android is blocking the browser
+    // app itself (Settings → Apps → Edge/Chrome → Permissions → Location).
+    if (state === "granted") return "app_denied";
+    return "denied";
   }
   if (err.code === 2) return "off";
   if (err.code === 3) return "timeout";
@@ -39,6 +44,7 @@ async function classify(err) {
 const MESSAGES = {
   overlay: "Your phone blocked the location prompt because another app is showing on top of the screen",
   denied: "Location is blocked for this site",
+  app_denied: "Your phone is blocking the browser app from using location",
   off: "Your phone's location (GPS) is switched off",
   timeout: "Couldn't get a GPS signal in time",
   insecure: "Location only works on the secure https site",
@@ -52,7 +58,20 @@ const MESSAGES = {
 // satellites can't be seen) staff still get a location instead of a timeout;
 // its accuracy is recorded, so a rough fix scores lower rather than failing.
 // Resolves { geo } or { error, kind } and never throws.
-export function getLocation({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress } = {}) {
+export async function getLocation(opts = {}) {
+  const t0 = Date.now();
+  const r = await locate(opts);
+  // Report every attempt (with the browser's raw error) so managers can see
+  // exactly why a phone fails, instead of guessing from "try again".
+  const perm = await permissionState("geolocation");
+  api("/api/staff/attendance", { method: "POST", body: {
+    action: "geo-diag", ok: !!r.geo, kind: r.kind, code: r.code, message: r.rawMessage, perm,
+    accuracy: r.geo?.accuracy, ms: Date.now() - t0, where: opts.where || "",
+  } }).catch(() => {});
+  return { ...r, perm };
+}
+
+function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress } = {}) {
   return new Promise(resolve => {
     if (!navigator.geolocation) { resolve({ error: MESSAGES.unsupported, kind: "unsupported" }); return; }
     let best = null, done = false, watchId = null, lastErr = null, settle = null;
@@ -62,8 +81,9 @@ export function getLocation({ maxWait = 15000, goodEnough = 30, settleMs = 6000,
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       clearTimeout(timer); clearTimeout(settle);
       if (best) { resolve({ geo: best }); return; }
-      const kind = await classify(err || lastErr);
-      resolve({ error: MESSAGES[kind], kind });
+      const e = err || lastErr;
+      const kind = await classify(e);
+      resolve({ error: MESSAGES[kind], kind, code: e?.code || 0, rawMessage: e?.message || "" });
     };
     const take = p => {
       if (done) return;
@@ -87,6 +107,10 @@ export function getLocation({ maxWait = 15000, goodEnough = 30, settleMs = 6000,
     navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 60000 });
   });
 }
+
+// Short technical line shown under the help, so a screenshot tells support
+// exactly what the phone reported.
+export const techDetail = r => (r && !r.geo ? `Details: ${r.kind} · error ${r.code || "-"} · site permission ${r.perm || "?"}${r.rawMessage ? ` · ${r.rawMessage}` : ""}` : "");
 
 // Camera failures classified the same way.
 export async function classifyCameraError(e) {
