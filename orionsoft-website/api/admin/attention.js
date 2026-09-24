@@ -39,6 +39,10 @@ export default async function handler(req, res) {
   for (const p of payroll.filter(p => p.status === "issued")) {
     items.push({ id: `payroll_${p.id}`, type: "payroll", label: `${employeeName(p.employeeId)}: ${p.period} payslip issued, not yet paid`, detail: `${p.currency} ${p.netAmount}`, at: p.issuedAt, nav: "payroll" });
   }
+  for (const a of applicants.filter(a => a.unreadForAdmin && a.status !== "applied" && (a.messages || []).some(m => m.from === "candidate"))) {
+    const last = [...a.messages].reverse().find(m => m.from === "candidate");
+    items.push({ id: `appmsg_${a.id}`, type: "applicant", label: `${a.fullName} replied in the applicant portal`, detail: last?.text?.slice(0, 80) || "", at: last?.at || a.updatedAt, nav: "applicants" });
+  }
   for (const a of applicants.filter(a => a.status === "applied")) {
     items.push({ id: `applicant_${a.id}`, type: "applicant", label: `${a.fullName} applied for ${a.roleAppliedFor}`, detail: a.email, at: a.createdAt, nav: "applicants" });
   }
@@ -60,7 +64,7 @@ export default async function handler(req, res) {
     reports: reports.filter(r => r.status === "submitted").length,
     contracts: contracts.filter(c => c.status === "sent").length,
     payroll: payroll.filter(p => p.status === "issued").length,
-    applicants: applicants.filter(a => a.status === "applied").length,
+    applicants: applicants.filter(a => a.status === "applied" || (a.unreadForAdmin && (a.messages || []).some(m => m.from === "candidate"))).length,
     expenses: expenses.filter(e => e.status === "pending").length,
     tickets: tickets.filter(t => t.status === "open").length,
     invoices: invoices.filter(i => i.status === "sent" && i.dueDate && new Date(i.dueDate).getTime() < now).length,

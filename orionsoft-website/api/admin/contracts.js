@@ -49,8 +49,14 @@ export default async function handler(req, res) {
     const template = await getRecord("templates", templateId);
     if (!template) return res.status(404).json({ error: "Template not found" });
 
+    const filled = Object.fromEntries(Object.entries(fillData || {}).filter(([, v]) => String(v ?? "").trim()));
+    const bodyFilled = renderTemplate(template.bodyMarkup, { recipientName, ...filled });
+    // Never generate a document that still shows raw {{placeholders}}.
+    const unfilled = [...new Set([...bodyFilled.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map(m => m[1]))];
+    if (unfilled.length) {
+      return res.status(400).json({ error: `Fill in these template fields before creating the document: ${unfilled.join(", ")}` });
+    }
     const id = newId("ctr");
-    const bodyFilled = renderTemplate(template.bodyMarkup, { recipientName, ...(fillData || {}) });
     const contract = {
       id, templateId, type: template.type,
       title: title || `${template.name}: ${recipientName}`,

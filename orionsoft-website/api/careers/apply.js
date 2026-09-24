@@ -1,5 +1,15 @@
-import { newId, putRecord } from "../_lib/records.js";
-import { notifyNewApplicant } from "../_lib/emailTemplates.js";
+import { newId, putRecord, setLookup, getByLookup } from "../_lib/records.js";
+import { notifyNewApplicant, sendApplicationReceived } from "../_lib/emailTemplates.js";
+import { signSession, setSessionCookie, APPLICANT_COOKIE } from "../_lib/auth.js";
+import { portalLinkFor } from "../applicant/portal.js";
+
+async function uniqueReference() {
+  for (let i = 0; i < 5; i++) {
+    const ref = `ORN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    if (!(await getByLookup("applicants", "reference", ref))) return ref;
+  }
+  return `ORN-${Date.now().toString(36).toUpperCase()}`;
+}
 
 const rateMap = new Map();
 const RATE_LIMIT = 5;
@@ -35,26 +45,42 @@ export default async function handler(req, res) {
   if (!fullName || !email || !role) {
     return res.status(400).json({ error: "fullName, email, and role are required" });
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+    return res.status(400).json({ error: "Please enter a valid email address" });
+  }
 
   const id = newId("app");
+  const reference = await uniqueReference();
+  const now = new Date().toISOString();
+  const cut = (v, n = 500) => String(v || "").slice(0, n);
   const applicant = {
-    id,
-    fullName, email, phone: phone || "", location: location || "",
-    roleAppliedFor: role, experience: experience || "", qualification: qualification || "",
-    availability: availability || "", cvLink: cvLink || "", portfolio: portfolio || "",
-    referral: referral || "", coverNote: whyOrion || "",
+    id, reference,
+    fullName: cut(fullName, 120), email: String(email).trim().toLowerCase(), phone: cut(phone, 40), location: cut(location, 120),
+    roleAppliedFor: cut(role, 120), experience: cut(experience, 120), qualification: cut(qualification, 200),
+    availability: cut(availability, 120), cvLink: cut(cvLink, 400), portfolio: cut(portfolio, 400),
+    referral: cut(referral, 200), coverNote: cut(whyOrion, 4000),
     source: "website",
     status: "applied",
     score: null,
     reviewer: "",
     notes: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    statusHistory: [{ status: "applied", at: now }],
+    messages: [],
+    unreadForAdmin: true,
+    createdAt: now,
+    updatedAt: now,
   };
 
   await putRecord("applicants", id, applicant);
+  await setLookup("applicants", "reference", reference, id);
 
   try { await notifyNewApplicant(applicant); } catch { /* best-effort */ }
+  try { await sendApplicationReceived(applicant, portalLinkFor(applicant.email)); } catch { /* best-effort */ }
 
-  return res.json({ ok: true, applicantId: id });
+  // Sign the candidate straight into their applicant portal.
+  try {
+    setSessionCookie(res, signSession({ role: "applicant", email: applicant.email }, 60 * 60 * 24 * 30), APPLICANT_COOKIE, 60 * 60 * 24 * 30);
+  } catch { /* SESSION_SECRET missing: portal sign-in still works via email + reference */ }
+
+  return res.json({ ok: true, applicantId: id, reference });
 }

@@ -1,5 +1,5 @@
 import { listRecords } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireStaff } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -8,11 +8,12 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const session = requireAuth(req, res, "staff");
-  if (!session) return;
+  const auth = await requireStaff(req, res);
+  if (!auth) return;
+  const me = auth.employee.id;
 
   const all = await listRecords("payroll");
-  const mine = all.filter(p => p.employeeId === session.sub);
+  const mine = all.filter(p => p.employeeId === me);
   const payslips = mine.filter(p => p.status !== "draft").sort((a, b) => b.period.localeCompare(a.period));
   // The current in-progress period (if one exists) is surfaced separately so
   // staff can watch commissions accumulate live, without it appearing mixed

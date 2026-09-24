@@ -331,14 +331,24 @@ The site now includes a full operations platform beyond the marketing pages: a r
 
 ### Day-to-day use
 
-- **Admin login** — same place as before (the in-SPA Admin page), now asks for email + password instead of a shared password.
-- **Staff portal** — at `/staff`, a separate login for employees. Admin creates each employee under *Staff & HR → Employees*, which emails them their login and a temporary password.
-- **Managers** — set an employee's role to "Manager" in *Employees* to let them review and approve their own department's weekly reports and leave requests from their staff portal (a "Team" tab appears automatically).
-- **Documents** — under *Documents*, edit the 5 built-in templates (offer letter, NDA, service contract, payslip receipt, onboarding letter), add signatories (drawn signature + title), then compose a document from *Contracts*, which generates a branded letterhead PDF automatically.
+- **Admin login** — go to `orionsoftlimited.com/admin` (every page now has a real URL). Email + password.
+- **Staff Office** — at `/staff`. Admin creates each employee under *Staff & HR → Employees & Roles*, which emails them their login and a temporary password (the password is also shown to you once, so you can send it on WhatsApp if the email doesn't arrive).
+- **Roles & reporting lines** — pick each person's role (Owner, MD/CEO, COO, HR Manager, Chief Liaison Officer, Head of BD, Business Development Officer, Sales Executive, Liaison Officer, HR Officer, Finance Manager, Marketing, Engineering, Intern and more) and who they report to. Approvals follow the reporting line; HR and executives can approve company-wide. Add or edit roles under *Staff Office → Roles & permissions*.
+- **Documents** — under *Documents*, edit the 5 built-in templates (offer letter, NDA, service contract, payslip receipt, onboarding letter), add signatories (upload a photo/scan/PDF of a signed paper and the signature is extracted automatically, or draw one), then compose a document from *Contracts*, which generates a branded letterhead PDF automatically. Documents can't be created while any `{{template field}}` is still empty.
 - **Sending & signing** — "Send for signature" emails the recipient a link (`/sign/...`) to review, type their name, and sign — no login needed on their end. A signed PDF is generated automatically and everyone is notified.
 - **Getting paid** — once a contract is signed, click "Request Payment" to generate a Paystack checkout link (or the signer can pay directly from the sign page). Payment status updates automatically via the webhook, and a receipt email goes out.
 - **Payroll** — create a draft payroll entry per employee per month, then "Issue & Email" to generate the payslip PDF and email it — it also appears under the employee's "Payslips" tab in the staff portal.
 - **Email Log** — every automatic email the system has ever sent is listed under *Documents → Email Log*, useful for confirming delivery.
+
+### Staff Office, applicant portal & Google sign-in
+
+- **Staff Office (`/staff`)** — the virtual office: Lobby (clock in, daily standup, agenda, announcements), Office Feed (posts, wins, kudos, reactions, comments, reshares, share to LinkedIn/X/Facebook/WhatsApp), Messages (channels + DMs, plus WhatsApp buttons), Meetings (auto video rooms, RSVPs, minutes → tasks), Tasks, Goals & Progress, Social & Advocacy (share kits, social post tracking, follower growth, leaderboard), role workspaces (BD Pipeline, Liaison Register, Team/HR Desk, Approvals), Weekly Reports, Leave, Expense Claims, Payslips, People & Org Chart, Handbook.
+- **You as the owner** — *Employees & Roles → Enter Staff Office as Owner* creates your all-access Owner account in the office and opens it with your admin login (no second password). The admin dashboard itself always shows every employee's full 360° profile.
+- **Announcements to specific people** — *Staff Office → Announcements*: send to everyone, departments, roles, or named staff; optionally email and make public so staff can share it. Read receipts show who hasn't seen it.
+- **Public profiles** — staff can switch on a public page at `/people/their-name` (all opted-in staff are listed at `/people` and on the Team page). Share links include proper LinkedIn/WhatsApp previews.
+- **Automations** — run every 5 minutes on the API server: birthday & work-anniversary posts, Friday report reminders, overdue-task and goal reminders, deal/stakeholder follow-ups, a morning meeting digest, 15-minute meeting reminders, and "on leave" status during approved leave.
+- **Applicant portal (`/applicant`)** — candidates get a reference (e.g. `ORN-AB12CD`) when they apply and are signed straight in. They track their stage, see interview/assessment/offer details you set in *Recruitment → Applicants*, reply to your messages, update details, or withdraw. Every update you make emails them a one-click portal link.
+- **Google sign-in for staff (optional)** — in Google Cloud Console create an *OAuth 2.0 Client ID* (type: Web application), add `https://orionsoftlimited.com` under *Authorised JavaScript origins*, then set `GOOGLE_CLIENT_ID` on the API server (Railway). Staff then see "Continue with Google" and are signed in automatically on return visits. It works with their work email, or any Google account they link from *My Profile*.
 
 ---
 

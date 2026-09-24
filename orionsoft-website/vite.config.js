@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // Local development: forward /api to the Express API server (node server.js).
+  server: {
+    proxy: { '/api': process.env.VITE_API_PROXY || 'http://localhost:3000' },
+  },
   build: {
     rollupOptions: {
       output: {

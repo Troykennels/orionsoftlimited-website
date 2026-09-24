@@ -1,6 +1,8 @@
 import { listRecords, getRecord, putRecord } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 import { notifyLeaveDecision } from "../_lib/emailTemplates.js";
+import { notify, logActivity } from "../_lib/office.js";
+import { logAudit } from "../_lib/audit.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -31,7 +33,11 @@ export default async function handler(req, res) {
     leave.decisionNotes = decisionNotes || "";
     leave.decidedBy = session.sub;
     leave.decidedAt = new Date().toISOString();
+    leave.decidedByName = session.name || "Admin";
     await putRecord("leave", id, leave);
+    await notify([leave.employeeId], { type: "approval", title: `Your ${leave.type} leave was ${status}`, body: leave.decisionNotes || `${leave.startDate} to ${leave.endDate}`, link: "leave" });
+    if (status === "approved") await logActivity(leave.employeeId, "leave", `Leave approved: ${leave.startDate} to ${leave.endDate}`);
+    await logAudit(session, `${status}_leave`, `leave ${id}`);
 
     try {
       const employee = await getRecord("employees", leave.employeeId);

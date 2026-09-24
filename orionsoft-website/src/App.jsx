@@ -338,40 +338,6 @@ const PRODUCT_COLORS = [
 ];
 
 
-function useProducts() {
-  const [products, setProducts] = useState(() => {
-    try {
-      const raw = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : DEFAULT_PRODUCTS_CATALOG;
-    } catch {
-      return DEFAULT_PRODUCTS_CATALOG;
-    }
-  });
-
-  const save = (list) => {
-    try { localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(list)); }
-    catch {}
-    return list;
-  };
-
-  const persist = (list) => setProducts(save(list));
-
-  const addProduct = (data) => {
-    const p = { ...data, id: `p-${Date.now()}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    setProducts(prev => save([...prev, p]));
-    return p;
-  };
-
-  const updateProduct = (id, data) =>
-    setProducts(prev => save(prev.map(p => p.id === id ? { ...p, ...data, updatedAt: new Date().toISOString() } : p)));
-
-  const deleteProduct = (id) =>
-    setProducts(prev => save(prev.filter(p => p.id !== id)));
-
-  const resetToDefaults = () => setProducts(save(DEFAULT_PRODUCTS_CATALOG));
-
-  return { products, persist, addProduct, updateProduct, deleteProduct, resetToDefaults };
-}
 
 function usePortfolio() {
   const [portfolio, setPortfolio] = useState(() => {
@@ -2140,6 +2106,7 @@ function CareersPage({ setCurrentPage }) {
   })();
   const [selectedRole, setSelectedRole] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [reference, setReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [delivery, setDelivery] = useState("");
@@ -2180,11 +2147,21 @@ function CareersPage({ setCurrentPage }) {
     setSubmitting(true);
     setError("");
     try {
-      fetch("/api/careers/apply", {
+      // The applicant record (and the candidate's portal access) comes from our
+      // API. The website form email is only a fallback if the API is down.
+      const r = await fetch("/api/careers/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
-      }).catch(() => {});
+      }).catch(() => null);
+      const j = r ? await r.json().catch(() => ({})) : {};
+      if (r?.ok && j.reference) {
+        setReference(j.reference);
+        setDelivery("portal");
+        setSubmitted(true);
+        return;
+      }
+      if (r && r.status >= 400 && r.status < 500 && j.error) { setError(j.error); return; }
       const result = await sendWebsiteForm("career application", form);
       setDelivery(result);
       setSubmitted(true);
@@ -2200,6 +2177,7 @@ function CareersPage({ setCurrentPage }) {
 
   const resetForm = () => {
     setSubmitted(false);
+    setReference("");
     setSelectedRole(0);
     setForm({
       fullName: "", email: "", phone: "", location: "",
@@ -2236,8 +2214,16 @@ function CareersPage({ setCurrentPage }) {
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, marginBottom: 32 }}>
             {delivery === "email-draft"
               ? `The website could not send automatically, so an email draft has been opened for ${COMPANY_EMAIL}. Please send it so Orion Soft receives your application.`
-              : `Thank you for applying for ${form.role}. Our team will review your application and contact you if there is a match.`}
+              : `Thank you for applying for ${form.role}. Our team will review your application and keep you updated in your applicant portal.`}
           </p>
+          {reference && (
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px", marginBottom: 28, textAlign: "left" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.textMuted, fontFamily: font, letterSpacing: "0.06em" }}>YOUR APPLICATION REFERENCE</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "0.08em", margin: "6px 0" }}>{reference}</div>
+              <div style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6 }}>We've emailed it to {form.email}. Use it with your email to sign in to your applicant portal any time: track your status, see interview details and message our recruiting team.</div>
+              <a href="/applicant" style={{ display: "inline-block", marginTop: 14, background: C.gold, color: "#060810", padding: "12px 22px", borderRadius: 10, fontWeight: 800, fontFamily: font, fontSize: 14.5, textDecoration: "none" }}>Track my application →</a>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button type="button" onClick={resetForm} style={{
               background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`,
@@ -2398,7 +2384,7 @@ function CareersPage({ setCurrentPage }) {
                 <div><label style={labelSt}>Email *</label><input type="email" style={inputSt} value={form.email} onChange={e => update("email", e.target.value)} placeholder="you@example.com" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="+1 555 000 0000" /></div>
+                <div><label style={labelSt}>Phone *</label><input style={inputSt} value={form.phone} onChange={e => update("phone", e.target.value)} placeholder="0803 000 0000" /></div>
                 <div><label style={labelSt}>City / Country *</label><input style={inputSt} value={form.location} onChange={e => update("location", e.target.value)} placeholder="City, Country" /></div>
               </div>
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
@@ -3092,53 +3078,56 @@ function Footer({ setCurrentPage }) {
 
           {[
             { title: "Products", twoCol: true, links: [
-              { l: "CareCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("carecore"); } },
-              { l: "SchoolCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("schoolcore"); } },
-              { l: "FinanceCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("financecore"); } },
-              { l: "HRCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("hrcore"); } },
-              { l: "InventoryCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("inventorycore"); } },
-              { l: "ComplianceCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("compliancecore"); } },
-              { l: "ChurchCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("churchcore"); } },
-              { l: "FleetCore", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
+              { l: "CareCore", a: "/carecore", onClick: (e) => { e.preventDefault(); setCurrentPage("carecore"); } },
+              { l: "SchoolCore", a: "/schoolcore", onClick: (e) => { e.preventDefault(); setCurrentPage("schoolcore"); } },
+              { l: "FinanceCore", a: "/financecore", onClick: (e) => { e.preventDefault(); setCurrentPage("financecore"); } },
+              { l: "HRCore", a: "/hrcore", onClick: (e) => { e.preventDefault(); setCurrentPage("hrcore"); } },
+              { l: "InventoryCore", a: "/inventorycore", onClick: (e) => { e.preventDefault(); setCurrentPage("inventorycore"); } },
+              { l: "ComplianceCore", a: "/compliancecore", onClick: (e) => { e.preventDefault(); setCurrentPage("compliancecore"); } },
+              { l: "ChurchCore", a: "/churchcore", onClick: (e) => { e.preventDefault(); setCurrentPage("churchcore"); } },
+              { l: "FleetCore", a: "/fleetcore", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
             ]},
             { title: "Company", links: [
-              { l: "Why Orion Soft", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("why"); } },
-              { l: "About Us", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
-              { l: "Our Process", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("process"); } },
-              { l: "Team", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
-              { l: "Careers", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
-              { l: "Blog", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
-              { l: "Awards", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("awards"); } },
-              { l: "Investors", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("investors"); } },
+              { l: "Why Orion Soft", a: "/why", onClick: (e) => { e.preventDefault(); setCurrentPage("why"); } },
+              { l: "About Us", a: "/about", onClick: (e) => { e.preventDefault(); setCurrentPage("about"); } },
+              { l: "Our Process", a: "/process", onClick: (e) => { e.preventDefault(); setCurrentPage("process"); } },
+              { l: "Team", a: "/team", onClick: (e) => { e.preventDefault(); setCurrentPage("team"); } },
+              { l: "Our People", a: "/people", onClick: (e) => { e.preventDefault(); setCurrentPage("people"); } },
+              { l: "Careers", a: "/careers", onClick: (e) => { e.preventDefault(); setCurrentPage("careers"); } },
+              { l: "Track my application", a: "/applicant" },
+              { l: "Staff Office", a: "/staff" },
+              { l: "Blog", a: "/blog", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
+              { l: "Awards", a: "/awards", onClick: (e) => { e.preventDefault(); setCurrentPage("awards"); } },
+              { l: "Investors", a: "/investors", onClick: (e) => { e.preventDefault(); setCurrentPage("investors"); } },
             ]},
             { title: "Trust", links: [
-              { l: "Our Clients", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("clients"); } },
-              { l: "Testimonials", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("testimonials"); } },
-              { l: "Success Stories", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("success-stories"); } },
-              { l: "Case Studies", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
-              { l: "Certifications", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("certifications"); } },
-              { l: "Security & Compliance", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
+              { l: "Our Clients", a: "/clients", onClick: (e) => { e.preventDefault(); setCurrentPage("clients"); } },
+              { l: "Testimonials", a: "/testimonials", onClick: (e) => { e.preventDefault(); setCurrentPage("testimonials"); } },
+              { l: "Success Stories", a: "/success-stories", onClick: (e) => { e.preventDefault(); setCurrentPage("success-stories"); } },
+              { l: "Case Studies", a: "/case-studies", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
+              { l: "Certifications", a: "/certifications", onClick: (e) => { e.preventDefault(); setCurrentPage("certifications"); } },
+              { l: "Security & Compliance", a: "/security", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
             ]},
             { title: "Solutions", links: [
-              { l: "Industries", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
-              { l: "Solutions", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
-              { l: "Partners", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
-              { l: "Referral Programme", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("referral"); } },
-              { l: "Book Consultation", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("consultation"); } },
+              { l: "Industries", a: "/industries", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
+              { l: "Solutions", a: "/solutions", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
+              { l: "Partners", a: "/partners", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
+              { l: "Referral Programme", a: "/referral", onClick: (e) => { e.preventDefault(); setCurrentPage("referral"); } },
+              { l: "Book Consultation", a: "/consultation", onClick: (e) => { e.preventDefault(); setCurrentPage("consultation"); } },
             ]},
             { title: "Resources", links: [
-              { l: "Knowledge Base", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
-              { l: "API Reference", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
-              { l: "FAQ", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
-              { l: "Support Centre", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
+              { l: "Knowledge Base", a: "/docs", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
+              { l: "API Reference", a: "/api-docs", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
+              { l: "FAQ", a: "/faq", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
+              { l: "Support Centre", a: "/support", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
               { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent("orion-open-chat")); } },
-              { l: "Resources", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
+              { l: "Resources", a: "/resources", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },
             ]},
             { title: "Legal", links: [
-              { l: "Privacy Policy", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("privacy"); } },
-              { l: "Terms of Service", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("terms"); } },
-              { l: "Security", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
-              { l: "Contact", a: "#", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
+              { l: "Privacy Policy", a: "/privacy", onClick: (e) => { e.preventDefault(); setCurrentPage("privacy"); } },
+              { l: "Terms of Service", a: "/terms", onClick: (e) => { e.preventDefault(); setCurrentPage("terms"); } },
+              { l: "Security", a: "/security", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
+              { l: "Contact", a: "/contact", onClick: (e) => { e.preventDefault(); setCurrentPage("contact"); } },
             ]},
             { title: "Contact", isContact: true },
           ].map((col, ci) => (
@@ -3421,6 +3410,10 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
 const MKINI = (name) => name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 const TEAM_COLORS = [C.accent, C.mint, C.purple, C.gold, "#E84393", "#14B8A6"];
 
+const PeopleGridLazy = lazy(() => import("./pages/PeoplePage.jsx").then(m => ({ default: m.PeopleGrid })));
+const PeoplePageLazy = lazy(() => import("./pages/PeoplePage.jsx").then(m => ({ default: m.PeoplePage })));
+const PersonPageLazy = lazy(() => import("./pages/PeoplePage.jsx").then(m => ({ default: m.PersonPage })));
+
 function TeamPage({ setCurrentPage }) {
   const cms = useContext(CMSContext);
   const members = (cms?.team || []).filter(m => m.published !== false);
@@ -3436,11 +3429,10 @@ function TeamPage({ setCurrentPage }) {
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7 }}>The people building and supporting Orion Soft's products.</p>
         </div>
 
-        {members.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0" }}>
-            <p style={{ fontSize: 16, color: C.textMuted, fontFamily: font }}>Team profiles coming soon.</p>
-          </div>
-        ) : (
+        <div style={{ marginBottom: 56 }}>
+          <Suspense fallback={null}><PeopleGridLazy setCurrentPage={setCurrentPage} /></Suspense>
+        </div>
+        {members.length === 0 ? null : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 28 }}>
             {members.map((m, i) => {
               const color = TEAM_COLORS[i % TEAM_COLORS.length];
@@ -3789,560 +3781,6 @@ function SocialProof({ setCurrentPage }) {
   );
 }
 
-// ═══════════════════════════════════════
-// ADMIN LOGIN
-// ═══════════════════════════════════════
-function AdminLogin({ onLogin }) {
-  const [pwd, setPwd] = useState("");
-  const [error, setError] = useState("");
-  const [showPwd, setShowPwd] = useState(false);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (pwd === ADMIN_PASSWORD) {
-      try { sessionStorage.setItem(ADMIN_SESSION_KEY, "yes"); } catch {}
-      onLogin();
-    } else {
-      setError("Incorrect password.");
-      setPwd("");
-    }
-  };
-
-  const inp = {
-    width: "100%", boxSizing: "border-box", padding: "13px 16px",
-    borderRadius: 10, border: `1px solid ${C.border}`,
-    background: C.card, color: C.heading, fontSize: 15,
-    fontFamily: font, outline: "none",
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "24px" }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <span style={{ fontSize: 21, fontWeight: 800, color: C.heading, fontFamily: font }}>Orion<span style={{ color: C.gold }}>Soft</span></span>
-        </div>
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "36px 32px", boxShadow: "0 24px 70px rgba(0,0,0,0.28)" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>Product Manager</h1>
-          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font, margin: "0 0 28px" }}>Enter your admin password to continue.</p>
-          <form onSubmit={handleSubmit}>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font, display: "block", marginBottom: 6 }}>Password</label>
-            <div style={{ position: "relative", marginBottom: 20 }}>
-              <input
-                type={showPwd ? "text" : "password"}
-                style={{ ...inp, paddingRight: 50 }}
-                value={pwd}
-                onChange={e => { setPwd(e.target.value); setError(""); }}
-                placeholder="Admin password"
-                autoFocus
-              />
-              <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
-                {showPwd
-                  ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                }
-              </button>
-            </div>
-            {error && <p style={{ fontSize: 13, color: C.rose, fontFamily: font, marginBottom: 16 }}>{error}</p>}
-            <button type="submit" style={{ width: "100%", padding: "14px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, fontSize: 15, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>Sign In</button>
-          </form>
-        </div>
-        <p style={{ textAlign: "center", fontSize: 11.5, color: C.textMuted, fontFamily: font, marginTop: 16 }}>
-          Set VITE_ADMIN_PASSWORD in .env to change the password.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// ADMIN PRODUCT FORM (SLIDE PANEL)
-// ═══════════════════════════════════════
-const EMPTY_PRODUCT = {
-  name: "", tag: "", status: "live", published: true, primary: false,
-  headline: "", desc: "", features: [""], pricing: [], screenshots: [],
-  ctaLabel: "", ctaAction: "contact", color: "#38BDF8",
-};
-
-function AdminProductForm({ product, onSave, onCancel }) {
-  const isEdit = Boolean(product?.id);
-  const [form, setForm] = useState(() => ({
-    ...EMPTY_PRODUCT,
-    ...(product || {}),
-    features: product?.features?.length ? [...product.features] : [""],
-    pricing: product?.pricing?.length ? product.pricing.map(t => ({ ...t })) : [],
-    screenshots: product?.screenshots?.length ? product.screenshots.map(s => ({ ...s })) : [],
-  }));
-  const [tab, setTab] = useState("info");
-  const [errors, setErrors] = useState({});
-  const [ssUrl, setSsUrl] = useState("");
-  const [ssTitle, setSsTitle] = useState("");
-  const [ssDsc, setSsDsc] = useState("");
-  const [ssErr, setSsErr] = useState("");
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const validate = () => {
-    const e = {};
-    if (!form.name.trim()) e.name = "Required";
-    if (!form.headline.trim()) e.headline = "Required";
-    if (!form.desc.trim()) e.desc = "Required";
-    setErrors(e);
-    return !Object.keys(e).length;
-  };
-
-  const handleSave = () => {
-    if (!validate()) { setTab("info"); return; }
-    onSave({ ...form, features: form.features.filter(f => f.trim()) });
-  };
-
-  const addFeature = () => set("features", [...form.features, ""]);
-  const setFeature = (i, v) => set("features", form.features.map((f, fi) => fi === i ? v : f));
-  const removeFeature = (i) => set("features", form.features.filter((_, fi) => fi !== i));
-  const moveFeature = (i, d) => {
-    const arr = [...form.features];
-    const j = i + d;
-    if (j < 0 || j >= arr.length) return;
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-    set("features", arr);
-  };
-
-  const addPricing = () => set("pricing", [...form.pricing, { id: `pt-${Date.now()}`, name: "", beds: "", onboard: "", monthly: "", popular: false }]);
-  const setPricing = (i, k, v) => set("pricing", form.pricing.map((t, ti) => ti === i ? { ...t, [k]: v } : t));
-  const removePricing = (i) => set("pricing", form.pricing.filter((_, ti) => ti !== i));
-
-  const handleFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { setSsErr("Max 2MB per image"); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => { setSsUrl(ev.target.result); setSsErr(""); };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
-  const addScreenshot = () => {
-    if (!ssUrl.trim()) { setSsErr("Paste a URL or upload a file"); return; }
-    set("screenshots", [...form.screenshots, { id: `ss-${Date.now()}`, url: ssUrl.trim(), title: ssTitle.trim(), desc: ssDsc.trim() }]);
-    setSsUrl(""); setSsTitle(""); setSsDsc(""); setSsErr("");
-  };
-  const removeScreenshot = (i) => set("screenshots", form.screenshots.filter((_, si) => si !== i));
-
-  const inp = {
-    width: "100%", boxSizing: "border-box", padding: "11px 14px", borderRadius: 9,
-    border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.heading,
-    fontSize: 14, fontFamily: font, outline: "none",
-  };
-  const lbl = { fontSize: 12.5, fontWeight: 600, color: C.text, fontFamily: font, marginBottom: 5, display: "block" };
-  const tabs = [
-    { id: "info", label: "Info" },
-    { id: "features", label: `Features (${form.features.filter(f => f.trim()).length})` },
-    { id: "screenshots", label: `Screenshots (${form.screenshots.length})` },
-    { id: "pricing", label: `Pricing (${form.pricing.length})` },
-  ];
-
-  return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 9100, background: "rgba(4,12,24,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "stretch", justifyContent: "flex-end" }}
-      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
-    >
-      <div style={{ width: "min(640px, 100vw)", background: C.bg, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", animation: "slideInRight 0.24s ease", overflow: "hidden" }}>
-        <div style={{ padding: "18px 24px", borderBottom: `1px solid ${C.border}`, background: C.surface, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
-          <div>
-            <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: 0 }}>{isEdit ? `Edit: ${product.name}` : "Add New Product"}</h2>
-            <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: "3px 0 0" }}>Changes apply immediately.</p>
-          </div>
-          <button type="button" onClick={onCancel} style={{ background: "rgba(255,255,255,0.07)", border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div style={{ display: "flex", padding: "0 24px", borderBottom: `1px solid ${C.border}`, background: C.surface, flexShrink: 0, overflowX: "auto" }}>
-          {tabs.map(t => (
-            <button key={t.id} type="button" onClick={() => setTab(t.id)} style={{ padding: "12px 14px", background: "none", border: "none", borderBottom: `2px solid ${tab === t.id ? C.accent : "transparent"}`, color: tab === t.id ? C.accent : C.textMuted, fontSize: 13, fontWeight: 700, fontFamily: font, cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s" }}>{t.label}</button>
-          ))}
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-          {tab === "info" && (
-            <div style={{ display: "grid", gap: 18 }}>
-              <div>
-                <label style={lbl}>Product name *</label>
-                <input style={{ ...inp, borderColor: errors.name ? C.rose : C.border }} value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. CareCore HMS" />
-                {errors.name && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.name}</p>}
-              </div>
-              <div>
-                <label style={lbl}>Tag label</label>
-                <input style={inp} value={form.tag} onChange={e => set("tag", e.target.value)} placeholder="e.g. FLAGSHIP PRODUCT, BETA, NEW" />
-              </div>
-              <div>
-                <label style={lbl}>Headline *</label>
-                <input style={{ ...inp, borderColor: errors.headline ? C.rose : C.border }} value={form.headline} onChange={e => set("headline", e.target.value)} placeholder="Short, powerful headline for the product card" />
-                {errors.headline && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.headline}</p>}
-              </div>
-              <div>
-                <label style={lbl}>Description *</label>
-                <textarea style={{ ...inp, resize: "vertical" }} rows={3} value={form.desc} onChange={e => set("desc", e.target.value)} placeholder="1–2 sentences about what this product does" />
-                {errors.desc && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 3 }}>{errors.desc}</p>}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div>
-                  <label style={lbl}>Status</label>
-                  <select style={{ ...inp, cursor: "pointer" }} value={form.status} onChange={e => set("status", e.target.value)}>
-                    <option value="live">Live</option>
-                    <option value="beta">Beta</option>
-                    <option value="coming-soon">Coming Soon</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>CTA links to</label>
-                  <select style={{ ...inp, cursor: "pointer" }} value={form.ctaAction} onChange={e => set("ctaAction", e.target.value)}>
-                    <option value="products">Products page</option>
-                    <option value="contact">Contact / Book Demo</option>
-                    <option value="services">Services page</option>
-                    <option value="work">Work / Portfolio</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label style={lbl}>CTA button label</label>
-                <input style={inp} value={form.ctaLabel} onChange={e => set("ctaLabel", e.target.value)} placeholder="e.g. Explore CareCore, Join Waitlist, Start a Build" />
-              </div>
-              <div>
-                <label style={lbl}>Accent colour</label>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  {PRODUCT_COLORS.map(c => (
-                    <button key={c.value} type="button" onClick={() => set("color", c.value)} title={c.name} style={{ width: 34, height: 34, borderRadius: 9, background: c.value, border: "none", cursor: "pointer", boxShadow: form.color === c.value ? `0 0 0 3px ${C.bg}, 0 0 0 5px ${c.value}` : "none", transition: "box-shadow 0.18s" }} />
-                  ))}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <input type="color" value={form.color} onChange={e => set("color", e.target.value)} style={{ width: 34, height: 34, border: "none", borderRadius: 9, cursor: "pointer", padding: 0, background: "none" }} />
-                    <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>Custom</span>
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <button type="button" onClick={() => set("published", !form.published)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: form.published ? C.mint : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
-                    <span style={{ position: "absolute", top: 3, left: form.published ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: C.white, transition: "left 0.2s" }} />
-                  </button>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text, fontFamily: font }}>{form.published ? "Published" : "Hidden"}</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <button type="button" onClick={() => set("primary", !form.primary)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: form.primary ? C.accent : C.border, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
-                    <span style={{ position: "absolute", top: 3, left: form.primary ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: C.white, transition: "left 0.2s" }} />
-                  </button>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: C.text, fontFamily: font }}>Primary product</span>
-                </label>
-              </div>
-            </div>
-          )}
-          {tab === "features" && (
-            <div>
-              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Key selling points shown on the product card. Use arrows to reorder.</p>
-              <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
-                {form.features.map((f, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <button type="button" onClick={() => moveFeature(i, -1)} disabled={i === 0} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, width: 22, height: 20, cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>▲</button>
-                      <button type="button" onClick={() => moveFeature(i, 1)} disabled={i === form.features.length - 1} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 4, color: C.textMuted, width: 22, height: 20, cursor: "pointer", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>▼</button>
-                    </div>
-                    <input style={{ ...inp, flex: 1 }} value={f} onChange={e => setFeature(i, e.target.value)} placeholder={`Feature ${i + 1}`} />
-                    <button type="button" onClick={() => removeFeature(i)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 34, height: 34, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" onClick={addFeature} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Feature</button>
-            </div>
-          )}
-          {tab === "screenshots" && (
-            <div>
-              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Screenshots for the product gallery. Paste a URL or upload an image (max 2MB each).</p>
-              {form.screenshots.length > 0 && (
-                <div style={{ display: "grid", gap: 10, marginBottom: 24 }}>
-                  {form.screenshots.map((s, i) => (
-                    <div key={s.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", display: "flex", gap: 12, alignItems: "center" }}>
-                      <div style={{ width: 80, height: 56, flexShrink: 0, background: C.surface, overflow: "hidden" }}>
-                        <img src={s.url} alt={s.title || ""} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title || "Untitled"}</div>
-                        <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.desc || s.url}</div>
-                      </div>
-                      <button type="button" onClick={() => removeScreenshot(i)} style={{ marginRight: 12, background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 30, height: 30, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
-                <h3 style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 14px" }}>Add Screenshot</h3>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div>
-                    <label style={lbl}>Image URL or file upload</label>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input style={{ ...inp, flex: 1 }} value={ssUrl} onChange={e => { setSsUrl(e.target.value); setSsErr(""); }} placeholder="https://..." />
-                      <label style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: "0 14px", fontSize: 13, fontFamily: font, cursor: "pointer", display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-                        Upload <input type="file" accept="image/*" onChange={handleFile} style={{ display: "none" }} />
-                      </label>
-                    </div>
-                    {ssErr && <p style={{ fontSize: 12, color: C.rose, fontFamily: font, marginTop: 4 }}>{ssErr}</p>}
-                  </div>
-                  <input style={inp} value={ssTitle} onChange={e => setSsTitle(e.target.value)} placeholder="Title (optional)" />
-                  <input style={inp} value={ssDsc} onChange={e => setSsDsc(e.target.value)} placeholder="Short description (optional)" />
-                  <button type="button" onClick={addScreenshot} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Screenshot</button>
-                </div>
-              </div>
-            </div>
-          )}
-          {tab === "pricing" && (
-            <div>
-              <p style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, marginBottom: 20 }}>Add pricing tiers. Leave empty for custom / quote-based pricing.</p>
-              {form.pricing.map((tier, i) => (
-                <div key={tier.id || i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: C.heading, fontFamily: font, margin: 0 }}>Tier {i + 1}{tier.name ? `: ${tier.name}` : ""}</h3>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button type="button" onClick={() => setPricing(i, "popular", !tier.popular)} style={{ fontSize: 12, fontWeight: 700, fontFamily: font, cursor: "pointer", borderRadius: 6, padding: "5px 10px", background: tier.popular ? C.accentDim : "rgba(255,255,255,0.05)", border: `1px solid ${tier.popular ? C.accent + "44" : C.border}`, color: tier.popular ? C.accent : C.textMuted }}>
-                        {tier.popular ? "★ Most Popular" : "Mark Popular"}
-                      </button>
-                      <button type="button" onClick={() => removePricing(i)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div><label style={lbl}>Tier name</label><input style={inp} value={tier.name} onChange={e => setPricing(i, "name", e.target.value)} placeholder="e.g. Clinic" /></div>
-                    <div><label style={lbl}>Size / subtitle</label><input style={inp} value={tier.beds} onChange={e => setPricing(i, "beds", e.target.value)} placeholder="e.g. 1–10 beds" /></div>
-                    <div><label style={lbl}>Onboarding price</label><input style={inp} value={tier.onboard} onChange={e => setPricing(i, "onboard", e.target.value)} placeholder="₦350K – 500K" /></div>
-                    <div><label style={lbl}>Monthly support</label><input style={inp} value={tier.monthly} onChange={e => setPricing(i, "monthly", e.target.value)} placeholder="₦30,000" /></div>
-                  </div>
-                </div>
-              ))}
-              <button type="button" onClick={addPricing} style={{ background: C.accentDim, border: `1px solid ${C.accent}33`, color: C.accent, borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Pricing Tier</button>
-              {!form.pricing.length && <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 10 }}>No tiers set visitors will see a "Contact Us" CTA.</p>}
-            </div>
-          )}
-        </div>
-        <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.border}`, background: C.surface, display: "flex", gap: 10, flexShrink: 0 }}>
-          <button type="button" onClick={handleSave} style={{ flex: 1, padding: "13px", borderRadius: 10, border: "none", background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, color: C.bg, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>{isEdit ? "Save Changes" : "Add Product"}</button>
-          <button type="button" onClick={onCancel} style={{ padding: "13px 20px", borderRadius: 10, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.text, fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// ADMIN DASHBOARD
-// ═══════════════════════════════════════
-function AdminPanel({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
-  const [editing, setEditing] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [toast, setToast] = useState("");
-
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 2800); };
-
-  const handleSave = (data) => {
-    if (editing === "new") { addProduct(data); showToast("Product added"); }
-    else { updateProduct(editing.id, data); showToast("Changes saved"); }
-    setEditing(null);
-  };
-
-  const handleDelete = () => {
-    deleteProduct(confirmDelete.id);
-    setConfirmDelete(null);
-    showToast("Product deleted");
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(products, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `orionsoft-products-${Date.now()}.json`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (!Array.isArray(data)) throw new Error("not array");
-        importProducts(data);
-        showToast("Products imported");
-      } catch { showToast("Import failed invalid file"); }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  const STATUS = {
-    live: { label: "Live", color: C.mint, bg: C.mintDim },
-    beta: { label: "Beta", color: C.amber, bg: C.amberDim },
-    "coming-soon": { label: "Coming Soon", color: C.purple, bg: C.purpleDim },
-  };
-
-  const btnBase = {
-    background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`,
-    borderRadius: 8, color: C.text, padding: "7px 14px",
-    fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer",
-    display: "flex", alignItems: "center", gap: 6,
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", background: C.bg }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 200, background: "rgba(10,37,64,0.96)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${C.border}`, padding: "0 clamp(16px, 3vw, 32px)" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", height: 62, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button type="button" onClick={() => setCurrentPage("home")} style={{ ...btnBase, padding: "6px 12px" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-              Back to site
-            </button>
-            <div style={{ width: 1, height: 18, background: C.border }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.mint, boxShadow: `0 0 8px ${C.mint}` }} />
-              <span style={{ fontSize: 14.5, fontWeight: 700, color: C.heading, fontFamily: font }}>Product Manager</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            {toast && (
-              <div style={{ background: C.mintDim, border: `1px solid ${C.mint}33`, borderRadius: 8, color: C.mint, padding: "6px 12px", fontSize: 12.5, fontFamily: font, fontWeight: 700 }}>{toast}</div>
-            )}
-            <label style={{ ...btnBase, cursor: "pointer" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Import
-              <input type="file" accept=".json" onChange={handleImport} style={{ display: "none" }} />
-            </label>
-            <button type="button" style={btnBase} onClick={handleExport}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
-            <button type="button" onClick={() => setEditing("new")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, border: "none", borderRadius: 8, color: C.bg, padding: "8px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
-              + Add Product
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px clamp(16px, 3vw, 32px)" }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: "clamp(22px, 3vw, 28px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 6px" }}>Products</h1>
-          <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>{products.length} product{products.length !== 1 ? "s" : ""} · {products.filter(p => p.published).length} published · {products.filter(p => !p.published).length} hidden</p>
-        </div>
-
-        {products.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 24px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 16 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.accentDim, border: `1px solid ${C.accent}33`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 8 }}>No products yet</h2>
-            <p style={{ fontSize: 14.5, color: C.textMuted, fontFamily: font, marginBottom: 24 }}>Add your first product to get started.</p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setEditing("new")} style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.mint})`, border: "none", borderRadius: 10, color: C.bg, padding: "12px 20px", fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>+ Add Product</button>
-              <button type="button" onClick={resetToDefaults} style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Restore Defaults</button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            {products.map((p) => {
-              const sc = STATUS[p.status] || STATUS.live;
-              return (
-                <div key={p.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", transition: "border-color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = `${p.color || C.accent}33`}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
-                >
-                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: p.color || C.accent, flexShrink: 0, boxShadow: `0 0 6px ${p.color || C.accent}66` }} />
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font }}>{p.name}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: sc.bg, color: sc.color }}>{sc.label}</span>
-                      {!p.published && <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: "rgba(255,255,255,0.06)", color: C.textMuted }}>Hidden</span>}
-                      {p.primary && <span style={{ fontSize: 11, fontWeight: 700, fontFamily: font, padding: "3px 8px", borderRadius: 6, background: `${C.gold}18`, color: C.gold }}>Primary</span>}
-                    </div>
-                    <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, margin: 0, lineHeight: 1.4 }}>{(p.desc || "").slice(0, 88)}{(p.desc || "").length > 88 ? "…" : ""}</p>
-                    <div style={{ display: "flex", gap: 12, marginTop: 5 }}>
-                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.features?.length || 0} features</span>
-                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.screenshots?.length || 0} screenshots</span>
-                      <span style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font }}>{p.pricing?.length || 0} pricing tiers</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 7, alignItems: "center", flexShrink: 0, flexWrap: "wrap" }}>
-                    <button type="button" onClick={() => { updateProduct(p.id, { published: !p.published }); showToast(p.published ? "Product hidden" : "Product published"); }} style={{ background: p.published ? C.mintDim : "rgba(255,255,255,0.05)", border: `1px solid ${p.published ? C.mint + "33" : C.border}`, borderRadius: 8, color: p.published ? C.mint : C.textMuted, padding: "7px 12px", fontSize: 12.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>
-                      {p.published ? "Published" : "Hidden"}
-                    </button>
-                    <button type="button" onClick={() => setEditing(p)} style={btnBase}>Edit</button>
-                    <button type="button" onClick={() => setConfirmDelete(p)} style={{ background: C.roseDim, border: `1px solid ${C.rose}22`, borderRadius: 8, color: C.rose, padding: "7px 12px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Delete</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {products.length > 0 && (
-          <div style={{ marginTop: 40, padding: "18px 22px", border: `1px dashed ${C.border}`, borderRadius: 12, display: "flex", gap: 16, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-            <div>
-              <p style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 3px" }}>Reset to defaults</p>
-              <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: 0 }}>Restore the original CareCore HMS and Custom Software products. This overwrites all changes.</p>
-            </div>
-            <button type="button" onClick={() => { if (window.confirm("Reset all products to defaults? This cannot be undone.")) { resetToDefaults(); showToast("Reset to defaults"); } }} style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 9, color: C.textMuted, padding: "9px 16px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Reset</button>
-          </div>
-        )}
-      </div>
-
-      {confirmDelete && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(4,12,24,0.9)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-          onClick={e => { if (e.target === e.currentTarget) setConfirmDelete(null); }}>
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "32px 28px", maxWidth: 420, width: "100%", boxShadow: "0 24px 70px rgba(0,0,0,0.4)" }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: C.roseDim, border: `1px solid ${C.rose}28`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.rose} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            </div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 8px" }}>Delete "{confirmDelete.name}"?</h2>
-            <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.65, margin: "0 0 24px" }}>This permanently removes the product and cannot be undone.</p>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={handleDelete} style={{ flex: 1, padding: "13px", borderRadius: 10, border: "none", background: C.rose, color: C.white, fontSize: 14, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>Delete</button>
-              <button type="button" onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: "13px", borderRadius: 10, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", color: C.text, fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editing && (
-        <AdminProductForm
-          product={editing === "new" ? null : editing}
-          onSave={handleSave}
-          onCancel={() => setEditing(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// ADMIN GATE (AUTH WRAPPER)
-// ═══════════════════════════════════════
-function AdminGate({ products, addProduct, updateProduct, deleteProduct, resetToDefaults, importProducts, setCurrentPage }) {
-  const [authed, setAuthed] = useState(() => {
-    try { return sessionStorage.getItem(ADMIN_SESSION_KEY) === "yes"; }
-    catch { return false; }
-  });
-
-  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
-
-  return (
-    <AdminPanel
-      products={products}
-      addProduct={addProduct}
-      updateProduct={updateProduct}
-      deleteProduct={deleteProduct}
-      resetToDefaults={resetToDefaults}
-      importProducts={importProducts}
-      setCurrentPage={setCurrentPage}
-    />
-  );
-}
 
 // ═══════════════════════════════════════
 // PRODUCTS PAGE
@@ -5435,12 +4873,16 @@ function LoginPage({ setCurrentPage }) {
           </div>
           <Reveal>
             <div style={{ textAlign: "center", marginTop: 48 }}>
-              <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, margin: "0 0 12px" }}>Are you Orion Soft staff?</p>
-              <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13.5, fontFamily: font, cursor: "pointer", fontWeight: 600, padding: 0, textDecoration: "underline", textUnderlineOffset: 4 }}
-                onMouseEnter={e => e.currentTarget.style.color = C.gold}
-                onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
-                Staff admin login →
-              </button>
+              <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, margin: "0 0 14px" }}>Are you part of Orion Soft, or waiting to hear about a job?</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                <a href="/staff" style={{ background: C.gold, color: "#060810", padding: "12px 22px", borderRadius: 10, fontWeight: 800, fontFamily: font, fontSize: 14, textDecoration: "none" }}>Staff Office sign in →</a>
+                <a href="/applicant" style={{ border: `1px solid ${C.border}`, color: C.text, padding: "11px 20px", borderRadius: 10, fontWeight: 700, fontFamily: font, fontSize: 14, textDecoration: "none" }}>Track a job application</a>
+                <button type="button" onClick={() => setCurrentPage("admin")} style={{ background: "none", border: "none", color: C.textMuted, fontSize: 13, fontFamily: font, cursor: "pointer", fontWeight: 600, padding: "11px 8px", textDecoration: "underline", textUnderlineOffset: 4 }}
+                  onMouseEnter={e => e.currentTarget.style.color = C.gold}
+                  onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
+                  Website admin
+                </button>
+              </div>
             </div>
           </Reveal>
         </div>
@@ -5718,10 +5160,51 @@ function OrionHome({ setCurrentPage, portfolio }) {
   );
 }
 
+// Every page the router knows (CMS-only product pages are checked at render).
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person"]);
+
+function routeFromLocation() {
+  const { pathname, hash } = window.location;
+  // Older links (emails, bookmarks, the previous sitemap) used /#page.
+  if ((pathname === "/" || pathname === "") && hash.length > 1) return { page: decodeURIComponent(hash.slice(1)).toLowerCase(), param: null };
+  const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  if (!parts.length) return { page: "home", param: null };
+  const page = parts[0].toLowerCase();
+  if (page === "people" && parts[1]) return { page: "person", param: parts[1].toLowerCase() };
+  if (page === "blog" && parts[1]) return { page: "blog", param: parts[1] };
+  return { page, param: null };
+}
+
+function pathFor(page, param) {
+  if (page === "home") return "/";
+  if (page === "person") return `/people/${encodeURIComponent(param || "")}`;
+  if (page === "blog" && param) return `/blog/${encodeURIComponent(param)}`;
+  return `/${page}`;
+}
+
+function NotFoundPage({ setCurrentPage }) {
+  useEffect(() => { document.title = "Page not found | Orion Soft Limited"; }, []);
+  return (
+    <section style={{ background: C.bg, minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "140px 20px 80px", textAlign: "center" }}>
+      <div>
+        <div style={{ fontSize: 64, fontWeight: 800, color: C.gold, fontFamily: font }}>404</div>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: C.heading, fontFamily: font, margin: "8px 0 10px" }}>We couldn't find that page</h1>
+        <p style={{ fontSize: 15.5, color: C.text, fontFamily: font, marginBottom: 26 }}>It may have moved. Here are some good places to start.</p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          {[["home", "Home"], ["products", "Products"], ["contact", "Contact us"], ["careers", "Careers"]].map(([p, l]) => (
+            <button key={p} type="button" onClick={() => setCurrentPage(p)} style={{ background: p === "home" ? C.gold : "transparent", color: p === "home" ? "#060810" : C.text, border: `1px solid ${p === "home" ? C.gold : C.border}`, borderRadius: 10, padding: "12px 20px", fontWeight: 700, fontFamily: font, cursor: "pointer" }}>{l}</button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("home");
-  const [blogPostId, setBlogPostId] = useState(null);
-  const { products, addProduct, updateProduct, deleteProduct, resetToDefaults, persist } = useProducts();
+  const [route0] = useState(routeFromLocation);
+  const [currentPage, setCurrentPage] = useState(route0.page);
+  const [blogPostId, setBlogPostId] = useState(route0.page === "blog" ? route0.param : null);
+  const [personSlug, setPersonSlug] = useState(route0.page === "person" ? route0.param : null);
   const portfolio = usePortfolio();
   const cms = useCMSData();
 
@@ -5733,8 +5216,24 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
 
-  // Track initial page view on mount
-  useEffect(() => { trackPageView("home"); }, []);
+  // Track the page the visitor actually landed on, and replace legacy
+  // /#page URLs with the real path.
+  useEffect(() => {
+    trackPageView(route0.page);
+    if (window.location.hash && window.location.pathname === "/") window.history.replaceState({}, "", pathFor(route0.page, route0.param));
+  }, [route0]);
+
+  // Browser back/forward.
+  useEffect(() => {
+    const onPop = () => {
+      const r = routeFromLocation();
+      setCurrentPage(r.page);
+      setBlogPostId(r.page === "blog" ? r.param : null);
+      setPersonSlug(r.page === "person" ? r.param : null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // Heartbeat to keep "live visitor" tracking alive
   useEffect(() => {
@@ -5750,6 +5249,8 @@ export default function App() {
     if (seoData?.title) { document.title = seoData.title; return; }
     const defaults = {
       home: "Orion Soft Limited Software for Nigerian Organisations",
+      people: "Our People | Orion Soft Limited",
+      person: document.title,
       products: "Products Orion Soft Limited",
       carecore: "CareCore Hospital Management System | Orion Soft Limited",
       schoolcore: "SchoolCore School Management | Orion Soft Limited",
@@ -5781,7 +5282,19 @@ export default function App() {
     }
   }, [currentPage, cms]);
 
-  const navSetPage = (page) => { setCurrentPage(page); setBlogPostId(null); window.scrollTo({ top: 0 }); trackPageView(page); };
+  const navSetPage = (page, param = null) => {
+    const path = pathFor(page, param);
+    if (window.location.pathname + window.location.search !== path) window.history.pushState({}, "", path);
+    setCurrentPage(page); setBlogPostId(page === "blog" ? param : null); setPersonSlug(page === "person" ? param : null);
+    window.scrollTo({ top: 0 }); trackPageView(page);
+  };
+  const openBlogPost = (id) => {
+    const path = pathFor("blog", id);
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+    setBlogPostId(id); window.scrollTo({ top: 0 });
+  };
+  const cmsProductIds = (cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG).map(p => p.id);
+  const isKnownPage = KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage);
 
   return (
   <CMSContext.Provider value={cms}>
@@ -5937,7 +5450,7 @@ export default function App() {
         )}
 
         {currentPage === "blog" && (
-          <BlogPage setCurrentPage={navSetPage} postId={blogPostId} setPostId={setBlogPostId} />
+          <BlogPage setCurrentPage={navSetPage} postId={blogPostId} setPostId={openBlogPost} />
         )}
 
         {currentPage === "team" && (
@@ -5974,6 +5487,14 @@ export default function App() {
         {currentPage === "investors" && (
           <Suspense fallback={<PageLoader />}><InvestorsPage setCurrentPage={navSetPage} /></Suspense>
         )}
+
+        {currentPage === "people" && (
+          <Suspense fallback={<PageLoader />}><PeoplePageLazy setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "person" && personSlug && (
+          <Suspense fallback={<PageLoader />}><PersonPageLazy key={personSlug} slug={personSlug} setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {!isKnownPage && <NotFoundPage setCurrentPage={navSetPage} />}
 
         {currentPage === "admin" && (
           <Suspense fallback={<PageLoader label="Loading admin…" />}>

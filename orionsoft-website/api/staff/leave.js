@@ -1,6 +1,18 @@
 import { newId, putRecord, getRecord, listRecords, listByArrayIndex, addToArrayIndex } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { officeContext, notify, logActivity } from "../_lib/office.js";
+import { approversFor, canApproveFor } from "../_lib/roles.js";
 import { notifyLeaveSubmitted, notifyLeaveDecision } from "../_lib/emailTemplates.js";
+
+const TYPES = ["annual", "sick", "casual", "maternity", "paternity", "study", "compassionate", "unpaid", "other"];
+
+function workingDays(start, end) {
+  let n = 0;
+  for (let t = Date.parse(start); t <= Date.parse(end); t += 86400000) {
+    const d = new Date(t).getUTCDay();
+    if (d !== 0 && d !== 6) n++;
+  }
+  return n;
+}
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -9,31 +21,33 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "staff");
-  if (!session) return;
-
-  // staffRole/department are re-checked against the live employee record,
-  // not trusted from the (up to 8h old) session token — otherwise a manager
-  // demoted or moved to another department keeps their old approval powers
-  // until their session naturally expires.
-  const actingEmployee = await getRecord("employees", session.sub);
-  if (!actingEmployee) return res.status(404).json({ error: "Employee record not found" });
+  // Role, department and reporting line come from the live employee record
+  // (via officeContext), never the session token, so a demotion or transfer
+  // takes effect immediately.
+  const ctx = await officeContext(req, res);
+  if (!ctx) return;
+  const { me, employees, catalog, session } = ctx;
+  const byId = new Map(employees.map(e => [e.id, e]));
 
   if (req.method === "GET") {
     if (req.query.scope === "team") {
-      if (actingEmployee.staffRole !== "manager") return res.status(403).json({ error: "Only managers can view team leave requests" });
-      const employees = await listRecords("employees");
-      const teamIds = employees.filter(e => e.department === actingEmployee.department && e.id !== session.sub).map(e => e.id);
-      const allLeave = await listRecords("leave");
-      const teamLeave = allLeave.filter(l => teamIds.includes(l.employeeId));
-      return res.json({ ok: true, leave: teamLeave.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });
+      const all = await listRecords("leave");
+      const team = all.filter(l => canApproveFor(me, byId.get(l.employeeId), employees, catalog));
+      return res.json({ ok: true, leave: team.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });
     }
     const leave = await listByArrayIndex("leave", "employee", session.sub);
-    return res.json({ ok: true, leave: leave.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });
+    const year = new Date().toISOString().slice(0, 4);
+    const used = leave.filter(l => l.status === "approved" && l.type === "annual" && l.startDate.startsWith(year)).reduce((n, l) => n + workingDays(l.startDate, l.endDate), 0);
+    const allowance = Number(me.leaveAllowance) || 20;
+    return res.json({
+      ok: true, types: TYPES,
+      balance: { allowance, used, remaining: Math.max(0, allowance - used) },
+      leave: leave.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)),
+    });
   }
 
   if (req.method === "POST") {
-    const { type, startDate, endDate, reason } = req.body || {};
+    const { type, startDate, endDate, reason, handoverTo } = req.body || {};
     if (!type || !startDate || !endDate) {
       return res.status(400).json({ error: "type, startDate, and endDate are required" });
     }
@@ -42,41 +56,44 @@ export default async function handler(req, res) {
     }
     const id = newId("lv");
     const leave = {
-      id, employeeId: session.sub, type, startDate, endDate, reason: reason || "",
-      status: "pending", decidedBy: null, decisionNotes: "",
+      id, employeeId: session.sub, type: TYPES.includes(type) ? type : "other", startDate, endDate, reason: String(reason || "").slice(0, 1000),
+      days: workingDays(startDate, endDate), handoverTo: byId.has(handoverTo) ? handoverTo : null,
+      status: "pending", decidedBy: null, decidedByName: "", decisionNotes: "",
       submittedAt: new Date().toISOString(), decidedAt: null,
     };
     await putRecord("leave", id, leave);
     await addToArrayIndex("leave", "employee", session.sub, id);
 
-    try {
-      const employee = await getRecord("employees", session.sub);
-      await notifyLeaveSubmitted(leave, employee);
-    } catch { /* email is best-effort */ }
+    await notify(approversFor(me, employees, catalog), { type: "approval", title: `${me.fullName} requested ${leave.type} leave`, body: `${startDate} to ${endDate} (${leave.days} working day${leave.days === 1 ? "" : "s"})`, link: "approvals", actorId: me.id });
+    if (leave.handoverTo) await notify([leave.handoverTo], { type: "leave", title: `${me.fullName} named you as their handover while on leave`, body: `${startDate} to ${endDate}`, link: "leave", actorId: me.id });
+    try { await notifyLeaveSubmitted(leave, me); } catch { /* email is best-effort */ }
 
     return res.json({ ok: true, leave });
   }
 
   if (req.method === "PATCH") {
-    if (actingEmployee.staffRole !== "manager") return res.status(403).json({ error: "Only managers can decide on leave requests" });
     const { id, status, decisionNotes } = req.body || {};
     if (!id || !["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "id and a valid status are required" });
     }
     const leave = await getRecord("leave", id);
     if (!leave) return res.status(404).json({ error: "Leave request not found" });
-    const targetEmployee = await getRecord("employees", leave.employeeId);
-    if (!targetEmployee || targetEmployee.department !== actingEmployee.department) {
-      return res.status(403).json({ error: "You can only decide on leave requests from your own department" });
+    const target = byId.get(leave.employeeId);
+    if (!canApproveFor(me, target, employees, catalog)) {
+      return res.status(403).json({ error: "You can only decide leave for people in your reporting line" });
     }
+    if (leave.status !== "pending") return res.status(400).json({ error: "This request has already been decided" });
 
     leave.status = status;
-    leave.decisionNotes = decisionNotes || "";
+    leave.decisionNotes = String(decisionNotes || "").slice(0, 600);
     leave.decidedBy = session.sub;
+    leave.decidedByName = me.fullName;
     leave.decidedAt = new Date().toISOString();
     await putRecord("leave", id, leave);
 
-    try { await notifyLeaveDecision(leave, targetEmployee); } catch { /* best-effort */ }
+    await notify([leave.employeeId], { type: "approval", title: `Your ${leave.type} leave was ${status}`, body: leave.decisionNotes || `${leave.startDate} to ${leave.endDate}`, link: "leave", actorId: me.id });
+    if (status === "approved") await logActivity(leave.employeeId, "leave", `Leave approved: ${leave.startDate} to ${leave.endDate}`);
+    try { await notifyLeaveDecision(leave, target); } catch { /* best-effort */ }
 
     return res.json({ ok: true, leave });
   }

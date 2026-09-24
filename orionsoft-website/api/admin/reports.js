@@ -1,6 +1,7 @@
 import { listRecords, getRecord, putRecord } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 import { notifyReportReviewed } from "../_lib/emailTemplates.js";
+import { notify } from "../_lib/office.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -31,7 +32,9 @@ export default async function handler(req, res) {
     report.reviewNotes = reviewNotes || "";
     report.reviewedBy = session.sub;
     report.reviewedAt = new Date().toISOString();
+    report.reviewedByName = session.name || "Admin";
     await putRecord("reports", id, report);
+    await notify([report.employeeId], { type: "approval", title: `Your weekly report was ${status}`, body: report.reviewNotes, link: "reports" });
 
     try {
       const employee = await getRecord("employees", report.employeeId);

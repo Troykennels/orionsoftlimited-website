@@ -86,6 +86,18 @@ export async function hincr(key, field) {
   return res?.result ?? 0;
 }
 
+// Increment a hash field by an arbitrary integer (leaderboard points etc.)
+export async function hincrby(key, field, n) {
+  if (!BASE || !TOKEN) {
+    const hash = mem.get(key) || {};
+    hash[field] = (parseInt(hash[field], 10) || 0) + n;
+    mem.set(key, hash);
+    return hash[field];
+  }
+  const res = await u("GET", `/hincrby/${key}/${encodeURIComponent(field)}/${Math.trunc(n)}`);
+  return res?.result ?? 0;
+}
+
 // Get all hash fields+values
 export async function hgetall(key) {
   if (!BASE || !TOKEN) return { ...(mem.get(key) || {}) };
@@ -107,6 +119,45 @@ export async function get(key) {
   const res = await u("GET", `/get/${key}`);
   if (res?.result == null) return null;
   try { return JSON.parse(res.result); } catch { return null; }
+}
+
+// Get many JSON values in one round trip (Upstash accepts a raw Redis command
+// as a JSON array POSTed to the base URL). Returns values in key order, null
+// for missing/unparseable keys. Falls back to parallel single GETs if the
+// batched call fails, so a REST quirk can never make a list come back empty.
+export async function mget(keys) {
+  if (!keys.length) return [];
+  if (!BASE || !TOKEN) {
+    return keys.map(k => {
+      const raw = mem.get(k);
+      if (raw == null || typeof raw !== "string") return null;
+      try { return JSON.parse(raw); } catch { return null; }
+    });
+  }
+  const out = [];
+  for (let i = 0; i < keys.length; i += 100) {
+    const chunk = keys.slice(i, i + 100);
+    const res = await u("POST", "", ["MGET", ...chunk]);
+    if (Array.isArray(res?.result)) {
+      for (const v of res.result) {
+        if (v == null) { out.push(null); continue; }
+        try { out.push(JSON.parse(v)); } catch { out.push(null); }
+      }
+    } else {
+      out.push(...await Promise.all(chunk.map(k => get(k))));
+    }
+  }
+  return out;
+}
+
+// Trim a list to its newest `max` items (keeps notification/feed lists bounded).
+export async function ltrim(key, max) {
+  if (!BASE || !TOKEN) {
+    const list = mem.get(key);
+    if (Array.isArray(list)) mem.set(key, list.slice(0, max));
+    return { result: "OK" };
+  }
+  return u("GET", `/ltrim/${key}/0/${max - 1}`);
 }
 
 // Set a single JSON-serialized value by key.

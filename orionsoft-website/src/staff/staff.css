@@ -1,0 +1,88 @@
+/* Staff Office layout. Inline styles handle colour; this file handles
+   responsive structure, hover/focus states and the mobile navigation drawer. */
+.so-root {
+  min-height: 100vh; color: #C8D0E0;
+  /* Layered office backdrop: brand glows over a faint circuit grid. */
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(79,142,247,0.10), transparent 60%),
+    radial-gradient(700px 480px at 10% 110%, rgba(200,168,80,0.08), transparent 60%),
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px) 0 0 / 44px 44px,
+    #060810;
+  background-attachment: fixed;
+}
+.so-card { background: linear-gradient(180deg, rgba(20,30,48,0.92), rgba(15,24,40,0.92)) !important; backdrop-filter: blur(6px); transition: border-color 0.2s, transform 0.2s; }
+.so-lift:hover { transform: translateY(-2px); border-color: rgba(200,168,80,0.3) !important; }
+@keyframes so-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.so-content > * { animation: so-fade 0.28s ease both; }
+@media (prefers-reduced-motion: reduce) { .so-content > * { animation: none; } .so-lift:hover { transform: none; } }
+
+/* Split-screen sign-in */
+.so-login { min-height: 100vh; display: grid; grid-template-columns: 1.15fr 1fr; background: #060810; }
+.so-login-art { position: relative; overflow: hidden; background: #0A2540 center / cover no-repeat; }
+.so-login-form { display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
+@media (max-width: 900px) {
+  .so-login { grid-template-columns: 1fr; }
+  .so-login-art { min-height: 250px; }
+  .so-login-art .so-login-points { display: none; }
+}
+.so-root *, .so-root *::before, .so-root *::after { box-sizing: border-box; }
+.so-root a { color: inherit; }
+
+.so-shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+.so-side {
+  position: fixed; top: 0; left: 0; bottom: 0; width: 248px; overflow-y: auto;
+  background: #0B1120; border-right: 1px solid rgba(255,255,255,0.07); z-index: 40;
+  padding: 16px 12px 24px; scrollbar-width: thin;
+}
+.so-main { grid-column: 2; min-width: 0; }
+.so-top {
+  position: sticky; top: 0; z-index: 30; height: 60px; display: flex; align-items: center; gap: 10px;
+  padding: 0 20px; background: rgba(6,8,16,0.88); backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.so-content { max-width: 1180px; margin: 0 auto; padding: 24px 20px 80px; }
+.so-menu-btn { display: none !important; }
+.so-scrim { display: none; }
+
+.so-nav-item {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px;
+  background: none; border: none; color: #8391AB; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  text-align: left; font-family: inherit;
+}
+.so-nav-item:hover { background: rgba(255,255,255,0.04); color: #F2F6FF; }
+.so-nav-item[aria-current="page"] { background: rgba(200,168,80,0.12); color: #E8C96A; }
+.so-nav-group { font-size: 10.5px; font-weight: 800; letter-spacing: 0.09em; color: #56637D; margin: 16px 10px 6px; }
+
+.so-btn:not(:disabled):hover { filter: brightness(1.12); }
+.so-btn:focus-visible, .so-iconbtn:focus-visible, .so-nav-item:focus-visible, .so-field:focus { outline: 2px solid #C8A850; outline-offset: 1px; }
+.so-iconbtn:hover { background: rgba(255,255,255,0.05) !important; color: #F2F6FF !important; }
+.so-hover:hover { border-color: rgba(200,168,80,0.35) !important; }
+.so-row:hover { background: rgba(255,255,255,0.025); }
+
+.so-two { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.so-two > * { min-width: 0; }
+/* Vertical stack of cards whose width is set by the column, never by the
+   widest piece of content inside (grid tracks default to min-content). */
+.so-stack { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; }
+.so-chat { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: calc(100vh - 150px); min-height: 460px; }
+.so-kanban { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+.so-pipeline { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(196px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+
+@media (max-width: 1100px) {
+  .so-two { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .so-shell { grid-template-columns: 1fr; }
+  .so-main { grid-column: 1; }
+  .so-side { transform: translateX(-100%); transition: transform 0.22s ease; box-shadow: 20px 0 50px rgba(0,0,0,0.5); }
+  .so-side.open { transform: translateX(0); }
+  .so-scrim.open { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 35; }
+  .so-menu-btn { display: inline-flex !important; }
+  .so-content { padding: 18px 14px 80px; }
+  .so-top { padding: 0 12px; }
+  .so-hide-sm { display: none !important; }
+  .so-chat { grid-template-columns: 1fr; height: auto; }
+  .so-chat.has-active .so-chat-list { display: none; }
+  .so-chat:not(.has-active) .so-chat-pane { display: none; }
+}

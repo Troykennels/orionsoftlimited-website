@@ -2,7 +2,7 @@
 // Record: orionsoft:{entity}:{id}          -> JSON blob
 // Index:  orionsoft:{entity}:index          -> JSON array of ids
 // Lookup: orionsoft:{entity}:by-{field}:{value} -> id (string) or array of ids
-import { get, set, del } from "../store.js";
+import { get, set, del, mget } from "../store.js";
 
 function indexKey(entity) { return `orionsoft:${entity}:index`; }
 function recordKey(entity, id) { return `orionsoft:${entity}:${id}`; }
@@ -52,7 +52,13 @@ export async function deleteRecord(entity, id) {
 
 export async function listRecords(entity) {
   const ids = await readIndex(entity);
-  const items = await Promise.all(ids.map((id) => getRecord(entity, id)));
+  const items = await mget(ids.map((id) => recordKey(entity, id)));
+  return items.filter(Boolean);
+}
+
+// Fetch several records of one entity by id in a single batched read.
+export async function getRecords(entity, ids) {
+  const items = await mget(ids.map((id) => recordKey(entity, id)));
   return items.filter(Boolean);
 }
 
@@ -91,6 +97,5 @@ export async function removeFromArrayIndex(entity, field, value, id) {
 export async function listByArrayIndex(entity, field, value) {
   const key = lookupKey(entity, field, value);
   const ids = (await get(key)) || [];
-  const items = await Promise.all(ids.map((id) => getRecord(entity, id)));
-  return items.filter(Boolean);
+  return getRecords(entity, ids);
 }

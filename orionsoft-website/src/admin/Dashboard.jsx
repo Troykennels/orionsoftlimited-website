@@ -5,10 +5,14 @@ import {
   Users, Target, CalendarDays, Search, Flag, Building2, Link2, Settings,
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
-  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, Trash2, MessageCircle, Menu,
+  ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
   Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus,
 } from "lucide-react";
 import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
+import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
+import ErrorBoundary from "../staff/ErrorBoundary.jsx";
+import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
+import SignatureExtractor from "./SignatureExtractor.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -146,16 +150,16 @@ function mergeById(serverArr = [], localArr = []) {
 }
 
 // ─── Shared UI components ────────────────────────────────────────────────────
-function Btn({ children, onClick, type = "button", variant = "primary", small = false, danger = false, disabled = false }) {
+function Btn({ children, onClick, type = "button", variant = "primary", small = false, danger = false, disabled = false, style = {}, title }) {
   const bg = danger ? C.roseDim : variant === "primary" ? C.gold : variant === "ghost" ? "transparent" : C.card;
   const color = danger ? C.rose : variant === "primary" ? "#060810" : C.text;
   const border = danger ? `1px solid ${C.rose}44` : variant === "ghost" ? `1px solid ${C.border}` : "none";
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={{
+    <button type={type} onClick={onClick} disabled={disabled} title={title} style={{
       background: bg, color, border, borderRadius: 8,
       padding: small ? "7px 14px" : "10px 20px",
       fontSize: small ? 13 : 14, fontWeight: 600, fontFamily: font, cursor: disabled ? "not-allowed" : "pointer",
-      opacity: disabled ? 0.5 : 1, transition: "all 0.2s",
+      opacity: disabled ? 0.5 : 1, transition: "all 0.2s", ...style,
     }}
     onMouseEnter={e => { if (!disabled) e.currentTarget.style.opacity = "0.85"; }}
     onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}>
@@ -369,7 +373,8 @@ const NAV_GROUPS = [
   {
     label: "STAFF & HR",
     items: [
-      { id: "employees",     label: "Employees",        icon: UserCog },
+      { id: "employees",     label: "Employees & Roles", icon: UserCog },
+      { id: "staff-office",  label: "Staff Office",     icon: Building2 },
       { id: "weekly-reports",label: "Weekly Reports",   icon: ClipboardList },
       { id: "leave-requests",label: "Leave Requests",   icon: Palmtree },
       { id: "appraisals",    label: "Performance Reviews", icon: Award },
@@ -615,6 +620,9 @@ function MiniSparkline({ data = [], color = C.gold, width = 80, height = 32 }) {
 
 // ─── Full-width area line chart ──────────────────────────────────────────────
 function LineAreaChart({ data = [], color = C.blue, height = 160, secondaryData = [], secondaryColor = C.gold }) {
+  // Must run before any point math: with no data, pts.at(-1) is undefined and
+  // the whole dashboard used to crash to a blank screen on a fresh site.
+  if (!data.length) return <div style={{ height, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:13 }}>No data yet. Visits will appear as people browse the site.</div>;
   const W = 600, PAD = { t:12, r:8, b:30, l:36 };
   const cW = W - PAD.l - PAD.r, cH = height - PAD.t - PAD.b;
   const vals = data.map(d => d.value ?? d.visits ?? 0);
@@ -635,8 +643,6 @@ function LineAreaChart({ data = [], color = C.blue, height = 160, secondaryData 
   const xTicks = [0, Math.floor(data.length*0.25), Math.floor(data.length*0.5), Math.floor(data.length*0.75), data.length-1].filter((v,i,a) => a.indexOf(v) === i);
   // Y-axis ticks
   const yTicks = [0, Math.round(max*0.5), max].map(v => ({ y: toY(v), v }));
-
-  if (!data.length) return <div style={{ height, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:13 }}>No data yet. Visits will appear as people browse the site.</div>;
 
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width:"100%", height, display:"block" }}>
@@ -679,6 +685,12 @@ function DonutChart({ segments = [], size = 140, innerLabel = "total" }) {
     const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
     angle += sweep;
     const x2 = cx + R * Math.cos(angle), y2 = cy + R * Math.sin(angle);
+    // A full circle can't be drawn as one arc (start == end draws nothing),
+    // so a 100% segment is drawn as two half-arcs.
+    if (sweep >= 2 * Math.PI - 1e-6) {
+      const xm = cx - (x1 - cx), ym = cy - (y1 - cy);
+      return { ...sg, d: `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 1 1 ${xm.toFixed(2)} ${ym.toFixed(2)} A ${R} ${R} 0 1 1 ${x1.toFixed(2)} ${y1.toFixed(2)}` };
+    }
     return { ...sg, d: `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 ${sweep>Math.PI?1:0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}` };
   });
   return (
@@ -832,7 +844,6 @@ function NeedsAttentionWidget({ navigate }) {
 
 function DashboardOverview({ navigate }) {
   const { data, loading, error, lastUpdated, countdown, refresh } = useAnalytics();
-  const blog    = lsGet(SK.blog,    []);
   const clients = lsGet(SK.clients, []);
   const audit   = lsGet(SK.audit,   []);
 
@@ -1896,11 +1907,12 @@ function CareersSection() {
 
 // ─── Applicants ──────────────────────────────────────────────────────────────
 const APPLICANT_STAGES = ["applied", "reviewing", "assessment", "interview", "offer", "hired"];
-const APPLICANT_STATUS_LABELS = { applied: "Applied", reviewing: "Reviewing", assessment: "Assessment", interview: "Interview", offer: "Offer", hired: "Hired", rejected: "Rejected" };
-const APPLICANT_STATUS_COLORS = { applied: C.blue, reviewing: C.amber, assessment: C.purple, interview: C.cyan, offer: C.gold, hired: C.mint, rejected: C.rose };
+const APPLICANT_STATUS_LABELS = { applied: "Applied", reviewing: "Reviewing", assessment: "Assessment", interview: "Interview", offer: "Offer", hired: "Hired", rejected: "Rejected", withdrawn: "Withdrawn" };
+const APPLICANT_STATUS_COLORS = { applied: C.blue, reviewing: C.amber, assessment: C.purple, interview: C.cyan, offer: C.gold, hired: C.mint, rejected: C.rose, withdrawn: C.textMuted };
 
-function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
+function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete, onReload }) {
   const [status, setStatus] = useState(a.status);
+  const [publicNote, setPublicNote] = useState("");
   const [score, setScore] = useState(a.score ?? "");
   const [reviewer, setReviewer] = useState(a.reviewer || "");
   const [note, setNote] = useState("");
@@ -1909,10 +1921,11 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
 
   async function save(extra = {}) {
     setSaving(true); setErr("");
-    const result = await onUpdate({ id: a.id, status, score: score === "" ? null : Number(score), reviewer, ...extra });
+    const result = await onUpdate({ id: a.id, status, score: score === "" ? null : Number(score), reviewer, ...(status !== a.status ? { publicNote } : {}), ...extra });
     setSaving(false);
     if (!result?.ok) { setErr(result?.error || "Failed to save changes."); return; }
     if (extra.note) setNote("");
+    if (status !== a.status) setPublicNote("");
   }
 
   const stageIndex = APPLICANT_STAGES.indexOf(a.status);
@@ -1934,8 +1947,8 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
 
       <SectionCard style={{ marginBottom: 20 }}>
         <SectionTitle>Recruitment progress</SectionTitle>
-        {a.status === "rejected" ? (
-          <p style={{ fontSize: 13.5, color: C.rose, marginTop: 12 }}>This application was rejected.</p>
+        {a.status === "rejected" || a.status === "withdrawn" ? (
+          <p style={{ fontSize: 13.5, color: a.status === "rejected" ? C.rose : C.textMuted, marginTop: 12 }}>{a.status === "rejected" ? "This application was rejected." : "The candidate withdrew this application from their portal."}</p>
         ) : (
           <div style={{ display: "flex", marginTop: 20, overflowX: "auto", paddingBottom: 4 }}>
             {APPLICANT_STAGES.map((s, i) => {
@@ -1963,7 +1976,7 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
               {a.portfolio && <a href={a.portfolio} target="_blank" rel="noreferrer" style={{ color: C.gold, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>View Portfolio →</a>}
             </div>
           </ReportDetailCard>
-          <ReportDetailCard title="Notes">
+          <ReportDetailCard title="Internal notes (never shown to the candidate)">
             {(a.notes || []).length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No notes yet.</p>}
             {(a.notes || []).map((n, i) => (
               <div key={i} style={{ padding: "10px 0", borderBottom: i < a.notes.length - 1 ? `1px solid ${C.border}` : "none" }}>
@@ -1996,9 +2009,15 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
             <div style={{ marginTop: 12 }}>
               <Label>Status</Label>
               <Select value={status} onChange={e => setStatus(e.target.value)}>
-                {[...APPLICANT_STAGES, "rejected"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
+                {[...APPLICANT_STAGES, "rejected", "withdrawn"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
               </Select>
             </div>
+            {status !== a.status && (
+              <div style={{ marginTop: 12 }}>
+                <Label>Note to the candidate (shown in their portal & email)</Label>
+                <Textarea rows={2} value={publicNote} onChange={e => setPublicNote(e.target.value)} placeholder={status === "rejected" ? "Thank you for your time. We were impressed by…" : "Optional: what happens next"} />
+              </div>
+            )}
             <div style={{ marginTop: 12 }}>
               <Label>Score (0–100)</Label>
               <Input type="number" min="0" max="100" value={score} onChange={e => setScore(e.target.value)} />
@@ -2015,6 +2034,7 @@ function ApplicantDetail({ applicant: a, onBack, onUpdate, onDelete }) {
           )}
         </div>
       </div>
+      <CandidatePortalPanel key={a.id} applicant={a} onSaved={onReload} />
     </div>
   );
 }
@@ -2041,6 +2061,9 @@ function ApplicantsSection() {
     const t = setInterval(() => load(true), 15000);
     return () => clearInterval(t);
   }, []);
+
+  // Stable reference so the portal panel's mark-read effect doesn't re-run each render.
+  const reloadSilently = useCallback(() => { load(true); }, []);
 
   async function updateApplicant(patch) {
     const r = await fetch("/api/admin/applicants", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
@@ -2083,7 +2106,7 @@ function ApplicantsSection() {
 
   const viewingApplicant = viewing ? applicants.find(a => a.id === viewing) : null;
   if (viewingApplicant) {
-    return <ApplicantDetail applicant={viewingApplicant} onBack={() => setViewing(null)} onUpdate={updateApplicant} onDelete={deleteApplicant} />;
+    return <ApplicantDetail key={viewingApplicant.id} applicant={viewingApplicant} onBack={() => setViewing(null)} onUpdate={updateApplicant} onDelete={deleteApplicant} onReload={reloadSilently} />;
   }
 
   return (
@@ -2124,7 +2147,7 @@ function ApplicantsSection() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
           <Select value={filters.status} onChange={e => setFilters(f => ({ ...f, status: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
             <option value="">All statuses</option>
-            {[...APPLICANT_STAGES, "rejected"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
+            {[...APPLICANT_STAGES, "rejected", "withdrawn"].map(s => <option key={s} value={s}>{APPLICANT_STATUS_LABELS[s]}</option>)}
           </Select>
           <Select value={filters.role} onChange={e => setFilters(f => ({ ...f, role: e.target.value }))} style={{ width: "auto", minWidth: 150 }}>
             <option value="">All roles</option>
@@ -2143,8 +2166,8 @@ function ApplicantsSection() {
         {filtered.map(a => (
           <div key={a.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ minWidth: 180 }}>
-              <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{a.fullName}</div>
-              <div style={{ fontSize: 12, color: C.textMuted }}>{a.email}</div>
+              <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{a.fullName}{a.unreadForAdmin && (a.messages || []).some(m => m.from === "candidate") ? <span style={{ marginLeft: 8 }}><Badge color={C.rose}>New reply</Badge></span> : null}</div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>{a.email}{a.reference ? ` · ${a.reference}` : ""}</div>
             </div>
             <div style={{ fontSize: 13, color: C.text, minWidth: 140 }}>{a.roleAppliedFor}</div>
             <div style={{ fontSize: 12.5, color: C.textMuted, minWidth: 100 }}>{a.experience || "—"}</div>
@@ -3591,194 +3614,6 @@ function SystemHealthSection() {
 }
 
 // ─── Employees ───────────────────────────────────────────────────────────────
-function EmployeesSection() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
-  const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [saving, setSaving] = useState(false);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const r = await fetch("/api/admin/employees");
-      const json = await r.json();
-      if (r.ok) setEmployees(json.employees || []);
-    } finally { setLoading(false); }
-  }
-
-  useEffect(() => { load(); }, []);
-
-  function exportCSV() {
-    downloadCSV("employees",
-      ["Name", "Email", "Phone", "Title", "Department", "Role", "Status", "Salary", "Currency", "Start Date"],
-      employees.map(e => [e.fullName, e.email, e.phone, e.title, e.department, e.staffRole || "staff", e.status, e.salaryAmount, e.salaryCurrency, e.startDate]),
-      "employees");
-  }
-
-  async function addEmployee() {
-    setErr(""); setMsg("");
-    if (!form.fullName || !form.email || !form.title) { setErr("Full name, email, and title are required."); return; }
-    const r = await fetch("/api/admin/employees", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    const json = await r.json();
-    if (!r.ok) { setErr(json.error || "Failed to add employee."); return; }
-    auditLog("create_employee", form.email);
-    setForm({ fullName: "", email: "", phone: "", title: "", department: "", salaryAmount: "", salaryCurrency: "NGN", staffRole: "staff" });
-    setMsg("Employee added, welcome email sent.");
-    setShowForm(false);
-    setTimeout(() => setMsg(""), 4000);
-    load();
-  }
-
-  async function toggleStatus(emp) {
-    setErr("");
-    const nextStatus = emp.status === "active" ? "suspended" : "active";
-    const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, status: nextStatus }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to update employee status."); return; }
-    auditLog("update_employee_status", emp.email, nextStatus);
-    load();
-  }
-
-  async function toggleStaffRole(emp) {
-    setErr("");
-    const nextRole = emp.staffRole === "manager" ? "staff" : "manager";
-    const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: emp.id, staffRole: nextRole }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to update employee role."); return; }
-    auditLog("update_employee_role", emp.email, nextRole);
-    load();
-  }
-
-  function startEdit(emp) {
-    setErr("");
-    setEditingId(emp.id);
-    setEditForm({
-      phone: emp.phone || "", title: emp.title || "", department: emp.department || "",
-      salaryAmount: emp.salaryAmount || "", salaryCurrency: emp.salaryCurrency || "NGN",
-      bankName: emp.bankName || "", bankAccountNumber: emp.bankAccountNumber || "", bankAccountName: emp.bankAccountName || "",
-    });
-  }
-
-  async function saveEdit() {
-    setSaving(true); setErr("");
-    try {
-      const r = await fetch("/api/admin/employees", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editingId, ...editForm }) });
-      const json = await r.json().catch(() => ({}));
-      if (!r.ok) { setErr(json.error || "Failed to save changes."); return; }
-      auditLog("update_employee", editForm.email || editingId);
-      setEditingId(null);
-      load();
-    } finally { setSaving(false); }
-  }
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Total Employees" value={employees.length} color={C.blue} icon="🧑‍💼" />
-        <StatCard label="Active" value={employees.filter(e => e.status === "active").length} color={C.mint} icon="✅" />
-        <StatCard label="Suspended" value={employees.filter(e => e.status !== "active").length} color={C.amber} icon="⏸️" />
-      </div>
-
-      <SectionCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <SectionTitle>Employees</SectionTitle>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Btn small variant="ghost" onClick={exportCSV}>Export CSV</Btn>
-            <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ Add Employee"}</Btn>
-          </div>
-        </div>
-        {showForm && (
-          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div><Label>Full name</Label><Input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} /></div>
-              <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
-              <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-              <div><Label>Job title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-              <div><Label>Department</Label><Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} /></div>
-              <div><Label>Staff role</Label>
-                <Select value={form.staffRole} onChange={e => setForm(f => ({ ...f, staffRole: e.target.value }))}>
-                  <option value="staff">Staff</option>
-                  <option value="manager">Manager (approves their department's reports & leave)</option>
-                </Select>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
-                <div><Label>Salary</Label><Input type="number" value={form.salaryAmount} onChange={e => setForm(f => ({ ...f, salaryAmount: e.target.value }))} /></div>
-                <div><Label>Currency</Label><Select value={form.salaryCurrency} onChange={e => setForm(f => ({ ...f, salaryCurrency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
-              </div>
-            </div>
-            <Btn onClick={addEmployee}>Create employee & send welcome email</Btn>
-          </div>
-        )}
-        {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
-        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
-      </SectionCard>
-
-      <SectionCard>
-        {loading ? <SkeletonRows count={6} /> : (
-          <Table
-            cols={[
-              { key: "fullName", label: "Name", render: e => (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {e.avatarDataUrl
-                    ? <img src={e.avatarDataUrl} alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
-                    : <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.goldDim, color: C.gold, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, fontWeight: 700 }}>{(e.fullName || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("")}</div>}
-                  <span>{e.fullName}</span>
-                </div>
-              ) },
-              { key: "title", label: "Title" },
-              { key: "department", label: "Department" },
-              { key: "email", label: "Email" },
-              { key: "staffRole", label: "Role", render: e => <Badge color={e.staffRole === "manager" ? C.purple : C.textMuted}>{e.staffRole || "staff"}</Badge> },
-              { key: "status", label: "Status", render: e => <Badge color={e.status === "active" ? C.mint : C.amber}>{e.status}</Badge> },
-              { key: "actions", label: "", render: e => (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button type="button" onClick={() => startEdit(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>Edit</button>
-                  <button type="button" onClick={() => toggleStaffRole(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.staffRole === "manager" ? "Make Staff" : "Make Manager"}</button>
-                  <button type="button" onClick={() => toggleStatus(e)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 6, color: C.text, cursor: "pointer", fontSize: 12, padding: "4px 8px" }}>{e.status === "active" ? "Suspend" : "Reactivate"}</button>
-                </div>
-              ) },
-            ]}
-            rows={employees}
-            emptyMsg="No employees yet. Add your first team member above."
-          />
-        )}
-      </SectionCard>
-
-      {editingId && (() => {
-        const emp = employees.find(e => e.id === editingId);
-        if (!emp) return null;
-        return (
-          <Modal onClose={() => setEditingId(null)} title={`Edit ${emp.fullName}`}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <div><Label>Phone</Label><Input value={editForm.phone} onChange={e2 => setEditForm(f => ({ ...f, phone: e2.target.value }))} /></div>
-              <div><Label>Job title</Label><Input value={editForm.title} onChange={e2 => setEditForm(f => ({ ...f, title: e2.target.value }))} /></div>
-              <div><Label>Department</Label><Input value={editForm.department} onChange={e2 => setEditForm(f => ({ ...f, department: e2.target.value }))} /></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
-                <div><Label>Salary</Label><Input type="number" value={editForm.salaryAmount} onChange={e2 => setEditForm(f => ({ ...f, salaryAmount: e2.target.value }))} /></div>
-                <div><Label>Currency</Label><Select value={editForm.salaryCurrency} onChange={e2 => setEditForm(f => ({ ...f, salaryCurrency: e2.target.value }))}><option>NGN</option><option>USD</option></Select></div>
-              </div>
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>BANK DETAILS (FOR PAYROLL TRANSFER)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
-              <div><Label>Bank name</Label><Input value={editForm.bankName} onChange={e2 => setEditForm(f => ({ ...f, bankName: e2.target.value }))} /></div>
-              <div><Label>Account number</Label><Input value={editForm.bankAccountNumber} onChange={e2 => setEditForm(f => ({ ...f, bankAccountNumber: e2.target.value }))} /></div>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Btn onClick={saveEdit} disabled={saving}>{saving ? "Saving…" : "Save changes"}</Btn>
-              <Btn variant="ghost" onClick={() => setEditingId(null)}>Cancel</Btn>
-            </div>
-            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
-          </Modal>
-        );
-      })()}
-    </div>
-  );
-}
-
 // ─── Weekly Reports (admin review) ───────────────────────────────────────────
 function ReportStat({ label, value }) {
   return (
@@ -4340,6 +4175,7 @@ function SignatoriesSection() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ fullName: "", title: "", email: "" });
   const [sigData, setSigData] = useState(null);
+  const [sigMode, setSigMode] = useState("upload");
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
 
   async function load() {
@@ -4354,12 +4190,12 @@ function SignatoriesSection() {
 
   async function add() {
     setErr(""); setMsg("");
-    if (!form.fullName || !sigData) { setErr("Full name and a drawn signature are required."); return; }
+    if (!form.fullName || !sigData) { setErr(sigMode === "draw" ? "Full name and a drawn signature are required." : "Full name and an extracted signature are required. Upload a signed paper and click Use this signature."); return; }
     const r = await fetch("/api/admin/signatories", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, signatureImageDataUrl: sigData }) });
     const json = await r.json();
     if (!r.ok) { setErr(json.error || "Failed to add signatory."); return; }
     auditLog("create_signatory", form.fullName);
-    setForm({ fullName: "", title: "", email: "" }); setSigData(null);
+    setForm({ fullName: "", title: "", email: "" }); setSigData(null); setSigMode("upload");
     setMsg("Signatory added."); setTimeout(() => setMsg(""), 3000);
     load();
   }
@@ -4379,8 +4215,11 @@ function SignatoriesSection() {
           <div><Label>Job title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
           <div><Label>Email (optional)</Label><Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
         </div>
-        <Label>Draw signature</Label>
-        <SignaturePad onChange={setSigData} />
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+          <Btn small variant={sigMode === "upload" ? "primary" : "ghost"} onClick={() => { setSigMode("upload"); setSigData(null); }}>Upload a signed document or photo</Btn>
+          <Btn small variant={sigMode === "draw" ? "primary" : "ghost"} onClick={() => { setSigMode("draw"); setSigData(null); }}>Draw signature</Btn>
+        </div>
+        {sigMode === "draw" ? <SignaturePad onChange={setSigData} /> : <SignatureExtractor onChange={setSigData} />}
         <div style={{ marginTop: 14 }}><Btn onClick={add}>Add signatory</Btn></div>
         {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
@@ -6223,7 +6062,8 @@ function DashboardContent({ active, session, navigate }) {
     case "clients":       return <ClientsSection />;
     case "menus":         return <MenusSection />;
     case "settings":      return <SettingsSection />;
-    case "employees":      return <EmployeesSection />;
+    case "employees":      return <EmployeesSection session={session} />;
+    case "staff-office":   return <StaffOfficeSection />;
     case "weekly-reports": return <WeeklyReportsSection />;
     case "leave-requests": return <LeaveRequestsSection />;
     case "payroll":        return <PayrollSection session={session} />;
@@ -6504,7 +6344,7 @@ export default function AdminDashboard({ setCurrentPage }) {
             </button>
           </div>
 
-          <DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} navigate={navigate} />
+          <ErrorBoundary resetKey={active}><DashboardContent active={active} session={session} setCurrentPage={setCurrentPage} navigate={navigate} /></ErrorBoundary>
         </div>
       </main>
     </div>

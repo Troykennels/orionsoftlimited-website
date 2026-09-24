@@ -2,6 +2,7 @@
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
+import { notify } from "../_lib/office.js";
 
 const STATUSES = ["todo", "in_progress", "review", "done"];
 const PRIORITIES = ["low", "medium", "high", "urgent"];
@@ -33,6 +34,7 @@ export default async function handler(req, res) {
     };
     await putRecord("tasks", id, task);
     await logAudit(session, "create_task", `task ${id}`, title);
+    if (task.assigneeId) await notify([task.assigneeId], { type: "task", title: "Management assigned you a task", body: title, link: `tasks:${id}` });
     return res.json({ ok: true, task });
   }
 
@@ -46,6 +48,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid status" });
     }
     const allowed = ["title", "description", "project", "assigneeId", "priority", "status", "dueDate"];
+    if (updates.assigneeId && updates.assigneeId !== task.assigneeId) {
+      await notify([updates.assigneeId], { type: "task", title: "Management assigned you a task", body: task.title, link: `tasks:${id}` });
+    }
     for (const key of allowed) {
       if (updates[key] !== undefined) task[key] = updates[key];
     }

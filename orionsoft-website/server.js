@@ -73,6 +73,12 @@ async function start() {
   await mountApiRoutes();
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log(`Orion Soft API server listening on port ${port}`));
+
+  // Staff Office automations (birthdays, reminders, follow-ups…). Every job
+  // is idempotent, so a restart or a concurrent lazy run can't double-fire.
+  const { runAutomations } = await import("./api/_lib/automations.js");
+  setTimeout(runAutomations, 10_000);
+  setInterval(runAutomations, 5 * 60_000);
 }
 
 start();

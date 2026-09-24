@@ -10,8 +10,13 @@ export default async function handler(req, res) {
   const session = getSessionFromRequest(req);
   if (!session) return res.status(401).json({ error: "Unauthorized" });
 
+  let ownerOffice = false;
+  if (session.role === "admin") {
+    const { getByLookup } = await import("../_lib/records.js");
+    ownerOffice = !!(await getByLookup("employees", "admin", session.sub));
+  }
   return res.json({
-    ok: true,
+    ok: true, ownerOffice,
     user: { id: session.sub, name: session.name, email: session.email, role: session.role, adminRole: session.adminRole, staffRole: session.staffRole, department: session.department, title: session.title },
   });
 }
