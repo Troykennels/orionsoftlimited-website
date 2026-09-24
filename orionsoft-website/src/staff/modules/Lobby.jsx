@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PenSquare, Award, Share2, Palmtree, ClipboardList, CalendarPlus, Video, ListChecks, CheckCheck,
   Trophy, Link2, MessageSquare, Sun, Coffee, LogOut, Cake, BookOpen, Users,
@@ -37,6 +37,8 @@ function DayFlow({ onChanged }) {
   useEffect(() => { load(); }, [load]);
   const { ensure, modal } = useConsent();
   const [locMsg, setLocMsg] = useState("");
+  const [locAcc, setLocAcc] = useState(null);
+  const locControl = useRef({});
   const [locFail, setLocFail] = useState(null); // { kind, body, okMsg }
 
   async function act(body, okMsg, { skipLocation = false } = {}) {
@@ -48,9 +50,13 @@ function DayFlow({ onChanged }) {
       if (locate) {
         extra = { geo: null, deviceId: getDeviceId() };
         if (!skipLocation) {
-          setLocMsg("Getting your location…");
-          const loc = await getLocation({ where: "clock-in/out", goodEnough: 50, onProgress: g => setLocMsg(`Getting your location… ±${Math.round(g.accuracy)}m`) });
-          setLocMsg("");
+          setLocMsg("Getting your location…"); setLocAcc(null);
+          locControl.current = {};
+          // Clock-in only needs to know roughly where the day starts, so a
+          // Wi-Fi-grade fix (±100m) is taken at once rather than waiting for GPS.
+          const loc = await getLocation({ where: "clock-in/out", goodEnough: 100, settleMs: 3000, maxWait: 12000, control: locControl.current,
+            onProgress: g => { setLocAcc(Math.round(g.accuracy)); setLocMsg(`Getting your location… ±${Math.round(g.accuracy)}m`); } });
+          setLocMsg(""); setLocAcc(null);
           if (!loc.geo) { setLocFail({ kind: loc.kind, detail: techDetail(loc), body, okMsg }); return false; }
           extra.geo = loc.geo;
         }
@@ -79,7 +85,7 @@ function DayFlow({ onChanged }) {
         </Modal>
       )}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.gold, marginBottom: 8 }}>MY DAY</div>
-      {locMsg && <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontSize: 13, marginBottom: 8 }}><span className="so-pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: C.blue }} />{locMsg}</div>}
+      {locMsg && <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontSize: 13, marginBottom: 8 }}><span className="so-pulse" style={{ width: 9, height: 9, borderRadius: "50%", background: C.blue }} />{locMsg}{locAcc != null && <button type="button" onClick={() => locControl.current.accept?.()} style={{ marginLeft: "auto", background: "none", border: `1px solid ${C.gold}88`, color: C.gold, borderRadius: 8, padding: "3px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Use this</button>}</div>}
       {!att && <div style={{ color: C.textMuted, fontSize: 13 }}>Loading…</div>}
       {att && !clockedIn && (
         <>

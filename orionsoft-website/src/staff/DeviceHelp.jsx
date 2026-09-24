@@ -1,7 +1,7 @@
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import { C, font } from "./theme.js";
 import { Btn } from "./components.jsx";
-import { phoneInfo } from "./geo.js";
+import { phoneInfo, openInChromeUrl } from "./geo.js";
 
 // Plain-language, phone-specific fixes for location/camera failures.
 function steps(kind) {
@@ -46,6 +46,21 @@ function steps(kind) {
           ...(p.edge ? ["Also in Edge: tap ⋯ (menu) → Settings → Privacy and security → Site permissions → Location, turn on \"Ask before accessing\" and remove orionsoftlimited.com from Blocked."] : []),
           `If it's still blocked: phone Settings → Apps → ${browser} → Permissions → Location → Allow only while using the app.`,
         ],
+      };
+    case "inapp":
+      return {
+        title: "Open the Staff Office in your browser",
+        why: "You opened this link inside another app (WhatsApp, Facebook, Instagram…). Its built-in browser can't share your location or open the camera.",
+        list: p.ios ? [
+          "Tap ⋯ or the share icon at the top or bottom of this screen.",
+          "Choose Open in Safari (or Open in browser).",
+          "Sign in there once and it will remember you.",
+        ] : [
+          "Tap Open in Chrome below.",
+          "Or tap ⋮ at the top right and choose Open in Chrome / Open in browser.",
+          "Sign in there once and it will remember you.",
+        ],
+        openInBrowser: !p.ios,
       };
     case "app_denied":
       return {
@@ -124,10 +139,28 @@ export default function DeviceHelp({ kind, detail, onRetry, onSkip, skipLabel = 
         {s.list.map((t, i) => <li key={i}>{t}</li>)}
       </ol>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {onRetry && <Btn small icon={RefreshCw} onClick={onRetry}>Try again</Btn>}
+        {s.openInBrowser && <a href={openInChromeUrl()} style={{ textDecoration: "none" }}><Btn small>Open in Chrome</Btn></a>}
+        {onRetry && !s.openInBrowser && <Btn small icon={RefreshCw} onClick={onRetry}>Try again</Btn>}
         {onSkip && <Btn small variant="ghost" onClick={onSkip}>{skipLabel}</Btn>}
       </div>
       {detail && <div style={{ marginTop: 10, fontSize: 11.5, color: C.textMuted, wordBreak: "break-word" }}>{detail}</div>}
+    </div>
+  );
+}
+
+// Shown on every page while the office is open inside another app's
+// built-in browser, where location, camera and Google sign-in don't work.
+export function InAppBanner() {
+  const p = phoneInfo();
+  if (!p.inApp) return null;
+  return (
+    <div role="alert" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: C.amberDim, border: `1px solid ${C.amber}88`, color: C.heading, borderRadius: 12, padding: "12px 16px", marginBottom: 16, fontFamily: font, fontSize: 13.5, lineHeight: 1.5 }}>
+      <AlertTriangle size={18} color={C.amber} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 200 }}>
+        You're inside another app's browser, so location, camera and Google sign-in won't work here.{" "}
+        {p.ios ? "Tap ⋯ or the share icon and choose Open in Safari." : "Open the Staff Office in Chrome."}
+      </span>
+      {!p.ios && <a href={openInChromeUrl()} style={{ textDecoration: "none" }}><Btn small>Open in Chrome</Btn></a>}
     </div>
   );
 }

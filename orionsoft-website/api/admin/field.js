@@ -6,6 +6,7 @@ import { getRoleCatalog } from "../_lib/roles.js";
 import { computeScorecards, loadPerformanceData, WEIGHTS } from "../_lib/performance.js";
 import { lagosDate } from "../_lib/automations.js";
 import { getSites } from "../_lib/fieldIntel.js";
+import { loadPhoto } from "../_lib/photos.js";
 import { issueSpotCheck } from "../staff/visits.js";
 import { logAudit } from "../_lib/audit.js";
 
@@ -55,13 +56,13 @@ export default async function handler(req, res) {
       if (req.query.id) {
         const v = await getRecord("visits", req.query.id);
         if (!v) return res.status(404).json({ error: "Visit not found" });
-        return res.json({ ok: true, visit: { ...v, confirmation: { ...v.confirmation, token: undefined } } });
+        return res.json({ ok: true, visit: { ...v, photoDataUrl: v.photoDataUrl || (v.hasPhoto ? await loadPhoto(v.id) : ""), confirmation: { ...v.confirmation, token: undefined } } });
       }
       const [visits, employees, sites] = await Promise.all([listRecords("visits"), listRecords("employees"), getSites()]);
       const name = id => employees.find(e => e.id === id)?.fullName || "Former staff";
       const list = visits.filter(v => v.checkIn.at.slice(0, 10) >= from && v.checkIn.at.slice(0, 10) <= to && (!req.query.employeeId || v.employeeId === req.query.employeeId))
         .sort((a, b) => b.checkIn.at.localeCompare(a.checkIn.at))
-        .map(({ photoDataUrl, ...v }) => ({ ...v, hasPhoto: !!photoDataUrl, employeeName: name(v.employeeId), confirmation: { ...v.confirmation, token: undefined } }));
+        .map(({ photoDataUrl, ...v }) => ({ ...v, hasPhoto: !!photoDataUrl || !!v.hasPhoto, employeeName: name(v.employeeId), confirmation: { ...v.confirmation, token: undefined } }));
       return res.json({ ok: true, from, to, visits: list, sites: Object.values(sites) });
     }
 
@@ -70,9 +71,11 @@ export default async function handler(req, res) {
       const name = id => employees.find(e => e.id === id)?.fullName || "Former staff";
       if (req.query.id) {
         const s = spots.find(x => x.id === req.query.id);
-        return s ? res.json({ ok: true, spotcheck: { ...s, employeeName: name(s.employeeId) } }) : res.status(404).json({ error: "Not found" });
+        if (!s) return res.status(404).json({ error: "Not found" });
+        const response = s.response ? { ...s.response, photoDataUrl: s.response.photoDataUrl || (s.response.hasPhoto ? await loadPhoto(s.id) : "") } : null;
+        return res.json({ ok: true, spotcheck: { ...s, response, employeeName: name(s.employeeId) } });
       }
-      return res.json({ ok: true, spotchecks: spots.filter(s => s.issuedAt.slice(0, 10) >= from && s.issuedAt.slice(0, 10) <= to).sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).map(s => ({ ...s, employeeName: name(s.employeeId), response: s.response ? { ...s.response, photoDataUrl: undefined, hasPhoto: !!s.response.photoDataUrl } : null })) });
+      return res.json({ ok: true, spotchecks: spots.filter(s => s.issuedAt.slice(0, 10) >= from && s.issuedAt.slice(0, 10) <= to).sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).map(s => ({ ...s, employeeName: name(s.employeeId), response: s.response ? { ...s.response, photoDataUrl: undefined, hasPhoto: !!s.response.photoDataUrl || !!s.response.hasPhoto } : null })) });
     }
 
     return res.status(400).json({ error: "Unknown view" });

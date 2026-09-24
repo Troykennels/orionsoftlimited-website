@@ -7,6 +7,7 @@
 //    within 20 minutes. Managers can also request one on demand.
 import { randomBytes } from "node:crypto";
 import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
+import { savePhoto, loadPhoto } from "../_lib/photos.js";
 import { officeContext, notify, award, logActivity } from "../_lib/office.js";
 import { managerChain, subordinates, canApproveFor } from "../_lib/roles.js";
 import { lagosDate } from "../_lib/automations.js";
@@ -19,7 +20,7 @@ export const SPOT_WINDOW_MIN = 20;
 function validPhoto(d) {
   return !d || (typeof d === "string" && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(d) && d.length < 900_000);
 }
-function stripPhoto(v) { const { photoDataUrl, ...rest } = v; return { ...rest, hasPhoto: !!photoDataUrl, confirmation: { ...(v.confirmation || {}), token: undefined } }; }
+function stripPhoto(v) { const { photoDataUrl, ...rest } = v; return { ...rest, hasPhoto: !!photoDataUrl || !!v.hasPhoto, confirmation: { ...(v.confirmation || {}), token: undefined } }; }
 export const confirmUrl = token => `${BASE}/confirm-visit/${token}`;
 
 // Everything needed to (re)score a visit fairly.
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
     if (req.query.id) {
       const v = await getRecord("visits", req.query.id);
       if (!v || !canSee(v.employeeId)) return res.status(404).json({ error: "Visit not found" });
-      return res.json({ ok: true, visit: { ...v, confirmation: { ...(v.confirmation || {}), token: v.employeeId === me.id ? v.confirmation?.token : undefined }, confirmUrl: v.employeeId === me.id && v.confirmation?.token ? confirmUrl(v.confirmation.token) : undefined } });
+      return res.json({ ok: true, visit: { ...v, photoDataUrl: v.photoDataUrl || (v.hasPhoto ? await loadPhoto(v.id) : ""), confirmation: { ...(v.confirmation || {}), token: v.employeeId === me.id ? v.confirmation?.token : undefined }, confirmUrl: v.employeeId === me.id && v.confirmation?.token ? confirmUrl(v.confirmation.token) : undefined } });
     }
     const [visits, spots] = await Promise.all([listRecords("visits"), listRecords("spotchecks")]);
     const scope = req.query.scope === "team" ? (e => e !== me.id && canSee(e)) : (e => e === me.id);
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
       ok: true, visits: list,
       active: myActive ? { ...stripPhoto(myActive), confirmUrl: myActive.confirmation?.token ? confirmUrl(myActive.confirmation.token) : null } : null,
       pendingSpotChecks: spots.filter(s => s.employeeId === me.id && s.status === "pending" && Date.parse(s.dueAt) > Date.now()),
-      spotChecks: spots.filter(s => scope(s.employeeId)).sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).slice(0, 100).map(s => ({ ...s, response: s.response ? { ...s.response, photoDataUrl: undefined, hasPhoto: !!s.response.photoDataUrl } : null })),
+      spotChecks: spots.filter(s => scope(s.employeeId)).sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).slice(0, 100).map(s => ({ ...s, response: s.response ? { ...s.response, photoDataUrl: undefined, hasPhoto: !!s.response.photoDataUrl || !!s.response.hasPhoto } : null })),
     });
   }
 
@@ -97,12 +98,13 @@ export default async function handler(req, res) {
       contactName: String(b.contactName || "").slice(0, 100), contactPhone: String(b.contactPhone || "").slice(0, 40), contactEmail: String(b.contactEmail || "").slice(0, 120),
       checkIn: { at: now, geo: cleanGeo(b.geo), ip: meta.ip, ua: meta.ua, deviceId: String(b.deviceId || "").slice(0, 64), geoError: b.geo ? null : String(b.geoError || "Location not shared").slice(0, 120) },
       checkOut: null, durationMin: null,
-      photoDataUrl: b.photoDataUrl || "", photoHash: /^[0-9a-f]{16}$/.test(b.photoHash || "") ? b.photoHash : null,
+      hasPhoto: !!b.photoDataUrl, photoHash: /^[0-9a-f]{16}$/.test(b.photoHash || "") ? b.photoHash : null,
       photoSource: b.photoSource === "camera" ? "camera" : b.photoDataUrl ? "upload" : null,
       notes: String(b.notes || "").slice(0, 1500), outcome: "", nextStep: "",
       confirmation: { token: randomBytes(18).toString("base64url"), status: "pending", requestedAt: now },
       createdAt: now,
     };
+    await savePhoto(id, b.photoDataUrl);
     visit = await rescoreVisit(visit);
     await putRecord("visits", id, visit);
     await award(me.id, "field_visit");
@@ -153,7 +155,8 @@ export default async function handler(req, res) {
     const late = Date.parse(now) > Date.parse(s.dueAt);
     const geo = cleanGeo(b.geo);
     s.status = late ? "late" : "answered";
-    s.response = { at: now, geo, ip: meta.ip, ua: meta.ua, photoDataUrl: b.photoDataUrl || "", photoHash: b.photoHash || null, photoSource: b.photoSource === "camera" ? "camera" : "upload" };
+    s.response = { at: now, geo, ip: meta.ip, ua: meta.ua, hasPhoto: !!b.photoDataUrl, photoHash: b.photoHash || null, photoSource: !b.photoDataUrl ? null : b.photoSource === "camera" ? "camera" : "upload" };
+    await savePhoto(s.id, b.photoDataUrl);
     // Compare against where they claimed to be (latest visit check-in today).
     const today = lagosDate();
     const lastVisit = (await listRecords("visits")).filter(v => v.employeeId === me.id && v.checkIn.at.slice(0, 10) === today && v.checkIn.geo).sort((a, b2) => b2.checkIn.at.localeCompare(a.checkIn.at))[0];
@@ -161,7 +164,8 @@ export default async function handler(req, res) {
     if (!geo) s.flags.push({ code: "NO_GPS", label: "No location shared" });
     if (geo && geo.accuracy != null && geo.accuracy <= 1) s.flags.push({ code: "FAKE_GPS_PATTERN", label: "Accuracy pattern typical of GPS spoofing" });
     if (late) s.flags.push({ code: "LATE", label: `Answered ${Math.round((Date.parse(now) - Date.parse(s.dueAt)) / 60000)} min after the deadline` });
-    if (s.response.photoSource !== "camera") s.flags.push({ code: "GALLERY_PHOTO", label: "Photo not taken live" });
+    if (!s.response.hasPhoto) s.flags.push({ code: "NO_PHOTO", label: "No photo sent" });
+    else if (s.response.photoSource !== "camera") s.flags.push({ code: "GALLERY_PHOTO", label: "Photo not taken live" });
     if (lastVisit && geo) {
       s.distanceFromLastVisit = haversineMeters(lastVisit.checkIn.geo, geo);
       s.lastVisitOrganisation = lastVisit.organisation;

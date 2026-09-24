@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { C, font } from "./theme.js";
 import { api } from "./api.js";
+import { InAppBanner } from "./DeviceHelp.jsx";
 
 // Loads Google Identity Services once and resolves with window.google.
 let gisPromise = null;
@@ -87,6 +88,7 @@ export default function StaffLogin({ onLogin, notice }) {
       <LoginArt />
       <div className="so-login-form">
       <form onSubmit={handleSubmit} style={{ position: "relative", width: "100%", maxWidth: 410 }}>
+        <InAppBanner />
         <div style={{ marginBottom: 26 }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: C.gold }}>STAFF OFFICE</div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: C.heading, letterSpacing: "-0.03em", margin: "8px 0 0" }}>{greeting()}, welcome back.</h1>

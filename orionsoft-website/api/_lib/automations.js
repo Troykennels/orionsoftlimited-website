@@ -6,6 +6,7 @@
 import { get, set } from "../store.js";
 import { listRecords, putRecord } from "./records.js";
 import { notify, systemPost, addAchievement } from "./office.js";
+import { migrateInlinePhotos } from "./photos.js";
 
 const LAGOS_OFFSET_MS = 60 * 60 * 1000; // WAT, UTC+1, no DST
 
@@ -187,6 +188,7 @@ export async function runAutomations() {
   try {
     const now = lagosNow();
     const today = lagosDate(now);
+    await once("orionsoft:migration:photos-v1", migrateInlinePhotos);
     // Daily jobs wait until 07:00 Lagos time so greetings land in the morning.
     if (now.getUTCHours() >= 7) await once(`orionsoft:automation:daily:${today}`, () => dailyJobs(today));
     await meetingReminders();

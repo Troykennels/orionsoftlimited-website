@@ -185,7 +185,7 @@ export default function FieldVisits() {
   async function startCheckIn() { if (await ensure()) setCheckIn(true); }
   async function checkOut() {
     setBusy(true);
-    const loc = await getLocation({ where: "visit check-out" });
+    const loc = await getLocation({ where: "visit check-out", goodEnough: 100, settleMs: 3000, maxWait: 12000 });
     try { await api("/api/staff/visits", { method: "POST", body: { action: "check-out", id: data.active.id, geo: loc.geo || null, outcome: out.outcome, nextStep: out.nextStep, deviceId: getDeviceId() } }); toast("Checked out"); setOut({ outcome: "", nextStep: "" }); load(); }
     catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
   }

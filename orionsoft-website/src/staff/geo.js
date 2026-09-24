@@ -27,6 +27,7 @@ export async function permissionState(name) {
 //  unsupported / insecure  browser can't do it
 async function classify(err) {
   if (!window.isSecureContext) return "insecure";
+  if (phoneInfo().inApp) return "inapp";
   if (!err) return "unsupported";
   if (err.code === 1) {
     const state = await permissionState("geolocation");
@@ -45,6 +46,7 @@ const MESSAGES = {
   overlay: "Your phone blocked the location prompt because another app is showing on top of the screen",
   denied: "Location is blocked for this site",
   app_denied: "Your phone is blocking the browser app from using location",
+  inapp: "Location doesn't work inside this app's built-in browser",
   off: "Your phone's location (GPS) is switched off",
   timeout: "Couldn't get a GPS signal in time",
   insecure: "Location only works on the secure https site",
@@ -71,7 +73,9 @@ export async function getLocation(opts = {}) {
   return { ...r, perm };
 }
 
-function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress } = {}) {
+// control.accept() (set here) lets the person take the best fix so far
+// instead of waiting for a sharper one.
+function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress, control } = {}) {
   return new Promise(resolve => {
     if (!navigator.geolocation) { resolve({ error: MESSAGES.unsupported, kind: "unsupported" }); return; }
     let best = null, done = false, watchId = null, lastErr = null, settle = null;
@@ -103,6 +107,7 @@ function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress 
     // other source (or the timer) instead.
     const fail = err => { if (err?.code === 1) finish(err); else lastErr = err; };
     const timer = setTimeout(() => finish(lastErr || { code: 3 }), maxWait);
+    if (control) control.accept = () => { if (best) finish(); };
     watchId = navigator.geolocation.watchPosition(take, fail, { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 });
     navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 60000 });
   });
@@ -115,6 +120,7 @@ export const techDetail = r => (r && !r.geo ? `Details: ${r.kind} · error ${r.c
 // Camera failures classified the same way.
 export async function classifyCameraError(e) {
   if (!window.isSecureContext) return "insecure";
+  if (phoneInfo().inApp) return "inapp";
   if (e?.name === "NotAllowedError") return (await permissionState("camera")) === "prompt" ? "overlay" : "camera_denied";
   if (e?.name === "NotFoundError" || e?.name === "OverconstrainedError") return "no_camera";
   if (e?.name === "NotReadableError") return "camera_busy";
@@ -130,7 +136,18 @@ export function phoneInfo() {
     samsung: /SM-|Samsung/i.test(ua),
     chrome: /Chrome\//.test(ua) && !/Edg(A|iOS)?\//.test(ua),
     edge: /Edg(A|iOS)?\//.test(ua),
+    // Built-in browsers of chat/social apps (links tapped inside WhatsApp,
+    // Facebook, Instagram…). Many of them don't pass location or camera
+    // permission through, so every attempt fails there.
+    inApp: /; wv\)|FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Twitter|MicroMessenger|Snapchat|musical_ly|TikTok/i.test(ua)
+      || (/iPhone|iPad/.test(ua) && /AppleWebKit/.test(ua) && !/Safari\//.test(ua) && !/CriOS|EdgiOS|FxiOS/.test(ua) && !window.navigator.standalone),
   };
+}
+
+// Link that reopens the current page in Chrome from an Android in-app browser.
+export function openInChromeUrl() {
+  const { host, pathname, search } = window.location;
+  return `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
 }
 
 export const mapsLink = g => (g ? `https://www.google.com/maps?q=${g.lat},${g.lng}` : "");
