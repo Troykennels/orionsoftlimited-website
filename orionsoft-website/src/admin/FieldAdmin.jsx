@@ -79,7 +79,7 @@ function VisitDetail({ id, onClose }) {
   );
 }
 
-const KIND_LABEL = { overlay: "pop-up blocked by another app", denied: "location blocked", camera_denied: "camera blocked", off: "GPS switched off", timeout: "no GPS signal", no_camera: "no camera", camera_busy: "camera busy", notif_denied: "notifications blocked", unsupported: "browser not supported", insecure: "not on https", unknown: "not tested" };
+const KIND_LABEL = { overlay: "pop-up blocked by another app", denied: "location blocked", camera_denied: "camera blocked", off: "GPS switched off", timeout: "no GPS signal", no_camera: "no camera", camera_busy: "camera busy", notif_denied: "notifications blocked", unsupported: "browser not supported", insecure: "not on https", unknown: "not tested", idle: "not tested", busy: "not finished", camera_unknown: "camera error" };
 
 function SpotDetail({ id, onClose }) {
   const [s, setS] = useState(null);

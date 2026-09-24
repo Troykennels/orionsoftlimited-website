@@ -48,30 +48,43 @@ const MESSAGES = {
 // Best GPS fix within a short window: phones often report a rough network
 // position first (±1-2 km) and sharpen over a few seconds, so we watch and
 // keep the most accurate reading, stopping early once it's good enough.
+// A Wi-Fi/cell-tower position is requested alongside, so indoors (where
+// satellites can't be seen) staff still get a location instead of a timeout;
+// its accuracy is recorded, so a rough fix scores lower rather than failing.
 // Resolves { geo } or { error, kind } and never throws.
-export function getLocation({ maxWait = 12000, goodEnough = 30, onProgress } = {}) {
+export function getLocation({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress } = {}) {
   return new Promise(resolve => {
     if (!navigator.geolocation) { resolve({ error: MESSAGES.unsupported, kind: "unsupported" }); return; }
-    let best = null, done = false, watchId = null;
+    let best = null, done = false, watchId = null, lastErr = null, settle = null;
     const finish = async (err) => {
       if (done) return;
       done = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
-      clearTimeout(timer);
+      clearTimeout(timer); clearTimeout(settle);
       if (best) { resolve({ geo: best }); return; }
-      const kind = await classify(err);
+      const kind = await classify(err || lastErr);
       resolve({ error: MESSAGES[kind], kind });
     };
-    const timer = setTimeout(() => finish({ code: 3 }), maxWait);
-    watchId = navigator.geolocation.watchPosition(
-      p => {
-        const g = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() };
-        if (!best || g.accuracy < best.accuracy) { best = g; onProgress?.(g); }
-        if (g.accuracy <= goodEnough) finish();
-      },
-      err => finish(err),
-      { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 },
-    );
+    const take = p => {
+      if (done) return;
+      const g = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() };
+      if (!best || g.accuracy < best.accuracy) {
+        best = g; onProgress?.(g);
+        // A Wi-Fi-grade fix gets a few seconds to sharpen instead of sitting
+        // out the whole wait indoors, where satellites may never come. A
+        // cell-tower fix (±km) keeps waiting for GPS, but is still used if
+        // nothing better arrives.
+        clearTimeout(settle);
+        if (g.accuracy <= 200) settle = setTimeout(() => finish(), settleMs);
+      }
+      if (g.accuracy <= goodEnough) finish();
+    };
+    // Permission refusals end it at once; "no signal" errors wait for the
+    // other source (or the timer) instead.
+    const fail = err => { if (err?.code === 1) finish(err); else lastErr = err; };
+    const timer = setTimeout(() => finish(lastErr || { code: 3 }), maxWait);
+    watchId = navigator.geolocation.watchPosition(take, fail, { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 });
+    navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 60000 });
   });
 }
 
@@ -91,7 +104,8 @@ export function phoneInfo() {
     android: /Android/.test(ua),
     transsion: /TECNO|Infinix|itel/i.test(ua),
     samsung: /SM-|Samsung/i.test(ua),
-    chrome: /Chrome\//.test(ua) && !/Edg\//.test(ua),
+    chrome: /Chrome\//.test(ua) && !/Edg(A|iOS)?\//.test(ua),
+    edge: /Edg(A|iOS)?\//.test(ua),
   };
 }
 

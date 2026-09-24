@@ -6,8 +6,11 @@ import { phoneInfo } from "./geo.js";
 // Plain-language, phone-specific fixes for location/camera failures.
 function steps(kind) {
   const p = phoneInfo();
+  const browser = p.edge ? "Edge" : "Chrome";
+  // Setting the permission by hand never needs the pop-up, so it works even
+  // when a call or chat bubble stops the pop-up from appearing.
   const chromeSite = [
-    "In Chrome, tap the icon to the left of the web address (a lock or ⓘ).",
+    `In ${browser}, tap the icon to the left of the web address (a lock or ⓘ).`,
     "Tap Permissions (or Site settings) and set Location and Camera to Allow.",
     "Come back here and tap Try again.",
   ];
@@ -15,15 +18,14 @@ function steps(kind) {
     case "overlay":
       return {
         title: "Your phone blocked the permission pop-up",
-        why: "Android hides website permission pop-ups while another app is showing on top of the screen, to protect you from trick taps.",
+        why: "Android hides website permission pop-ups while another app is on top of the screen, like a WhatsApp call (the green \"using microphone\" bar), a chat bubble or a screen filter.",
         list: [
-          "Close any chat bubbles or floating heads (Messenger, WhatsApp bubbles, Truecaller caller ID).",
-          "Turn off night light, eye comfort, blue-light filter or screen-dimmer apps for a moment.",
-          "Stop any screen recorder.",
-          ...(p.transsion ? ["Tecno/Infinix/itel: swipe away the Smart Panel, and turn off Floating windows in Settings → Special function."] : []),
-          ...(p.samsung ? ["Samsung: close Edge panels and any floating/pop-up view apps."] : []),
-          "Still stuck? Open Settings → Apps → Special app access → Display over other apps, and switch it off for chat/filter apps.",
-          "Then tap Try again.",
+          "End any phone or WhatsApp call first. A call in progress always blocks this pop-up.",
+          "Close chat bubbles or floating heads (Messenger, WhatsApp, Truecaller) and turn off night light or blue-light filters for a moment.",
+          ...(p.transsion ? ["Tecno/Infinix/itel: swipe away the Smart Panel and turn off Floating windows (Settings → Special function)."] : []),
+          ...(p.samsung ? ["Samsung: close Edge panels and any pop-up view apps."] : []),
+          "Tap Try again.",
+          `Still blocked? Skip the pop-up. In ${browser}, tap the lock or ⓘ left of the web address → Permissions → set Location and Camera to Allow, then tap Try again. You only need to do this once.`,
         ],
       };
     case "denied":
@@ -39,7 +41,7 @@ function steps(kind) {
       } : {
         title: kind === "denied" ? "Location is blocked for this site" : "Camera is blocked for this site",
         why: "It was set to Block for orionsoftlimited.com, so the site can't ask again by itself.",
-        list: [...chromeSite, "If it's still blocked: phone Settings → Apps → Chrome → Permissions → allow Location and Camera."],
+        list: [...chromeSite, `If it's still blocked: phone Settings → Apps → ${browser} → Permissions → allow Location and Camera.`],
       };
     case "notif_denied":
       return p.ios ? {
@@ -49,16 +51,16 @@ function steps(kind) {
       } : {
         title: "Notifications are blocked for this site",
         why: "They were set to Block, so the site can't ask again by itself.",
-        list: ["In Chrome, tap the icon left of the web address (lock or ⓘ) → Permissions → Notifications → Allow.", "If it still won't work: phone Settings → Apps → Chrome → Notifications → allow.", "Come back and tap Try again."],
+        list: [`In ${browser}, tap the icon left of the web address (lock or ⓘ) → Permissions → Notifications → Allow.`, `If it still won't work: phone Settings → Apps → ${browser} → Notifications → allow.`, "Come back and tap Try again."],
       };
     case "notif_app_blocked":
       return {
-        title: "Your phone isn't letting Chrome show notifications",
-        why: "The site is allowed, but the phone has notifications switched off for the Chrome app.",
+        title: `Your phone isn't letting ${browser} show notifications`,
+        why: `The site is allowed, but the phone has notifications switched off for the ${browser} app.`,
         list: [
-          "Open phone Settings → Apps → Chrome → Notifications and switch them on.",
-          ...(p.transsion ? ["Tecno/Infinix/itel: also check Settings → Notifications & status bar → Chrome → Allow."] : []),
-          "Turn off Do Not Disturb or battery saver restrictions for Chrome if they're on.",
+          `Open phone Settings → Apps → ${browser} → Notifications and switch them on.`,
+          ...(p.transsion ? [`Tecno/Infinix/itel: also check Settings → Notifications & status bar → ${browser} → Allow.`] : []),
+          `Turn off Do Not Disturb or battery saver restrictions for ${browser} if they're on.`,
           "Come back and tap Try again.",
         ],
       };
@@ -74,9 +76,14 @@ function steps(kind) {
       };
     case "timeout":
       return {
-        title: "No GPS signal yet",
-        why: "Phones need a clear view of the sky for an accurate fix.",
-        list: ["Step near a window or outside for a moment.", "Make sure Location is on and not in battery-saver mode.", "Tap Try again."],
+        title: "No location signal yet",
+        why: "The phone couldn't get GPS, Wi-Fi or mobile-network location in time.",
+        list: [
+          "Make sure Location is on (swipe down from the top of the screen).",
+          ...(p.android ? ["Turn on Google Location Accuracy (Settings → Location → Location services) so Wi-Fi and mobile data can locate you indoors."] : []),
+          "Turn on Wi-Fi scanning or mobile data, or step near a window.",
+          "Tap Try again.",
+        ],
       };
     case "no_camera":
       return { title: "No camera found", why: "This device doesn't have a camera the browser can use.", list: ["Use your phone instead of a computer for check-ins.", "Or upload a photo (it will be marked as not taken live)."] };

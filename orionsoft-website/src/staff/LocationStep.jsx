@@ -36,6 +36,14 @@ export default function LocationStep({ onChange, label = "Share my location", al
       </div>
     );
   }
+  if (state.phase === "skipped") return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontFamily: font }}>
+      <span style={{ fontSize: 13.5, color: C.amber, display: "flex", alignItems: "center", gap: 6 }}>
+        <MapPin size={15} /> Continuing without location (scores lower)
+      </span>
+      <Btn small variant="ghost" icon={Crosshair} onClick={locate}>Try location again</Btn>
+    </div>
+  );
   return (
     <DeviceHelp kind={state.kind} onRetry={locate}
       onSkip={allowSkip ? () => { setState({ phase: "skipped" }); onChange({ error: state.error, kind: state.kind }); } : null}
