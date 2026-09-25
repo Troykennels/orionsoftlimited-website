@@ -6,7 +6,7 @@
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
   ],

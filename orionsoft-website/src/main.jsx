@@ -1,6 +1,9 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { keepFresh } from './lib/freshness.js'
+
+keepFresh()
 
 const path = window.location.pathname
 const isStaffPath = path === '/staff' || path.startsWith('/staff/')
