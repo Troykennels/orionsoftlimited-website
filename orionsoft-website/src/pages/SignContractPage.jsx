@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { BRAND } from "../lib/brand.js";
 import { parseRichText } from "../lib/richtext.js";
 
 // Lets the recipient draw their own signature at signing time (rather than
@@ -90,7 +91,7 @@ function RichText({ text }) {
 const C = {
   bg: "#060810", card: "#0F1828", border: "rgba(255,255,255,0.08)",
   heading: "#F2F6FF", text: "#C8D0E0", muted: "#6B7A96",
-  gold: "#C8A850", mint: "#10B981", rose: "#F43F5E",
+  gold: BRAND.gold, mint: "#10B981", rose: "#F43F5E",
 };
 const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
 

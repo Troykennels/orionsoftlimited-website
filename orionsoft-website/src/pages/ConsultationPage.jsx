@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const T = {
   bg:          "#060810",
   surface:     "#0B1120",
@@ -8,9 +9,9 @@ const T = {
   heading:     "#F2F6FF",
   text:        "#C8D0E0",
   muted:       "#6B7A96",
-  gold:        "#C8A850",
-  goldLt:      "#E8C96A",
-  goldDim:     "rgba(200,168,80,0.12)",
+  gold:        BRAND.gold,
+  goldLt:      BRAND.goldLight,
+  goldDim:     `rgba(${BRAND.rgb},0.12)`,
   blue:        "#4F8EF7",
   blueDim:     "rgba(79,142,247,0.12)",
   mint:        "#10B981",

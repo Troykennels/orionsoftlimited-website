@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const LC = {
   bg:           "#FFFFFF",
@@ -8,10 +9,10 @@ const LC = {
   bgDarkMid:    "#0D2540",
   bgSlate:      "#101C2E",
   navy:         "#061828",
-  gold:         "#C8A850",
-  goldLight:    "#E8C96A",
+  gold:         BRAND.gold,
+  goldLight:    BRAND.goldLight,
   goldDark:     "#A87C30",
-  goldDim:      "rgba(200,168,80,0.10)",
+  goldDim:      `rgba(${BRAND.rgb},0.10)`,
   text:         "#1A2B3C",
   textLight:    "#4A5B6C",
   textMuted:    "#8094A8",
@@ -28,7 +29,7 @@ const HP_PRODUCTS = [
   { id:"carecore-ai",    name:"CareCore AI",                 category:"Healthcare",       color:"#4F8EF7", emoji:"🏥", tagline:"Cloud Hospital Management",   desc:"AI-powered cloud platform for hospitals. Patient records, pharmacy, lab, billing, and real-time analytics accessible from any device.", benefits:["AI clinical decision support","Cloud access from any device","Multi-branch analytics dashboard","NHIS & LHIS billing automation"], page:"carecore" },
   { id:"carecore-local", name:"CareCore Local",              category:"Healthcare",       color:"#10B981", emoji:"💻", tagline:"Offline Hospital Management",  desc:"Same 25+ hospital modules as CareCore AI running entirely offline. Zero internet dependency, full sync when connectivity returns.",    benefits:["100% offline no internet needed","Full data sync on reconnect","On-premise storage for compliance","Identical module set to CareCore AI"],   page:"carecore" },
   { id:"schoolcore",     name:"School Management System",    category:"Education",        color:"#F59E0B", emoji:"🎓", tagline:"Academic & School Operations", desc:"End-to-end school management admissions, attendance, results, fee collection, CBT exams, timetable, and a parent communication portal.", benefits:["WAEC/NECO result formatting","Online & offline fee collection","Parent communication portal","CBT examination and timetable builder"],  page:"schoolcore" },
-  { id:"directors",      name:"Directors' Portal",           category:"Executive",        color:"#C8A850", emoji:"📊", tagline:"Executive Intelligence",       desc:"A secure executive dashboard aggregating KPIs, operational data, and governance insights from across your entire organisation in real time.", benefits:["Unified cross-department view","Board-level reporting packs","Secure role-based access","Real-time KPI drill-down"],               page:"contact" },
+  { id:"directors",      name:"Directors' Portal",           category:"Executive",        color:BRAND.gold, emoji:"📊", tagline:"Executive Intelligence",       desc:"A secure executive dashboard aggregating KPIs, operational data, and governance insights from across your entire organisation in real time.", benefits:["Unified cross-department view","Board-level reporting packs","Secure role-based access","Real-time KPI drill-down"],               page:"contact" },
   { id:"compliancecore", name:"ComplianceCore",              category:"Compliance",       color:"#F59E0B", emoji:"⚖️", tagline:"Compliance & Risk Management", desc:"Stay audit-ready with automated Nigerian regulatory tracking. Policies, risk registers, audit trails, and a full compliance calendar.",     benefits:["NDPR, CAC, CBN, NAFDAC calendar","Policy management & document control","Risk register with auto-alerts","Complete audit trail"],    page:"compliancecore" },
   { id:"inventorycore",  name:"Inventory Management System", category:"Operations",       color:"#8B5CF6", emoji:"📦", tagline:"Inventory & Supply Chain",     desc:"Real-time stock visibility across every warehouse, branch, and location with expiry tracking, supplier management, and barcode scanning.",  benefits:["Multi-warehouse real-time tracking","Expiry & batch management","Auto purchase orders & reorder alerts","Barcode & QR scanning"],      page:"inventorycore" },
   { id:"custom-dev",     name:"Custom Software Development", category:"Technology",       color:"#6366F1", emoji:"🛠️", tagline:"Bespoke Websites & Web Apps",  desc:"When an off-the-shelf product won't do, we build to your exact specification websites, web applications, mobile apps, and API systems.",    benefits:["Business websites & corporate portals","Custom web applications & dashboards","iOS & Android mobile apps","API development & integrations"], page:"contact" },
@@ -39,7 +40,7 @@ const INDUSTRIES = [
   { name:"Healthcare",          color:"#4F8EF7", emoji:"🏥", desc:"Hospitals, clinics, pharmacies, diagnostic labs and health centres.",            products:["CareCore AI","CareCore Local","InventoryCore"] },
   { name:"Education",           color:"#F59E0B", emoji:"🎓",    desc:"Primary, secondary, tertiary and vocational institutions.",                       products:["School Management System","HRCore","FinanceCore"] },
   { name:"Government & NGOs",   color:"#F43F5E", emoji:"🏛️",    desc:"Public sector agencies, MDAs, civil service and donor-funded NGOs.",              products:["ComplianceCore","HRCore","FinanceCore"] },
-  { name:"Financial Services",  color:"#C8A850", emoji:"💹",    desc:"Banks, microfinance, fintech, insurance and professional services firms.",         products:["FinanceCore","ComplianceCore","HRCore"] },
+  { name:"Financial Services",  color:BRAND.gold, emoji:"💹",    desc:"Banks, microfinance, fintech, insurance and professional services firms.",         products:["FinanceCore","ComplianceCore","HRCore"] },
   { name:"Manufacturing",       color:"#F59E0B", emoji:"🏭",    desc:"Factories, production lines, FMCG and supply chain operations.",                  products:["InventoryCore","FinanceCore","HRCore"] },
   { name:"Logistics & Fleet",   color:"#06B6D4", emoji:"🚛",    desc:"Transport companies, couriers, haulage and government vehicle fleets.",            products:["FleetCore","InventoryCore"] },
   { name:"Faith Organisations", color:"#7C3AED", emoji:"⛪",    desc:"Churches, mosques, ministries and faith-based organisations.",                    products:["ChurchCore","FinanceCore"] },
@@ -49,14 +50,14 @@ const INDUSTRIES = [
 const WHY_REASONS = [
   { num:"01", color:"#4F8EF7", title:"Production-grade from day one.", body:"Security, audit logs, and role-based access are baseline not extras. We don't ship half-finished products and patch them in production. Every module undergoes security review, load testing, and client acceptance before going live.", stat:"99.5%", statLabel:"uptime SLA" },
   { num:"02", color:"#10B981", title:"Built for African business reality.", body:"PAYE, WHT, NHIS, NHF, NDPR, CAC: our systems know Nigerian regulation the way your accountant does. We don't localise afterwards. We build for Nigeria first, then make it global-ready.", stat:"8+", statLabel:"Nigerian regulations supported" },
-  { num:"03", color:"#C8A850", title:"We stay long after launch.", body:"Staff training, go-live support, and SLA-backed maintenance are written into every engagement. You don't get handed to a call centre. You get a dedicated team that knows your deployment.", stat:"100%", statLabel:"deployments with support SLA" },
+  { num:"03", color:BRAND.gold, title:"We stay long after launch.", body:"Staff training, go-live support, and SLA-backed maintenance are written into every engagement. You don't get handed to a call centre. You get a dedicated team that knows your deployment.", stat:"100%", statLabel:"deployments with support SLA" },
   { num:"04", color:"#F43F5E", title:"Architecture that holds up under scrutiny.", body:"API-first design, documented endpoints, role-based audit logs, and infrastructure on AWS. When a client's IT team or a government procurement committee asks technical questions, we hand them the documentation. Nothing is hidden behind 'our proprietary approach'.", stat:"25+", statLabel:"core modules shipped" },
 ];
 
 const TESTIMONIALS = [
   { quote:"We interviewed four vendors. Three gave us demos. Orion Soft gave us a scoping document that showed they'd actually listened. The deployment took nine weeks. By week twelve, our billing reconciliation was closing in four hours instead of two days.", name:"Dr. Adewale Okonkwo", role:"Medical Director", company:"St. Mary's Hospital, Lagos", productColor:"#4F8EF7" },
   { quote:"Parents called the school on results day for the first time in years. Not to complain, but to say they had already seen their child's results online. SchoolCore published 234 results that morning. Nothing crashed. Nobody printed a single sheet of paper.", name:"Mrs. Blessing Eze", role:"Principal", company:"Excellence College, Abuja", productColor:"#F59E0B" },
-  { quote:"Our CBN examination last year was the first one I've walked into without a folder of printed documents. ComplianceCore had every policy, risk register, and audit trail ready to share from a link. The examiner asked where we got the system. I said we built it in Nigeria.", name:"Emeka Nwosu", role:"Chief Compliance Officer", company:"Apex Microfinance Bank", productColor:"#C8A850" },
+  { quote:"Our CBN examination last year was the first one I've walked into without a folder of printed documents. ComplianceCore had every policy, risk register, and audit trail ready to share from a link. The examiner asked where we got the system. I said we built it in Nigeria.", name:"Emeka Nwosu", role:"Chief Compliance Officer", company:"Apex Microfinance Bank", productColor:BRAND.gold },
 ];
 
 const TECH_STACK = [
@@ -77,7 +78,7 @@ const IMPL_STEPS = [
 
 const NEWS_ITEMS = [
   { date:"Dec 2024", category:"PRODUCT UPDATE", tag:"Healthcare", color:"#4F8EF7", title:"CareCore AI adds real-time multi-branch analytics for hospital networks", excerpt:"Orion Soft releases a major update to CareCore AI featuring consolidated dashboards for hospital groups managing multiple branches or clinics, with drill-down capability to individual site metrics." },
-  { date:"Nov 2024", category:"COMPANY NEWS",   tag:"Company",    color:"#C8A850", title:"Orion Soft expands with Directors' Portal for executive governance", excerpt:"Growing organisations using multiple Orion Soft products can now access a unified board-level dashboard showing consolidated KPIs, compliance status, and financial summaries." },
+  { date:"Nov 2024", category:"COMPANY NEWS",   tag:"Company",    color:BRAND.gold, title:"Orion Soft expands with Directors' Portal for executive governance", excerpt:"Growing organisations using multiple Orion Soft products can now access a unified board-level dashboard showing consolidated KPIs, compliance status, and financial summaries." },
   { date:"Oct 2024", category:"ANNOUNCEMENT",   tag:"Coming Soon",color:"#06B6D4", title:"TeleHealth platform confirmed for 2026 launch with video consultation suite", excerpt:"Orion Soft confirms its telemedicine platform will launch in 2026, featuring video consultations, digital prescriptions, and full integration with CareCore AI." },
 ];
 
@@ -133,7 +134,7 @@ function HeroDashboard() {
       </div>
       {/* Stats row */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:5, padding:"9px 9px 5px" }}>
-        {[["1,247","Patients","#4F8EF7"],["₦4.2M","Revenue","#10B981"],["98.5%","Uptime","#C8A850"],["142","Staff","#8B5CF6"]].map(([v,l,c])=>(
+        {[["1,247","Patients","#4F8EF7"],["₦4.2M","Revenue","#10B981"],["98.5%","Uptime",BRAND.gold],["142","Staff","#8B5CF6"]].map(([v,l,c])=>(
           <div key={l} style={{ background:"rgba(255,255,255,0.04)", borderRadius:7, padding:"7px 8px", border:"1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ fontSize:12.5, fontWeight:800, color:"#F2F6FF", fontFamily:font, letterSpacing:"-0.02em" }}>{v}</div>
             <div style={{ fontSize:9.5, color:c, fontFamily:font, marginTop:1, fontWeight:700 }}>{l}</div>
@@ -161,7 +162,7 @@ function HeroDashboard() {
         {/* Activity */}
         <div style={{ background:"rgba(255,255,255,0.03)", borderRadius:7, padding:"8px", border:"1px solid rgba(255,255,255,0.05)" }}>
           <div style={{ fontSize:9, color:"rgba(200,210,226,0.3)", fontFamily:font, marginBottom:6, fontWeight:700, letterSpacing:"0.06em" }}>RECENT ACTIVITY</div>
-          {[["OPD Visit #4821","#4F8EF7"],["Lab Result Ready","#10B981"],["Invoice #8820","#C8A850"],["Staff Clock-in","#8B5CF6"]].map(([t,c])=>(
+          {[["OPD Visit #4821","#4F8EF7"],["Lab Result Ready","#10B981"],["Invoice #8820",BRAND.gold],["Staff Clock-in","#8B5CF6"]].map(([t,c])=>(
             <div key={t} style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4 }}>
               <span style={{ width:5,height:5,borderRadius:"50%",background:c,flexShrink:0 }}/>
               <span style={{ fontSize:9,color:"rgba(200,210,226,0.5)",fontFamily:font,lineHeight:1.3 }}>{t}</span>
@@ -200,7 +201,7 @@ function HeroSection({ setCurrentPage }) {
       {/* ── Animated background ───────────────────────────────────────── */}
       <div aria-hidden="true" style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
         <div style={{ position:"absolute", top:"-18%", left:"10%", width:700, height:700, borderRadius:"50%", background:"radial-gradient(circle, rgba(79,142,247,0.11) 0%, transparent 60%)", filter:"blur(70px)", animation:"floatSoft 9s ease-in-out infinite" }}/>
-        <div style={{ position:"absolute", bottom:"-22%", right:"8%", width:560, height:560, borderRadius:"50%", background:"radial-gradient(circle, rgba(200,168,80,0.08) 0%, transparent 65%)", filter:"blur(60px)", animation:"floatSoft 12s ease-in-out infinite reverse" }}/>
+        <div style={{ position:"absolute", bottom:"-22%", right:"8%", width:560, height:560, borderRadius:"50%", background:`radial-gradient(circle, rgba(${BRAND.rgb},0.08) 0%, transparent 65%)`, filter:"blur(60px)", animation:"floatSoft 12s ease-in-out infinite reverse" }}/>
         <div style={{ position:"absolute", top:"35%", right:"28%", width:320, height:320, borderRadius:"50%", background:"radial-gradient(circle, rgba(16,185,129,0.06) 0%, transparent 65%)", filter:"blur(40px)" }}/>
         {/* dot grid */}
         <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%" }} aria-hidden="true">
@@ -215,7 +216,7 @@ function HeroSection({ setCurrentPage }) {
       {/* ── Left: Copy ───────────────────────────────────────────────── */}
       <div style={{ position:"relative", zIndex:2 }}>
         {/* Badge */}
-        <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(200,168,80,0.1)", border:"1px solid rgba(200,168,80,0.28)", borderRadius:999, padding:"7px 16px", marginBottom:26 }}>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:`rgba(${BRAND.rgb},0.1)`, border:`1px solid rgba(${BRAND.rgb},0.28)`, borderRadius:999, padding:"7px 16px", marginBottom:26 }}>
           <span style={{ width:7, height:7, borderRadius:"50%", background:LC.gold, flexShrink:0, animation:"pulse 2s ease-in-out infinite" }}/>
           <span style={{ fontSize:10.5, fontWeight:800, color:LC.gold, fontFamily:font, letterSpacing:"0.11em" }}>ENTERPRISE SOFTWARE · ORION SOFT LIMITED</span>
         </div>
@@ -238,9 +239,9 @@ function HeroSection({ setCurrentPage }) {
         <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:40, alignItems:"center" }}>
           {/* Book Free Demo */}
           <button type="button" onClick={() => setCurrentPage("contact")}
-            style={{ background:"linear-gradient(135deg,#C8A850,#E8C96A)", color:"#06100E", border:"none", borderRadius:11, padding:"14px 26px", fontSize:14.5, fontWeight:800, fontFamily:font, cursor:"pointer", boxShadow:"0 8px 28px rgba(200,168,80,0.38)", transition:"all 0.28s cubic-bezier(0.16,1,0.3,1)" }}
-            onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px) scale(1.02)"; e.currentTarget.style.boxShadow="0 18px 48px rgba(200,168,80,0.48)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow="0 8px 28px rgba(200,168,80,0.38)"; }}>
+            style={{ background:`linear-gradient(135deg,${BRAND.gold},${BRAND.goldLight})`, color:"#06100E", border:"none", borderRadius:11, padding:"14px 26px", fontSize:14.5, fontWeight:800, fontFamily:font, cursor:"pointer", boxShadow:`0 8px 28px rgba(${BRAND.rgb},0.38)`, transition:"all 0.28s cubic-bezier(0.16,1,0.3,1)" }}
+            onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px) scale(1.02)"; e.currentTarget.style.boxShadow=`0 18px 48px rgba(${BRAND.rgb},0.48)`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=`0 8px 28px rgba(${BRAND.rgb},0.38)`; }}>
             Book Free Demo
           </button>
           {/* Explore Products */}
@@ -312,9 +313,9 @@ function HeroSection({ setCurrentPage }) {
         <div style={{
           position:"absolute", top:"34%", left:0, zIndex:4,
           width:164, background:"linear-gradient(140deg,#0D2540,#152840)",
-          border:"1px solid rgba(200,168,80,0.25)",
+          border:`1px solid rgba(${BRAND.rgb},0.25)`,
           borderRadius:12,
-          boxShadow:"0 20px 56px rgba(0,0,0,0.5), 0 0 0 1px rgba(200,168,80,0.07)",
+          boxShadow:`0 20px 56px rgba(0,0,0,0.5), 0 0 0 1px rgba(${BRAND.rgb},0.07)`,
           padding:"13px 14px",
           animation:"hpFloat2 7.8s ease-in-out infinite",
         }}>
@@ -326,7 +327,7 @@ function HeroSection({ setCurrentPage }) {
           <div style={{ fontSize:9.5, color:"rgba(200,210,226,0.4)", fontFamily:font, marginBottom:9 }}>Revenue growth · Q4 2024</div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:2, height:22 }}>
             {[55,68,60,78,72,88,82].map((h,i)=>(
-              <div key={i} style={{ flex:1, height:`${h}%`, background:i===6?"#C8A850":"rgba(200,168,80,0.28)", borderRadius:"2px 2px 0 0" }}/>
+              <div key={i} style={{ flex:1, height:`${h}%`, background:i===6?BRAND.gold:`rgba(${BRAND.rgb},0.28)`, borderRadius:"2px 2px 0 0" }}/>
             ))}
           </div>
         </div>
@@ -458,7 +459,7 @@ function HeroSection({ setCurrentPage }) {
 function WhoWeAreSection({ setCurrentPage }) {
   return (
     <section style={{ background:LC.bgDark, padding:"120px clamp(24px,5vw,80px)", position:"relative", overflow:"hidden" }}>
-      <div aria-hidden="true" style={{ position:"absolute", top:"-20%", right:"-5%", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle, rgba(200,168,80,0.07) 0%, transparent 65%)" }}/>
+      <div aria-hidden="true" style={{ position:"absolute", top:"-20%", right:"-5%", width:500, height:500, borderRadius:"50%", background:`radial-gradient(circle, rgba(${BRAND.rgb},0.07) 0%, transparent 65%)` }}/>
       <div aria-hidden="true" style={{ position:"absolute", bottom:"-15%", left:"-5%", width:360, height:360, borderRadius:"50%", background:"radial-gradient(circle, rgba(79,142,247,0.06) 0%, transparent 65%)" }}/>
 
       <div style={{ maxWidth:1360, margin:"0 auto", position:"relative", zIndex:1 }}>
@@ -476,7 +477,7 @@ function WhoWeAreSection({ setCurrentPage }) {
                 We are not a single-product company. We are building a growing suite of enterprise platforms each purpose-built for its industry, each held to the same engineering standard, each delivered with long-term support.
               </p>
               <button type="button" onClick={() => setCurrentPage("about")}
-                style={{ background:LC.gold, color:"#06100E", border:"none", borderRadius:10, padding:"14px 28px", fontSize:14.5, fontWeight:800, fontFamily:font, cursor:"pointer", boxShadow:"0 6px 28px rgba(200,168,80,0.35)", transition:"all 0.25s" }}
+                style={{ background:LC.gold, color:"#06100E", border:"none", borderRadius:10, padding:"14px 28px", fontSize:14.5, fontWeight:800, fontFamily:font, cursor:"pointer", boxShadow:`0 6px 28px rgba(${BRAND.rgb},0.35)`, transition:"all 0.25s" }}
                 onMouseEnter={e => { e.currentTarget.style.background=LC.goldLight; e.currentTarget.style.transform="translateY(-2px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background=LC.gold; e.currentTarget.style.transform=""; }}>
                 Our Story →
@@ -489,7 +490,7 @@ function WhoWeAreSection({ setCurrentPage }) {
               {[
                 { v:"9",     l:"Enterprise\nPlatforms",  color:"#4F8EF7" },
                 { v:"8+",    l:"Industries\nServed",      color:"#10B981" },
-                { v:"25+",   l:"Core Modules\nin CareCore", color:"#C8A850" },
+                { v:"25+",   l:"Core Modules\nin CareCore", color:BRAND.gold },
                 { v:"2022",  l:"Founded\nin Nigeria",     color:"#F43F5E" },
               ].map(s => (
                 <div key={s.l} style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:16, padding:"28px 22px", transition:"all 0.25s" }}
@@ -508,7 +509,7 @@ function WhoWeAreSection({ setCurrentPage }) {
             {[
               { icon:"M9 12l2 2 4-4 M12 2a10 10 0 100 20 10 10 0 000-20z", label:"Production-Grade",    desc:"Security, audit logs and role-based access are baseline not extras.", color:"#4F8EF7" },
               { icon:"M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",   label:"Built for Nigeria",     desc:"PAYE, NDPR, NHIS, and local workflows no painful localisation.",  color:"#10B981" },
-              { icon:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100 8 4 4 0 000-8z",    label:"Long-Term Support",     desc:"Training, go-live, and SLA maintenance included in every contract.", color:"#C8A850" },
+              { icon:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M9 7a4 4 0 100 8 4 4 0 000-8z",    label:"Long-Term Support",     desc:"Training, go-live, and SLA maintenance included in every contract.", color:BRAND.gold },
               { icon:"M3 12a9 9 0 1018 0 9 9 0 01-18 0z M3.6 9h16.8M3.6 15h16.8",               label:"Global Standards",       desc:"API-first, fully documented, and ready for international procurement.", color:"#F43F5E" },
             ].map(c => (
               <div key={c.label} style={{ background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:14, padding:"20px 18px" }}>
@@ -982,7 +983,7 @@ function ConsultationSection({ setCurrentPage }) {
 
   return (
     <section style={{ background:LC.bgDark, padding:"120px clamp(24px,5vw,80px)", position:"relative", overflow:"hidden" }}>
-      <div aria-hidden="true" style={{ position:"absolute", top:"-30%", right:"-5%", width:480, height:480, borderRadius:"50%", background:"radial-gradient(circle, rgba(200,168,80,0.07) 0%, transparent 65%)" }}/>
+      <div aria-hidden="true" style={{ position:"absolute", top:"-30%", right:"-5%", width:480, height:480, borderRadius:"50%", background:`radial-gradient(circle, rgba(${BRAND.rgb},0.07) 0%, transparent 65%)` }}/>
 
       <div style={{ maxWidth:1360, margin:"0 auto", position:"relative", zIndex:1 }}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"clamp(48px,6vw,100px)", alignItems:"start" }} className="intro-grid">
@@ -1031,7 +1032,7 @@ function ConsultationSection({ setCurrentPage }) {
                   <textarea name="message" value={form.message} onChange={inp} rows={4} placeholder="Briefly describe your current challenge or what you're looking to build..." style={{ ...inputStyle, resize:"vertical", minHeight:110 }} onFocus={onFocus} onBlur={onBlur}/>
                 </div>
                 <button type="submit" disabled={state==="loading"}
-                  style={{ background:LC.gold, color:"#06100E", border:"none", borderRadius:10, padding:"15px 28px", fontSize:15, fontWeight:800, fontFamily:font, cursor:state==="loading"?"wait":"pointer", opacity:state==="loading"?0.7:1, boxShadow:"0 6px 28px rgba(200,168,80,0.35)", transition:"all 0.25s", marginTop:4 }}
+                  style={{ background:LC.gold, color:"#06100E", border:"none", borderRadius:10, padding:"15px 28px", fontSize:15, fontWeight:800, fontFamily:font, cursor:state==="loading"?"wait":"pointer", opacity:state==="loading"?0.7:1, boxShadow:`0 6px 28px rgba(${BRAND.rgb},0.35)`, transition:"all 0.25s", marginTop:4 }}
                   onMouseEnter={e => { if(state!=="loading") { e.currentTarget.style.background=LC.goldLight; e.currentTarget.style.transform="translateY(-2px)"; } }}
                   onMouseLeave={e => { e.currentTarget.style.background=LC.gold; e.currentTarget.style.transform=""; }}>
                   {state==="loading" ? "Sending…" : "Book Free Consultation →"}
@@ -1053,7 +1054,7 @@ function ConsultationSection({ setCurrentPage }) {
                   { icon:"M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z", text:"A tailored proposal not a generic quote" },
                 ].map(item => (
                   <div key={item.text} style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:16 }}>
-                    <div style={{ width:34, height:34, borderRadius:8, background:"rgba(200,168,80,0.1)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <div style={{ width:34, height:34, borderRadius:8, background:`rgba(${BRAND.rgb},0.1)`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       <SvgIcon d={item.icon} size={16} color={LC.gold}/>
                     </div>
                     <span style={{ fontSize:14, color:"rgba(200,210,226,0.75)", fontFamily:font, lineHeight:1.6, marginTop:6 }}>{item.text}</span>
@@ -1068,7 +1069,7 @@ function ConsultationSection({ setCurrentPage }) {
                   { icon:"M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z", label:"Location", val:"Nigeria · CAC RC 9535128" },
                 ].map(item => (
                   <div key={item.label} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-                    <SvgIcon d={item.icon} size={16} color="rgba(200,168,80,0.7)"/>
+                    <SvgIcon d={item.icon} size={16} color={`rgba(${BRAND.rgb},0.7)`}/>
                     <div>
                       <span style={{ fontSize:11, fontWeight:700, color:"rgba(200,210,226,0.4)", fontFamily:font, letterSpacing:"0.06em", marginRight:8 }}>{item.label.toUpperCase()}</span>
                       <span style={{ fontSize:13.5, color:"rgba(200,210,226,0.75)", fontFamily:font }}>{item.val}</span>

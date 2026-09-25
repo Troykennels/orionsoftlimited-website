@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ═══════════════════════════════════════
 // DESIGN TOKENS mirror App.jsx exactly (lazy-load isolation)
 // ═══════════════════════════════════════
@@ -9,15 +10,15 @@ const C = {
   card:       "#0F1828",
   cardHover:  "#141E30",
   border:     "rgba(255,255,255,0.07)",
-  borderHover:"rgba(200,168,80,0.35)",
+  borderHover:`rgba(${BRAND.rgb},0.35)`,
   white:      "#FFFFFF",
   heading:    "#F2F6FF",
   text:       "#C8D0E0",
   textMuted:  "#6B7A96",
-  gold:       "#C8A850",
-  goldLight:  "#E8C96A",
-  goldDim:    "rgba(200,168,80,0.12)",
-  goldGlow:   "rgba(200,168,80,0.22)",
+  gold:       BRAND.gold,
+  goldLight:  BRAND.goldLight,
+  goldDim:    `rgba(${BRAND.rgb},0.12)`,
+  goldGlow:   `rgba(${BRAND.rgb},0.22)`,
   blue:       "#4F8EF7",
   blueDim:    "rgba(79,142,247,0.12)",
   blueGlow:   "rgba(79,142,247,0.22)",
@@ -137,7 +138,7 @@ const PRODUCTS = {
   financecore: {
     name: "FinanceCore", tag: "FINANCE & ACCOUNTING", tagline: "From invoices to insights.",
     desc: "A complete finance and accounting platform for Nigerian businesses built for the chart of accounts, tax rules, and reporting requirements that matter here.",
-    color: "#C8A850", colorDim: "rgba(200,168,80,0.12)", available: true, category: "Finance",
+    color: BRAND.gold, colorDim: `rgba(${BRAND.rgb},0.12)`, available: true, category: "Finance",
     forWho: ["SMEs & Growing Businesses", "NGOs & Foundations", "Schools & Universities", "Healthcare Facilities", "Professional Services"],
     modules: [
       { name: "Chart of Accounts", desc: "Flexible account structure aligned to IFRS and local standards." },

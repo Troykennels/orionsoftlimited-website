@@ -1,12 +1,13 @@
 ﻿import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const T = {
   bg:      "#FFFFFF",
   bgAlt:   "#F5F7FC",
   bgDark:  "#061828",
   navy:    "#061828",
-  gold:    "#C8A850",
+  gold:    BRAND.gold,
   text:    "#1A2B3C",
   textSub: "#4A5B6C",
   muted:   "#8094A8",
@@ -501,7 +502,7 @@ const INDUSTRIES = [
   {
     id: "corporate",
     name: "Corporate Organizations",
-    color: "#C8A850",
+    color: BRAND.gold,
     tagline: "Holding companies, conglomerates & large enterprises",
     challenges: [
       "No single view of KPIs across multiple subsidiaries or business units",
@@ -601,7 +602,7 @@ const INDUSTRIES = [
   {
     id: "financial",
     name: "Financial Services",
-    color: "#C8A850",
+    color: BRAND.gold,
     tagline: "Banks, microfinance, fintech, insurance & professional services",
     challenges: [
       "CBN, NDPR, and FIRS compliance handled after problems appear, not before they arise",
@@ -825,7 +826,7 @@ export default function IndustriesPage({ setCurrentPage }) {
         backgroundSize: "cover", backgroundPosition: "center",
         padding: "120px clamp(24px,5vw,80px) 100px", position: "relative", overflow: "hidden",
       }}>
-        <div aria-hidden="true" style={{ position: "absolute", top: "-20%", right: "-5%", width: 560, height: 560, borderRadius: "50%", background: "radial-gradient(circle, rgba(200,168,80,0.08) 0%, transparent 65%)" }}/>
+        <div aria-hidden="true" style={{ position: "absolute", top: "-20%", right: "-5%", width: 560, height: 560, borderRadius: "50%", background: `radial-gradient(circle, rgba(${BRAND.rgb},0.08) 0%, transparent 65%)` }}/>
         <div aria-hidden="true" style={{ position: "absolute", bottom: "-20%", left: "-5%", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,142,247,0.06) 0%, transparent 65%)" }}/>
         <div style={{ maxWidth: 1360, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(40px,6vw,100px)", alignItems: "center" }} className="intro-grid">
@@ -839,7 +840,7 @@ export default function IndustriesPage({ setCurrentPage }) {
               </p>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 <button type="button" onClick={() => setCurrentPage("contact")}
-                  style={{ background: T.gold, color: "#06100E", border: "none", borderRadius: 11, padding: "14px 28px", fontSize: 15, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: "0 6px 28px rgba(200,168,80,0.35)", transition: "all 0.25s" }}
+                  style={{ background: T.gold, color: "#06100E", border: "none", borderRadius: 11, padding: "14px 28px", fontSize: 15, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: `0 6px 28px rgba(${BRAND.rgb},0.35)`, transition: "all 0.25s" }}
                   onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
                   Book a Consultation →
@@ -856,7 +857,7 @@ export default function IndustriesPage({ setCurrentPage }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {[
                 { v: "12", l: "Industries\ncovered", color: "#4F8EF7" },
-                { v: "9+", l: "Dedicated\nplatforms", color: "#C8A850" },
+                { v: "9+", l: "Dedicated\nplatforms", color: BRAND.gold },
                 { v: "25+", l: "Modules across\nthe product suite", color: "#10B981" },
                 { v: "100%", l: "Nigerian\nregulation built in", color: "#F43F5E" },
               ].map(s => (
@@ -907,9 +908,9 @@ export default function IndustriesPage({ setCurrentPage }) {
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
               <button type="button" onClick={() => setCurrentPage("contact")}
-                style={{ background: T.gold, color: "#06100E", border: "none", borderRadius: 11, padding: "15px 32px", fontSize: 15.5, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: "0 6px 28px rgba(200,168,80,0.35)", transition: "all 0.25s" }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 40px rgba(200,168,80,0.45)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 6px 28px rgba(200,168,80,0.35)"; }}>
+                style={{ background: T.gold, color: "#06100E", border: "none", borderRadius: 11, padding: "15px 32px", fontSize: 15.5, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: `0 6px 28px rgba(${BRAND.rgb},0.35)`, transition: "all 0.25s" }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 12px 40px rgba(${BRAND.rgb},0.45)`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 6px 28px rgba(${BRAND.rgb},0.35)`; }}>
                 Book a Free Consultation →
               </button>
               <button type="button" onClick={() => setCurrentPage("products")}

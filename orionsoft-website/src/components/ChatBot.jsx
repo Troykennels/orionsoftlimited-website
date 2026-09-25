@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
   border: "rgba(255,255,255,0.07)", white: "#FFFFFF",
   heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#6B7A96",
-  gold: "#C8A850", goldDim: "rgba(200,168,80,0.12)",
+  gold: BRAND.gold, goldDim: `rgba(${BRAND.rgb},0.12)`,
   blue: "#4F8EF7", mint: "#10B981", rose: "#F43F5E",
 };
 const font = "'Instrument Sans', 'DM Sans', system-ui, sans-serif";
@@ -29,7 +30,7 @@ const PRODUCT_LABELS = {
   schoolcore:     { name: "SchoolCore",     emoji: "🎓", color: "#10B981" },
   compliancecore: { name: "ComplianceCore", emoji: "✅", color: "#F59E0B" },
   inventorycore:  { name: "InventoryCore",  emoji: "📦", color: "#8B5CF6" },
-  financecore:    { name: "FinanceCore",    emoji: "💰", color: "#C8A850" },
+  financecore:    { name: "FinanceCore",    emoji: "💰", color: BRAND.gold },
   hrcore:         { name: "HRCore",         emoji: "👥", color: "#F43F5E" },
   churchcore:     { name: "ChurchCore",     emoji: "⛪", color: "#7C3AED" },
   fleetcore:      { name: "FleetCore",      emoji: "🚗", color: "#06B6D4" },
@@ -547,10 +548,10 @@ export default function ChatBot({ setCurrentPage }) {
         style={{
           position: "fixed", bottom: 24, right: 24, zIndex: 1999,
           width: 60, height: 60, borderRadius: "50%", border: "none", cursor: "pointer",
-          background: open ? C.card : `linear-gradient(135deg, ${C.gold} 0%, #E8C96A 100%)`,
+          background: open ? C.card : `linear-gradient(135deg, ${C.gold} 0%, ${BRAND.goldLight} 100%)`,
           color: open ? C.text : "#060810",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 24, boxShadow: open ? "none" : `0 8px 32px rgba(200,168,80,0.4)`,
+          fontSize: 24, boxShadow: open ? "none" : `0 8px 32px rgba(${BRAND.rgb},0.4)`,
           transition: "all 0.3s",
         }}
         onMouseEnter={e => { if (!open) e.currentTarget.style.transform = "scale(1.08)"; }}
@@ -570,7 +571,7 @@ export default function ChatBot({ setCurrentPage }) {
         {!open && (
           <span style={{
             position: "absolute", inset: -4, borderRadius: "50%",
-            border: `2px solid rgba(200,168,80,0.4)`,
+            border: `2px solid rgba(${BRAND.rgb},0.4)`,
             animation: "chatPulse 2.5s infinite",
           }} />
         )}
@@ -601,12 +602,12 @@ function MessageBubble({ msg }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexDirection: isUser ? "row-reverse" : "row" }}>
       {!isUser && (
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(200,168,80,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🤖</div>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: `rgba(${BRAND.rgb},0.12)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🤖</div>
       )}
       <div style={{
         maxWidth: "80%",
-        background: isUser ? "rgba(200,168,80,0.15)" : "rgba(15,24,40,1)",
-        border: `1px solid ${isUser ? "rgba(200,168,80,0.3)" : "rgba(255,255,255,0.07)"}`,
+        background: isUser ? `rgba(${BRAND.rgb},0.15)` : "rgba(15,24,40,1)",
+        border: `1px solid ${isUser ? `rgba(${BRAND.rgb},0.3)` : "rgba(255,255,255,0.07)"}`,
         borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
         padding: "10px 14px",
         fontSize: 14, color: "#C8D0E0", fontFamily: font, lineHeight: 1.65,
@@ -620,7 +621,7 @@ function LeadStep({ field, value, onChange, onSubmit, step, total, product, isDe
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 100); }, [field.key]);
 
   return (
-    <div style={{ background: "rgba(15,24,40,1)", border: "1px solid rgba(200,168,80,0.25)", borderRadius: 14, padding: "14px 16px" }}>
+    <div style={{ background: "rgba(15,24,40,1)", border: `1px solid rgba(${BRAND.rgb},0.25)`, borderRadius: 14, padding: "14px 16px" }}>
       {product ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <span style={{ fontSize: 14 }}>{product.emoji}</span>
@@ -629,7 +630,7 @@ function LeadStep({ field, value, onChange, onSubmit, step, total, product, isDe
           </span>
         </div>
       ) : null}
-      <div style={{ fontSize: 12, color: "#C8A850", fontFamily: font, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em" }}>
+      <div style={{ fontSize: 12, color: BRAND.gold, fontFamily: font, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em" }}>
         STEP {step + 1} OF {total}
       </div>
       <div style={{ fontSize: 14, color: "#F2F6FF", fontFamily: font, marginBottom: 10 }}>{field.label}</div>
@@ -645,11 +646,11 @@ function LeadStep({ field, value, onChange, onSubmit, step, total, product, isDe
             flex: 1, background: "rgba(11,17,32,1)", border: "1px solid rgba(255,255,255,0.07)",
             color: "#C8D0E0", borderRadius: 10, padding: "10px 14px", fontSize: 14, fontFamily: font, outline: "none",
           }}
-          onFocus={e => e.target.style.borderColor = "rgba(200,168,80,0.5)"}
+          onFocus={e => e.target.style.borderColor = `rgba(${BRAND.rgb},0.5)`}
           onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.07)"}
         />
         <button type="button" onClick={onSubmit} disabled={!value.trim()} style={{
-          padding: "10px 18px", background: "#C8A850", color: "#060810", border: "none",
+          padding: "10px 18px", background: BRAND.gold, color: "#060810", border: "none",
           borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: font,
           cursor: value.trim() ? "pointer" : "not-allowed", opacity: value.trim() ? 1 : 0.5,
         }}>

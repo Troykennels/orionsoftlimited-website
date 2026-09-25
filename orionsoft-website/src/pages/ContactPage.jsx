@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ─── Design tokens (self-contained for lazy-load isolation) ──────────────────
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
-  border: "rgba(255,255,255,0.07)", borderHover: "rgba(200,168,80,0.35)",
+  border: "rgba(255,255,255,0.07)", borderHover: `rgba(${BRAND.rgb},0.35)`,
   heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#6B7A96",
-  gold: "#C8A850", goldDim: "rgba(200,168,80,0.12)", goldGlow: "rgba(200,168,80,0.22)",
+  gold: BRAND.gold, goldDim: `rgba(${BRAND.rgb},0.12)`, goldGlow: `rgba(${BRAND.rgb},0.22)`,
   blue: "#4F8EF7", blueDim: "rgba(79,142,247,0.12)", blueGlow: "rgba(79,142,247,0.22)",
   mint: "#10B981", mintDim: "rgba(16,185,129,0.12)",
   purple: "#8B5CF6", purpleDim: "rgba(139,92,246,0.12)",

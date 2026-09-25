@@ -9,6 +9,7 @@ const LABELS = {
   orionsoft_testimonials_v1: "testimonials", orionsoft_faqs_v1: "FAQs", orionsoft_homepage_v1: "homepage",
   orionsoft_clients_v1: "clients", orionsoft_menus_v1: "navigation", orionsoft_team_v1: "team",
   orionsoft_seo_v1: "SEO", orionsoft_features_v1: "site features", orionsoft_settings_v1: "site settings",
+  orionsoft_theme_v1: "theme & colours",
 };
 
 export default async function handler(req, res) {

@@ -21,6 +21,7 @@ export const CONTENT_KEYS = [
   "orionsoft_products_v1",
   "orionsoft_portfolio_v1",
   "orionsoft_services_v1",
+  "orionsoft_theme_v1",
 ];
 
 // Upstash accepts values up to 1MB per request; leave headroom.

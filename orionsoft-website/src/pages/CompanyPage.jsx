@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const T = {
   bg:      "#FFFFFF",
   bgAlt:   "#F5F7FC",
   bgDark:  "#061828",
   bgMid:   "#0A1F35",
   bgDeep:  "#060F1A",
-  gold:    "#C8A850",
-  goldLt:  "#E8C96A",
+  gold:    BRAND.gold,
+  goldLt:  BRAND.goldLight,
   text:    "#1A2B3C",
   textLt:  "#4A5B6C",
   white:   "#FFFFFF",
@@ -59,7 +60,7 @@ const MILESTONES = [
     year: "2023", quarter: "Q3",
     title: "First CareCore deployment",
     body: "CareCore went live in its first hospital. The implementation took seven weeks. By the end of the third month, the hospital's billing accuracy had improved substantially and OPD paper records had been eliminated. That deployment gave us confidence that the product worked. It also taught us three things we went back and fixed.",
-    color: "#C8A850",
+    color: BRAND.gold,
   },
   {
     year: "2024", quarter: "Q1",
@@ -109,7 +110,7 @@ const ROADMAP = [
   },
   {
     period: "2026: Planned",
-    color: "#C8A850",
+    color: BRAND.gold,
     items: [
       { label: "FinanceCore GA", detail: "Full accounting, bank reconciliation, financial statements for Nigerian SMEs" },
       { label: "FleetCore v2", detail: "Driver behaviour analytics, maintenance scheduling, fuel management" },
@@ -136,7 +137,7 @@ const PHILOSOPHY = [
     body: "A demo can be made to look good in 30 minutes. A system that works in a 40-bed hospital during a busy OPD morning is a different thing entirely. We build for the second scenario. That means accounting for slow internet, staff who aren't technical, power cuts, and processes that don't match the textbook. Before any product goes to a client, it's been through our own stress tests, not just a QA checklist.",
   },
   {
-    num: "02", color: "#C8A850",
+    num: "02", color: BRAND.gold,
     principle: "We stay for the long term.",
     body: "The fastest way to build a bad reputation in the Nigerian software market is to take the money, deploy the system, and disappear. We've seen it happen to clients who came to us for rescue implementations. Our engagements are structured for the five-year relationship: signed SLAs, quarterly reviews, named account contacts, and systems that get better over time because we're still paying attention.",
   },
@@ -237,7 +238,7 @@ export default function CompanyPage({ setCurrentPage }) {
               },
               {
                 title: "Local Context",
-                color: "#C8A850",
+                color: BRAND.gold,
                 icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z",
                 body: "Our products are built for Nigerian internet speeds, regulatory environments, and workflows. CBN compliance, NDPR obligations, WAEC result structures, and offline capability on 3G networks are native to our products, not patches applied after the fact.",
               },
@@ -305,7 +306,7 @@ export default function CompanyPage({ setCurrentPage }) {
                 <p style={{ fontSize:16, color:T.textLt, fontFamily:font, lineHeight:1.85, margin:0 }}>
                   We decided to build the systems ourselves, from scratch, in Nigeria, for the Nigerian context.
                 </p>
-                <blockquote style={{ margin:"8px 0", padding:"20px 24px", borderLeft:`3px solid ${T.gold}`, background:"rgba(200,168,80,0.04)" }}>
+                <blockquote style={{ margin:"8px 0", padding:"20px 24px", borderLeft:`3px solid ${T.gold}`, background:`rgba(${BRAND.rgb},0.04)` }}>
                   <p style={{ fontSize:17, color:T.text, fontFamily:font, lineHeight:1.75, margin:0, fontStyle:"italic", fontWeight:500 }}>
                     "CareCore was our first product. We spent 14 months building it before we showed it to a single client. We mapped workflows of real Nigerian hospitals, talked to nurses and doctors and billing officers, and built around what we found, not around what a specification document said should happen."
                   </p>
@@ -338,7 +339,7 @@ export default function CompanyPage({ setCurrentPage }) {
                   </div>
                 ))}
               </div>
-              <div style={{ background:"rgba(200,168,80,0.06)", border:`1px solid rgba(200,168,80,0.18)`, borderRadius:14, padding:"24px 28px" }}>
+              <div style={{ background:`rgba(${BRAND.rgb},0.06)`, border:`1px solid rgba(${BRAND.rgb},0.18)`, borderRadius:14, padding:"24px 28px" }}>
                 <div style={{ fontSize:10, fontWeight:800, color:T.gold, fontFamily:font, letterSpacing:"0.1em", marginBottom:12 }}>OUR MISSION</div>
                 <p style={{ fontSize:15, color:T.text, fontFamily:font, lineHeight:1.7, margin:0, fontWeight:500 }}>
                   Build software that makes Nigerian organisations more efficient, more competitive, and more capable.

@@ -6,13 +6,14 @@ import {
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
-  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge,
+  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette,
 } from "lucide-react";
 import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
+import ThemeSection from "./ThemeSection.jsx";
 import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
@@ -56,6 +57,7 @@ const SK = {
   conversations:"orionsoft_conversations_v1",
   services:     "orionsoft_services_v1",
   events:       "orionsoft_events_v1",
+  theme:        "orionsoft_theme_v1",
 };
 
 // ─── Auth (server-verified session, see api/_lib/auth.js) ───────────────────
@@ -110,13 +112,13 @@ function auditLog(action, target, details = "") {
 // only this browser's storage.
 const PUBLISHED_KEYS = new Set([
   SK.settings, SK.homepage, SK.testimonials, SK.faqs, SK.blog, SK.careers, SK.clients, SK.menus,
-  SK.team, SK.seo, SK.announcements, SK.features, SK.products, SK.portfolio, SK.services,
+  SK.team, SK.seo, SK.announcements, SK.features, SK.products, SK.portfolio, SK.services, SK.theme,
 ]);
 const PUBLISH_LABEL = {
   [SK.careers]: "Careers", [SK.blog]: "Blog", [SK.announcements]: "Announcements", [SK.products]: "Products",
   [SK.services]: "Services", [SK.portfolio]: "Case Studies", [SK.testimonials]: "Testimonials", [SK.faqs]: "FAQs",
   [SK.homepage]: "Homepage", [SK.clients]: "Clients", [SK.menus]: "Navigation", [SK.team]: "Team",
-  [SK.seo]: "SEO", [SK.features]: "Site features", [SK.settings]: "Site settings",
+  [SK.seo]: "SEO", [SK.features]: "Site features", [SK.settings]: "Site settings", [SK.theme]: "Theme",
 };
 const publishTimers = {};
 function publishContent(key, val) {
@@ -434,6 +436,7 @@ const NAV_GROUPS = [
       { id: "features",     label: "Feature Flags",    icon: Flag },
       { id: "clients",      label: "Clients",          icon: Building2 },
       { id: "menus",        label: "Navigation",       icon: Link2 },
+      { id: "theme",        label: "Theme & Colours",  icon: Palette },
       { id: "settings",     label: "Site Settings",    icon: Settings },
     ],
   },
@@ -6142,6 +6145,7 @@ function DashboardContent({ active, session, navigate }) {
     case "clients":       return <ClientsSection />;
     case "menus":         return <MenusSection />;
     case "settings":      return <SettingsSection />;
+    case "theme":         return <ThemeSection read={lsGet} save={lsSet} />;
     case "employees":      return <EmployeesSection session={session} />;
     case "staff-office":   return <StaffOfficeSection />;
     case "attendance":     return <AttendanceFieldSection />;

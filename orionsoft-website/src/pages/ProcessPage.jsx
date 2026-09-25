@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const T = {
   bg:      "#FFFFFF",
   bgAlt:   "#F5F7FC",
   bgDark:  "#061828",
   bgMid:   "#0A1F35",
   bgDeep:  "#060F1A",
-  gold:    "#C8A850",
-  goldLt:  "#E8C96A",
+  gold:    BRAND.gold,
+  goldLt:  BRAND.goldLight,
   text:    "#1A2B3C",
   textLt:  "#4A5B6C",
   white:   "#FFFFFF",
@@ -67,7 +68,7 @@ const JOURNEY = [
     ],
   },
   {
-    num: "03", color: "#C8A850", label: "PROPOSAL", title: "We put it in writing",
+    num: "03", color: BRAND.gold, label: "PROPOSAL", title: "We put it in writing",
     time: "Days 5–14",
     activities: [
       "Fixed-price proposal or phased engagement plan",
@@ -115,7 +116,7 @@ const METHODOLOGY = [
     aside: ["Fixed-scope or phased plans: your choice", "Change request process defined upfront", "No surprises at invoicing", "Milestone sign-offs at every phase"],
   },
   {
-    num: "03", color: "#C8A850",
+    num: "03", color: BRAND.gold,
     title: "Your team tests before anything goes live.",
     body: "We do not deploy systems that clients haven't seen in full. User Acceptance Testing is a real event: your team members run real scenarios against real data in a staging environment. We collect feedback, fix issues, and run a second round. Only when your lead signs the acceptance form does the system move to production. This process has saved clients from discovering problems on go-live day.",
     aside: ["Structured UAT against agreed scenarios", "Two rounds of fixes included", "Signed acceptance required before production", "Parallel-run option for high-stakes go-lives"],
@@ -154,7 +155,7 @@ const TIMELINE = [
   },
   {
     period: "Weeks 4–12", phase: "Development & Configuration",
-    color: "#C8A850",
+    color: BRAND.gold,
     items: [
       "Module configuration and custom workflow build",
       "Integration with third-party systems where needed",
@@ -216,7 +217,7 @@ const SUPPORT = [
   {
     tier: "Professional",
     included: false,
-    color: "#C8A850",
+    color: BRAND.gold,
     desc: "For organisations that need faster responses and closer engagement.",
     rows: [
       ["Response time", "Within 8 hours"],
@@ -251,7 +252,7 @@ const SUPPORT = [
 const SDLC = [
   { phase: "Requirements", color: "#4F8EF7", desc: "We document what the system must do, what it must not do, and what happens at the edges. This is the contract between the product and the people using it." },
   { phase: "Architecture", color: "#10B981", desc: "Database design, API contracts, integration points, and infrastructure decisions. Getting this wrong costs ten times more to fix later than to get right now." },
-  { phase: "Development", color: "#C8A850", desc: "Feature branches, peer code review, and daily internal testing. Nothing goes to staging until it passes the team's own bar." },
+  { phase: "Development", color: BRAND.gold, desc: "Feature branches, peer code review, and daily internal testing. Nothing goes to staging until it passes the team's own bar." },
   { phase: "QA & Testing", color: "#8B5CF6", desc: "Functional, regression, load, and security testing before any client eyes see the system. Our QA round catches what development testing missed." },
   { phase: "Staging", color: "#F43F5E", desc: "A production-identical environment where the client's team runs user acceptance testing. Real data, real workflows, real problems found before go-live." },
   { phase: "Production", color: "#06B6D4", desc: "Blue-green deployment with rollback tested and ready. We don't go live on a Friday afternoon. We go live when the checklist is complete." },
@@ -276,7 +277,7 @@ export default function ProcessPage({ setCurrentPage }) {
 
         <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", textAlign: "center" }}>
           <Reveal>
-            <span style={{ display:"inline-block", fontSize:11, fontWeight:800, color:T.gold, fontFamily:font, letterSpacing:"0.14em", background:"rgba(200,168,80,0.1)", border:"1px solid rgba(200,168,80,0.22)", padding:"6px 14px", borderRadius:30, marginBottom:24 }}>
+            <span style={{ display:"inline-block", fontSize:11, fontWeight:800, color:T.gold, fontFamily:font, letterSpacing:"0.14em", background:`rgba(${BRAND.rgb},0.1)`, border:`1px solid rgba(${BRAND.rgb},0.22)`, padding:"6px 14px", borderRadius:30, marginBottom:24 }}>
               HOW WE WORK
             </span>
           </Reveal>
@@ -499,7 +500,7 @@ export default function ProcessPage({ setCurrentPage }) {
                 </defs>
                 {/* Outer ring */}
                 <circle cx="210" cy="210" r="180" fill="none" stroke="rgba(6,24,40,0.06)" strokeWidth="1.5"/>
-                <circle cx="210" cy="210" r="130" fill="rgba(200,168,80,0.03)" stroke="rgba(200,168,80,0.12)" strokeWidth="1"/>
+                <circle cx="210" cy="210" r="130" fill={`rgba(${BRAND.rgb},0.03)`} stroke={`rgba(${BRAND.rgb},0.12)`} strokeWidth="1"/>
                 {/* Centre label */}
                 <text x="210" y="202" textAnchor="middle" fontSize="11" fontWeight="800" fill="#061828" fontFamily="'Instrument Sans',sans-serif">ORION</text>
                 <text x="210" y="218" textAnchor="middle" fontSize="11" fontWeight="800" fill="#061828" fontFamily="'Instrument Sans',sans-serif">SDLC</text>
@@ -576,7 +577,7 @@ export default function ProcessPage({ setCurrentPage }) {
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap:0, border:`1px solid ${T.borderW}`, borderRadius:16, overflow:"hidden" }}>
             {[
               { env:"DEV", color:"#4F8EF7", tag:"Local development", points:["Feature branches per developer","Daily peer code review","Internal linting and unit tests","Nothing merged to main without review"] },
-              { env:"STAGING", color:"#C8A850", tag:"Pre-production", points:["Production-identical environment","Client UAT happens here","Load and stress testing","Bug fixes loop back to dev"] },
+              { env:"STAGING", color:BRAND.gold, tag:"Pre-production", points:["Production-identical environment","Client UAT happens here","Load and stress testing","Bug fixes loop back to dev"] },
               { env:"PRODUCTION", color:"#10B981", tag:"Live system", points:["Blue-green deployment strategy","Rollback plan tested before go-live","Real-time monitoring from minute one","We don't deploy on Fridays"] },
             ].map((e, i) => (
               <div key={e.env} style={{
@@ -624,7 +625,7 @@ export default function ProcessPage({ setCurrentPage }) {
               ],
             },
             {
-              num:"02", color:"#C8A850",
+              num:"02", color:BRAND.gold,
               title:"Live training sessions",
               timing:"Two weeks before go-live",
               details: [

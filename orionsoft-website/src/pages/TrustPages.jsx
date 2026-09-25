@@ -1,11 +1,12 @@
 ﻿import { useState } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // Self-contained design tokens duplicated intentionally for lazy-load isolation
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
   border: "rgba(255,255,255,0.07)",
   white: "#FFFFFF", heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#6B7A96",
-  gold: "#C8A850", goldLight: "#E8C96A", goldDim: "rgba(200,168,80,0.12)",
+  gold: BRAND.gold, goldLight: BRAND.goldLight, goldDim: `rgba(${BRAND.rgb},0.12)`,
   blue: "#4F8EF7", blueDim: "rgba(79,142,247,0.12)",
   mint: "#10B981", mintDim: "rgba(16,185,129,0.12)",
   purple: "#8B5CF6", purpleDim: "rgba(139,92,246,0.12)",
@@ -14,7 +15,7 @@ const C = {
   accent: "#4F8EF7", accentDim: "rgba(79,142,247,0.12)",
   shadow: "0 4px 24px rgba(0,0,0,0.18)",
   shadowLg: "0 12px 48px rgba(0,0,0,0.28)",
-  shadowGold: "0 8px 28px rgba(200,168,80,0.28)",
+  shadowGold: `0 8px 28px rgba(${BRAND.rgb},0.28)`,
 };
 const font = "'Instrument Sans','DM Sans',system-ui,sans-serif";
 

@@ -1,14 +1,15 @@
 ﻿import { useState } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const LC = {
   bg:           "#FFFFFF",
   bgSection:    "#F5F7FC",
   bgDark:       "#061828",
   navy:         "#061828",
-  gold:         "#C8A850",
-  goldLight:    "#E8C96A",
-  goldDim:      "rgba(200,168,80,0.10)",
+  gold:         BRAND.gold,
+  goldLight:    BRAND.goldLight,
+  goldDim:      `rgba(${BRAND.rgb},0.10)`,
   text:         "#1A2B3C",
   textLight:    "#4A5B6C",
   textMuted:    "#8094A8",
@@ -149,27 +150,27 @@ function IllDirectors() {
         <line key={`v${i}`} x1={i*54+27} y1="0" x2={i*54+27} y2="190" stroke="white" strokeWidth="0.5" strokeOpacity="0.05"/>
       ))}
       {[60,82,50,98,75].map((h,i)=>(
-        <rect key={i} x={26+i*24} y={132-h} width="16" height={h} rx="4" fill="#C8A850" fillOpacity={0.25+i*0.12}/>
+        <rect key={i} x={26+i*24} y={132-h} width="16" height={h} rx="4" fill={BRAND.gold} fillOpacity={0.25+i*0.12}/>
       ))}
-      <line x1="22" y1="134" x2="148" y2="134" stroke="#C8A850" strokeWidth="1" strokeOpacity="0.25"/>
+      <line x1="22" y1="134" x2="148" y2="134" stroke={BRAND.gold} strokeWidth="1" strokeOpacity="0.25"/>
       <polyline points="26,130 50,114 74,120 98,100 122,84 146,68"
-        stroke="#C8A850" fill="none" strokeWidth="2" strokeOpacity="0.55" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="296" cy="92" r="58" fill="none" stroke="#C8A850" strokeWidth="18" strokeOpacity="0.1"/>
-      <circle cx="296" cy="92" r="58" fill="none" stroke="#C8A850" strokeWidth="18"
+        stroke={BRAND.gold} fill="none" strokeWidth="2" strokeOpacity="0.55" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="296" cy="92" r="58" fill="none" stroke={BRAND.gold} strokeWidth="18" strokeOpacity="0.1"/>
+      <circle cx="296" cy="92" r="58" fill="none" stroke={BRAND.gold} strokeWidth="18"
         strokeDasharray="217 146" strokeDashoffset="0" strokeLinecap="round"/>
-      <circle cx="296" cy="92" r="58" fill="none" stroke="#E8C96A" strokeWidth="18"
+      <circle cx="296" cy="92" r="58" fill="none" stroke={BRAND.goldLight} strokeWidth="18"
         strokeDasharray="90 273" strokeDashoffset="-217" strokeLinecap="round" strokeOpacity="0.45"/>
       <circle cx="296" cy="92" r="32" fill="#061828"/>
-      <text x="296" y="96" textAnchor="middle" fontSize="20" fontWeight="900" fill="#C8A850" fontFamily="system-ui">74%</text>
-      <text x="296" y="112" textAnchor="middle" fontSize="9" fill="#C8A850" fillOpacity="0.55" fontFamily="system-ui">GROWTH</text>
+      <text x="296" y="96" textAnchor="middle" fontSize="20" fontWeight="900" fill={BRAND.gold} fontFamily="system-ui">74%</text>
+      <text x="296" y="112" textAnchor="middle" fontSize="9" fill={BRAND.gold} fillOpacity="0.55" fontFamily="system-ui">GROWTH</text>
       {[44,74,104].map((x,i)=>(
-        <circle key={i} cx={x} cy="28" r="13" fill="#C8A850" fillOpacity={0.12+i*0.06}
-          stroke="#C8A850" strokeWidth="1" strokeOpacity="0.3"/>
+        <circle key={i} cx={x} cy="28" r="13" fill={BRAND.gold} fillOpacity={0.12+i*0.06}
+          stroke={BRAND.gold} strokeWidth="1" strokeOpacity="0.3"/>
       ))}
-      <rect x="306" y="16" width="62" height="24" rx="7" fill="#C8A850"/>
+      <rect x="306" y="16" width="62" height="24" rx="7" fill={BRAND.gold}/>
       <text x="337" y="32" textAnchor="middle" fontSize="11" fontWeight="800" fill="#06100E" fontFamily="system-ui">EXEC</text>
       {[35,55,75,95,115,135].map((x,i)=>(
-        <line key={i} x1={x} y1="155" x2={x} y2="180" stroke="#C8A850" strokeWidth="1.5" strokeOpacity="0.2"/>
+        <line key={i} x1={x} y1="155" x2={x} y2="180" stroke={BRAND.gold} strokeWidth="1.5" strokeOpacity="0.2"/>
       ))}
     </svg>
   );
@@ -186,18 +187,18 @@ function IllCompliance() {
       </defs>
       <rect width="380" height="190" fill="url(#g-cco)"/>
       <path d="M128,22 L208,48 L208,116 Q208,162 128,182 Q48,162 48,116 L48,48 Z"
-        fill="#C8A850" fillOpacity="0.1"/>
+        fill={BRAND.gold} fillOpacity="0.1"/>
       <path d="M128,22 L208,48 L208,116 Q208,162 128,182 Q48,162 48,116 L48,48 Z"
-        stroke="#C8A850" strokeWidth="2.5" fill="none" strokeOpacity="0.45"/>
-      <circle cx="128" cy="102" r="30" fill="#C8A850" fillOpacity="0.06"/>
-      <path d="M96,100 L118,124 L162,78" stroke="#C8A850" strokeWidth="8"
+        stroke={BRAND.gold} strokeWidth="2.5" fill="none" strokeOpacity="0.45"/>
+      <circle cx="128" cy="102" r="30" fill={BRAND.gold} fillOpacity="0.06"/>
+      <path d="M96,100 L118,124 L162,78" stroke={BRAND.gold} strokeWidth="8"
         strokeLinecap="round" strokeLinejoin="round"/>
       {items.map((label,i)=>(
         <g key={label}>
           <rect x="238" y={28+i*36} width="20" height="20" rx="5"
-            fill="#C8A850" fillOpacity="0.14" stroke="#C8A850" strokeWidth="1.5" strokeOpacity="0.4"/>
+            fill={BRAND.gold} fillOpacity="0.14" stroke={BRAND.gold} strokeWidth="1.5" strokeOpacity="0.4"/>
           <path d={`M243,${38+i*36} L248,${43+i*36} L258,${33+i*36}`}
-            stroke="#C8A850" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            stroke={BRAND.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           <text x="268" y={42+i*36} fontSize="12.5" fontWeight="700" fill="#92400E" fillOpacity="0.65" fontFamily="system-ui">{label}</text>
         </g>
       ))}
@@ -385,7 +386,7 @@ const PRODUCTS = [
     category: "Business Software",
     tagline: "Executive Intelligence & Governance",
     desc: "Built for organisations already running multiple Orion Soft products. The Directors' Portal connects them, pulling live KPIs, operational status, and financial summaries into a single board-level view. No more chasing department heads for weekly reports.",
-    color: "#C8A850",
+    color: BRAND.gold,
     badge: "NEW",
     Illustration: IllDirectors,
     benefits: [
@@ -403,7 +404,7 @@ const PRODUCTS = [
     category: "Business Software",
     tagline: "Compliance & Risk Management",
     desc: "Stay audit-ready year-round with automated tracking of Nigerian regulatory requirements. Policies, risk registers, audit trails, and a full regulatory calendar all in one place.",
-    color: "#C8A850",
+    color: BRAND.gold,
     badge: null,
     Illustration: IllCompliance,
     benefits: [
@@ -718,7 +719,7 @@ export default function ProductsPage({ setCurrentPage }) {
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
               <button type="button" onClick={() => setCurrentPage("contact")}
-                style={{ background: LC.gold, color: "#06100E", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 14.5, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: "0 6px 28px rgba(200,168,80,0.35)", transition: "all 0.25s", whiteSpace: "nowrap" }}
+                style={{ background: LC.gold, color: "#06100E", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 14.5, fontWeight: 800, fontFamily: font, cursor: "pointer", boxShadow: `0 6px 28px rgba(${BRAND.rgb},0.35)`, transition: "all 0.25s", whiteSpace: "nowrap" }}
                 onMouseEnter={e => { e.currentTarget.style.background = LC.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = LC.gold; e.currentTarget.style.transform = ""; }}>
                 Talk to Our Team →

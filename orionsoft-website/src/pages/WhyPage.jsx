@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const T = {
   bg:         "#060810",
   surface:    "#0B1120",
   card:       "#0F1828",
   border:     "rgba(255,255,255,0.07)",
-  borderGold: "rgba(200,168,80,0.25)",
+  borderGold: `rgba(${BRAND.rgb},0.25)`,
   heading:    "#F2F6FF",
   text:       "#C8D0E0",
   muted:      "#6B7A96",
-  gold:       "#C8A850",
-  goldLt:     "#E8C96A",
-  goldDim:    "rgba(200,168,80,0.12)",
+  gold:       BRAND.gold,
+  goldLt:     BRAND.goldLight,
+  goldDim:    `rgba(${BRAND.rgb},0.12)`,
   blue:       "#4F8EF7",
   blueDim:    "rgba(79,142,247,0.12)",
   mint:       "#10B981",
@@ -212,13 +213,13 @@ export default function WhyPage({ setCurrentPage }) {
       <style>{`
         .why-btn-gold {
           display: inline-flex; align-items: center; gap: 6px;
-          background: #C8A850; color: #060810;
+          background: ${BRAND.gold}; color: #060810;
           border: none; border-radius: 8px;
           padding: 13px 26px; font-size: 15px; font-weight: 600;
           cursor: pointer; transition: background 0.2s, transform 0.15s;
           font-family: inherit; text-decoration: none;
         }
-        .why-btn-gold:hover { background: #E8C96A; transform: translateY(-1px); }
+        .why-btn-gold:hover { background: ${BRAND.goldLight}; transform: translateY(-1px); }
         .why-btn-outline {
           display: inline-flex; align-items: center; gap: 6px;
           background: transparent; color: #C8D0E0;
@@ -227,7 +228,7 @@ export default function WhyPage({ setCurrentPage }) {
           cursor: pointer; transition: border-color 0.2s, color 0.2s, transform 0.15s;
           font-family: inherit; text-decoration: none;
         }
-        .why-btn-outline:hover { border-color: rgba(200,168,80,0.5); color: #C8A850; transform: translateY(-1px); }
+        .why-btn-outline:hover { border-color: rgba(${BRAND.rgb},0.5); color: ${BRAND.gold}; transform: translateY(-1px); }
         .why-btn-outline-blue {
           display: inline-flex; align-items: center; gap: 6px;
           background: transparent; color: #4F8EF7;
@@ -242,13 +243,13 @@ export default function WhyPage({ setCurrentPage }) {
           border-radius: 14px; padding: 28px 24px;
           transition: border-color 0.25s, transform 0.25s;
         }
-        .value-card:hover { border-color: rgba(200,168,80,0.2); transform: translateY(-3px); }
+        .value-card:hover { border-color: rgba(${BRAND.rgb},0.2); transform: translateY(-3px); }
         .stat-card {
           background: #0F1828; border: 1px solid rgba(255,255,255,0.07);
           border-radius: 14px; padding: 28px 24px;
           transition: border-color 0.25s, transform 0.25s;
         }
-        .stat-card:hover { border-color: rgba(200,168,80,0.25); transform: translateY(-3px); }
+        .stat-card:hover { border-color: rgba(${BRAND.rgb},0.25); transform: translateY(-3px); }
         .partner-card {
           background: #ffffff; border: 1px solid #E8EDF5;
           border-radius: 14px; padding: 28px 24px;
@@ -277,7 +278,7 @@ export default function WhyPage({ setCurrentPage }) {
       <section style={{ background: T.bg, position: "relative", overflow: "hidden", padding: "120px 24px 100px" }}>
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 70% 50% at 50% -10%, rgba(200,168,80,0.13) 0%, transparent 70%)",
+          background: `radial-gradient(ellipse 70% 50% at 50% -10%, rgba(${BRAND.rgb},0.13) 0%, transparent 70%)`,
         }} />
         <div style={{ maxWidth: 820, margin: "0 auto", textAlign: "center", position: "relative" }}>
           <Reveal delay={0}>

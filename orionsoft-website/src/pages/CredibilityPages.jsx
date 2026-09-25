@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
+import { BRAND } from "../lib/brand.js";
 // ── Design tokens ──────────────────────────────────────────────────
 const C = {
   bg:        "#060810",
@@ -7,14 +8,14 @@ const C = {
   card:      "#0F1828",
   cardHover: "#141E30",
   border:    "rgba(255,255,255,0.07)",
-  borderGold:"rgba(200,168,80,0.25)",
+  borderGold:`rgba(${BRAND.rgb},0.25)`,
   heading:   "#F2F6FF",
   text:      "#C8D0E0",
   textMuted: "#6B7A96",
-  gold:      "#C8A850",
-  goldLt:    "#E8C96A",
-  goldDim:   "rgba(200,168,80,0.12)",
-  goldGlow:  "rgba(200,168,80,0.22)",
+  gold:      BRAND.gold,
+  goldLt:    BRAND.goldLight,
+  goldDim:   `rgba(${BRAND.rgb},0.12)`,
+  goldGlow:  `rgba(${BRAND.rgb},0.22)`,
   blue:      "#4F8EF7",
   blueDim:   "rgba(79,142,247,0.12)",
   mint:      "#10B981",
@@ -29,7 +30,7 @@ const C = {
   accentDim: "rgba(79,142,247,0.12)",
   shadow:    "0 4px 24px rgba(0,0,0,0.18)",
   shadowLg:  "0 12px 48px rgba(0,0,0,0.28)",
-  shadowGold:"0 8px 28px rgba(200,168,80,0.28)",
+  shadowGold:`0 8px 28px rgba(${BRAND.rgb},0.28)`,
 };
 const font = "'Instrument Sans','DM Sans',system-ui,-apple-system,sans-serif";
 const COMPANY_EMAIL = "orionsoftlimited@gmail.com";

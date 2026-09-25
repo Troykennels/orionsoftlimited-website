@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 
+import { BRAND } from "../lib/brand.js";
 const C = {
   bg: "#060810", card: "#0F1828", border: "rgba(255,255,255,0.08)",
-  heading: "#F2F6FF", muted: "#6B7A96", gold: "#C8A850", mint: "#10B981", rose: "#F43F5E",
+  heading: "#F2F6FF", muted: "#6B7A96", gold: BRAND.gold, mint: "#10B981", rose: "#F43F5E",
 };
 const font = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, sans-serif";
 

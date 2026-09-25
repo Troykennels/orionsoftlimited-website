@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
+import { BRAND } from "./lib/brand.js";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
 import { readPublished, loadSiteContent } from "./lib/siteContent.js";
@@ -62,7 +63,7 @@ const C = {
 
   // Borders
   border:     "rgba(255,255,255,0.07)",
-  borderHover:"rgba(200,168,80,0.35)",
+  borderHover:`rgba(${BRAND.rgb},0.35)`,
 
   // Text
   white:      "#FFFFFF",
@@ -71,10 +72,10 @@ const C = {
   textMuted:  "#6B7A96",
 
   // Gold primary brand accent (replace sky blue as dominant color)
-  gold:       "#C8A850",
-  goldLight:  "#E8C96A",
-  goldDim:    "rgba(200,168,80,0.12)",
-  goldGlow:   "rgba(200,168,80,0.22)",
+  gold:       BRAND.gold,
+  goldLight:  BRAND.goldLight,
+  goldDim:    `rgba(${BRAND.rgb},0.12)`,
+  goldGlow:   `rgba(${BRAND.rgb},0.22)`,
 
   // Blue for interactive/CTA elements
   blue:       "#4F8EF7",
@@ -111,7 +112,7 @@ const C = {
   // Shadows
   shadow:     "0 4px 24px rgba(0,0,0,0.18)",
   shadowLg:   "0 12px 48px rgba(0,0,0,0.28)",
-  shadowGold: "0 8px 28px rgba(200,168,80,0.28)",
+  shadowGold: `0 8px 28px rgba(${BRAND.rgb},0.28)`,
   shadowBlue: "0 8px 28px rgba(79,142,247,0.22)",
 };
 
@@ -265,7 +266,7 @@ const DEFAULT_PRODUCTS_CATALOG = [
   { id: "inventorycore",  name: "InventoryCore",  tag: "Inventory & Supply",    color: "#8B5CF6", status: "live",  published: true,  featured: false, order: 4, soon: false, hasPage: true,
     industries: ["Healthcare","Manufacturing & Retail","Logistics & Fleet"],
     solutions:  ["Process Automation","Data & Reporting"] },
-  { id: "financecore",    name: "FinanceCore",    tag: "Finance & Accounting",  color: "#C8A850", status: "live",  published: true,  featured: false, order: 5, soon: false, hasPage: true,
+  { id: "financecore",    name: "FinanceCore",    tag: "Finance & Accounting",  color: BRAND.gold, status: "live",  published: true,  featured: false, order: 5, soon: false, hasPage: true,
     industries: ["Education","Financial Services","Faith Organisations","Manufacturing & Retail","Government & NGOs"],
     solutions:  ["Data & Reporting","Compliance & Audit","Enterprise Integration"] },
   { id: "hrcore",         name: "HRCore",         tag: "Human Resources",       color: "#F43F5E", status: "live",  published: true,  featured: false, order: 6, soon: false, hasPage: true,
@@ -762,7 +763,7 @@ function Nav({ currentPage, setCurrentPage }) {
             transition: "all 0.22s ease", letterSpacing: "0.01em",
             boxShadow: C.shadowGold,
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px rgba(${BRAND.rgb},0.38)`; }}
           onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadowGold; }}>
             Get in touch
           </button>
@@ -888,7 +889,7 @@ function Hero({ setCurrentPage }) {
     }}>
       {/* Background grain + glow */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-        <div style={{ position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)", width: 800, height: 800, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(200,168,80,0.07) 0%, transparent 70%)", filter: "blur(40px)" }} />
+        <div style={{ position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)", width: 800, height: 800, borderRadius: "50%", background: `radial-gradient(ellipse, rgba(${BRAND.rgb},0.07) 0%, transparent 70%)`, filter: "blur(40px)" }} />
         <div style={{ position: "absolute", top: "30%", left: "20%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(79,142,247,0.05) 0%, transparent 70%)", filter: "blur(60px)" }} />
         <div style={{ position: "absolute", top: "20%", right: "15%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(139,92,246,0.04) 0%, transparent 70%)", filter: "blur(60px)" }} />
         {/* Grid overlay */}
@@ -933,7 +934,7 @@ function Hero({ setCurrentPage }) {
               transition: "all 0.22s ease", letterSpacing: "0.01em",
               boxShadow: C.shadowGold,
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px rgba(${BRAND.rgb},0.38)`; }}
             onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowGold; }}>
               {heroCTAP}
             </button>
@@ -2534,7 +2535,7 @@ function FAQSection({ setCurrentPage }) {
                 borderRadius: 12,
                 overflow: "hidden",
                 transition: "border-color 0.22s ease",
-                boxShadow: openIdx === i ? "0 0 0 3px rgba(200,168,80,0.07)" : "none",
+                boxShadow: openIdx === i ? `0 0 0 3px rgba(${BRAND.rgb},0.07)` : "none",
               }}>
                 <button
                   type="button"
@@ -2575,7 +2576,7 @@ function FAQSection({ setCurrentPage }) {
               color: "#05070A", padding: "13px 24px", borderRadius: 10,
               fontSize: 14, fontWeight: 900, fontFamily: font, cursor: "pointer",
               transition: "all 0.22s ease", boxShadow: C.shadowGold,
-            }} onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; }}
+            }} onMouseEnter={e => { e.currentTarget.style.background = C.goldLight; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px rgba(${BRAND.rgb},0.38)`; }}
                onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = C.shadowGold; }}>
               Still have questions? Ask us directly →
             </button>
@@ -2608,7 +2609,7 @@ function CTABanner({ setCurrentPage }) {
         <Reveal>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
-            background: C.goldDim, border: `1px solid rgba(200,168,80,0.25)`,
+            background: C.goldDim, border: `1px solid rgba(${BRAND.rgb},0.25)`,
             borderRadius: 100, padding: "7px 18px", marginBottom: 24,
           }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.gold, boxShadow: `0 0 8px ${C.gold}` }} aria-hidden="true" />
@@ -2627,7 +2628,7 @@ function CTABanner({ setCurrentPage }) {
               fontSize: 15, fontWeight: 900, fontFamily: font, cursor: "pointer",
               boxShadow: C.shadowGold, transition: "all 0.22s ease",
               letterSpacing: "0.01em",
-            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 14px 40px rgba(200,168,80,0.38)"; e.currentTarget.style.background = C.goldLight; }}
+            }} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 14px 40px rgba(${BRAND.rgb},0.38)`; e.currentTarget.style.background = C.goldLight; }}
                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = C.shadowGold; e.currentTarget.style.background = C.gold; }}>
               {ctaP}
             </button>
@@ -3197,7 +3198,7 @@ function Footer({ setCurrentPage }) {
         }}>
           <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: 0 }}>
             © 2026 Orion Soft Limited · RC: {fRC} · 🇳🇬 Proudly built in Nigeria · Available globally
-            {" "}<span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.goldDim, border: `1px solid rgba(200,168,80,0.25)`, borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: C.gold, letterSpacing: "0.06em", verticalAlign: "middle", marginLeft: 6 }}>NDPR</span>
+            {" "}<span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: C.goldDim, border: `1px solid rgba(${BRAND.rgb},0.25)`, borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, color: C.gold, letterSpacing: "0.06em", verticalAlign: "middle", marginLeft: 6 }}>NDPR</span>
             <button type="button" onClick={() => setCurrentPage("admin")} style={{
               background: "none", border: "none", color: "rgba(255,255,255,0.12)", fontSize: 11, fontFamily: font,
               cursor: "pointer", padding: "2px 6px", marginLeft: 8, letterSpacing: "0.03em",
