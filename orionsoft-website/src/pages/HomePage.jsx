@@ -36,7 +36,7 @@ const HP_PRODUCTS = [
 ];
 
 const INDUSTRIES = [
-  { name:"Healthcare",          color:"#4F8EF7", emoji:"❤️‍🩹", desc:"Hospitals, clinics, pharmacies, diagnostic labs and health centres.",            products:["CareCore AI","CareCore Local","InventoryCore"] },
+  { name:"Healthcare",          color:"#4F8EF7", emoji:"🏥", desc:"Hospitals, clinics, pharmacies, diagnostic labs and health centres.",            products:["CareCore AI","CareCore Local","InventoryCore"] },
   { name:"Education",           color:"#F59E0B", emoji:"🎓",    desc:"Primary, secondary, tertiary and vocational institutions.",                       products:["School Management System","HRCore","FinanceCore"] },
   { name:"Government & NGOs",   color:"#F43F5E", emoji:"🏛️",    desc:"Public sector agencies, MDAs, civil service and donor-funded NGOs.",              products:["ComplianceCore","HRCore","FinanceCore"] },
   { name:"Financial Services",  color:"#C8A850", emoji:"💹",    desc:"Banks, microfinance, fintech, insurance and professional services firms.",         products:["FinanceCore","ComplianceCore","HRCore"] },
