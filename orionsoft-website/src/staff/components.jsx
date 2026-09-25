@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { forwardRef, useEffect, useState } from "react";
 import { C, font, PRESENCE } from "./theme.js";
 import { initials, splitRichText } from "./api.js";
@@ -154,16 +155,20 @@ export function Modal({ children, onClose, title, width = 560 }) {
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [onClose]);
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(3,6,14,0.75)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} style={{ background: C.card, border: `1px solid ${C.borderStrong}`, borderRadius: 16, padding: 22, width: "100%", maxWidth: width, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}>
+  // Rendered into <body>: a modal opened inside a card with a blur/transform
+  // (like the Lobby's "My day" panel) would otherwise be sized to that card
+  // instead of the screen and couldn't scroll.
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(3,6,14,0.75)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()} className="so-modal" style={{ fontFamily: font, color: C.text, textAlign: "left", background: C.card, border: `1px solid ${C.borderStrong}`, borderRadius: 16, padding: 22, width: "100%", maxWidth: width, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", boxShadow: "0 24px 64px rgba(0,0,0,0.5)", margin: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 10 }}>
           <h2 style={{ fontSize: 17, fontWeight: 800, color: C.heading, fontFamily: font, margin: 0 }}>{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

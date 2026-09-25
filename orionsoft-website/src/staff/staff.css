@@ -91,3 +91,6 @@
 @keyframes so-pulse-kf { 0% { box-shadow: 0 0 0 0 rgba(79,142,247,0.6); } 70% { box-shadow: 0 0 0 10px rgba(79,142,247,0); } 100% { box-shadow: 0 0 0 0 rgba(79,142,247,0); } }
 .so-pulse { animation: so-pulse-kf 1.4s infinite; }
 @media (prefers-reduced-motion: reduce) { .so-pulse { animation: none; } }
+
+/* Modals fit the visible screen, including when the phone's address bar shows. */
+.so-modal { max-height: 90vh; max-height: 90dvh; }
