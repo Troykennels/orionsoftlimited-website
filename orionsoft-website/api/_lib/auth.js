@@ -3,7 +3,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// Staff sessions. (Admin sessions used this cookie too until they got their
+// own: signing in to the Staff Office then silently replaced the admin
+// session in the same browser, and the dashboard filled with 401s.)
 const COOKIE_NAME = "orionsoft_session";
+// Admin sessions, kept apart so admin and Staff Office can both be signed in
+// in one browser.
+export const ADMIN_COOKIE = "orionsoft_admin";
 // Job applicants get their own cookie so a candidate signing in to track an
 // application on a shared machine never replaces an admin/staff session.
 export const APPLICANT_COOKIE = "orionsoft_applicant";
@@ -12,6 +18,9 @@ const SESSION_TTL_SECONDS = 8 * 60 * 60; // 8 hours
 // Staff routes re-check the live employee record on every request, so a
 // suspended account is locked out immediately regardless of token lifetime.
 export const REMEMBER_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// "Keep me signed in" for the admin dashboard: shorter than staff, since an
+// admin session can change everything.
+export const ADMIN_REMEMBER_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 // Minimal, dependency-free Set-Cookie serializer (RFC 6265) — avoids pulling in
 // a cookie library whose API shape may drift across major versions.
@@ -55,26 +64,30 @@ export function verifySession(token) {
   }
 }
 
+// Adds a Set-Cookie header without dropping any already set on this response.
+function appendCookie(res, cookie) {
+  const prev = res.getHeader?.("Set-Cookie");
+  res.setHeader("Set-Cookie", prev ? [...(Array.isArray(prev) ? prev : [prev]), cookie] : cookie);
+}
+
 export function setSessionCookie(res, token, name = COOKIE_NAME, maxAge = SESSION_TTL_SECONDS) {
-  const cookie = serialize(name, token, {
+  appendCookie(res, serialize(name, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV !== "development",
     sameSite: "lax",
     path: "/",
     maxAge,
-  });
-  res.setHeader("Set-Cookie", cookie);
+  }));
 }
 
 export function clearSessionCookie(res, name = COOKIE_NAME) {
-  const cookie = serialize(name, "", {
+  appendCookie(res, serialize(name, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV !== "development",
     sameSite: "lax",
     path: "/",
     maxAge: 0,
-  });
-  res.setHeader("Set-Cookie", cookie);
+  }));
 }
 
 function readToken(req, name = COOKIE_NAME) {
@@ -90,9 +103,27 @@ export function getSessionFromRequest(req, name = COOKIE_NAME) {
   return verifySession(token);
 }
 
+// The admin session: its own cookie, or (for sessions made before the
+// split) an admin token still sitting in the shared cookie.
+export function getAdminSession(req) {
+  const s = getSessionFromRequest(req, ADMIN_COOKIE);
+  if (s?.role === "admin") return s;
+  const legacy = getSessionFromRequest(req, COOKIE_NAME);
+  return legacy?.role === "admin" ? legacy : null;
+}
+
+export function getStaffSession(req) {
+  const s = getSessionFromRequest(req, COOKIE_NAME);
+  return s?.role === "staff" ? s : null;
+}
+
+export function getAnySession(req) {
+  return getAdminSession(req) || getStaffSession(req);
+}
+
 // Returns the session payload if valid and (when role given) matching, else sends 401 and returns null.
 export function requireAuth(req, res, role) {
-  const session = getSessionFromRequest(req);
+  const session = role === "admin" ? getAdminSession(req) : role === "staff" ? getStaffSession(req) : getAnySession(req);
   if (!session || (role && session.role !== role)) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
@@ -108,8 +139,9 @@ export function requireAuth(req, res, role) {
 // session, once an owner employee record is linked to their admin account
 // (created from the admin dashboard). No second password needed.
 export async function requireStaff(req, res) {
-  const raw = getSessionFromRequest(req);
-  if (!raw || !["staff", "admin"].includes(raw.role)) {
+  // A staff session wins; otherwise the owner's admin session (if linked).
+  const raw = getStaffSession(req) || getAdminSession(req);
+  if (!raw) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
   }

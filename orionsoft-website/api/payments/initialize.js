@@ -2,11 +2,10 @@
 // returns the hosted checkout URL. Server-side only — the secret key never
 // reaches the client.
 import { getRecord, putRecord, newId } from "../_lib/records.js";
-import { getSessionFromRequest, verifySession } from "../_lib/auth.js";
+import { getAdminSession, verifySession } from "../_lib/auth.js";
 
 function isAuthorized(req, contract) {
-  const session = getSessionFromRequest(req);
-  if (session?.role === "admin") return true;
+  if (getAdminSession(req)) return true;
   const { token } = req.body || {};
   if (token) {
     const payload = verifySession(token);

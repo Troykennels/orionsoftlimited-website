@@ -167,7 +167,7 @@ export default function StaffApp() {
     let cancelled = false;
     (async () => {
       try {
-        const j = await api("/api/auth/me");
+        const j = await api("/api/auth/me?portal=staff");
         if (cancelled) return;
         if (j.user?.role === "staff" || (j.user?.role === "admin" && j.ownerOffice)) setSession(j.user);
         else if (j.user?.role === "admin") setLoginNotice("You're signed in as the website admin. To enter as the owner, open the admin dashboard, go to Employees and click 'Enter Staff Office as Owner'. Or sign in below with a staff account.");
@@ -227,7 +227,7 @@ export default function StaffApp() {
   }, [navigate]);
 
   async function logout() {
-    try { await api("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
+    try { await api("/api/auth/logout?portal=staff", { method: "POST" }); } catch { /* ignore */ }
     try { (await loadGoogleIdentity())?.accounts?.id?.disableAutoSelect(); } catch { /* ignore */ }
     setSession(null); setOffice(null);
   }

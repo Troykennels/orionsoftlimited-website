@@ -59,20 +59,25 @@ const SK = {
 };
 
 // ─── Auth (server-verified session, see api/_lib/auth.js) ───────────────────
+// Only an ADMIN session opens the dashboard. (A Staff Office session in the
+// same browser used to be accepted here, leaving every admin call at 401.)
+// Returns the user, null when signed out, or undefined when the server
+// couldn't be reached (so a network blip never signs anyone out).
 async function fetchSession() {
   try {
-    const r = await fetch("/api/auth/me");
-    if (!r.ok) return null;
+    const r = await fetch("/api/auth/me?portal=admin");
+    if (r.status === 401) return null;
+    if (!r.ok) return undefined;
     const json = await r.json();
-    return json.user || null;
-  } catch { return null; }
+    return json.user?.role === "admin" ? json.user : null;
+  } catch { return undefined; }
 }
 
-async function serverLogin(email, password) {
+async function serverLogin(email, password, remember = false) {
   const r = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, portal: "admin" }),
+    body: JSON.stringify({ email, password, portal: "admin", remember }),
   });
   const json = await r.json().catch(() => ({}));
   if (!r.ok) return { ok: false, error: json.error || `Login failed (${r.status})` };
@@ -80,7 +85,7 @@ async function serverLogin(email, password) {
 }
 
 async function serverLogout() {
-  try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* ignore */ }
+  try { await fetch("/api/auth/logout?portal=admin", { method: "POST" }); } catch { /* ignore */ }
 }
 
 // ─── Audit Logger (client-side, for CMS content edits only — real admin/staff
@@ -99,10 +104,71 @@ function auditLog(action, target, details = "") {
   } catch { /* ignore audit failures */ }
 }
 
+// ─── Website content publishing ──────────────────────────────────────────────
+// Sections that appear on the public website. Saving any of them publishes it
+// to the server (api/admin/content.js), which every visitor loads, instead of
+// only this browser's storage.
+const PUBLISHED_KEYS = new Set([
+  SK.settings, SK.homepage, SK.testimonials, SK.faqs, SK.blog, SK.careers, SK.clients, SK.menus,
+  SK.team, SK.seo, SK.announcements, SK.features, SK.products, SK.portfolio, SK.services,
+]);
+const PUBLISH_LABEL = {
+  [SK.careers]: "Careers", [SK.blog]: "Blog", [SK.announcements]: "Announcements", [SK.products]: "Products",
+  [SK.services]: "Services", [SK.portfolio]: "Case Studies", [SK.testimonials]: "Testimonials", [SK.faqs]: "FAQs",
+  [SK.homepage]: "Homepage", [SK.clients]: "Clients", [SK.menus]: "Navigation", [SK.team]: "Team",
+  [SK.seo]: "SEO", [SK.features]: "Site features", [SK.settings]: "Site settings",
+};
+const publishTimers = {};
+function publishContent(key, val) {
+  clearTimeout(publishTimers[key]);
+  publishTimers[key] = setTimeout(async () => {
+    const detail = { key, label: PUBLISH_LABEL[key] || "Content" };
+    try {
+      const r = await fetch("/api/admin/content", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key, value: val }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `Publishing failed (${r.status})`);
+      window.dispatchEvent(new CustomEvent("so-publish", { detail: { ...detail, ok: true } }));
+    } catch (e) {
+      window.dispatchEvent(new CustomEvent("so-publish", { detail: { ...detail, ok: false, error: e.message, retry: () => publishContent(key, val) } }));
+    }
+  }, 400);
+}
+
+// On opening the dashboard: take the published version of every section from
+// the server. A section the server doesn't have yet but this browser does
+// (content made before publishing existed) is published now. If this
+// browser's copy differs from the server's, it's kept as a backup first.
+async function syncPublishedContent() {
+  const r = await fetch("/api/admin/content");
+  if (!r.ok) return false;
+  const { content = {}, meta = {} } = await r.json();
+  for (const key of PUBLISHED_KEYS) {
+    const local = localStorage.getItem(key);
+    if (content[key] !== undefined) {
+      const server = JSON.stringify(content[key]);
+      if (local !== server) {
+        if (local) { try { localStorage.setItem(`${key}__backup`, local); } catch { /* storage full */ } }
+        localStorage.setItem(key, server);
+        window.dispatchEvent(new CustomEvent("localstoreupdate", { detail: { key } }));
+      }
+    } else if (local && meta[key]) {
+      // Cleared on purpose from another browser: drop this stale copy.
+      try { localStorage.setItem(`${key}__backup`, local); } catch { /* storage full */ }
+      localStorage.removeItem(key);
+      window.dispatchEvent(new CustomEvent("localstoreupdate", { detail: { key } }));
+    } else if (local && !meta[key]) {
+      // Never published (not cleared on purpose): publish this browser's copy.
+      try { publishContent(key, JSON.parse(local)); } catch { /* unreadable local copy */ }
+    }
+  }
+  return true;
+}
+
 // ─── Storage helpers ─────────────────────────────────────────────────────────
 function lsSet(key, val, auditAction = "", auditTarget = "") {
   localStorage.setItem(key, JSON.stringify(val));
   window.dispatchEvent(new Event("localstoreupdate"));
+  if (PUBLISHED_KEYS.has(key)) publishContent(key, val);
   if (auditAction) auditLog(auditAction, auditTarget || key);
 }
 
@@ -426,9 +492,10 @@ const NAV_GROUPS = [
 ];
 
 // ─── Login Screen ────────────────────────────────────────────────────────────
-function AdminLogin({ onLogin }) {
+function AdminLogin({ onLogin, notice }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [remember, setRemember] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -437,7 +504,7 @@ function AdminLogin({ onLogin }) {
     setLoading(true);
     setErr("");
 
-    const result = await serverLogin(email.trim(), pw);
+    const result = await serverLogin(email.trim(), pw, remember);
     if (result.ok) {
       auditLog("login", "admin", `Successful login (${result.user.email})`);
       onLogin(result.user);
@@ -459,6 +526,7 @@ function AdminLogin({ onLogin }) {
           <p style={{ fontSize: 14, color: C.textMuted, margin: 0 }}>Orion Soft Limited Restricted Access</p>
         </div>
 
+        {notice && <div role="status" style={{ fontSize: 13, color: C.heading, background: "rgba(200,168,80,0.1)", border: `1px solid ${C.gold}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 18, lineHeight: 1.5 }}>{notice}</div>}
         <div style={{ marginBottom: 16 }}>
           <Label>Email</Label>
           <input
@@ -479,6 +547,10 @@ function AdminLogin({ onLogin }) {
             onBlur={e => e.target.style.borderColor = err ? C.rose : C.border}
           />
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: C.text, marginBottom: 18, cursor: "pointer" }}>
+          <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ width: 16, height: 16, accentColor: C.gold }} />
+          Keep me signed in on this device for 7 days
+        </label>
         {err && <div style={{ fontSize: 13, color: C.rose, marginBottom: 16, lineHeight: 1.5 }}>{err}</div>}
         <button type="submit" disabled={loading || !pw || !email} style={{
           width: "100%", padding: "13px", background: C.gold, color: "#060810", border: "none", borderRadius: 10,
@@ -1485,9 +1557,9 @@ function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview
   function save() {
     let updated;
     if (editing !== null) {
-      updated = items.map((it, i) => i === editing ? { ...form } : it);
+      updated = items.map((it, i) => i === editing ? { ...form, updatedAt: new Date().toISOString() } : it);
     } else {
-      updated = [...items, { ...form, id: form.id || uid() }];
+      updated = [...items, { ...form, id: form.id || uid(), createdAt: new Date().toISOString() }];
     }
     setItems(updated);
     lsSet(sk, updated, editing !== null ? "update" : "create", title);
@@ -3084,10 +3156,14 @@ function BackupsSection() {
     reader.onload = ev => {
       try {
         const data = JSON.parse(ev.target.result);
-        Object.entries(data).forEach(([key, val]) => { if (val !== null) localStorage.setItem(key, JSON.stringify(val)); });
+        Object.entries(data).forEach(([key, val]) => {
+          if (val === null) return;
+          localStorage.setItem(key, JSON.stringify(val));
+          if (PUBLISHED_KEYS.has(key)) publishContent(key, val); // restored content goes live too
+        });
         window.dispatchEvent(new Event("localstoreupdate"));
         auditLog("import", "backup", "Backup restored");
-        setStatus("Backup restored! Refresh the page to see changes.");
+        setStatus("Backup restored and published to the website.");
         setTimeout(() => setStatus(""), 5000);
       } catch { setStatus("Invalid backup file."); }
     };
@@ -3099,6 +3175,7 @@ function BackupsSection() {
     if (!confirm(`Clear all ${label} data? This cannot be undone.`)) return;
     localStorage.removeItem(key);
     window.dispatchEvent(new Event("localstoreupdate"));
+    if (PUBLISHED_KEYS.has(key)) publishContent(key, null); // website falls back to its defaults
     auditLog("clear", label, `Cleared ${key}`);
     setStatus(`Cleared ${label}.`);
     setTimeout(() => setStatus(""), 3000);
@@ -6222,6 +6299,7 @@ function TopBar({ session, navigate, onMenuClick }) {
 export default function AdminDashboard({ setCurrentPage }) {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [loginNotice, setLoginNotice] = useState("");
   const [active, setActive] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -6231,22 +6309,71 @@ export default function AdminDashboard({ setCurrentPage }) {
     setCurrentAuditUser(user);
   }, []);
 
+  const endSession = useCallback(() => {
+    setLoginNotice("Your admin session ended. Sign in again to continue where you left off.");
+    applySession(null);
+  }, [applySession]);
+
   useEffect(() => {
     let cancelled = false;
-    fetchSession().then((user) => { if (!cancelled) { applySession(user); setChecking(false); } });
+    fetchSession().then((user) => { if (!cancelled) { applySession(user || null); setChecking(false); } });
     const t = setInterval(async () => {
       const user = await fetchSession();
-      if (!cancelled && !user) applySession(null);
+      if (!cancelled && user === null) endSession();
     }, 60000);
     return () => { cancelled = true; clearInterval(t); };
-  }, [applySession]);
+  }, [applySession, endSession]);
+
+  // If any admin request is refused as signed-out, confirm with the server and
+  // go straight to the sign-in screen, instead of leaving a page of zeros and
+  // "HTTP 401".
+  useEffect(() => {
+    if (!session) return undefined;
+    const orig = window.fetch;
+    let checkingNow = false;
+    window.fetch = async (...args) => {
+      const res = await orig(...args);
+      const url = String(args[0]?.url || args[0] || "");
+      if (res.status === 401 && url.includes("/api/") && !/\/api\/(auth|staff|public|applicant)\//.test(url) && !checkingNow) {
+        checkingNow = true;
+        fetchSession().then(u => { checkingNow = false; if (u === null) endSession(); });
+      }
+      return res;
+    };
+    return () => { window.fetch = orig; };
+  }, [session, endSession]);
+
+  // Load the published website content before showing any editor, so every
+  // section starts from what visitors actually see.
+  const [contentReady, setContentReady] = useState(false);
+  useEffect(() => {
+    if (!session) { setContentReady(false); return undefined; }
+    let done = false;
+    const finish = () => { if (!done) { done = true; setContentReady(true); } };
+    syncPublishedContent().catch(() => {}).finally(finish);
+    const t = setTimeout(finish, 8000);
+    return () => clearTimeout(t);
+  }, [session]);
+
+  // "Published to the website" / publishing errors, for every content save.
+  const [publishNote, setPublishNote] = useState(null);
+  useEffect(() => {
+    let hide;
+    const on = e => { clearTimeout(hide); setPublishNote(e.detail); if (e.detail.ok) hide = setTimeout(() => setPublishNote(null), 3000); };
+    window.addEventListener("so-publish", on);
+    return () => { window.removeEventListener("so-publish", on); clearTimeout(hide); };
+  }, []);
 
   if (checking) {
     return <div style={{ minHeight: "100vh", background: C.bg }} />;
   }
 
   if (!session) {
-    return <AdminLogin onLogin={applySession} />;
+    return <AdminLogin notice={loginNotice} onLogin={user => { setLoginNotice(""); applySession(user); }} />;
+  }
+
+  if (!contentReady) {
+    return <div style={{ minHeight: "100vh", background: C.bg, color: C.textMuted, fontFamily: font, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>Loading your website content…</div>;
   }
 
   function logout() {
@@ -6259,6 +6386,13 @@ export default function AdminDashboard({ setCurrentPage }) {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
+      {publishNote && (
+        <div role="status" style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2000, maxWidth: "calc(100% - 32px)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: C.card, border: `1px solid ${publishNote.ok ? C.mint : C.rose}88`, borderRadius: 12, padding: "11px 14px", boxShadow: "0 16px 40px rgba(0,0,0,0.45)", fontSize: 13.5, color: C.heading }}>
+          <span>{publishNote.ok ? `✓ ${publishNote.label} published to the website` : `⚠ ${publishNote.label} not published: ${publishNote.error}`}</span>
+          {!publishNote.ok && publishNote.retry && <button type="button" onClick={() => { publishNote.retry(); setPublishNote(null); }} style={{ background: C.gold, color: "#060810", border: "none", borderRadius: 8, padding: "5px 12px", fontWeight: 800, cursor: "pointer" }}>Retry</button>}
+          {!publishNote.ok && <button type="button" aria-label="Dismiss" onClick={() => setPublishNote(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 18 }}>×</button>}
+        </div>
+      )}
       {mobileSidebarOpen && <div className="admin-sidebar-backdrop" onClick={() => setMobileSidebarOpen(false)} />}
       {/* Sidebar — position:fixed (not sticky) so it's always pinned to the
           viewport and can never "detach" and scroll away once the page

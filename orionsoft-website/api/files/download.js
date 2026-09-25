@@ -4,7 +4,7 @@
 //   2. Staff session cookie — only their own issued payslip.
 //   3. Contract sign token (?token=&contractId=) — only that contract's PDF.
 import { get } from "../store.js";
-import { getSessionFromRequest, verifySession } from "../_lib/auth.js";
+import { getAdminSession, getStaffSession, verifySession } from "../_lib/auth.js";
 import { listRecords } from "../_lib/records.js";
 
 export default async function handler(req, res) {
@@ -14,10 +14,10 @@ export default async function handler(req, res) {
 
   let authorized = false;
 
-  const session = getSessionFromRequest(req);
-  if (session?.role === "admin") {
+  const session = getStaffSession(req);
+  if (getAdminSession(req)) {
     authorized = true;
-  } else if (session?.role === "staff") {
+  } else if (session) {
     const payrolls = await listRecords("payroll");
     const owning = payrolls.find(p => p.payslipPdfKey === key);
     if (owning && owning.employeeId === session.sub) authorized = true;

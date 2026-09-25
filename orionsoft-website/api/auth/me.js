@@ -1,4 +1,4 @@
-import { getSessionFromRequest } from "../_lib/auth.js";
+import { getAdminSession, getStaffSession, getAnySession } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -7,7 +7,10 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const session = getSessionFromRequest(req);
+  // ?portal=admin → only an admin session counts; ?portal=staff → a staff
+  // session first, then the owner's admin session.
+  const portal = req.query?.portal;
+  const session = portal === "admin" ? getAdminSession(req) : portal === "staff" ? getStaffSession(req) || getAdminSession(req) : getAnySession(req);
   if (!session) return res.status(401).json({ error: "Unauthorized" });
 
   let ownerOffice = false;

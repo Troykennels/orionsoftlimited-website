@@ -1,5 +1,5 @@
 import { getByLookup } from "../_lib/records.js";
-import { verifyPassword, signSession, setSessionCookie, REMEMBER_TTL_SECONDS } from "../_lib/auth.js";
+import { verifyPassword, signSession, setSessionCookie, clearSessionCookie, getSessionFromRequest, REMEMBER_TTL_SECONDS, ADMIN_REMEMBER_TTL_SECONDS, ADMIN_COOKIE } from "../_lib/auth.js";
 
 // Only FAILED attempts count, keyed by IP + email. A whole office behind one
 // Wi-Fi IP can sign in freely; brute-forcing one account is still capped.
@@ -61,10 +61,17 @@ export default async function handler(req, res) {
       ? { sub: user.id, role: "admin", adminRole: user.role, name: user.username, email: user.email }
       : staffPayload(user);
 
-  // Staff can stay signed in on a trusted device; admin sessions stay short.
-  const ttl = portal === "staff" && remember ? REMEMBER_TTL_SECONDS : undefined;
+  // Either portal can stay signed in on a trusted device (admin for 7 days,
+  // staff for 30); otherwise sessions last 8 hours.
+  const ttl = remember ? (portal === "admin" ? ADMIN_REMEMBER_TTL_SECONDS : REMEMBER_TTL_SECONDS) : undefined;
   const token = signSession(payload, ttl);
-  setSessionCookie(res, token, undefined, ttl);
+  if (portal === "admin") {
+    setSessionCookie(res, token, ADMIN_COOKIE, ttl);
+    // Free the staff cookie if an old admin session is still parked in it.
+    if (getSessionFromRequest(req)?.role === "admin") clearSessionCookie(res);
+  } else {
+    setSessionCookie(res, token, undefined, ttl);
+  }
 
   return res.json({ ok: true, user: { id: user.id, name: payload.name, email: user.email, role: payload.role, staffRole: payload.staffRole, adminRole: payload.adminRole } });
 }

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
+import { readPublished, loadSiteContent } from "./lib/siteContent.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
@@ -203,6 +204,9 @@ function trackPageView(page) {
 }
 
 function readCMS(key, fallback) {
+  // Published on the server by the admin → what every visitor sees.
+  const pub = readPublished(key);
+  if (pub !== undefined) return pub;
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch { return fallback; }
 }
@@ -222,6 +226,7 @@ function buildCMSState() {
     features:      readCMS(CMS_SK.features,       {}),
     newsletter:    readCMS(CMS_SK.newsletter,     []),
     products:      readCMS(CMS_SK.products,       DEFAULT_PRODUCTS_CATALOG),
+    services:      readCMS("orionsoft_services_v1",  []),
   };
 }
 function useCMSData() {
@@ -340,16 +345,10 @@ const PRODUCT_COLORS = [
 
 
 function usePortfolio() {
-  const [portfolio, setPortfolio] = useState(() => {
-    try { const r = localStorage.getItem(PORTFOLIO_STORAGE_KEY); return r ? JSON.parse(r) : []; }
-    catch { return []; }
-  });
+  const [portfolio, setPortfolio] = useState(() => readCMS(PORTFOLIO_STORAGE_KEY, []) || []);
   useEffect(() => {
     const handleUpdate = (e) => {
-      if (e.detail?.key === PORTFOLIO_STORAGE_KEY) {
-        try { const r = localStorage.getItem(PORTFOLIO_STORAGE_KEY); setPortfolio(r ? JSON.parse(r) : []); }
-        catch {}
-      }
+      if (e.detail?.key === PORTFOLIO_STORAGE_KEY) setPortfolio(readCMS(PORTFOLIO_STORAGE_KEY, []) || []);
     };
     window.addEventListener("localstoreupdate", handleUpdate);
     return () => window.removeEventListener("localstoreupdate", handleUpdate);
@@ -1346,7 +1345,8 @@ function CareCoreDemoSection({ setCurrentPage }) {
 }
 
 function Services({ setCurrentPage }) {
-  const services = [
+  const cms = useContext(CMSContext);
+  const builtIn = [
     { title: "Software Development", desc: "Full-stack web applications built with modern frameworks. From concept to deployment.", color: C.accent, icon: "M16 18l6-6-6-6M8 6l-6 6 6 6" },
     { title: "CareCore Deployment", desc: "Complete hospital management system setup, configuration, training, and ongoing support.", color: C.mint, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
     { title: "System Integration", desc: "Connect your existing systems with custom APIs and automated data flows.", color: C.purple, icon: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" },
@@ -1354,6 +1354,14 @@ function Services({ setCurrentPage }) {
     { title: "IT Consulting", desc: "Technical strategy, architecture review, security audit, and technology strategy guidance.", color: C.rose, icon: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0 1 12 2.944a11.955 11.955 0 0 1-8.618 3.04A12.02 12.02 0 0 0 3 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" },
     { title: "Training & Support", desc: "Staff training, documentation, SLA-backed support, and ongoing system maintenance.", color: C.mint, icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
   ];
+  // Services published from the admin replace the built-in list; each keeps
+  // a colour and icon from the built-in set.
+  const managed = (Array.isArray(cms?.services) ? cms.services : [])
+    .filter(x => x && x.published !== false && x.title)
+    .sort((a, b) => (Number(a.order) || 99) - (Number(b.order) || 99));
+  const services = managed.length
+    ? managed.map((x, i) => ({ title: x.title, desc: x.desc || x.tagline || "", color: builtIn[i % builtIn.length].color, icon: builtIn[i % builtIn.length].icon }))
+    : builtIn;
 
   return (
     <section id="services" role="region" aria-label="Services" style={{ padding: "120px clamp(20px, 5vw, 60px)", background: C.bg }}>
@@ -2085,22 +2093,42 @@ function ProcessSection() {
 // ═══════════════════════════════════════
 // CTA BANNER
 // ═══════════════════════════════════════
+// Job posts made in the admin carry createdAt; older ones have the time in
+// their id ("i-<ms>-xxxxx").
+function postedFromId(id) {
+  const ms = Number(String(id || "").match(/^i-(\d{12,})/)?.[1]);
+  return ms ? new Date(ms).toISOString() : null;
+}
+function postedLabel(iso) {
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function CareersPage({ setCurrentPage }) {
   const cms = useContext(CMSContext);
   const roles = (() => {
     const cr = cms?.careers;
-    if (Array.isArray(cr) && cr.length > 0) {
-      return cr.filter(r => r.published !== false).map(r => ({
+    // Once the admin manages job posts, show exactly those (none if all are
+    // closed); before that, the built-in roles.
+    if (Array.isArray(cr)) {
+      const palette = [C.accent, C.mint, C.purple, C.amber, C.rose];
+      const open = cr.filter(r => r.published !== false).map((r, i) => ({
         title: r.title || "Open Role",
         type: r.type || "Full-time",
         location: r.location || "Remote / Lagos",
-        department: r.department || "General",
-        summary: r.summary || "",
-        requirements: Array.isArray(r.requirements) ? r.requirements : [],
-        salary: r.salary || "",
-        tag: r.tag || "",
-        tagColor: r.tagColor || C.accent,
+        department: r.department || "",
+        desc: r.desc || r.summary || "",
+        requirements: Array.isArray(r.requirements) ? r.requirements
+          : String(r.requirements || "").split(/\n+/).map(x => x.replace(/^[\s•*-]+/, "").trim()).filter(Boolean),
+        compensation: r.salary || "",
+        color: r.tagColor || palette[i % palette.length],
+        postedAt: r.createdAt || postedFromId(r.id),
       }));
+      if (open.length) return open;
+      return [{ title: "General application", type: "Open application", location: "Lagos / Remote", department: "", desc: "We don't have open roles right now. Send your details and we'll contact you when a matching role opens.", requirements: [], compensation: "", color: C.accent, postedAt: null }];
     }
     return CAREER_ROLES;
   })();
@@ -2297,7 +2325,8 @@ function CareersPage({ setCurrentPage }) {
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 8 }}>
                     <div>
                       <h2 style={{ fontSize: 16, fontWeight: 800, color: C.heading, fontFamily: font, marginBottom: 4 }}>{role.title}</h2>
-                      <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: 0 }}>{role.type} / {role.location}</p>
+                      <p style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, margin: 0 }}>{[role.type, role.department, role.location].filter(Boolean).join(" / ")}</p>
+                      {role.postedAt && <p style={{ fontSize: 11.5, color: C.textMuted, fontFamily: font, margin: "3px 0 0" }}>Posted {postedLabel(role.postedAt)}</p>}
                     </div>
                     <span style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${role.color}`, background: selectedRole === index ? role.color : "transparent", flexShrink: 0, marginTop: 4 }} />
                   </div>
@@ -2640,7 +2669,12 @@ function TawkLiveChat() {
     };
 
     const scriptId = "orionsoft-tawk-widget";
-    if (document.getElementById(scriptId)) return;
+    // Leaving the admin: show the bubble again if it was loaded earlier.
+    try { window.Tawk_API.showWidget?.(); } catch { /* not ready yet */ }
+    // Opening the admin from the website unmounts this: hide the bubble so it
+    // doesn't sit over the admin menu.
+    const hide = () => { try { window.Tawk_API?.hideWidget?.(); } catch { /* not ready */ } };
+    if (document.getElementById(scriptId)) return hide;
 
     const script = document.createElement("script");
     script.id = scriptId;
@@ -2649,6 +2683,7 @@ function TawkLiveChat() {
     script.charset = "UTF-8";
     script.setAttribute("crossorigin", "*");
     document.body.appendChild(script);
+    return hide;
   }, []);
 
   return null;
@@ -5208,6 +5243,16 @@ export default function App() {
   const portfolio = usePortfolio();
   const cms = useCMSData();
 
+  // Load what the admin has published (jobs, blog, announcements…) and keep
+  // it current while the site stays open.
+  useEffect(() => {
+    loadSiteContent();
+    const t = setInterval(loadSiteContent, 5 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") loadSiteContent(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
+  }, []);
+
   useEffect(() => {
     const handleKey = (e) => {
       if (e.ctrlKey && e.shiftKey && e.key === "A") { e.preventDefault(); setCurrentPage("admin"); }
@@ -5365,7 +5410,7 @@ export default function App() {
           <SolutionsPage setCurrentPage={navSetPage} />
         )}
         {currentPage === "services" && (
-          <SolutionsPage setCurrentPage={navSetPage} />
+          <ServicesPage setCurrentPage={navSetPage} />
         )}
         {currentPage === "pricing" && (
           <PricingPage setCurrentPage={navSetPage} />
