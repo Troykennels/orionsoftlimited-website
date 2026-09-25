@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en-NG">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/staff-icon-192.png">
+<title>Orion Staff Playbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --bg: #F5F7FA;
+    --paper: #FFFFFF;
+    --ink: #0E1726;
+    --text: #354357;
+    --muted: #677489;
+    --line: #DDE3EC;
+    --navy: #0A2540;
+    --gold: #9C7A26;
+    --gold-soft: #F4ECD6;
+    --mint: #0B7A57;
+    --mint-soft: #DDF3EA;
+    --rose: #B4233C;
+    --rose-soft: #FBE3E7;
+    --amber: #95600A;
+    --amber-soft: #FCEFD4;
+    --blue: #1F5FBF;
+    --blue-soft: #E1ECFB;
+    --code: #EEF2F7;
+    --display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0A111D; --paper: #101A2B; --ink: #F1F5FB; --text: #C9D3E2; --muted: #8D9AAF; --line: #22314A;
+      --navy: #7FA7DA; --gold: #D9B95E; --gold-soft: #2B2616; --mint: #3FCB98; --mint-soft: #11302A;
+      --rose: #F07D90; --rose-soft: #3A1A22; --amber: #F2B84B; --amber-soft: #36290F; --blue: #7FB0F5; --blue-soft: #15263F; --code: #16223A;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0A111D; --paper: #101A2B; --ink: #F1F5FB; --text: #C9D3E2; --muted: #8D9AAF; --line: #22314A;
+    --navy: #7FA7DA; --gold: #D9B95E; --gold-soft: #2B2616; --mint: #3FCB98; --mint-soft: #11302A;
+    --rose: #F07D90; --rose-soft: #3A1A22; --amber: #F2B84B; --amber-soft: #36290F; --blue: #7FB0F5; --blue-soft: #15263F; --code: #16223A;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.65 var(--body); margin: 0; padding-inline: 16px; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; padding-block: 28px 80px; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+
+  /* Contents */
+  nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; }
+  nav.toc .brand { font: 800 19px/1.2 var(--display); color: var(--ink); margin: 0 0 4px; }
+  nav.toc .brand b { color: var(--gold); font-weight: 800; }
+  nav.toc .sub { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a { display: flex; gap: 10px; padding: 6px 10px; border-radius: 8px; color: var(--text); text-decoration: none; font-size: 14px; }
+  nav.toc a::before { content: counter(toc, decimal-leading-zero); font: 500 11.5px/2 var(--mono); color: var(--muted); }
+  nav.toc a:hover, nav.toc a:focus-visible { background: var(--paper); color: var(--ink); outline: none; }
+  @media (max-width: 900px) {
+    nav.toc { position: static; max-height: none; }
+    nav.toc ol { display: flex; flex-wrap: wrap; gap: 6px; }
+    nav.toc a { background: var(--paper); border: 1px solid var(--line); padding: 5px 10px; font-size: 13px; }
+  }
+
+  main { min-width: 0; }
+  header.cover { background: var(--navy); color: #fff; border-radius: 18px; padding: 34px clamp(20px, 4vw, 44px); margin-bottom: 28px; position: relative; overflow: hidden; }
+  header.cover { background: linear-gradient(140deg, #0A2540 0%, #0E2F52 60%, #13365C 100%); }
+  header.cover .eyebrow { font: 600 12px/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: #E2C36F; }
+  header.cover h1 { font: 800 clamp(30px, 5vw, 46px)/1.08 var(--display); margin: 12px 0 12px; text-wrap: balance; letter-spacing: -0.02em; color: #fff; }
+  header.cover p { color: #C9D6E8; max-width: 62ch; margin: 0; }
+  header.cover .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 20px; font-size: 13px; color: #AFC0D8; }
+  header.cover .meta strong { color: #fff; font-weight: 600; }
+
+  section { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: clamp(20px, 3.5vw, 36px); margin-bottom: 22px; scroll-margin-top: 20px; }
+  h2 { font: 800 clamp(23px, 3vw, 29px)/1.2 var(--display); color: var(--ink); margin: 0 0 6px; letter-spacing: -0.015em; text-wrap: balance; }
+  .kicker { font: 600 11.5px/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; display: block; }
+  h3 { font: 700 18.5px/1.3 var(--display); color: var(--ink); margin: 28px 0 8px; }
+  h4 { font: 700 15px/1.4 var(--body); color: var(--ink); margin: 18px 0 6px; }
+  p, li { max-width: 72ch; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  strong { color: var(--ink); }
+  .lede { font-size: 17px; color: var(--text); margin-bottom: 18px; }
+  code, .mono { font: 500 13.5px/1.4 var(--mono); background: var(--code); padding: 1px 6px; border-radius: 5px; color: var(--ink); }
+  .path { font-weight: 600; color: var(--ink); }
+
+  .tag { display: inline-block; font: 600 11px/1 var(--body); letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 8px; border-radius: 5px; vertical-align: 2px; margin-right: 6px; }
+  .tag.rule { background: var(--blue-soft); color: var(--blue); }
+  .tag.practice { background: var(--gold-soft); color: var(--gold); }
+
+  .note { border-left: 3px solid var(--gold); background: var(--gold-soft); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 14px 0; }
+  .note.warn { border-color: var(--rose); background: var(--rose-soft); }
+  .note.good { border-color: var(--mint); background: var(--mint-soft); }
+  .note p:last-child, .note ul:last-child { margin-bottom: 0; }
+
+  .table { overflow-x: auto; margin: 12px 0 16px; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px/1.3 var(--body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--bg); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .mono { white-space: nowrap; }
+
+  .steps { list-style: none; padding: 0; counter-reset: step; display: grid; gap: 10px; margin: 12px 0 16px; }
+  .steps > li { counter-increment: step; position: relative; padding: 2px 0 2px 42px; max-width: none; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--navy); color: #fff; font: 700 13px/28px var(--body); text-align: center; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps > li::before { color: #0A111D; } }
+  :root[data-theme="dark"] .steps > li::before { color: #0A111D; }
+
+  .rhythm { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0; }
+  .rhythm > div { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--bg); }
+  .rhythm .when { font: 500 12.5px/1 var(--mono); color: var(--gold); margin-bottom: 6px; display: block; }
+  .rhythm h4 { margin: 0 0 6px; }
+  .rhythm ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+
+  .dept { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 26px; }
+  .dept:first-of-type { border-top: none; padding-top: 0; margin-top: 10px; }
+  .dept .roles { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .dept .roles span { font-size: 12.5px; border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px; color: var(--text); background: var(--bg); }
+  .dept .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 28px; }
+  .dept .cols h4 { margin-top: 10px; }
+
+  .grades { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+  .grades div { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .grades b { font: 800 26px/1 var(--display); display: block; color: var(--ink); }
+  .grades span { font: 500 12.5px/1.4 var(--mono); color: var(--muted); }
+
+  pre.mermaid { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; margin: 12px 0 16px; text-align: center; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 30px; }
+  a { color: var(--blue); }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+</style>
+
+
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<div class="wrap">
+  <nav class="toc" aria-label="Contents">
+    <p class="brand">Orion<b>Soft</b> Playbook</p>
+    <p class="sub">Staff training guide · Staff Office</p>
+    <ol>
+      <li><a href="#start">How to use this guide</a></li>
+      <li><a href="#order">Our order &amp; reporting lines</a></li>
+      <li><a href="#rhythm">Daily, weekly, monthly rhythm</a></li>
+      <li><a href="#core">Core workflows (everyone)</a></li>
+      <li><a href="#field">Field work &amp; verification</a></li>
+      <li><a href="#departments">Department playbooks</a></li>
+      <li><a href="#performance">How performance is scored</a></li>
+      <li><a href="#reports">Reports &amp; reviews</a></li>
+      <li><a href="#integrity">Integrity rules</a></li>
+      <li><a href="#reference">Quick reference</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="cover">
+      <span class="eyebrow">Orion Soft Limited · Staff training</span>
+      <h1>How we work in the Staff Office</h1>
+      <p>Our office is online. This playbook explains the order of the company, what each department does day to day, how every workflow runs in the Staff Office, and exactly how performance is measured, so everyone works to the same standard.</p>
+      <div class="meta">
+        <span>Sign in: <strong>orionsoftlimited.com/staff</strong></span>
+        <span>Working hours: <strong>from 09:00 WAT</strong></span>
+        <span>Weekly report: <strong>every Friday</strong></span>
+      </div>
+    </header>
+
+    <!-- 1 -->
+    <section id="start">
+      <span class="kicker">01 · Start here</span>
+      <h2>How to use this guide</h2>
+      <p class="lede">Everyone reads sections 1 to 5 and 7 to 10. Then read your own department in section 6, and the departments you work closely with.</p>
+      <p>Two labels appear throughout:</p>
+      <ul>
+        <li><span class="tag rule">System rule</span> is enforced or measured by the Staff Office. It affects your records and your score automatically.</li>
+        <li><span class="tag practice">Recommended practice</span> is how we expect you to work. Your manager reviews it, but the system doesn't enforce it.</li>
+      </ul>
+      <h3>Before your first day</h3>
+      <ol class="steps">
+        <li><strong>Sign in</strong> at <span class="path">orionsoftlimited.com/staff</span> with the email and password HR gave you. Tick <em>Keep me signed in</em> on your own phone. You can also link your Google account in <span class="path">My Profile</span> and use <em>Continue with Google</em> afterwards.</li>
+        <li><strong>Complete your profile</strong>: photo, phone, WhatsApp number, short bio and social links. Colleagues use it to find and contact you.</li>
+        <li><strong>Set up your phone</strong> in <span class="path">Field Visits → Set up your phone</span>: test location, test camera, and turn on notifications. Do this even if you work in the office; location checks and alerts depend on it.</li>
+        <li><strong>Install the app</strong>: in Chrome tap <em>Install</em>, or on iPhone tap Share → <em>Add to Home Screen</em>.</li>
+        <li><strong>Read the Handbook &amp; Links</strong> page and your department section below.</li>
+      </ol>
+    </section>
+
+    <!-- 2 -->
+    <section id="order">
+      <span class="kicker">02 · Structure</span>
+      <h2>Our order and reporting lines</h2>
+      <p class="lede">Every role has a level. Level 1 is the top of the company. Your manager approves your leave and weekly reports; if you have no manager assigned, the most senior team lead in your department does.</p>
+
+      <div class="table">
+        <table>
+          <thead><tr><th class="num">Level</th><th>Roles</th><th>Authority in the Staff Office</th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td><strong>Owner</strong>, Managing Director / CEO</td><td>Everything, company-wide.</td></tr>
+            <tr><td class="num">2</td><td>Chief Operating Officer</td><td>Leads teams; approves anyone's leave and reports; announcements; full pipeline and liaison; approves expenses; moderates the feed.</td></tr>
+            <tr><td class="num">3</td><td>HR Manager · Chief Liaison Officer · Head of Business Development · Finance Manager · Marketing &amp; Communications Manager · Technical Lead · Department Manager</td><td>Lead their department: see team progress, approve their people's leave and reports, assign tasks. Plus the specific powers shown in section 6.</td></tr>
+            <tr><td class="num">4</td><td>Product Manager · Team Lead / Supervisor</td><td>Team view and task assignment (Team Leads also approve for their team).</td></tr>
+            <tr><td class="num">5</td><td>Business Development Officer · Sales Executive · Liaison Officer · HR Officer · Accountant · Marketing Officer · Software Engineer · Implementation Specialist · Support Officer · Admin Officer · Staff</td><td>Own work, plus role tools (pipeline, liaison register, HR records, share kits).</td></tr>
+            <tr><td class="num">6</td><td>Intern / NYSC Corps Member</td><td>Own work.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <pre class="mermaid">
+flowchart TD
+  O["Owner / MD (Level 1)"] --> COO["COO (Level 2)"]
+  COO --> HR["HR Manager"]
+  COO --> BD["Head of Business Development"]
+  COO --> CLO["Chief Liaison Officer"]
+  COO --> TL["Technical Lead"]
+  COO --> FM["Finance Manager"]
+  COO --> MM["Marketing Manager"]
+  HR --> HRO["HR Officer"]
+  BD --> BDO["Business Development Officers"]
+  BD --> SE["Sales Executives"]
+  CLO --> LO["Liaison Officers"]
+  TL --> ENG["Software Engineers"]
+  TL --> CS["Implementation &amp; Support"]
+  FM --> ACC["Accountant"]
+  MM --> MO["Marketing Officer"]
+      </pre>
+
+      <h3>Who approves what</h3>
+      <div class="table">
+        <table>
+          <thead><tr><th>Request</th><th>Approved by</th><th>Then</th></tr></thead>
+          <tbody>
+            <tr><td>Leave</td><td>Your manager (or HR Manager, COO, MD)</td><td>You're notified; on the day, your status shows <em>On leave</em>.</td></tr>
+            <tr><td>Weekly report</td><td>Your manager (or HR Manager, COO, MD)</td><td>Approved, or returned with notes. Rejected reports lower your reporting score.</td></tr>
+            <tr><td>Expense claim</td><td>Finance Manager (or COO, MD)</td><td>Approved or rejected with notes; Admin marks it reimbursed when paid.</td></tr>
+            <tr><td>Tasks</td><td>Assigned by your lead</td><td>You move them to <em>Review</em>; your lead closes them as <em>Done</em>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><span class="tag practice">Recommended practice</span> Raise problems with your direct manager first. Go to HR for personal, pay or conduct matters, and to the COO when a department issue isn't resolved.</p>
+    </section>
+
+    <!-- 3 -->
+    <section id="rhythm">
+      <span class="kicker">03 · Rhythm</span>
+      <h2>Daily, weekly and monthly rhythm</h2>
+      <div class="rhythm">
+        <div>
+          <span class="when">Every working day</span>
+          <h4>Start</h4>
+          <ul>
+            <li>Clock in from the Lobby by <strong>09:00</strong> (15 min grace).</li>
+            <li>Choose your mode: office, remote, field or client site.</li>
+            <li>Post your stand-up: yesterday, today, blockers.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="when">During the day</span>
+          <h4>Work</h4>
+          <ul>
+            <li>Move tasks through To do → In progress → Review.</li>
+            <li>Check in and out of every client visit.</li>
+            <li>Answer any location check within <strong>20 min</strong>.</li>
+            <li>Reply to messages and meeting invites.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="when">End of day</span>
+          <h4>Close</h4>
+          <ul>
+            <li>Update task status and goal progress.</li>
+            <li>Clock out with a short end-of-day note.</li>
+            <li>Forgotten clock-outs are closed automatically and flagged.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="when">Every Friday</span>
+          <h4>Weekly report</h4>
+          <ul>
+            <li>Submit your weekly report (reminder sent on Fridays).</li>
+            <li>Managers review reports on Friday or Monday.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="when">Monthly</span>
+          <h4>Performance</h4>
+          <ul>
+            <li>Check your scorecard in <span class="path">Performance</span>.</li>
+            <li>Managers review team scorecards and flags with each person.</li>
+          </ul>
+        </div>
+        <div>
+          <span class="when">Automatic</span>
+          <h4>Reminders you'll get</h4>
+          <ul>
+            <li>Overdue tasks and goals due soon.</li>
+            <li>Deal and stakeholder follow-ups due today.</li>
+            <li>Meetings: morning digest and 15 min before.</li>
+            <li>Birthdays and work anniversaries on the feed.</li>
+          </ul>
+        </div>
+      </div>
+      <p><span class="tag rule">System rule</span> Work start time, grace period and the location-check window are set by management in Office settings. The defaults are 09:00, 15 minutes and 20 minutes.</p>
+    </section>
+
+    <!-- 4 -->
+    <section id="core">
+      <span class="kicker">04 · Everyone</span>
+      <h2>Core workflows</h2>
+      <p class="lede">These apply to every department.</p>
+
+      <h3>Clock in and out</h3>
+      <ol class="steps">
+        <li>Open the <span class="path">Lobby</span>, choose your work mode and tap <strong>Start my day</strong>.</li>
+        <li>Allow location when asked. Your location is recorded only at clock-in, clock-out, client check-ins and location checks, never in the background.</li>
+        <li>If the phone has no signal, tap <strong>Clock in now (location added when found)</strong>. Keep the Staff Office open for a few minutes and it attaches your location.</li>
+        <li>Post your <strong>stand-up</strong> when prompted.</li>
+        <li>At the end of the day tap <strong>End my day</strong> and write a short note.</li>
+      </ol>
+      <p><span class="tag rule">System rule</span> Arriving after the start time plus grace counts as late. Late arrivals of 30 min or more notify your manager.</p>
+
+      <h3>Tasks</h3>
+      <div class="table"><table>
+        <thead><tr><th>Status</th><th>Meaning</th><th>Who moves it</th></tr></thead>
+        <tbody>
+          <tr><td>To do</td><td>Assigned, not started</td><td>Created by your lead or yourself</td></tr>
+          <tr><td>In progress</td><td>You're working on it</td><td>You</td></tr>
+          <tr><td>Review</td><td>Finished, waiting for a check</td><td>You</td></tr>
+          <tr><td>Done</td><td>Accepted</td><td>Your lead (or you, for your own tasks)</td></tr>
+        </tbody>
+      </table></div>
+      <p>Priorities are low, medium, high and urgent. <span class="tag rule">System rule</span> Tasks finished after their due date lower your on-time rate, and every overdue open task takes 5 points off your output score.</p>
+
+      <h3>Goals and progress</h3>
+      <p>Set goals with your manager in <span class="path">Goals &amp; Progress</span>. Update the percentage with a short check-in each week. Completing a goal earns 25 points and appears on your profile.</p>
+
+      <h3>Leave</h3>
+      <ol class="steps">
+        <li>Go to <span class="path">Leave</span> and choose the type: annual, sick, casual, maternity, paternity, study, compassionate, unpaid or other.</li>
+        <li>Pick the dates and give a reason. Your remaining annual leave is shown.</li>
+        <li>Your manager approves or declines; you're notified either way.</li>
+      </ol>
+      <p><span class="tag practice">Recommended practice</span> Request planned leave at least two weeks ahead. Report sick leave the same morning.</p>
+
+      <h3>Expense claims</h3>
+      <ol class="steps">
+        <li>Go to <span class="path">Expense Claims</span>, enter the amount, date and category, and attach the receipt (photo or PDF).</li>
+        <li>Finance approves or rejects it with notes (status: pending → approved or rejected).</li>
+        <li>Admin marks approved claims reimbursed once paid.</li>
+      </ol>
+
+      <h3>Communication</h3>
+      <ul>
+        <li><strong>Messages</strong>: direct and team chats. Every colleague card also has a WhatsApp button.</li>
+        <li><strong>Meetings</strong>: schedule with colleagues; everyone gets a morning digest and a 15-minute reminder.</li>
+        <li><strong>Office Feed</strong>: share wins, give kudos, comment and reshare. Announcements from management are pinned.</li>
+        <li><strong>Social &amp; Advocacy</strong>: share approved company posts on your own social accounts.</li>
+      </ul>
+
+      <h3>Payslips and profile</h3>
+      <p>Your monthly payslips are in <span class="path">Payslips</span>. Keep bank, emergency contact and personal details current in <span class="path">My Profile</span>; only HR can see the private parts.</p>
+    </section>
+
+    <!-- 5 -->
+    <section id="field">
+      <span class="kicker">05 · Field work</span>
+      <h2>Field work and verification</h2>
+      <p class="lede">Anyone who visits clients, hospitals or partners checks in on the Staff Office. Each visit gets a trust score from evidence, so honest work is visible and can be defended.</p>
+
+      <h3>Checking in at a client</h3>
+      <ol class="steps">
+        <li>On arrival, open <span class="path">Field Visits</span> → <strong>Check in at a client</strong>.</li>
+        <li>Tap <strong>Share my location</strong>. Wait for the accuracy to improve (outdoors or near a window helps), or tap <strong>Use this location</strong>.</li>
+        <li>Take a <strong>live photo</strong> of the reception, signboard or meeting. It's stamped with the time and location.</li>
+        <li>Enter the organisation, purpose and contact person.</li>
+        <li>Send the <strong>client confirmation link</strong> to the contact by WhatsApp or email. They confirm on their own phone, and can share their location.</li>
+        <li>When you leave, <strong>check out</strong> with the outcome and the next step.</li>
+      </ol>
+
+      <h3>Trust score for each visit</h3>
+      <p>Every visit starts at <strong>85</strong>. A genuine client confirmation adds 30 (up to 100). Warning signs take points off.</p>
+      <div class="table"><table>
+        <thead><tr><th>Level</th><th class="num">Score</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Verified</strong></td><td class="num">80–100</td><td>Counts fully.</td></tr>
+          <tr><td><strong>Needs review</strong></td><td class="num">55–79</td><td>Your manager may ask about it.</td></tr>
+          <tr><td><strong>Suspicious</strong></td><td class="num">below 55</td><td>Your manager is notified straight away.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="table"><table>
+        <thead><tr><th>Evidence</th><th class="num">Points</th></tr></thead>
+        <tbody>
+          <tr><td>Client confirmed from their own phone</td><td class="num">+30</td></tr>
+          <tr><td>Client's phone located the meeting near your check-in</td><td class="num">+5</td></tr>
+          <tr><td>No location at all (no client location either)</td><td class="num">−35</td></tr>
+          <tr><td>No location from your phone, but the client's phone located the meeting</td><td class="num">−10</td></tr>
+          <tr><td>Location arrived a few minutes after check-in</td><td class="num">−8</td></tr>
+          <tr><td>Location accuracy worse than 150 m / worse than 1 km</td><td class="num">−12 / −25</td></tr>
+          <tr><td>Phone's last known location, over 3 min old</td><td class="num">−5</td></tr>
+          <tr><td>Checked in more than 700 m from the client's confirmed address</td><td class="num">−30 to −45</td></tr>
+          <tr><td>Checked in where you usually start your day (looks like home)</td><td class="num">−30</td></tr>
+          <tr><td>Impossible travel since your last check-in</td><td class="num">−35</td></tr>
+          <tr><td>No photo / photo uploaded instead of taken live</td><td class="num">−10 / −12</td></tr>
+          <tr><td>Photo reused from an earlier visit</td><td class="num">−35</td></tr>
+          <tr><td>Visit shorter than 5 minutes</td><td class="num">−10</td></tr>
+          <tr><td>Logged before 07:00 or after 20:00</td><td class="num">−5</td></tr>
+          <tr><td>"Client" confirmation came from your usual internet connection</td><td class="num">−15</td></tr>
+          <tr><td>"Client" confirmation made on a staff phone</td><td class="num">−55</td></tr>
+          <tr><td>Client says the visit did not happen</td><td class="num">−60</td></tr>
+          <tr><td>Accuracy pattern typical of GPS-faking apps</td><td class="num">−25</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Location checks</h3>
+      <p><span class="tag rule">System rule</span> Staff clocked in on field work get one unannounced location check each weekday, at a random time between 10:30 and 15:30. Managers can also send one at any time. You have <strong>20 minutes</strong> to share your location and a live photo. Missed checks notify your manager and lower your field score.</p>
+
+      <div class="note">
+        <p><strong>If your phone won't give a location:</strong> follow the steps it shows. The usual fixes are ending any phone or WhatsApp call, allowing location for your browser in phone Settings → Apps, turning on Google Location Accuracy, or opening Google Maps until the blue dot appears. If a help box shows a <em>Details</em> line, send a screenshot of it to your manager.</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="departments">
+      <span class="kicker">06 · Departments</span>
+      <h2>Department playbooks</h2>
+      <p class="lede">What each department does, the Staff Office tools it uses, and what its performance is judged on. Everyone also follows the core workflows in section 4.</p>
+
+      <div class="dept">
+        <h3>Executive</h3>
+        <div class="roles"><span>Owner</span><span>Managing Director / CEO</span><span>Chief Operating Officer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Set company goals and targets each quarter.</li><li>Approve escalated leave, reports and expenses.</li><li>Publish announcements and set office policy.</li></ul></div>
+          <div><h4>Tools</h4><ul><li>Everything, including the admin dashboard.</li><li>Company-wide pipeline, liaison register and scorecards.</li></ul></div>
+          <div><h4>Weekly</h4><ul><li><span class="tag practice">Practice</span> Review the pipeline, attendance, field evidence and flagged visits.</li><li>Recognise wins on the feed.</li></ul></div>
+        </div>
+      </div>
+
+      <div class="dept">
+        <h3>Human Resources</h3>
+        <div class="roles"><span>HR Manager</span><span>HR Officer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Recruitment: post jobs, screen applicants, schedule interviews.</li><li>Onboarding: create staff accounts, assign roles and managers.</li><li>Records, leave, conduct and appraisals.</li></ul></div>
+          <div><h4>Tools</h4><ul><li><strong>HR Desk</strong>: full staff records (personal, emergency, bank).</li><li>HR Manager: approves anyone's leave and reports, announcements, feed moderation.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> New hire: create the account, set role and manager, send login, confirm phone setup in the first week.</li><li>Check <em>Phone readiness</em> and attendance each Monday.</li></ul></div>
+        </div>
+        <p><strong>Judged on:</strong> attendance, output (tasks and goals), reporting and engagement.</p>
+      </div>
+
+      <div class="dept">
+        <h3>Sales &amp; Business Development</h3>
+        <div class="roles"><span>Head of Business Development</span><span>Business Development Officer</span><span>Sales Executive (Field Sales)</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Find hospitals, schools and businesses that need our products.</li><li>Run demos, send proposals and close deals.</li><li>Keep every prospect's next step dated.</li></ul></div>
+          <div><h4>Tools</h4><ul><li><strong>BD Pipeline</strong> (Head of BD sees every deal).</li><li><strong>Liaison Register</strong> (BDOs).</li><li><strong>Field Visits</strong> with client confirmation.</li></ul></div>
+          <div><h4>Daily</h4><ul><li>Clock in as <em>field</em> or <em>client site</em>.</li><li>Check in at every visit and send the confirmation link.</li><li>Update the deal stage the same day.</li></ul></div>
+        </div>
+        <h4>Pipeline stages</h4>
+        <div class="table"><table>
+          <thead><tr><th>Stage</th><th class="num">Win probability</th><th>Move it when…</th></tr></thead>
+          <tbody>
+            <tr><td>New lead</td><td class="num">10%</td><td>You've identified the organisation and a contact.</td></tr>
+            <tr><td>Contacted</td><td class="num">20%</td><td>You've spoken to or messaged the decision-maker.</td></tr>
+            <tr><td>Meeting held</td><td class="num">35%</td><td>A first meeting happened (with a checked-in visit).</td></tr>
+            <tr><td>Demo done</td><td class="num">50%</td><td>You've shown the product.</td></tr>
+            <tr><td>Proposal sent</td><td class="num">65%</td><td>Pricing and scope are with the client.</td></tr>
+            <tr><td>Negotiation</td><td class="num">80%</td><td>Terms are being agreed.</td></tr>
+            <tr><td>Won / Lost</td><td class="num">100% / 0%</td><td>Signed, or closed with the reason recorded.</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>Judged on:</strong> attendance, <strong>field visits</strong>, output, reporting, <strong>sales</strong> (deals created, stage moves, deals won) and engagement.</p>
+      </div>
+
+      <div class="dept">
+        <h3>Partnerships &amp; Liaison</h3>
+        <div class="roles"><span>Chief Liaison Officer</span><span>Liaison Officer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Build relationships with government, associations, partners and hospitals' management.</li><li>Secure MoUs and introductions for sales.</li></ul></div>
+          <div><h4>Tools</h4><ul><li><strong>Liaison Register</strong>: log each engagement (meeting, call, email, visit, event, letter, MoU) with a dated next action. The Chief Liaison Officer sees all of them.</li><li>Field Visits.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li>Log every engagement the same day.</li><li><span class="tag practice">Practice</span> Hand warm leads to Business Development through the pipeline.</li></ul></div>
+        </div>
+        <p><strong>Judged on:</strong> attendance, field visits, output, reporting and engagement.</p>
+      </div>
+
+      <div class="dept">
+        <h3>Engineering</h3>
+        <div class="roles"><span>Technical Lead / Engineering Manager</span><span>Software Engineer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Build, maintain and release our products (CareCore and the Core family).</li><li>Fix issues reported by clients and support.</li></ul></div>
+          <div><h4>Tools</h4><ul><li><strong>Tasks</strong> for features and bugs. Technical Lead: Team Desk, approvals and task assignment.</li><li>Messages and Meetings for stand-ups and reviews.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> One task per feature or bug, with a due date. Move to <em>Review</em> when ready for code review; the Technical Lead marks <em>Done</em> after release.</li><li>Clock in as <em>office</em> or <em>remote</em>.</li></ul></div>
+        </div>
+        <p><strong>Judged on:</strong> attendance, output (on-time tasks, goals), reporting and engagement. <strong>Field visits and sales don't apply</strong>, and their weight is shared among the parts that do.</p>
+      </div>
+
+      <div class="dept">
+        <h3>Product</h3>
+        <div class="roles"><span>Product Manager</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Turn client needs into prioritised work for Engineering.</li><li>Plan releases and track adoption.</li></ul></div>
+          <div><h4>Tools</h4><ul><li>Team view and task assignment.</li><li>Goals for release milestones.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> Agree priorities with the Technical Lead each week and record them as tasks.</li></ul></div>
+        </div>
+      </div>
+
+      <div class="dept">
+        <h3>Finance</h3>
+        <div class="roles"><span>Finance Manager</span><span>Accountant</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Invoices, payments, payroll support and expense control.</li></ul></div>
+          <div><h4>Tools</h4><ul><li>Finance Manager: approves <strong>expense claims</strong> and leads the team.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> Decide pending claims within 3 working days and give a reason when rejecting.</li></ul></div>
+        </div>
+      </div>
+
+      <div class="dept">
+        <h3>Marketing</h3>
+        <div class="roles"><span>Marketing &amp; Communications Manager</span><span>Marketing / Social Media Officer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Brand, content, campaigns and social media.</li><li>Supply sales with material for demos and proposals.</li></ul></div>
+          <div><h4>Tools</h4><ul><li>Publish <strong>social share kits</strong> for all staff to share.</li><li>Manager: announcements and feed moderation.</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> Publish at least one share kit a week and track reach in Social &amp; Advocacy.</li></ul></div>
+        </div>
+      </div>
+
+      <div class="dept">
+        <h3>Customer Success</h3>
+        <div class="roles"><span>Implementation &amp; Training Specialist</span><span>Customer Success / Support Officer</span></div>
+        <div class="cols">
+          <div><h4>Responsibilities</h4><ul><li>Set up clients, train their staff and handle support requests.</li></ul></div>
+          <div><h4>Tools</h4><ul><li>Tasks for each installation and ticket.</li><li>Field Visits for on-site training (field scoring switches on automatically on field days).</li></ul></div>
+          <div><h4>Workflow</h4><ul><li><span class="tag practice">Practice</span> Check in at every on-site session and ask the client to confirm it.</li></ul></div>
+        </div>
+      </div>
+
+      <div class="dept">
+        <h3>Administration and interns</h3>
+        <div class="roles"><span>Admin &amp; Office Officer</span><span>Staff</span><span>Intern / NYSC Corps Member</span></div>
+        <p>Office administration, documents and logistics. Interns work from tasks set by their supervisor and follow all core workflows. Judged on attendance, output, reporting and engagement.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="performance">
+      <span class="kicker">07 · Performance</span>
+      <h2>How performance is scored</h2>
+      <p class="lede">Your scorecard in <span class="path">Performance</span> combines up to six parts. Only the parts that apply to your job count, and their weights are shared out among them.</p>
+      <div class="table"><table>
+        <thead><tr><th>Part</th><th class="num">Weight</th><th>How it's worked out</th><th>Applies to</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Attendance</strong></td><td class="num">25</td><td>60% days clocked in, 25% on-time arrivals, 15% stand-ups posted.</td><td>Everyone</td></tr>
+          <tr><td><strong>Field</strong></td><td class="num">25</td><td>55% average visit trust, 25% client-confirmed visits, 20% location checks answered in time. Minus 15 for each disputed visit and 20 for each self-confirmed one.</td><td>Sales, liaison, anyone with field days</td></tr>
+          <tr><td><strong>Output</strong></td><td class="num">20</td><td>Average of tasks finished on time and goal progress, minus 5 for each overdue open task.</td><td>Everyone</td></tr>
+          <tr><td><strong>Reporting</strong></td><td class="num">15</td><td>Weekly reports submitted out of the Fridays in the period, minus 10 for each rejected report. Claiming far more visits than you checked in costs up to 50.</td><td>Everyone</td></tr>
+          <tr><td><strong>Sales</strong></td><td class="num">10</td><td>10 per deal created, 6 per stage moved, 30 per deal won (up to 100).</td><td>Pipeline users</td></tr>
+          <tr><td><strong>Engagement</strong></td><td class="num">5</td><td>8 per post, 12 per kudos received, 3 per stand-up (up to 100).</td><td>Everyone</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Grades</h3>
+      <div class="grades">
+        <div><b>A</b><span>85–100</span></div>
+        <div><b>B</b><span>70–84</span></div>
+        <div><b>C</b><span>55–69</span></div>
+        <div><b>D</b><span>40–54</span></div>
+        <div><b>E</b><span>below 40</span></div>
+      </div>
+      <div class="note warn">
+        <p><strong>Integrity caps.</strong> One serious flag limits your grade to C (69), whatever else you achieve. Two or more limit it to D (49). Serious flags include clocking in on fewer than 60% of working days, field days with no client visits, suspicious visits, and faked or self-confirmed evidence.</p>
+      </div>
+
+      <h3>Recognition points</h3>
+      <p>Points appear on the office leaderboard each month.</p>
+      <div class="table"><table>
+        <thead><tr><th>Action</th><th class="num">Points</th><th>Action</th><th class="num">Points</th></tr></thead>
+        <tbody>
+          <tr><td>Deal won</td><td class="num">30</td><td>Goal completed</td><td class="num">25</td></tr>
+          <tr><td>Weekly report submitted</td><td class="num">10</td><td>Kudos received</td><td class="num">10</td></tr>
+          <tr><td>Client-confirmed visit</td><td class="num">10</td><td>Social activity logged</td><td class="num">8</td></tr>
+          <tr><td>Field visit checked in</td><td class="num">6</td><td>Post on the feed</td><td class="num">5</td></tr>
+          <tr><td>Share on social media</td><td class="num">5</td><td>Task done</td><td class="num">4</td></tr>
+          <tr><td>Stand-up, goal check-in, meeting hosted, reshare</td><td class="num">3</td><td>Comment, kudos given</td><td class="num">2</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>How to improve your score</h3>
+      <ul>
+        <li>Clock in on time and post your stand-up every day.</li>
+        <li>Give every task a due date you can meet, and move it to Review promptly.</li>
+        <li>Submit your weekly report every Friday.</li>
+        <li>For field roles: check in at every visit, take a live photo, stay at least 5 minutes, and get the client to confirm on their own phone.</li>
+      </ul>
+    </section>
+
+    <!-- 8 -->
+    <section id="reports">
+      <span class="kicker">08 · Reports</span>
+      <h2>Reports and reviews</h2>
+      <h3>Weekly report (every Friday)</h3>
+      <p>Submit it in <span class="path">Weekly Reports</span>. It covers:</p>
+      <div class="table"><table>
+        <thead><tr><th>Section</th><th>What to write</th></tr></thead>
+        <tbody>
+          <tr><td>Week and focus</td><td>Dates, your territory or area, reporting manager, product focus.</td></tr>
+          <tr><td>Summary</td><td>The main things you achieved this week (required).</td></tr>
+          <tr><td>Numbers</td><td>Visits, calls, demos, tasks finished; prospects and sales made.</td></tr>
+          <tr><td>Follow-ups</td><td>Who you owe a next step, and when.</td></tr>
+          <tr><td>Challenges</td><td>Blockers, client objections, support you need.</td></tr>
+          <tr><td>Market</td><td>Competitors, their pricing, trends you noticed (sales and liaison).</td></tr>
+          <tr><td>Next week</td><td>Your plan and key targets.</td></tr>
+          <tr><td>Declaration</td><td>Confirm the report is accurate (required).</td></tr>
+        </tbody>
+      </table></div>
+      <p><span class="tag rule">System rule</span> Your manager approves it or returns it with notes. Visits you claim are compared with visits you actually checked in; a large gap is flagged and lowers your reporting score.</p>
+      <p><span class="tag practice">Recommended practice</span> Engineers and support staff should list tasks shipped, issues fixed and what's planned; sales and liaison should fill in every section.</p>
+
+      <h3>Monthly and quarterly reviews</h3>
+      <p><span class="tag practice">Recommended practice</span></p>
+      <ul>
+        <li><strong>Monthly</strong>: your manager goes through your scorecard, flags and goals with you.</li>
+        <li><strong>Quarterly</strong>: a formal performance review (appraisal) recorded by HR, with new goals for the next quarter.</li>
+      </ul>
+    </section>
+
+    <!-- 9 -->
+    <section id="integrity">
+      <span class="kicker">09 · Integrity</span>
+      <h2>Integrity rules</h2>
+      <p class="lede">Records in the Staff Office are used for pay, promotion and client trust. The following are treated as misconduct:</p>
+      <ul>
+        <li>Using fake-GPS apps or anything that alters your location.</li>
+        <li>Confirming your own visit, or asking a friend or colleague to confirm it.</li>
+        <li>Reusing an old photo or uploading one instead of taking it live.</li>
+        <li>Checking in for someone else, or letting someone use your account.</li>
+        <li>Reporting visits, calls or sales that didn't happen.</li>
+      </ul>
+      <div class="note good">
+        <p><strong>Your privacy.</strong> Location is recorded only when you clock in or out, check in or out of a visit, or answer a location check. It's never tracked in the background. You can see everything recorded about you; your manager, HR and management can see it too.</p>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="reference">
+      <span class="kicker">10 · Reference</span>
+      <h2>Quick reference</h2>
+      <div class="table"><table>
+        <thead><tr><th>I want to…</th><th>Go to</th></tr></thead>
+        <tbody>
+          <tr><td>Start or end my day</td><td><span class="path">Lobby</span></td></tr>
+          <tr><td>Check in at a client or answer a location check</td><td><span class="path">Field Visits</span></td></tr>
+          <tr><td>See or update my work</td><td><span class="path">Tasks</span>, <span class="path">Goals &amp; Progress</span></td></tr>
+          <tr><td>Submit my weekly report</td><td><span class="path">Weekly Reports</span></td></tr>
+          <tr><td>Request leave or claim an expense</td><td><span class="path">Leave</span>, <span class="path">Expense Claims</span></td></tr>
+          <tr><td>See my score</td><td><span class="path">Performance</span></td></tr>
+          <tr><td>Find or contact a colleague</td><td><span class="path">People &amp; Org Chart</span>, <span class="path">Messages</span></td></tr>
+          <tr><td>Approve my team's requests</td><td><span class="path">Approvals</span> (leads only)</td></tr>
+          <tr><td>Fix location, camera or notifications</td><td><span class="path">Field Visits → Set up your phone</span></td></tr>
+        </tbody>
+      </table></div>
+      <h3>Common questions</h3>
+      <h4>I forgot to clock out. What happens?</h4>
+      <p>The day is closed automatically at your last activity and flagged. Tell your manager if the time is wrong.</p>
+      <h4>My phone says "This site can't ask for your permission".</h4>
+      <p>Another app is on top of the screen, often a WhatsApp call or chat bubble. End the call or close the bubble, or allow location and camera for your browser in phone Settings → Apps, then try again.</p>
+      <h4>I'm office-based. Will field visits lower my score?</h4>
+      <p>No. Field and sales scores only count for roles that use them or on days you record field work.</p>
+      <h4>Who do I ask for help?</h4>
+      <p>Your manager first, then HR. For account or sign-in problems, contact HR to reset your access.</p>
+    </section>
+
+    <footer>Orion Soft Limited · Staff Office Playbook · Keep this guide with your onboarding pack.</footer>
+  </main>
+</div>
+
+<script>try{mermaid.initialize({startOnLoad:true,theme:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"default"});}catch(e){}</script>
+</body>
+</html>

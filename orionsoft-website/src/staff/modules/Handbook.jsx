@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link2, CheckCircle2, ExternalLink } from "lucide-react";
+import { Link2, CheckCircle2, ExternalLink, BookOpen } from "lucide-react";
 import { C } from "../theme.js";
 import { api, waLink } from "../api.js";
 import { Btn, SectionCard, SectionTitle, Badge, EmptyState, PageHeader, Grid, toast } from "../components.jsx";
@@ -21,6 +21,15 @@ export default function Handbook() {
       <PageHeader title="Handbook & Links" sub="Company policies, how-tos and the tools you use every day." />
       <div className="so-two">
         <div className="so-stack" style={{ gap: 16 }}>
+          <SectionCard style={{ borderColor: `${C.gold}55` }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <span style={{ color: C.gold, display: "flex", marginTop: 2 }}><BookOpen size={22} /></span>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <SectionTitle sub="How we work: our structure, daily routine, every workflow, each department's playbook, and how performance is scored.">Staff Playbook</SectionTitle>
+                <a href="/staff/playbook" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small icon={ExternalLink}>Open the playbook</Btn></a>
+              </div>
+            </div>
+          </SectionCard>
           {Object.keys(groups).length === 0 && <EmptyState>No handbook entries yet.</EmptyState>}
           {Object.entries(groups).map(([cat, items]) => (
             <SectionCard key={cat}>

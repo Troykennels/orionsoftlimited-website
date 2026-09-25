@@ -6,6 +6,10 @@
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/$1"
     },
     {
+      "source": "/staff/playbook",
+      "destination": "https://orionsoftlimited-website-production.up.railway.app/api/staff/playbook"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
