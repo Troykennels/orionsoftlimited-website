@@ -4751,7 +4751,7 @@ function AboutPage({ setCurrentPage }) {
           <Reveal delay={0.1}>
             <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "28px 26px" }}>
               <h3 style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.1em", margin: "0 0 16px" }}>COMPANY FACTS</h3>
-              {[["Headquarters", "Nigeria"], ["Registration", `RC ${COMPANY_RC}`], ["Compliance", "NDPR Compliant"], ["Delivery", "Local & Global"]].map(([k, v]) => (
+              {[["Headquarters", "Africa"], ["Registration", `RC ${COMPANY_RC}`], ["Compliance", "NDPR Compliant"], ["Delivery", "Local & Global"]].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
                   <span style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>{k}</span>
                   <span style={{ fontSize: 14, color: C.heading, fontFamily: font, fontWeight: 600 }}>{v}</span>

@@ -14,6 +14,7 @@ import ErrorBoundary from "../staff/ErrorBoundary.jsx";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
+import { computeTotals as computeInvoiceTotals, amountInWords as invoiceAmountInWords } from "../../shared/invoicing.js";
 import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
@@ -2655,7 +2656,9 @@ function MenusSection() {
 const DEFAULT_SETTINGS = {
   companyName: "Orion Soft Limited", tagline: "Software that Works as Hard as You Do.",
   email: "orionsoftlimited@gmail.com", phone: "08169577059", rc: "9535128",
-  address: "Nigeria", linkedin: "", twitter: "", github: "",
+  address: "Lagos Island, Lagos, Nigeria", linkedin: "", twitter: "", github: "",
+  website: "www.orionsoftlimited.com", taxId: "", bankDetails: "", invoiceTemplate: "classic",
+  invoiceTerms: "Payment is due by the date shown above. Please use the invoice number as your payment reference.",
   ctaHeadline: "Build something exceptional.", ctaSubtext: "Ready to get started?",
 };
 
@@ -2674,7 +2677,7 @@ function SettingsSection() {
   // companyName/email/phone/rc/address also drive the real letterhead/PDF
   // (api/_lib/pdf.js), so those five sync server-side; the rest (tagline,
   // socials, CTA copy) are site-content-only and stay in localStorage.
-  const LETTERHEAD_FIELDS = ["companyName", "email", "phone", "rc", "address"];
+  const LETTERHEAD_FIELDS = ["companyName", "email", "phone", "rc", "address", "website", "taxId", "bankDetails", "invoiceTerms", "invoiceTemplate"];
 
   async function save() {
     setErr(""); setSaving(true);
@@ -2695,9 +2698,9 @@ function SettingsSection() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <SectionCard>
           <SectionTitle>Company Info</SectionTitle>
-          <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 6 }}>Name, email, phone, RC number, and address also appear on every generated contract, letter, and payslip.</p>
+          <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 6 }}>Name, address, RC, TIN, email, phone and website appear on the letterhead of every contract, letter, invoice, purchase order and payslip.</p>
           <div style={{ marginTop: 14 }}>
-            {[["companyName", "Company Name"], ["tagline", "Tagline"], ["email", "Email"], ["phone", "Phone"], ["rc", "RC Number"], ["address", "Address"]].map(([k, l]) => (
+            {[["companyName", "Company Name"], ["tagline", "Tagline"], ["email", "Email"], ["phone", "Phone"], ["website", "Website"], ["rc", "RC Number"], ["taxId", "Tax ID (TIN)"], ["address", "Address"]].map(([k, l]) => (
               <div key={k} style={{ marginBottom: 14 }}><Label>{l}</Label><Input {...f(k)} placeholder={l} /></div>
             ))}
           </div>
@@ -2709,6 +2712,18 @@ function SettingsSection() {
               {[["linkedin", "LinkedIn URL"], ["twitter", "Twitter/X URL"], ["github", "GitHub URL"]].map(([k, l]) => (
                 <div key={k} style={{ marginBottom: 14 }}><Label>{l}</Label><Input {...f(k)} placeholder="https://..." /></div>
               ))}
+            </div>
+          </SectionCard>
+          <SectionCard>
+            <SectionTitle>Invoices &amp; payments</SectionTitle>
+            <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 6 }}>Printed on every invoice and in invoice emails.</p>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ marginBottom: 14 }}><Label>Bank details</Label><Textarea rows={3} value={form.bankDetails || ""} onChange={e => setForm(s => ({ ...s, bankDetails: e.target.value }))} placeholder={"Bank: …\nAccount name: Orion Soft Limited\nAccount number: …"} /></div>
+              <div style={{ marginBottom: 14 }}><Label>Default payment terms</Label><Textarea rows={2} {...f("invoiceTerms")} /></div>
+              <Label>Default invoice design</Label>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {INV_TEMPLATES.map(t => <TemplateThumb key={t.id} t={t} on={(form.invoiceTemplate || "classic") === t.id} onClick={() => setForm(s => ({ ...s, invoiceTemplate: t.id }))} />)}
+              </div>
             </div>
           </SectionCard>
           <SectionCard>
@@ -4060,7 +4075,7 @@ function fillPlaceholders(text, fillData, recipientName) {
 // wordmark on the left and the registered company block right-aligned, a
 // gold rule + left spine, formal letter body, a two-column signature block,
 // and the same confidential footer.
-const DEFAULT_COMPANY_SETTINGS = { companyName: "Orion Soft Limited", rc: "9535128", email: "orionsoftlimited@gmail.com", phone: "08169577059", address: "Nigeria" };
+const DEFAULT_COMPANY_SETTINGS = { companyName: "Orion Soft Limited", rc: "9535128", email: "orionsoftlimited@gmail.com", phone: "08169577059", address: "Lagos Island, Lagos, Nigeria" };
 function letterCompanyLines(company) {
   return [company.companyName, `RC ${company.rc} · ${company.address}`, `${company.email} · ${company.phone}`];
 }
@@ -5700,132 +5715,351 @@ function TicketsSection() {
 }
 
 // ─── Invoices & Billing ───────────────────────────────────────────────────────
-function invoiceTotal(inv) {
-  const subtotal = (inv.items || []).reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
-  const taxable = Math.max(subtotal - (Number(inv.discount) || 0), 0);
-  return taxable + taxable * ((Number(inv.taxPercent) || 0) / 100);
+// Same money rules as the server and the PDF (api/_lib/invoicing.js).
+const INV_STATUS = {
+  draft:          { label: "Draft",            color: C.textMuted },
+  sent:           { label: "Awaiting payment", color: C.blue },
+  partially_paid: { label: "Partly paid",      color: C.amber },
+  paid:           { label: "Paid",             color: C.mint },
+  void:           { label: "Void",             color: C.textMuted },
+  overdue:        { label: "Overdue",          color: C.rose },
+};
+const INV_TEMPLATES = [
+  { id: "classic", name: "Classic", note: "Navy letterhead band", band: "#0A2540", head: "#0A2540", accent: "#C8A850" },
+  { id: "minimal", name: "Minimal", note: "White, light on ink", band: "#FFFFFF", head: "#EEF2F7", accent: "#C8A850" },
+  { id: "bold",    name: "Bold",    note: "Gold letterhead band", band: "#C8A850", head: "#C8A850", accent: "#0A2540" },
+];
+const PAY_METHODS = [["bank_transfer", "Bank transfer"], ["card", "Card"], ["pos", "POS"], ["cash", "Cash"], ["cheque", "Cheque"], ["other", "Other"]];
+const invMoney = (n, c = "NGN") => `${c === "NGN" ? "₦" : c + " "}${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const invDay = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+const invToday = () => new Date().toISOString().slice(0, 10);
+const addDays = (d, n) => new Date(Date.parse(`${d || invToday()}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+const invStatusKey = inv => (inv.overdue ? "overdue" : inv.status);
+
+function TemplateThumb({ t, on, onClick, label }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on} style={{ textAlign: "left", cursor: "pointer", background: on ? C.goldDim || "rgba(200,168,80,0.12)" : C.surface, border: `1.5px solid ${on ? C.gold : C.border}`, borderRadius: 10, padding: 8, fontFamily: font, width: 128 }}>
+      <div style={{ background: "#fff", borderRadius: 5, overflow: "hidden", height: 74, border: "1px solid #e5e7eb" }}>
+        <div style={{ height: 20, background: t.band, borderBottom: `2px solid ${t.accent}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5px" }}>
+          <span style={{ width: 26, height: 4, background: t.band === "#FFFFFF" ? "#0A2540" : t.id === "bold" ? "#0A2540" : "#fff", borderRadius: 2 }} />
+          <span style={{ width: 18, height: 5, background: t.id === "classic" ? "#fff" : "#0A2540", borderRadius: 2 }} />
+        </div>
+        <div style={{ padding: 5, display: "grid", gap: 3 }}>
+          <span style={{ height: 5, background: t.head, borderRadius: 1 }} />
+          {[0, 1, 2].map(i => <span key={i} style={{ height: 3, background: "#e5e7eb", borderRadius: 1, width: `${90 - i * 12}%` }} />)}
+          <span style={{ height: 6, width: "45%", marginLeft: "auto", background: "#0A2540", borderRadius: 1 }} />
+        </div>
+      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.heading, marginTop: 6 }}>{label || t.name}</div>
+      <div style={{ fontSize: 11, color: C.textMuted }}>{t.note}</div>
+    </button>
+  );
+}
+
+const blankInvoice = defaults => ({
+  clientName: "", clientEmail: "", clientPhone: "", clientAddress: "",
+  items: [{ description: "", qty: 1, unitPrice: 0 }],
+  currency: "NGN", discountType: "", discountValue: "", taxLabel: "VAT", taxPercent: "",
+  issueDate: invToday(), dueDate: addDays(invToday(), 14), notes: "", terms: defaults.terms || "", template: "",
+  paidNow: false, initialPayment: { amount: "", method: "bank_transfer", reference: "", paidAt: invToday() },
+});
+
+function InvoiceEditor({ initial, defaults, onSaved, onCancel }) {
+  const editing = !!initial?.id;
+  const [f, setF] = useState(() => editing
+    ? { ...blankInvoice(defaults), ...initial, discountType: initial.discountType || "", discountValue: initial.discountValue || "", taxPercent: initial.taxPercent || "", template: initial.template || "" }
+    : blankInvoice(defaults));
+  const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const totals = computeInvoiceTotals({ ...f, discountType: f.discountType || null, payments: [] });
+
+  async function submit() {
+    setErr(""); setBusy(true);
+    try {
+      const body = {
+        clientName: f.clientName, clientEmail: f.clientEmail, clientPhone: f.clientPhone, clientAddress: f.clientAddress,
+        items: f.items, currency: f.currency, discountType: f.discountType || null, discountValue: Number(f.discountValue) || 0,
+        taxLabel: f.taxLabel, taxPercent: Number(f.taxPercent) || 0, issueDate: f.issueDate, dueDate: f.dueDate || null,
+        notes: f.notes, terms: f.terms, template: f.template,
+        ...(editing ? { id: initial.id } : {}),
+        ...(!editing && f.paidNow ? { initialPayment: { ...f.initialPayment, amount: Number(f.initialPayment.amount) || totals.total } } : {}),
+      };
+      const r = await fetch("/api/admin/invoices", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error || "Couldn't save the invoice."); return; }
+      auditLog(editing ? "edit_invoice" : "create_invoice", j.invoice.invoiceNumber);
+      onSaved(j.invoice);
+    } finally { setBusy(false); }
+  }
+
+  const tplDefault = INV_TEMPLATES.find(t => t.id === defaults.template) || INV_TEMPLATES[0];
+  return (
+    <SectionCard style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <SectionTitle>{editing ? `Edit ${initial.invoiceNumber}` : "New invoice"}</SectionTitle>
+        <Btn small variant="ghost" onClick={onCancel}>Cancel</Btn>
+      </div>
+      <div className="inv-editor" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 300px", gap: 22, marginTop: 16 }}>
+        <div>
+          <Label>Design</Label>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+            <TemplateThumb t={tplDefault} on={!f.template} onClick={() => set("template", "")} label={`Default (${tplDefault.name})`} />
+            {INV_TEMPLATES.map(t => <TemplateThumb key={t.id} t={t} on={f.template === t.id} onClick={() => set("template", t.id)} />)}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div><Label>Client name</Label><Input value={f.clientName} onChange={e => set("clientName", e.target.value)} placeholder="e.g. Lagos University Teaching Hospital" /></div>
+            <div><Label>Client email</Label><Input type="email" value={f.clientEmail} onChange={e => set("clientEmail", e.target.value)} placeholder="accounts@client.com" /></div>
+            <div><Label>Client phone</Label><Input value={f.clientPhone} onChange={e => set("clientPhone", e.target.value)} placeholder="0803 000 0000" /></div>
+          </div>
+          <div style={{ marginTop: 14 }}><Label>Client address</Label><Textarea rows={2} value={f.clientAddress} onChange={e => set("clientAddress", e.target.value)} placeholder="Street, area, city" /></div>
+          <div style={{ marginTop: 18 }}><Label>Line items</Label><LineItemsEditor items={f.items} onChange={items => set("items", items)} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginTop: 18 }}>
+            <div><Label>Currency</Label><Select value={f.currency} onChange={e => set("currency", e.target.value)}>{["NGN", "USD", "GBP", "EUR"].map(c => <option key={c}>{c}</option>)}</Select></div>
+            <div><Label>Discount</Label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <Select value={f.discountType} onChange={e => set("discountType", e.target.value)} style={{ width: 92 }}><option value="">None</option><option value="percent">%</option><option value="fixed">Amount</option></Select>
+                {f.discountType && <Input type="number" min="0" value={f.discountValue} onChange={e => set("discountValue", e.target.value)} placeholder={f.discountType === "percent" ? "10" : "50000"} />}
+              </div>
+            </div>
+            <div><Label>Tax</Label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <Input value={f.taxLabel} onChange={e => set("taxLabel", e.target.value)} style={{ width: 70 }} aria-label="Tax name" />
+                <Input type="number" min="0" value={f.taxPercent} onChange={e => set("taxPercent", e.target.value)} placeholder="%" aria-label="Tax %" />
+              </div>
+              <button type="button" onClick={() => setF(s => ({ ...s, taxLabel: "VAT", taxPercent: 7.5 }))} style={{ background: "none", border: "none", color: C.gold, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: "4px 0 0" }}>Use VAT 7.5%</button>
+            </div>
+            <div><Label>Issue date</Label><Input type="date" value={f.issueDate} onChange={e => set("issueDate", e.target.value)} /></div>
+            <div><Label>Due date</Label><Input type="date" value={f.dueDate || ""} onChange={e => set("dueDate", e.target.value)} />
+              <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
+                {[["On receipt", null], ["Net 7", 7], ["Net 14", 14], ["Net 30", 30]].map(([l, n]) => (
+                  <button key={l} type="button" onClick={() => set("dueDate", n == null ? "" : addDays(f.issueDate, n))} style={{ background: "none", border: "none", color: C.gold, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginTop: 14 }}>
+            <div><Label>Notes (shown on the invoice)</Label><Textarea rows={3} value={f.notes} onChange={e => set("notes", e.target.value)} placeholder="What this invoice is for" /></div>
+            <div><Label>Terms</Label><Textarea rows={3} value={f.terms} onChange={e => set("terms", e.target.value)} /></div>
+          </div>
+          {!editing && (
+            <div style={{ marginTop: 16, padding: 14, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13.5, color: C.text, cursor: "pointer" }}>
+                <input type="checkbox" checked={f.paidNow} onChange={e => set("paidNow", e.target.checked)} /> The client has already paid (issue it with the payment recorded)
+              </label>
+              {f.paidNow && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginTop: 10 }}>
+                  <div><Label>Amount paid</Label><Input type="number" value={f.initialPayment.amount} placeholder={String(totals.total)} onChange={e => set("initialPayment", { ...f.initialPayment, amount: e.target.value })} /></div>
+                  <div><Label>Method</Label><Select value={f.initialPayment.method} onChange={e => set("initialPayment", { ...f.initialPayment, method: e.target.value })}>{PAY_METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></div>
+                  <div><Label>Reference</Label><Input value={f.initialPayment.reference} onChange={e => set("initialPayment", { ...f.initialPayment, reference: e.target.value })} placeholder="Bank ref" /></div>
+                  <div><Label>Date</Label><Input type="date" value={f.initialPayment.paidAt} onChange={e => set("initialPayment", { ...f.initialPayment, paidAt: e.target.value })} /></div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div>
+          <div style={{ position: "sticky", top: 90, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: C.gold, letterSpacing: "0.08em", marginBottom: 10 }}>SUMMARY</div>
+            {[["Subtotal", totals.subtotal], ...(totals.discountAmount > 0 ? [[f.discountType === "percent" ? `Discount (${Number(f.discountValue)}%)` : "Discount", -totals.discountAmount]] : []), ...(totals.taxAmount > 0 ? [[`${f.taxLabel || "Tax"} (${Number(f.taxPercent)}%)`, totals.taxAmount]] : [])].map(([k, v]) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: C.text, padding: "4px 0", fontVariantNumeric: "tabular-nums" }}><span>{k}</span><span>{v < 0 ? "- " : ""}{invMoney(Math.abs(v), f.currency)}</span></div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 16, fontWeight: 800, color: C.heading, borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 10, fontVariantNumeric: "tabular-nums" }}><span>Total</span><span>{invMoney(totals.total, f.currency)}</span></div>
+            <p style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic", lineHeight: 1.5, margin: "10px 0 14px" }}>{invoiceAmountInWords(totals.total, f.currency)}</p>
+            <Btn onClick={submit} disabled={busy} style={{ width: "100%" }}>{busy ? "Saving…" : editing ? "Save changes" : f.paidNow ? "Create & record payment" : "Save as draft"}</Btn>
+            {err && <p role="alert" style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+            <p style={{ fontSize: 11.5, color: C.textMuted, marginTop: 10, lineHeight: 1.5 }}>Drafts can be edited. Send by email or mark as sent when it's ready.</p>
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+function InvoiceDetail({ inv, onChanged, onEdit }) {
+  const [pay, setPay] = useState(null); // payment form
+  const [voiding, setVoiding] = useState(null);
+  const [busy, setBusy] = useState(""); const [err, setErr] = useState(""); const [note, setNote] = useState("");
+  const outstanding = ["sent", "partially_paid"].includes(inv.status);
+
+  async function act(action, extra = {}, label = action) {
+    setErr(""); setNote(""); setBusy(label);
+    try {
+      const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action, ...extra }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(j.error || "That didn't work."); return null; }
+      auditLog(action, inv.invoiceNumber);
+      onChanged(j.invoice, action);
+      return j;
+    } finally { setBusy(""); }
+  }
+  async function remove() {
+    if (!confirm(`Delete draft ${inv.invoiceNumber}? This can't be undone.`)) return;
+    const r = await fetch(`/api/admin/invoices?id=${encodeURIComponent(inv.id)}`, { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(j.error || "Couldn't delete it."); return; }
+    onChanged(null, "delete");
+  }
+
+  const timeline = [
+    ["Created", inv.createdAt], ["Sent", inv.sentAt], ...(inv.reminders ? [[`Reminder${inv.reminders > 1 ? `s (${inv.reminders})` : ""}`, inv.lastEmailedAt]] : []),
+    ["Paid", inv.paidAt], ["Voided", inv.voidedAt],
+  ].filter(([, d]) => d);
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44`, display: "grid", gap: 14 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <a href={`/api/admin/invoices?pdf=${encodeURIComponent(inv.id)}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost">View PDF</Btn></a>
+        <a href={`/api/admin/invoices?pdf=${encodeURIComponent(inv.id)}&download=1`} style={{ textDecoration: "none" }}><Btn small variant="ghost"><Download size={13} style={{ verticalAlign: -2 }} /> Download</Btn></a>
+        {inv.status === "draft" && <Btn small variant="ghost" onClick={() => onEdit(inv)}>Edit</Btn>}
+        {inv.status === "draft" && inv.clientEmail && <Btn small disabled={!!busy} onClick={() => confirm(`Email ${inv.invoiceNumber} to ${inv.clientEmail}?`) && act("send", {}, "send")}>{busy === "send" ? "Sending…" : "Send by email"}</Btn>}
+        {inv.status === "draft" && <Btn small variant="ghost" disabled={!!busy} onClick={() => act("mark_sent")}>Mark as sent</Btn>}
+        {outstanding && <Btn small onClick={() => setPay({ amount: String(inv.balance), method: "bank_transfer", reference: "", paidAt: invToday(), sendReceipt: !!inv.clientEmail })}>Record payment</Btn>}
+        {outstanding && inv.clientEmail && <Btn small variant="ghost" disabled={!!busy} onClick={() => confirm(`Email a payment reminder to ${inv.clientEmail}?`) && act("send", {}, "remind")}>{busy === "remind" ? "Sending…" : "Send reminder"}</Btn>}
+        <Btn small variant="ghost" disabled={!!busy} onClick={() => act("duplicate")}>Duplicate</Btn>
+        {!["paid", "void"].includes(inv.status) && inv.status !== "draft" && <Btn small variant="ghost" onClick={() => setVoiding("")}>Void</Btn>}
+        {inv.status === "draft" && <Btn small danger onClick={remove}>Delete</Btn>}
+      </div>
+
+      {pay && (
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, marginBottom: 10 }}>Record a payment · balance {invMoney(inv.balance, inv.currency)}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <div><Label>Amount</Label><Input type="number" value={pay.amount} onChange={e => setPay(p => ({ ...p, amount: e.target.value }))} /></div>
+            <div><Label>Method</Label><Select value={pay.method} onChange={e => setPay(p => ({ ...p, method: e.target.value }))}>{PAY_METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></div>
+            <div><Label>Reference</Label><Input value={pay.reference} onChange={e => setPay(p => ({ ...p, reference: e.target.value }))} placeholder="Bank / POS ref" /></div>
+            <div><Label>Date received</Label><Input type="date" value={pay.paidAt} onChange={e => setPay(p => ({ ...p, paidAt: e.target.value }))} /></div>
+          </div>
+          {inv.clientEmail && <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: C.text, marginTop: 10, cursor: "pointer" }}><input type="checkbox" checked={pay.sendReceipt} onChange={e => setPay(p => ({ ...p, sendReceipt: e.target.checked }))} /> Email a receipt to {inv.clientEmail}</label>}
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <Btn small disabled={!!busy} onClick={async () => { const j = await act("record_payment", { ...pay, amount: Number(pay.amount) }, "pay"); if (j) { setPay(null); if (j.receipt) setNote(j.receipt === "sent" ? "Receipt emailed." : `Payment saved, but the receipt ${j.receipt}`); } }}>{busy === "pay" ? "Saving…" : "Save payment"}</Btn>
+            <Btn small variant="ghost" onClick={() => setPay(null)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+
+      {voiding !== null && (
+        <div style={{ border: `1px solid ${C.rose}55`, borderRadius: 10, padding: 14 }}>
+          <Label>Why is this invoice being voided?</Label>
+          <Input value={voiding} onChange={e => setVoiding(e.target.value)} placeholder="e.g. Issued in error, replaced by a new invoice" />
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <Btn small danger disabled={!!busy} onClick={async () => { if (await act("void", { reason: voiding })) setVoiding(null); }}>Void invoice</Btn>
+            <Btn small variant="ghost" onClick={() => setVoiding(null)}>Keep it</Btn>
+          </div>
+        </div>
+      )}
+      {err && <p role="alert" style={{ color: C.rose, fontSize: 13, margin: 0 }}>{err}</p>}
+      {note && <p style={{ color: C.mint, fontSize: 13, margin: 0 }}>{note}</p>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+        <div>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 6 }}>PAYMENTS</div>
+          {inv.payments.length === 0 && <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No payments recorded yet.</p>}
+          {inv.payments.map(p => (
+            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, color: C.text, padding: "6px 0", borderBottom: `1px solid ${C.border}44`, flexWrap: "wrap" }}>
+              <span>{invDay(p.paidAt)} · {(PAY_METHODS.find(m => m[0] === p.method) || [0, p.method])[1]}{p.reference ? ` · ${p.reference}` : ""}</span>
+              <span style={{ display: "flex", gap: 10, alignItems: "center", fontVariantNumeric: "tabular-nums" }}>
+                {invMoney(p.amount, inv.currency)}
+                {inv.status !== "void" && p.id !== "legacy" && <button type="button" onClick={() => confirm("Remove this payment? Use this only if it was recorded by mistake.") && act("delete_payment", { paymentId: p.id })} style={{ background: "none", border: "none", color: C.rose, fontSize: 12, cursor: "pointer" }}>Undo</button>}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 6 }}>HISTORY</div>
+          {timeline.map(([k, d]) => <div key={k} style={{ fontSize: 13, color: C.text, padding: "3px 0" }}>{k}: {invDay(d)}</div>)}
+          {inv.voidReason && <div style={{ fontSize: 13, color: C.textMuted, padding: "3px 0" }}>Reason: {inv.voidReason}</div>}
+          {inv.duplicatedFrom && <div style={{ fontSize: 13, color: C.textMuted, padding: "3px 0" }}>Copied from {inv.duplicatedFrom}</div>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function InvoicesSection() {
   const [invoices, setInvoices] = useState([]);
+  const [defaults, setDefaults] = useState({ terms: "", template: "classic" });
   const [loading, setLoading] = useState(true);
-  const [showCompose, setShowCompose] = useState(false);
-  const [form, setForm] = useState({ clientName: "", clientEmail: "", clientAddress: "", items: [{ description: "", qty: 1, unitPrice: 0 }], currency: "NGN", taxPercent: "", discount: "", dueDate: "", notes: "" });
+  const [editor, setEditor] = useState(null); // null | {} (new) | invoice (edit)
   const [expanded, setExpanded] = useState(null);
-  const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
-  const STATUS_COLOR = { draft: C.textMuted, sent: C.blue, paid: C.mint, cancelled: C.rose };
+  const [filter, setFilter] = useState("all");
+  const [q, setQ] = useState("");
+  const [msg, setMsg] = useState("");
 
   async function load() {
     setLoading(true);
     try {
       const r = await fetch("/api/admin/invoices");
       const json = await r.json();
-      if (r.ok) setInvoices(json.invoices || []);
+      if (r.ok) { setInvoices(json.invoices || []); if (json.defaults) setDefaults(json.defaults); }
     } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  const flash = t => { setMsg(t); setTimeout(() => setMsg(""), 3500); };
 
-  function isOverdue(inv) { return inv.status === "sent" && inv.dueDate && new Date(inv.dueDate).getTime() < Date.now(); }
-
-  async function create() {
-    setErr(""); setMsg("");
-    if (!form.clientName || form.items.every(it => !it.description)) { setErr("Client name and at least one line item are required."); return; }
-    const r = await fetch("/api/admin/invoices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    const json = await r.json();
-    if (!r.ok) { setErr(json.error || "Failed to create invoice."); return; }
-    auditLog("create_invoice", json.invoice.invoiceNumber);
-    setForm({ clientName: "", clientEmail: "", clientAddress: "", items: [{ description: "", qty: 1, unitPrice: 0 }], currency: "NGN", taxPercent: "", discount: "", dueDate: "", notes: "" });
-    setShowCompose(false); setMsg("Invoice created."); setTimeout(() => setMsg(""), 3000); load();
+  function changed(inv, action) {
+    load();
+    if (action === "duplicate" && inv) { setExpanded(inv.id); flash(`Draft ${inv.invoiceNumber} created from the copy.`); }
+    else if (action === "delete") flash("Draft deleted.");
   }
 
-  async function send(inv) {
-    if (!confirm(`Send invoice ${inv.invoiceNumber} to ${inv.clientEmail}?`)) return;
-    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "send" }) });
-    const json = await r.json();
-    if (!r.ok) { alert(json.error || "Failed to send."); return; }
-    auditLog("send_invoice", inv.invoiceNumber); load();
-  }
-  async function markPaid(inv) {
-    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "mark_paid" }) });
-    if (r.ok) { auditLog("mark_invoice_paid", inv.invoiceNumber); load(); }
-  }
-  async function cancelInvoice(inv) {
-    if (!confirm(`Cancel invoice ${inv.invoiceNumber}?`)) return;
-    const r = await fetch("/api/admin/invoices", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: inv.id, action: "cancel" }) });
-    if (r.ok) load();
-  }
-  async function remove(inv) {
-    if (!confirm(`Delete draft invoice ${inv.invoiceNumber}?`)) return;
-    const r = await fetch(`/api/admin/invoices?id=${encodeURIComponent(inv.id)}`, { method: "DELETE" });
-    if (r.ok) load();
-  }
-
-  const totalOutstanding = invoices.filter(i => i.status === "sent").reduce((s, i) => s + invoiceTotal(i), 0);
-  const totalPaid = invoices.filter(i => i.status === "paid").reduce((s, i) => s + invoiceTotal(i), 0);
+  const issued = invoices.filter(i => !["draft", "void"].includes(i.status));
+  const byCur = (list, pick) => list.reduce((s, i) => s + (i.currency === "NGN" ? pick(i) : 0), 0);
+  const overdueList = invoices.filter(i => i.overdue);
+  const counts = { all: invoices.length };
+  for (const i of invoices) counts[invStatusKey(i)] = (counts[invStatusKey(i)] || 0) + 1;
+  const shown = invoices
+    .filter(i => filter === "all" || invStatusKey(i) === filter || (filter === "sent" && i.status === "sent"))
+    .filter(i => !q.trim() || `${i.invoiceNumber} ${i.clientName} ${i.clientEmail}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Total Invoices" value={invoices.length} color={C.blue} icon="📄" />
-        <StatCard label="Outstanding" value={`₦${totalOutstanding.toLocaleString()}`} color={C.amber} icon="⏳" />
-        <StatCard label="Paid" value={`₦${totalPaid.toLocaleString()}`} color={C.mint} icon="✅" />
-        <StatCard label="Overdue" value={invoices.filter(isOverdue).length} color={C.rose} icon="⚠️" />
+      <style>{`@media (max-width: 860px) { .inv-editor { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <StatCard label="Invoiced (₦)" value={invMoney(byCur(issued, i => i.total))} color={C.blue} icon="📄" />
+        <StatCard label="Outstanding (₦)" value={invMoney(byCur(issued, i => i.balance))} color={C.amber} icon="⏳" />
+        <StatCard label="Collected (₦)" value={invMoney(byCur(invoices.filter(i => i.status !== "void"), i => i.amountPaid))} color={C.mint} icon="✅" />
+        <StatCard label="Overdue" value={`${overdueList.length} · ${invMoney(byCur(overdueList, i => i.balance))}`} color={C.rose} icon="⚠️" />
       </div>
 
-      <SectionCard style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <SectionTitle>Invoices</SectionTitle>
-          <Btn small onClick={() => setShowCompose(s => !s)}>{showCompose ? "Cancel" : "+ New Invoice"}</Btn>
-        </div>
-        {showCompose && (
-          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div><Label>Client name</Label><Input value={form.clientName} onChange={e => setForm(f => ({ ...f, clientName: e.target.value }))} /></div>
-              <div><Label>Client email (optional)</Label><Input type="email" value={form.clientEmail} onChange={e => setForm(f => ({ ...f, clientEmail: e.target.value }))} /></div>
-            </div>
-            <div style={{ marginTop: 14 }}><Label>Client address</Label><Input value={form.clientAddress} onChange={e => setForm(f => ({ ...f, clientAddress: e.target.value }))} /></div>
-            <div style={{ marginTop: 18 }}>
-              <Label>Line items</Label>
-              <LineItemsEditor items={form.items} onChange={items => setForm(f => ({ ...f, items }))} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginTop: 18 }}>
-              <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
-              <div><Label>Tax %</Label><Input type="number" value={form.taxPercent} onChange={e => setForm(f => ({ ...f, taxPercent: e.target.value }))} /></div>
-              <div><Label>Discount</Label><Input type="number" value={form.discount} onChange={e => setForm(f => ({ ...f, discount: e.target.value }))} /></div>
-              <div><Label>Due date</Label><Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
-            </div>
-            <div style={{ marginTop: 14 }}><Label>Notes / payment instructions</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
-            <div style={{ marginTop: 14 }}><Btn onClick={create}>Create draft & generate PDF</Btn></div>
-            {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
-          </div>
-        )}
-        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
-      </SectionCard>
+      {editor && <InvoiceEditor key={editor.id || "new"} initial={editor.id ? editor : null} defaults={defaults} onCancel={() => setEditor(null)} onSaved={inv => { setEditor(null); setExpanded(inv.id); flash(`${inv.invoiceNumber} saved.`); load(); }} />}
 
       <SectionCard>
-        {loading && <SkeletonRows count={5} />}
-        {!loading && invoices.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No invoices yet.</p>}
-        {!loading && invoices.map(inv => (
-          <div key={inv.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(x => x === inv.id ? null : inv.id)}>
-              <div>
-                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{inv.invoiceNumber} — {inv.clientName}</div>
-                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{inv.currency} {invoiceTotal(inv).toLocaleString()} · Due {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-NG") : "on receipt"}</div>
-              </div>
-              <Badge color={isOverdue(inv) ? C.rose : STATUS_COLOR[inv.status]}>{isOverdue(inv) ? "overdue" : inv.status}</Badge>
-            </div>
-            {expanded === inv.id && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44`, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <a href={`/api/files/download?key=${encodeURIComponent(inv.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View PDF →</a>
-                <a href={`/api/files/download?key=${encodeURIComponent(inv.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}><Download size={13} /> Download</a>
-                {inv.status === "draft" && inv.clientEmail && <Btn small onClick={() => send(inv)}>Send to client</Btn>}
-                {inv.status === "sent" && <Btn small onClick={() => markPaid(inv)}>Mark Paid</Btn>}
-                {!["paid", "cancelled"].includes(inv.status) && <Btn small variant="ghost" onClick={() => cancelInvoice(inv)}>Cancel</Btn>}
-                {inv.status === "draft" && <Btn small danger onClick={() => remove(inv)}>Delete</Btn>}
-              </div>
-            )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+          <SectionTitle>Invoices</SectionTitle>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search client or number" style={{ width: 220 }} aria-label="Search invoices" />
+            {!editor && <Btn small onClick={() => setEditor({})}>+ New invoice</Btn>}
           </div>
-        ))}
+        </div>
+        <div role="tablist" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+          {[["all", "All"], ["draft", "Drafts"], ["sent", "Awaiting payment"], ["partially_paid", "Partly paid"], ["overdue", "Overdue"], ["paid", "Paid"], ["void", "Void"]].map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={filter === k} onClick={() => setFilter(k)} style={{ background: filter === k ? `${C.gold}22` : "none", border: `1px solid ${filter === k ? C.gold : C.border}`, color: filter === k ? C.heading : C.textMuted, borderRadius: 20, padding: "4px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: font }}>{l}{counts[k] ? ` · ${counts[k]}` : ""}</button>
+          ))}
+        </div>
+        {msg && <p style={{ color: C.mint, fontSize: 13, margin: "6px 0" }}>{msg}</p>}
+        {loading && <SkeletonRows count={5} />}
+        {!loading && shown.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>{invoices.length ? "No invoices match." : "No invoices yet. Create your first one."}</p>}
+        {!loading && shown.map(inv => {
+          const st = INV_STATUS[invStatusKey(inv)] || INV_STATUS.draft;
+          return (
+            <div key={inv.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+              <button type="button" onClick={() => setExpanded(x => x === inv.id ? null : inv.id)} aria-expanded={expanded === inv.id} style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", flexWrap: "wrap", fontFamily: font }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{inv.invoiceNumber} · {inv.clientName}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Issued {invDay(inv.issueDate)} · Due {inv.dueDate ? invDay(inv.dueDate) : "on receipt"}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                    <div style={{ fontWeight: 800, color: C.heading, fontSize: 14 }}>{invMoney(inv.total, inv.currency)}</div>
+                    {inv.amountPaid > 0 && inv.balance > 0 && <div style={{ fontSize: 12, color: C.amber }}>{invMoney(inv.balance, inv.currency)} due</div>}
+                  </div>
+                  <Badge color={st.color}>{st.label}</Badge>
+                </div>
+              </button>
+              {expanded === inv.id && <InvoiceDetail inv={inv} onChanged={changed} onEdit={i => { setEditor(i); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+            </div>
+          );
+        })}
       </SectionCard>
     </div>
   );

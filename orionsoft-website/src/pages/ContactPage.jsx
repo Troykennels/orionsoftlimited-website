@@ -417,7 +417,7 @@ function Sidebar({ activeTab }) {
         {[
           { icon: "📧", label: "Email", value: ADMIN_EMAIL, href: `mailto:${ADMIN_EMAIL}` },
           { icon: "📱", label: "Phone", value: ADMIN_PHONE, href: `tel:${ADMIN_PHONE}` },
-          { icon: "📍", label: "Location", value: "Nigeria", href: null },
+          { icon: "📍", label: "Location", value: "Africa", href: null },
           { icon: "🔒", label: "Registered", value: "CAC RC: 9535128", href: null },
         ].map(({ icon, label, value, href }) => (
           <div key={label} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>

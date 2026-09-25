@@ -173,7 +173,7 @@ export default function CompanyPage({ setCurrentPage }) {
           </Reveal>
           <Reveal delay={0.14}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap:0, marginTop:56, border:`1px solid ${T.borderW}`, borderRadius:12 }}>
-              {[["RC 9535128","CAC Registered"], ["Nigeria","Headquarters"], ["NDPR","Compliant"], ["7+","Products live"]].map(([val, label], i) => (
+              {[["RC 9535128","CAC Registered"], ["Africa","Headquarters"], ["NDPR","Compliant"], ["7+","Products live"]].map(([val, label], i) => (
                 <div key={label} style={{ padding:"20px 22px", borderRight: i < 3 ? `1px solid ${T.borderW}` : "none", textAlign:"center" }}>
                   <div style={{ fontSize:"clamp(16px,2vw,22px)", fontWeight:800, color:T.gold, fontFamily:font }}>{val}</div>
                   <div style={{ fontSize:11, color:T.muted, fontFamily:font, marginTop:4, letterSpacing:"0.06em" }}>{label}</div>
@@ -328,7 +328,7 @@ export default function CompanyPage({ setCurrentPage }) {
                 {[
                   ["Company name", "Orion Soft Limited"],
                   ["RC number", "9535128"],
-                  ["Headquarters", "Nigeria"],
+                  ["Headquarters", "Africa"],
                   ["Email", "orionsoftlimited@gmail.com"],
                   ["Compliance", "NDPR, CAC"],
                   ["Products", "9 products and growing"],

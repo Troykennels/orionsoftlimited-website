@@ -3,9 +3,10 @@
 // a clean, internationally-presentable corporate letterhead — full-width navy
 // header band, gold accent rule, formal letter conventions, real signature
 // lines, and a polished payslip layout — not just plain text on a page.
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
 import { parseRichText } from "./richtext.js";
 import { getCompanySettings } from "./settings.js";
+import { computeTotals, isOverdue, amountInWords, normaliseInvoice } from "./invoicing.js";
 
 const PAGE_W = 595.28, PAGE_H = 841.89; // A4
 const MARGIN = 60;
@@ -23,9 +24,10 @@ const WHITE_DIM = rgb(0.78, 0.83, 0.89);
 function companyAddressLines(company) {
   return [
     company.companyName,
-    `RC ${company.rc} · ${company.address}`,
-    `${company.email} · ${company.phone}`,
-  ];
+    company.address,
+    [`RC ${company.rc}`, company.taxId && `TIN ${company.taxId}`].filter(Boolean).join(" · "),
+    [company.email, company.phone, company.website].filter(Boolean).join(" · "),
+  ].filter(Boolean);
 }
 
 function rightAlignedX(text, font, size, rightEdge) {
@@ -45,11 +47,11 @@ async function embedSignatureImage(doc, dataUrl) {
 // The same orbit-ring mark used site-wide (src/App.jsx's OrionLogo), redrawn
 // as PDF vector shapes from the same 64x64 viewBox so the letterhead carries
 // the real brand mark rather than text alone.
-function drawOrionLogoMark(page, cx, cy, size) {
+function drawOrionLogoMark(page, cx, cy, size, color = GOLD) {
   const s = size / 64;
-  page.drawEllipse({ x: cx, y: cy, xScale: 24 * s, yScale: 24 * s, borderColor: GOLD, borderWidth: 4 * s });
-  page.drawEllipse({ x: cx, y: cy, xScale: 14 * s, yScale: 14 * s, borderColor: GOLD, borderWidth: 2.8 * s });
-  page.drawEllipse({ x: cx, y: cy, xScale: 4.4 * s, yScale: 4.4 * s, color: GOLD });
+  page.drawEllipse({ x: cx, y: cy, xScale: 24 * s, yScale: 24 * s, borderColor: color, borderWidth: 4 * s });
+  page.drawEllipse({ x: cx, y: cy, xScale: 14 * s, yScale: 14 * s, borderColor: color, borderWidth: 2.8 * s });
+  page.drawEllipse({ x: cx, y: cy, xScale: 4.4 * s, yScale: 4.4 * s, color });
 }
 
 // Full-width navy header band with wordmark + contact block, gold rule beneath,
@@ -75,7 +77,7 @@ function drawPageChrome(page, font, boldFont, { withHeader }, company) {
   companyAddressLines(company).forEach((line, i) => {
     const size = 8.5;
     const x = rightAlignedX(line, font, size, PAGE_W - MARGIN);
-    page.drawText(line, { x, y: PAGE_H - 34 - i * 12, size, font, color: WHITE_DIM });
+    page.drawText(line, { x, y: PAGE_H - 28 - i * 12, size, font, color: WHITE_DIM });
   });
 
   return PAGE_H - HEADER_H - 34;
@@ -432,51 +434,243 @@ function drawTotalsBlock(cursor, fonts, rows, amtRight) {
   cursor.y -= barH + 20;
 }
 
-export async function renderInvoicePdf(invoice) {
+// ─── Invoice ────────────────────────────────────────────────────────────────
+// Layout follows the Orion License Manager invoice (full-bleed letterhead
+// band, bill-to / dates / status row, itemised table, rotated status stamp,
+// totals with a coloured balance bar, notes, terms, payment details) in the
+// Orion navy & gold, plus amount in words and a payment history.
+const hex = h => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
+const INVOICE_STATUS = {
+  draft:          { label: "DRAFT",            fg: hex("#6B7280"), bg: hex("#F3F4F6") },
+  sent:           { label: "AWAITING PAYMENT", fg: hex("#1D4ED8"), bg: hex("#DBEAFE") },
+  partially_paid: { label: "PARTLY PAID",      fg: hex("#B45309"), bg: hex("#FEF3C7") },
+  paid:           { label: "PAID",             fg: hex("#15803D"), bg: hex("#DCFCE7") },
+  void:           { label: "VOID",             fg: hex("#6B7280"), bg: hex("#F3F4F6") },
+  overdue:        { label: "OVERDUE",          fg: hex("#B91C1C"), bg: hex("#FEE2E2") },
+};
+// Invoice designs, chosen per invoice or as the company default.
+const INVOICE_DESIGNS = {
+  classic: { band: NAVY, word1: WHITE, word2: GOLD, dim: WHITE_DIM, title: WHITE, number: GOLD, logo: GOLD, rule: GOLD, ruleW: 3, head: NAVY, headText: WHITE, spine: GOLD },
+  minimal: { band: null, word1: NAVY, word2: GOLD, dim: MUTED, title: NAVY, number: GOLD, logo: GOLD, rule: GOLD, ruleW: 1.2, head: hex("#EEF2F7"), headText: NAVY, spine: null },
+  bold:    { band: GOLD, word1: NAVY, word2: WHITE, dim: hex("#2B3A4E"), title: NAVY, number: WHITE, logo: NAVY, rule: NAVY, ruleW: 3, head: GOLD, headText: NAVY, spine: NAVY },
+};
+const METHOD_LABEL = { bank_transfer: "Bank transfer", card: "Card", cash: "Cash", pos: "POS", cheque: "Cheque", other: "Other" };
+const invDate = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+
+// Word-wrap plain text (keeping its own line breaks) to a width.
+function wrapPlain(text, font, size, maxWidth) {
+  const out = [];
+  for (const para of String(text || "").split(/\r?\n/)) {
+    let line = "";
+    for (const word of para.split(/\s+/).filter(Boolean)) {
+      const next = line ? `${line} ${word}` : word;
+      if (font.widthOfTextAtSize(next, size) <= maxWidth) { line = next; continue; }
+      if (line) out.push(line);
+      // A single word wider than the column is split by characters.
+      let w = word;
+      while (font.widthOfTextAtSize(w, size) > maxWidth && w.length > 1) {
+        let cut = w.length - 1;
+        while (cut > 1 && font.widthOfTextAtSize(w.slice(0, cut), size) > maxWidth) cut--;
+        out.push(w.slice(0, cut)); w = w.slice(cut);
+      }
+      line = w;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+function drawInvoiceBanner(page, fonts, company, invoice, d) {
+  const { regular: font, bold } = fonts;
+  const H = 128;
+  if (d.band) page.drawRectangle({ x: 0, y: PAGE_H - H, width: PAGE_W, height: H, color: d.band });
+  if (d.band) page.drawRectangle({ x: 0, y: PAGE_H - H - d.ruleW, width: PAGE_W, height: d.ruleW, color: d.rule });
+  else page.drawRectangle({ x: MARGIN, y: PAGE_H - H + 6, width: PAGE_W - MARGIN * 2, height: d.ruleW, color: d.rule });
+  if (d.spine) page.drawRectangle({ x: 0, y: 0, width: 5, height: PAGE_H - H - d.ruleW, color: d.spine });
+
+  const logo = 30;
+  drawOrionLogoMark(page, MARGIN + logo / 2, PAGE_H - 44, logo, d.logo);
+  const tx = MARGIN + logo + 12;
+  page.drawText("Orion", { x: tx, y: PAGE_H - 40, size: 21, font: bold, color: d.word1 });
+  page.drawText("Soft", { x: tx + bold.widthOfTextAtSize("Orion", 21), y: PAGE_H - 40, size: 21, font: bold, color: d.word2 });
+  page.drawText("Enterprise Software, Built for Africa", { x: tx, y: PAGE_H - 56, size: 8.5, font, color: d.dim });
+  companyAddressLines(company).slice(1).forEach((line, i) => {
+    page.drawText(line, { x: MARGIN, y: PAGE_H - 80 - i * 11.5, size: 8.5, font, color: d.dim });
+  });
+
+  const right = PAGE_W - MARGIN;
+  page.drawText("INVOICE", { x: rightAlignedX("INVOICE", bold, 30, right), y: PAGE_H - 52, size: 30, font: bold, color: d.title });
+  page.drawText(invoice.invoiceNumber, { x: rightAlignedX(invoice.invoiceNumber, bold, 12, right), y: PAGE_H - 72, size: 12, font: bold, color: d.number });
+  return PAGE_H - H - 3 - 30;
+}
+
+// Rotated stamp (PAID / PARTLY PAID / OVERDUE / VOID), as on a rubber-stamped
+// paper invoice. Rotation is about (x, y), so the text is offset by the same
+// rotation to stay inside its box.
+function drawStamp(page, fonts, label, color, x, y) {
+  const size = label.length <= 5 ? 26 : 17;
+  const tw = fonts.bold.widthOfTextAtSize(label, size);
+  const padX = 12, padY = 9, h = size * 0.72 + padY * 2, w = tw + padX * 2;
+  const a = 16 * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  page.drawRectangle({ x, y, width: w, height: h, rotate: degrees(16), borderColor: color, borderWidth: 2.2, borderOpacity: 0.85, color, opacity: 0.05 });
+  const ox = padX, oy = padY + size * 0.08;
+  page.drawText(label, { x: x + ox * cos - oy * sin, y: y + ox * sin + oy * cos, size, font: fonts.bold, color, opacity: 0.85, rotate: degrees(16) });
+}
+
+export async function renderInvoicePdf(rawInvoice) {
+  const invoice = normaliseInvoice(rawInvoice);
   const company = await getCompanySettings();
   const doc = await PDFDocument.create();
+  doc.setTitle(`Invoice ${invoice.invoiceNumber}`);
+  doc.setAuthor(company.companyName);
   const fonts = await embedAllFonts(doc);
-  const { regular: font, bold: boldFont } = fonts;
+  const { regular: font, bold, italic } = fonts;
+  const currency = invoice.currency || "NGN";
+  const money = n => `${currency} ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const t = computeTotals(invoice);
+  const overdue = isOverdue(invoice);
+  const statusKey = invoice.status === "void" ? "void" : overdue ? "overdue" : invoice.status;
+  const status = INVOICE_STATUS[statusKey] || INVOICE_STATUS.draft;
+  const stampLabel = statusKey === "void" ? "VOID" : overdue ? "OVERDUE" : invoice.status === "paid" ? "PAID" : invoice.status === "partially_paid" ? "PARTLY PAID" : null;
 
-  const firstPage = doc.addPage([PAGE_W, PAGE_H]);
-  let y = drawPageChrome(firstPage, font, boldFont, { withHeader: true }, company);
+  const design = INVOICE_DESIGNS[invoice.template] || INVOICE_DESIGNS[company.invoiceTemplate] || INVOICE_DESIGNS.classic;
+  const first = doc.addPage([PAGE_W, PAGE_H]);
+  let y = drawInvoiceBanner(first, fonts, company, invoice, design);
+  const W = PAGE_W - MARGIN * 2;
 
-  firstPage.drawText("INVOICE", { x: MARGIN, y, size: 20, font: boldFont, color: NAVY });
-  const numLabel = invoice.invoiceNumber;
-  firstPage.drawText(numLabel, { x: rightAlignedX(numLabel, boldFont, 13, PAGE_W - MARGIN), y: y + 2, size: 13, font: boldFont, color: GOLD });
-  y -= 26;
-  const meta = `Issued ${new Date(invoice.issueDate || invoice.createdAt).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" })}  ·  Due ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }) : "on receipt"}`;
-  firstPage.drawText(meta, { x: rightAlignedX(meta, font, 9, PAGE_W - MARGIN), y, size: 9, font, color: MUTED });
-  y -= 30;
-
-  const panelH = 60;
-  firstPage.drawRectangle({ x: MARGIN, y: y - panelH, width: PAGE_W - MARGIN * 2, height: panelH, color: PANEL, borderColor: HAIRLINE, borderWidth: 1 });
-  firstPage.drawText("BILL TO", { x: MARGIN + 16, y: y - 18, size: 7.5, font, color: MUTED });
-  firstPage.drawText(invoice.clientName || "", { x: MARGIN + 16, y: y - 32, size: 11.5, font: boldFont, color: TEXT });
-  firstPage.drawText([invoice.clientAddress, invoice.clientEmail].filter(Boolean).join("  ·  "), { x: MARGIN + 16, y: y - 46, size: 9, font, color: MUTED });
-  y -= panelH + 24;
-
-  const cursor = makeCursor(doc, fonts, y, company);
-  const { subtotal, amtRight } = drawLineItemsTable(cursor, fonts, invoice.items || [], invoice.currency || "NGN");
-
-  const discount = Number(invoice.discount) || 0;
-  const taxable = Math.max(subtotal - discount, 0);
-  const taxAmount = taxable * ((Number(invoice.taxPercent) || 0) / 100);
-  const total = taxable + taxAmount;
-  const rows = [
-    { label: "Subtotal", value: `${invoice.currency} ${subtotal.toLocaleString()}` },
-    ...(discount > 0 ? [{ label: "Discount", value: `- ${invoice.currency} ${discount.toLocaleString()}` }] : []),
-    ...(invoice.taxPercent ? [{ label: `Tax (${invoice.taxPercent}%)`, value: `${invoice.currency} ${taxAmount.toLocaleString()}` }] : []),
-    { label: "TOTAL DUE", value: `${invoice.currency} ${total.toLocaleString()}` },
-  ];
-  drawTotalsBlock(cursor, fonts, rows, amtRight);
-
-  if (invoice.notes) {
-    cursor.ensure(80);
-    cursor.page.drawText("NOTES", { x: MARGIN, y: cursor.y, size: 8, font: boldFont, color: MUTED });
-    cursor.y -= 14;
-    drawParagraphs(cursor, fonts, parseRichText(invoice.notes), 9.5, 14, PAGE_W - MARGIN * 2, MUTED, 60);
+  // ── Bill to · dates · status ──
+  const billW = W * 0.46;
+  first.drawText("BILL TO", { x: MARGIN, y, size: 7.5, font: bold, color: MUTED });
+  let by = y - 16;
+  first.drawText(String(invoice.clientName || "").slice(0, 70), { x: MARGIN, y: by, size: 11.5, font: bold, color: TEXT });
+  by -= 14;
+  for (const line of [...wrapPlain(invoice.clientAddress, font, 9, billW), invoice.clientEmail, invoice.clientPhone].filter(Boolean).slice(0, 6)) {
+    first.drawText(line, { x: MARGIN, y: by, size: 9, font, color: MUTED }); by -= 12.5;
   }
+  const metaX = MARGIN + billW + 10, metaValRight = MARGIN + W * 0.76;
+  [["Issue date", invDate(invoice.issueDate || invoice.createdAt)], ["Due date", invoice.dueDate ? invDate(invoice.dueDate) : "On receipt"], ["Currency", currency]].forEach(([k, v], i) => {
+    first.drawText(k, { x: metaX, y: y - 2 - i * 16, size: 8.5, font, color: MUTED });
+    first.drawText(v, { x: rightAlignedX(v, bold, 9, metaValRight), y: y - 2 - i * 16, size: 9, font: bold, color: TEXT });
+  });
+  const chipW = W * 0.21, chipX = PAGE_W - MARGIN - chipW;
+  first.drawRectangle({ x: chipX, y: y - 18, width: chipW, height: 22, color: status.bg });
+  first.drawText(status.label, { x: chipX + (chipW - bold.widthOfTextAtSize(status.label, 8.5)) / 2, y: y - 10, size: 8.5, font: bold, color: status.fg });
+  y = Math.min(by, y - 50) - 16;
+
+  // ── Line items ──
+  const cursor = makeCursor(doc, fonts, y, company);
+  const cDesc = W * 0.48, cQty = W * 0.10, cPrice = W * 0.20;
+  const xQtyR = MARGIN + cDesc + cQty - 8, xPriceR = MARGIN + cDesc + cQty + cPrice - 8, xAmtR = PAGE_W - MARGIN - 10;
+  const header = () => {
+    const hy = cursor.y;
+    cursor.page.drawRectangle({ x: MARGIN, y: hy - 22, width: W, height: 22, color: design.head });
+    cursor.page.drawText("DESCRIPTION", { x: MARGIN + 10, y: hy - 15, size: 8, font: bold, color: design.headText });
+    for (const [lab, r] of [["QTY", xQtyR], ["UNIT PRICE", xPriceR], ["AMOUNT", xAmtR]]) cursor.page.drawText(lab, { x: rightAlignedX(lab, bold, 8, r), y: hy - 15, size: 8, font: bold, color: design.headText });
+    cursor.y = hy - 22;
+  };
+  cursor.ensure(120);
+  header();
+  (invoice.items || []).forEach((it, i) => {
+    const lines = wrapPlain(it.description || "—", font, 9.5, cDesc - 20);
+    const rowH = Math.max(24, 10 + lines.length * 12.5);
+    const pageBefore = cursor.page;
+    cursor.ensure(rowH + 70);
+    if (cursor.page !== pageBefore) header();
+    const top = cursor.y;
+    if (i % 2 === 1) cursor.page.drawRectangle({ x: MARGIN, y: top - rowH, width: W, height: rowH, color: PANEL });
+    lines.forEach((l, li) => cursor.page.drawText(l, { x: MARGIN + 10, y: top - 16 - li * 12.5, size: 9.5, font, color: TEXT }));
+    const qty = String(Number(it.qty) || 0), unit = money(it.unitPrice), amt = money((Number(it.qty) || 0) * (Number(it.unitPrice) || 0));
+    cursor.page.drawText(qty, { x: rightAlignedX(qty, font, 9.5, xQtyR), y: top - 16, size: 9.5, font, color: TEXT });
+    cursor.page.drawText(unit, { x: rightAlignedX(unit, font, 9.5, xPriceR), y: top - 16, size: 9.5, font, color: TEXT });
+    cursor.page.drawText(amt, { x: rightAlignedX(amt, bold, 9.5, xAmtR), y: top - 16, size: 9.5, font: bold, color: TEXT });
+    cursor.page.drawLine({ start: { x: MARGIN, y: top - rowH }, end: { x: PAGE_W - MARGIN, y: top - rowH }, thickness: 0.5, color: HAIRLINE });
+    cursor.y = top - rowH;
+  });
+
+  // ── Totals (+ stamp to their left) ──
+  const hasPayments = t.amountPaid > 0;
+  const rows = [["Subtotal", money(t.subtotal)]];
+  if (t.discountAmount > 0) rows.push([invoice.discountType === "percent" ? `Discount (${Number(invoice.discountValue)}%)` : "Discount", `- ${money(t.discountAmount)}`]);
+  if (t.taxAmount > 0) rows.push([`${invoice.taxLabel || "VAT"} (${Number(invoice.taxPercent)}%)`, money(t.taxAmount)]);
+  cursor.ensure(rows.length * 20 + (hasPayments ? 90 : 60) + 60);
+  cursor.y -= 14;
+  const totalsTop = cursor.y;
+  const labelR = PAGE_W - MARGIN - 150, valR = PAGE_W - MARGIN - 10;
+  for (const [k, v] of rows) {
+    cursor.page.drawText(k, { x: rightAlignedX(k, font, 9.5, labelR), y: cursor.y, size: 9.5, font, color: MUTED });
+    cursor.page.drawText(v, { x: rightAlignedX(v, font, 9.5, valR), y: cursor.y, size: 9.5, font, color: TEXT });
+    cursor.y -= 19;
+  }
+  const barW = 250, barX = PAGE_W - MARGIN - barW;
+  if (hasPayments) {
+    cursor.page.drawLine({ start: { x: barX, y: cursor.y + 12 }, end: { x: PAGE_W - MARGIN, y: cursor.y + 12 }, thickness: 0.75, color: HAIRLINE });
+    cursor.page.drawText("Total", { x: rightAlignedX("Total", bold, 11, labelR), y: cursor.y - 2, size: 11, font: bold, color: TEXT });
+    cursor.page.drawText(money(t.total), { x: rightAlignedX(money(t.total), bold, 11, valR), y: cursor.y - 2, size: 11, font: bold, color: TEXT });
+    cursor.y -= 20;
+    const paid = `- ${money(t.amountPaid)}`;
+    cursor.page.drawText("Amount paid", { x: rightAlignedX("Amount paid", font, 9.5, labelR), y: cursor.y, size: 9.5, font, color: MUTED });
+    cursor.page.drawText(paid, { x: rightAlignedX(paid, font, 9.5, valR), y: cursor.y, size: 9.5, font, color: TEXT });
+    cursor.y -= 16;
+  }
+  const barLabel = hasPayments ? "BALANCE DUE" : "TOTAL DUE";
+  const barValue = money(hasPayments ? t.balance : t.total);
+  const barColor = hasPayments || stampLabel ? status.fg : NAVY;
+  cursor.page.drawRectangle({ x: barX, y: cursor.y - 30, width: barW, height: 38, color: barColor });
+  if (barColor === NAVY) cursor.page.drawRectangle({ x: barX, y: cursor.y - 30, width: 5, height: 38, color: GOLD });
+  cursor.page.drawText(barLabel, { x: barX + 16, y: cursor.y - 15, size: 10, font: bold, color: barColor === NAVY ? WHITE_DIM : WHITE });
+  cursor.page.drawText(barValue, { x: rightAlignedX(barValue, bold, 14, PAGE_W - MARGIN - 12), y: cursor.y - 16, size: 14, font: bold, color: barColor === NAVY ? GOLD : WHITE });
+  if (stampLabel) drawStamp(cursor.page, fonts, stampLabel, status.fg, MARGIN + 30, (totalsTop + cursor.y - 30) / 2 - 12);
+  cursor.y -= 50;
+
+  // Amount in words
+  const showBalance = hasPayments && t.balance > 0;
+  const words = `${showBalance ? "Balance" : invoice.status === "paid" ? "Amount paid" : "Amount"} in words: ${amountInWords(showBalance ? t.balance : t.total, currency)}`;
+  for (const l of wrapPlain(words, italic, 9, W)) { cursor.ensure(70); cursor.page.drawText(l, { x: MARGIN, y: cursor.y, size: 9, font: italic, color: TEXT }); cursor.y -= 13; }
+  cursor.y -= 10;
+
+  // Payment history
+  if (hasPayments) {
+    cursor.ensure(40 + invoice.payments.length * 16 + 60);
+    cursor.page.drawText("PAYMENTS RECEIVED", { x: MARGIN, y: cursor.y, size: 7.5, font: bold, color: MUTED });
+    cursor.y -= 14;
+    for (const p of invoice.payments) {
+      const left = [invDate(p.paidAt), METHOD_LABEL[p.method] || p.method, p.reference].filter(Boolean).join("  ·  ");
+      cursor.page.drawText(left.slice(0, 90), { x: MARGIN, y: cursor.y, size: 9, font, color: TEXT });
+      cursor.page.drawText(money(p.amount), { x: rightAlignedX(money(p.amount), font, 9, PAGE_W - MARGIN - 10), y: cursor.y, size: 9, font, color: TEXT });
+      cursor.page.drawLine({ start: { x: MARGIN, y: cursor.y - 5 }, end: { x: PAGE_W - MARGIN, y: cursor.y - 5 }, thickness: 0.4, color: HAIRLINE });
+      cursor.y -= 16;
+    }
+    cursor.y -= 10;
+  }
+
+  // Notes / terms
+  for (const [label, text] of [["NOTES", invoice.notes], ["TERMS", invoice.terms]]) {
+    if (!String(text || "").trim()) continue;
+    cursor.ensure(70);
+    cursor.page.drawText(label, { x: MARGIN, y: cursor.y, size: 7.5, font: bold, color: MUTED });
+    cursor.y -= 14;
+    for (const l of wrapPlain(text, font, 9.5, W)) { cursor.ensure(60); cursor.page.drawText(l, { x: MARGIN, y: cursor.y, size: 9.5, font, color: TEXT }); cursor.y -= 13.5; }
+    cursor.y -= 10;
+  }
+
+  // Payment details panel
+  const bankLines = String(company.bankDetails || "").trim()
+    ? wrapPlain(company.bankDetails, font, 9.5, W - 40)
+    : wrapPlain(`To pay, contact our accounts team: ${[company.email, company.phone].filter(Boolean).join(" · ")}`, font, 9.5, W - 40);
+  const refLine = `Payment reference: ${invoice.invoiceNumber}`;
+  const panelH = 26 + (bankLines.length + 1) * 13.5 + 10;
+  cursor.ensure(panelH + 70);
+  const pTop = cursor.y + 6;
+  cursor.page.drawRectangle({ x: MARGIN, y: pTop - panelH, width: W, height: panelH, color: PANEL, borderColor: HAIRLINE, borderWidth: 1 });
+  cursor.page.drawRectangle({ x: MARGIN, y: pTop - panelH, width: 4, height: panelH, color: GOLD });
+  cursor.page.drawText("PAYMENT DETAILS", { x: MARGIN + 18, y: pTop - 18, size: 7.5, font: bold, color: MUTED });
+  let py = pTop - 34;
+  for (const l of bankLines) { cursor.page.drawText(l, { x: MARGIN + 18, y: py, size: 9.5, font, color: TEXT }); py -= 13.5; }
+  cursor.page.drawText(refLine, { x: MARGIN + 18, y: py, size: 9.5, font: bold, color: NAVY });
+  cursor.y = pTop - panelH - 22;
+
+  cursor.ensure(60);
+  cursor.page.drawText(`Thank you for your business with ${company.companyName}.`, { x: MARGIN, y: cursor.y, size: 9, font: italic, color: MUTED });
 
   const docRef = `Ref: ${invoice.invoiceNumber}`;
   cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, docRef, company));

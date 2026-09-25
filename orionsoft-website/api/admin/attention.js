@@ -5,6 +5,7 @@
 // and the notification bell, so the two never disagree with each other.
 import { listRecords } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
+import { isOverdue, normaliseInvoice } from "../_lib/invoicing.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
     items.push({ id: `ticket_${t.id}`, type: "ticket", label: `New ${t.category} ticket: ${t.subject}`, detail: t.raisedByName, at: t.createdAt, nav: "tickets" });
   }
   const now = Date.now();
-  for (const i of invoices.filter(i => i.status === "sent" && i.dueDate && new Date(i.dueDate).getTime() < now)) {
+  for (const i of invoices.filter(i => isOverdue(normaliseInvoice(i)))) {
     items.push({ id: `invoice_${i.id}`, type: "invoice", label: `Invoice ${i.invoiceNumber} is overdue`, detail: i.clientName, at: i.dueDate, nav: "invoices" });
   }
 
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
     applicants: applicants.filter(a => a.status === "applied" || (a.unreadForAdmin && (a.messages || []).some(m => m.from === "candidate"))).length,
     expenses: expenses.filter(e => e.status === "pending").length,
     tickets: tickets.filter(t => t.status === "open").length,
-    invoices: invoices.filter(i => i.status === "sent" && i.dueDate && new Date(i.dueDate).getTime() < now).length,
+    invoices: invoices.filter(i => isOverdue(normaliseInvoice(i))).length,
   };
 
   return res.json({ ok: true, items, counts, total: items.length });
