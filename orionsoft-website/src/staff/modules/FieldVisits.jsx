@@ -8,6 +8,7 @@ import LocationStep from "../LocationStep.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
 import CameraCapture from "../CameraCapture.jsx";
 import { useOffice } from "../office.js";
+import { startLateLocation } from "../lateLocation.jsx";
 
 const LEVEL = { verified: ["Verified", C.mint, ShieldCheck], review: ["Needs review", C.amber, ShieldAlert], suspicious: ["Suspicious", C.rose, ShieldAlert] };
 const CONF = { pending: ["Awaiting client", C.textMuted], confirmed: ["Client confirmed", C.mint], disputed: ["Client disputed", C.rose] };
@@ -86,6 +87,8 @@ function CheckInFlow({ onClose, onDone }) {
         deviceId: getDeviceId(),
       } });
       setDone(j);
+      // No location at check-in: keep looking for a few minutes and attach it.
+      if (!loc?.geo && j.visit?.id) startLateLocation({ kind: "visit", id: j.visit.id, label: `check-in at ${f.organisation}` });
       onDone();
     } catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
   }
@@ -114,7 +117,7 @@ function CheckInFlow({ onClose, onDone }) {
       <div style={{ display: "grid", gap: 14 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>1 · LOCATION</div>
-          <LocationStep onChange={setLoc} where="visit check-in" />
+          <LocationStep onChange={setLoc} where="visit check-in" skipLabel="Continue: location added when the phone finds it" />
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>2 · PHOTO AT THE SITE (signboard, reception or meeting)</div>

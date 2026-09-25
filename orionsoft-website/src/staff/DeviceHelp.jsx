@@ -114,6 +114,7 @@ function steps(kind) {
           "Make sure Location is on (swipe down from the top of the screen).",
           ...(p.android ? ["Turn on Google Location Accuracy (Settings → Location → Location services) so Wi-Fi and mobile data can locate you indoors."] : []),
           "Turn on Wi-Fi scanning or mobile data, or step near a window.",
+          `Wake up GPS: open ${p.ios ? "Apple Maps" : "Google Maps"}, wait until the blue dot appears, then come back here.`,
           "Tap Try again.",
         ],
       };

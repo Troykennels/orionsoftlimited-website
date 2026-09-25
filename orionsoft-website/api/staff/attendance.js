@@ -92,6 +92,21 @@ export default async function handler(req, res) {
     const fresh = await getRecord("employees", me.id);
     const cfg = { ...DEFAULT_OFFICE_CONFIG, ...((await get(OFFICE_CONFIG_KEY)) || {}) };
 
+    // Location found after a no-signal clock-in (see lateLocation.jsx).
+    if (b.action === "attach-geo") {
+      if (!rec.clockIn) return res.status(400).json({ error: "You haven't clocked in today" });
+      if (rec.clockInGeo) return res.json({ ok: true, todayRecord: rec });
+      const lateSec = Math.round((Date.now() - Date.parse(rec.clockIn)) / 1000);
+      if (lateSec > 15 * 60) return res.status(400).json({ error: "Too late to add a location to this clock-in" });
+      const late = cleanGeo(b.geo);
+      if (!late) return res.status(400).json({ error: "Invalid location" });
+      rec.clockInGeo = late; rec.clockInGeoLateSec = lateSec;
+      const ev = rec.events.find(e => e.type === "clock_in" && !e.geo);
+      if (ev) { ev.geo = late; ev.geoLateSec = lateSec; }
+      await putRecord("attendance", id, rec);
+      return res.json({ ok: true, todayRecord: rec });
+    }
+
     if (b.action === "clock-in") {
       if (rec.clockIn && !rec.clockOut) return res.status(400).json({ error: "You're already clocked in" });
       const now = new Date().toISOString();

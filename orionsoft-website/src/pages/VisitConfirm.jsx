@@ -15,6 +15,19 @@ export default function VisitConfirm() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
+  const [where, setWhere] = useState({ s: "idle" }); // client's optional location
+
+  // Optional: the client's phone records where the meeting is happening,
+  // which verifies the visit even when the staff phone had no signal.
+  function shareLocation() {
+    if (!navigator.geolocation) { setWhere({ s: "err", msg: "This browser can't share location. You can still submit." }); return; }
+    setWhere({ s: "busy" });
+    navigator.geolocation.getCurrentPosition(
+      p => setWhere({ s: "ok", geo: { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() } }),
+      () => setWhere({ s: "err", msg: "Location wasn't shared. That's fine, you can still submit." }),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 300000 },
+    );
+  }
 
   useEffect(() => {
     document.title = "Confirm a visit | Orion Soft Limited";
@@ -26,7 +39,7 @@ export default function VisitConfirm() {
   async function submit() {
     setBusy(true);
     try {
-      const r = await fetch("/api/public/visit-confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, answer, name, rating, comment, deviceId: staffDeviceId() }) });
+      const r = await fetch("/api/public/visit-confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, answer, name, rating, comment, deviceId: staffDeviceId(), geo: answer === "yes" ? where.geo || null : null }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Couldn't save your answer");
       setState({ visit: j.visit, done: true });
@@ -76,6 +89,15 @@ export default function VisitConfirm() {
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 6 }}>How was the visit?</div>
                       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>{[1, 2, 3, 4, 5].map(n => <button key={n} type="button" aria-label={`${n} stars`} onClick={() => setRating(n)} style={{ fontSize: 28, background: "none", border: "none", cursor: "pointer", color: n <= rating ? "#F59E0B" : "#d1d5db", padding: 0 }}>★</button>)}</div>
                     </>
+                  )}
+                  {answer === "yes" && (
+                    <div style={{ background: "#F4F6FA", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 4 }}>Are you with {v.staffName.split(" ")[0]} right now? (optional)</div>
+                      <div style={{ fontSize: 12.5, color: "#6b7280", marginBottom: 8, lineHeight: 1.5 }}>Sharing your location once confirms where the meeting took place. It's used only to verify this visit.</div>
+                      {where.s === "ok" ? <div style={{ fontSize: 13.5, color: "#10B981", fontWeight: 700 }}>📍 Location added (±{Math.round(where.geo.accuracy)}m)</div>
+                        : <button type="button" disabled={where.s === "busy"} onClick={shareLocation} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid #0A2540", background: "#fff", color: "#0A2540", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: font }}>{where.s === "busy" ? "Finding location…" : "📍 Share my location"}</button>}
+                      {where.s === "err" && <div style={{ fontSize: 12.5, color: "#6b7280", marginTop: 6 }}>{where.msg}</div>}
+                    </div>
                   )}
                   <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 6 }}>{answer === "yes" ? "Anything to add? (optional)" : "What happened? (optional)"}</label>
                   <textarea value={comment} onChange={e => setComment(e.target.value)} rows={3} style={{ ...input, marginBottom: 14, resize: "vertical" }} />

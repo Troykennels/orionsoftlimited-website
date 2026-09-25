@@ -4,7 +4,7 @@
 import { listRecords, putRecord, getRecord } from "../_lib/records.js";
 import { notify, award, addAchievement } from "../_lib/office.js";
 import { managerChain, getRoleCatalog } from "../_lib/roles.js";
-import { requestMeta, learnSite } from "../_lib/fieldIntel.js";
+import { requestMeta, learnSite, cleanGeo } from "../_lib/fieldIntel.js";
 import { rescoreVisit } from "../staff/visits.js";
 
 const rate = new Map();
@@ -61,6 +61,9 @@ export default async function handler(req, res) {
     ...visit.confirmation, status: answer === "yes" ? "confirmed" : "disputed", at: new Date().toISOString(),
     name: String(name || "").slice(0, 100), rating: Math.min(5, Math.max(0, parseInt(rating, 10) || 0)) || null,
     comment: String(comment || "").slice(0, 600), ip: meta.ip, ua: meta.ua, deviceId: deviceId.slice(0, 64), selfConfirmed, sameNetwork,
+    // Optional: the client's phone location, as an independent record of
+    // where the meeting happened (only kept for a "yes").
+    geo: answer === "yes" ? cleanGeo(req.body?.geo) : null,
   };
   const scored = await rescoreVisit(visit);
   await putRecord("visits", visit.id, scored);
@@ -68,7 +71,8 @@ export default async function handler(req, res) {
   const [employees, catalog] = await Promise.all([listRecords("employees"), getRoleCatalog()]);
   const mgr = staff ? managerChain(staff, employees, catalog)[0] : null;
   if (answer === "yes" && !selfConfirmed && !sameNetwork) {
-    await learnSite(visit.organisation, visit.checkIn.geo, visit.id);
+    const clientSoon = Date.parse(scored.confirmation.at) - Date.parse(visit.checkIn.at) <= 3 * 3600000;
+    await learnSite(visit.organisation, visit.checkIn.geo || (clientSoon ? scored.confirmation.geo : null), visit.id);
     await award(visit.employeeId, "visit_confirmed");
     if (scored.confirmation.rating >= 5) await addAchievement(visit.employeeId, `5★ client rating from ${visit.organisation}`, "client");
     await notify([visit.employeeId], { type: "field", title: `✅ ${visit.organisation} confirmed your visit`, body: scored.confirmation.comment, link: "visits" });

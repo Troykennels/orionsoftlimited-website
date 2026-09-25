@@ -147,6 +147,21 @@ export default async function handler(req, res) {
     return res.json({ ok: true });
   }
 
+  // Location found after a no-signal check-in (see lateLocation.jsx).
+  if (b.action === "attach-geo") {
+    const v = await getRecord("visits", b.id);
+    if (!v || v.employeeId !== me.id) return res.status(404).json({ error: "Visit not found" });
+    if (v.checkIn.geo) return res.json({ ok: true, visit: stripPhoto(v) });
+    const lateSec = Math.round((Date.parse(now) - Date.parse(v.checkIn.at)) / 1000);
+    if (lateSec > 15 * 60) return res.status(400).json({ error: "Too late to add a location to this check-in" });
+    const geo = cleanGeo(b.geo);
+    if (!geo) return res.status(400).json({ error: "Invalid location" });
+    v.checkIn = { ...v.checkIn, geo, geoLateSec: lateSec, geoError: null };
+    const scored = await rescoreVisit(v);
+    await putRecord("visits", v.id, scored);
+    return res.json({ ok: true, visit: stripPhoto(scored) });
+  }
+
   if (b.action === "spot-respond") {
     const s = await getRecord("spotchecks", b.id);
     if (!s || s.employeeId !== me.id) return res.status(404).json({ error: "Location check not found" });

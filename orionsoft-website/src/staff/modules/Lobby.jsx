@@ -11,6 +11,7 @@ import { getDeviceId, getLocation, techDetail } from "../geo.js";
 import { useConsent } from "./FieldVisits.jsx";
 import DeviceHelp from "../DeviceHelp.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
+import { startLateLocation } from "../lateLocation.jsx";
 
 function greeting() {
   const h = Number(new Date().toLocaleString("en-GB", { timeZone: "Africa/Lagos", hour: "2-digit", hour12: false }));
@@ -80,8 +81,14 @@ function DayFlow({ onChanged }) {
         <Modal title={locFail.body.action === "clock-in" ? "Clock in: location needed" : "Clock out: location needed"} onClose={() => setLocFail(null)} width={520}>
           <DeviceHelp kind={locFail.kind} detail={locFail.detail}
             onRetry={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg).then(ok => ok && f.body.action === "clock-in" && !rec?.standup && setStandupOpen(true)); }}
-            onSkip={() => { const f = locFail; setLocFail(null); act(f.body, f.okMsg, { skipLocation: true }); }}
-            skipLabel={`${locFail.body.action === "clock-in" ? "Clock in" : "Clock out"} without location (flagged)`} />
+            onSkip={() => {
+              const f = locFail; setLocFail(null);
+              act(f.body, f.okMsg, { skipLocation: true }).then(ok => {
+                // Clock-in is saved now; its location is added when the phone finds one.
+                if (ok && f.body.action === "clock-in") startLateLocation({ kind: "clock-in", label: "clock-in" });
+              });
+            }}
+            skipLabel={locFail.body.action === "clock-in" ? "Clock in now (location added when found)" : "Clock out without location (flagged)"} />
         </Modal>
       )}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.gold, marginBottom: 8 }}>MY DAY</div>

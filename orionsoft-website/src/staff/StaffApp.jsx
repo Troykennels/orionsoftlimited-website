@@ -12,6 +12,7 @@ import StaffLogin, { loadGoogleIdentity } from "./StaffLogin.jsx";
 import PersonDrawer from "./modules/PersonDrawer.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 import { InAppBanner } from "./DeviceHelp.jsx";
+import { LateLocationBanner } from "./lateLocation.jsx";
 import { registerServiceWorker, applyStaffManifest } from "./push.js";
 import "./staff.css";
 
@@ -316,6 +317,7 @@ export default function StaffApp() {
             </header>
             <main className="so-content">
               <InAppBanner />
+              <LateLocationBanner />
               {(office.pendingSpotChecks || []).length > 0 && mod !== "visits" && (
                 <button type="button" onClick={() => navigate("visits")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: C.amberDim, border: `1px solid ${C.amber}88`, color: C.heading, borderRadius: 12, padding: "12px 16px", marginBottom: 16, cursor: "pointer", fontFamily: font, fontSize: 14, fontWeight: 700, textAlign: "left" }}>
                   <MapPin size={18} color={C.amber} /> Location check requested. Tap here to confirm where you are before the timer runs out.

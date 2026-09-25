@@ -64,12 +64,13 @@ function VisitDetail({ id, onClose }) {
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}><Badge color={lc}>{v.trust}% · {ll}</Badge><Badge color={CONF[v.confirmation?.status]?.[1]}>{CONF[v.confirmation?.status]?.[0]}</Badge></div>
           <div><strong style={{ color: C.heading }}>Purpose:</strong> {v.purpose || "—"}</div>
           <div><strong style={{ color: C.heading }}>Contact:</strong> {[v.contactName, v.contactPhone, v.contactEmail].filter(Boolean).join(" · ") || "—"}</div>
-          <div><strong style={{ color: C.heading }}>Check-in:</strong> {dt(v.checkIn.at)} {v.checkIn.geo ? <a href={maps(v.checkIn.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map (±{v.checkIn.geo.accuracy}m)</a> : <span style={{ color: C.rose }}>no GPS: {v.checkIn.geoError}</span>}</div>
+          <div><strong style={{ color: C.heading }}>Check-in:</strong> {dt(v.checkIn.at)} {v.checkIn.geo ? <a href={maps(v.checkIn.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map (±{v.checkIn.geo.accuracy}m)</a> : <span style={{ color: C.rose }}>no GPS: {v.checkIn.geoError}</span>}{v.checkIn.geoLateSec > 60 && <span style={{ color: C.amber }}> · found {Math.round(v.checkIn.geoLateSec / 60)} min later</span>}</div>
           <div><strong style={{ color: C.heading }}>Check-out:</strong> {v.checkOut?.at ? `${dt(v.checkOut.at)} · ${v.durationMin} min` : "still checked in"} {v.checkOut?.geo && <a href={maps(v.checkOut.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map</a>}</div>
           {v.distanceFromSite != null && <div><strong style={{ color: C.heading }}>Distance from confirmed site:</strong> {v.distanceFromSite >= 1000 ? `${(v.distanceFromSite / 1000).toFixed(1)}km` : `${v.distanceFromSite}m`}</div>}
           <div><strong style={{ color: C.heading }}>Device / IP:</strong> {device(v.checkIn.ua)} · {v.checkIn.ip || "—"}</div>
           {v.outcome && <div><strong style={{ color: C.heading }}>Outcome:</strong> {v.outcome}</div>}
           {v.confirmation?.at && <div><strong style={{ color: C.heading }}>Client answer:</strong> {v.confirmation.status} by {v.confirmation.name || "unnamed"} {v.confirmation.rating ? `· ${"★".repeat(v.confirmation.rating)}` : ""} {v.confirmation.comment ? `· "${v.confirmation.comment}"` : ""} · {dt(v.confirmation.at)}</div>}
+          {v.confirmation?.geo && <div><strong style={{ color: C.heading }}>Client's location:</strong> <a href={maps(v.confirmation.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map (±{v.confirmation.geo.accuracy}m)</a></div>}
         </div>
       </Grid>
       <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "14px 0 6px" }}>EVIDENCE CHECKS</div>
@@ -243,7 +244,7 @@ export function AttendanceFieldSection() {
                     <td style={td}>{r.date}</td>
                     <td style={{ ...td, color: C.heading, fontWeight: 700 }}>{r.employeeName}</td>
                     <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}</td>
-                    <td style={td}>{r.clockInGeo ? <a href={maps(r.clockInGeo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map ±{r.clockInGeo.accuracy}m</a> : <span style={{ color: C.rose }}>not shared</span>}</td>
+                    <td style={td}>{r.clockInGeo ? <><a href={maps(r.clockInGeo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map ±{r.clockInGeo.accuracy}m</a>{r.clockInGeoLateSec > 60 && <span style={{ color: C.amber, fontSize: 12 }}> · {Math.round(r.clockInGeoLateSec / 60)} min later</span>}</> : <span style={{ color: C.rose }}>not shared</span>}</td>
                     <td style={td}>{r.clockOut ? time(r.clockOut) : <span style={{ color: C.mint }}>in</span>} {r.forgotClockOut && <Badge color={C.rose}>forgot</Badge>}</td>
                     <td style={td}>{((r.minutes || 0) / 60).toFixed(1)}h</td>
                     <td style={td}>{r.mode?.replace("_", " ")}</td>

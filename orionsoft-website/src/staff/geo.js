@@ -66,6 +66,7 @@ export async function getLocation(opts = {}) {
   // Report every attempt (with the browser's raw error) so managers can see
   // exactly why a phone fails, instead of guessing from "try again".
   const perm = await permissionState("geolocation");
+  if (r.kind === "stopped") return r;
   api("/api/staff/attendance", { method: "POST", body: {
     action: "geo-diag", ok: !!r.geo, kind: r.kind, code: r.code, message: r.rawMessage, perm,
     accuracy: r.geo?.accuracy, ms: Date.now() - t0, where: opts.where || "",
@@ -78,12 +79,13 @@ export async function getLocation(opts = {}) {
 function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress, control } = {}) {
   return new Promise(resolve => {
     if (!navigator.geolocation) { resolve({ error: MESSAGES.unsupported, kind: "unsupported" }); return; }
-    let best = null, done = false, watchId = null, lastErr = null, settle = null;
+    let best = null, done = false, watchId = null, lastErr = null, settle = null, stopped = false;
     const finish = async (err) => {
       if (done) return;
       done = true;
       if (watchId != null) navigator.geolocation.clearWatch(watchId);
       clearTimeout(timer); clearTimeout(settle);
+      if (stopped) { resolve({ kind: "stopped", error: "Stopped" }); return; }
       if (best) { resolve({ geo: best }); return; }
       const e = err || lastErr;
       const kind = await classify(e);
@@ -107,9 +109,16 @@ function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress,
     // other source (or the timer) instead.
     const fail = err => { if (err?.code === 1) finish(err); else lastErr = err; };
     const timer = setTimeout(() => finish(lastErr || { code: 3 }), maxWait);
-    if (control) control.accept = () => { if (best) finish(); };
+    if (control) {
+      control.accept = () => { if (best) finish(); };
+      control.stop = () => { stopped = true; finish(); };
+    }
     watchId = navigator.geolocation.watchPosition(take, fail, { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 });
-    navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 60000 });
+    // Also accept the phone's last known position from the past 10 minutes
+    // (e.g. from Google Maps or a ride app): when GPS is asleep this is often
+    // the only fix available. Its own timestamp is kept, so an old fix is
+    // flagged rather than passed off as live.
+    navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 600000 });
   });
 }
 

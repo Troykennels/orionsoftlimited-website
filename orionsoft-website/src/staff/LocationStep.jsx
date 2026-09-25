@@ -18,7 +18,7 @@ function roughTip(acc) {
 
 // Tap-to-share location with live accuracy and phone-specific help when the
 // phone refuses. Calls onChange({ geo }) or onChange({ error, kind }).
-export default function LocationStep({ onChange, label = "Share my location", allowSkip = true, where = "" }) {
+export default function LocationStep({ onChange, label = "Share my location", allowSkip = true, where = "", skipLabel = "Continue without location (scores lower)" }) {
   const [state, setState] = useState({ phase: "idle" });
   const control = useRef({});
 
@@ -57,7 +57,7 @@ export default function LocationStep({ onChange, label = "Share my location", al
   if (state.phase === "skipped") return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontFamily: font }}>
       <span style={{ fontSize: 13.5, color: C.amber, display: "flex", alignItems: "center", gap: 6 }}>
-        <MapPin size={15} /> Continuing without location (scores lower)
+        <MapPin size={15} /> {skipLabel.replace(/^Continue/, "Continuing")}
       </span>
       <Btn small variant="ghost" icon={Crosshair} onClick={locate}>Try location again</Btn>
     </div>
@@ -65,6 +65,6 @@ export default function LocationStep({ onChange, label = "Share my location", al
   return (
     <DeviceHelp kind={state.kind} detail={state.detail} onRetry={locate}
       onSkip={allowSkip ? () => { setState({ phase: "skipped" }); onChange({ error: state.error, kind: state.kind }); } : null}
-      skipLabel="Continue without location (scores lower)" />
+      skipLabel={skipLabel} />
   );
 }

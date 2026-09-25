@@ -70,9 +70,24 @@ export function scoreVisit(visit, ctx = {}) {
   const flags = [];
   const add = (code, penalty, label, severity = "warn") => flags.push({ code, penalty, label, severity });
   const g = visit.checkIn?.geo;
+  const c = visit.confirmation || {};
+  // The client's own phone located the meeting when they confirmed, soon
+  // enough (3h) that they were most likely still where it happened.
+  const genuineConfirm = c.status === "confirmed" && !c.selfConfirmed && !c.sameNetwork;
+  const clientGeo = genuineConfirm && c.geo && c.at && Date.parse(c.at) - Date.parse(visit.checkIn.at) <= 3 * 3600000 ? c.geo : null;
 
-  if (!g) add("NO_GPS", -35, "No GPS location was shared at check-in.", "high");
-  else {
+  if (!g) {
+    if (clientGeo) add("NO_GPS", -10, "No location from the staff phone, but the client's phone located the meeting when confirming.");
+    else add("NO_GPS", -35, "No GPS location was shared at check-in.", "high");
+  } else {
+    const lateSec = Number(visit.checkIn.geoLateSec) || 0;
+    if (lateSec > 60) add("LATE_FIX", -8, `Location arrived ${Math.round(lateSec / 60)} min after check-in (no signal at check-in).`);
+    const fixAgeMin = (Date.parse(visit.checkIn.at) - Date.parse(g.at)) / 60000;
+    if (fixAgeMin > 3) add("OLD_FIX", -5, `Used the phone's last known location from ${Math.round(fixAgeMin)} min before check-in.`);
+    if (clientGeo) {
+      const d = haversineMeters(g, clientGeo);
+      if (d != null && d <= 700 + (g.accuracy || 0)) flags.push({ code: "CLIENT_LOCATION_MATCH", penalty: 5, label: `The client's phone was ${d >= 1000 ? (d / 1000).toFixed(1) + "km" : d + "m"} from the check-in location.`, severity: "good" });
+    }
     if (g.accuracy != null && g.accuracy <= 1) add("FAKE_GPS_PATTERN", -25, `Reported accuracy of ${g.accuracy}m is typical of GPS-spoofing apps, not real phones.`, "high");
     else if (g.accuracy != null && g.accuracy > 1000) add("VERY_LOW_ACCURACY", -25, `Location was only accurate to ${Math.round(g.accuracy / 1000)}km (network-based, not GPS).`);
     else if (g.accuracy != null && g.accuracy > 150) add("LOW_ACCURACY", -12, `Location accuracy was ${g.accuracy}m.`);
@@ -112,7 +127,6 @@ export function scoreVisit(visit, ctx = {}) {
     if (mins < 5) add("VERY_SHORT", -10, `Visit lasted only ${Math.max(0, Math.round(mins))} min.`);
   }
 
-  const c = visit.confirmation || {};
   if (c.status === "confirmed" && c.sameNetwork) add("SAME_NETWORK", -15, "The client confirmation came from the same internet connection this staff member usually clocks in from.");
   if (c.status === "confirmed" && !c.selfConfirmed && !c.sameNetwork) flags.push({ code: "CLIENT_CONFIRMED", penalty: 30, label: `Confirmed by ${c.name || "the client"}.`, severity: "good" });
   if (c.status === "disputed") add("CLIENT_DISPUTED", -60, `The client said this visit did NOT happen${c.comment ? `: "${c.comment}"` : "."}`, "high");
