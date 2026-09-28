@@ -6,7 +6,10 @@
 import { getRecord, putRecord, listRecords } from "../_lib/records.js";
 import { verifySession } from "../_lib/auth.js";
 import { set } from "../store.js";
-import { renderContractPdf } from "../_lib/pdf.js";
+import { renderContractPdfV2 } from "../_lib/contractPdf.js";
+import { normaliseContract, payLink } from "../_lib/contracts.js";
+import { CONTRACT_TEMPLATES } from "../_lib/contractTemplates.js";
+import { sendPaymentLinkEmail } from "../admin/contracts.js";
 import { notifyContractSigned } from "../_lib/emailTemplates.js";
 
 function checkToken(token, contractId) {
@@ -30,24 +33,35 @@ export default async function handler(req, res) {
   const contract = await getRecord("contracts", contractId);
   if (!contract) return res.status(404).json({ error: "Contract not found" });
 
+  const signedAlready = ["signed", "active", "completed"].includes(contract.status);
+  const c = normaliseContract(contract);
+  const payable = c.amount > 0 && c.kind !== "certificate";
+
   if (req.method === "GET") {
     return res.json({
       ok: true,
       contract: {
-        id: contract.id, title: contract.title, recipientName: contract.recipientName,
-        bodyFilled: contract.bodyFilled, status: contract.status, pdfKey: contract.pdfKey,
-        amount: contract.amount, currency: contract.currency,
+        id: c.id, number: c.number, title: c.title, docLabel: c.docLabel || "Agreement", kind: c.kind || "agreement",
+        recipientName: c.client.name, organisation: c.client.organisation,
+        bodyFilled: contract.bodyFilled, status: c.status, pdfKey: contract.signedPdfKey || contract.pdfKey,
+        amount: c.amount, currency: c.currency, signedByName: c.signedByName || "", signedAt: c.signedAt || null,
+        effectiveDate: c.effectiveDate || null, endDate: c.endDate || null, scope: c.scope || "", deliverables: c.deliverables,
+        schedule: c.schedule.map(m => ({ id: m.id, title: m.title, amount: m.amount, dueDate: m.dueDate || null, trigger: m.trigger || "" })),
       },
+      payLink: signedAlready && payable ? payLink(contract) : "",
     });
   }
 
   if (req.method === "POST") {
-    if (contract.status === "signed" || contract.status === "active" || contract.status === "completed") {
+    if (contract.status === "cancelled") return res.status(400).json({ error: "This contract has been withdrawn. Please contact us." });
+    if (signedAlready) {
       return res.status(400).json({ error: "This contract has already been signed" });
     }
-    const { signedByName, consent, signatureImageDataUrl } = req.body || {};
-    if (!signedByName || !consent) {
-      return res.status(400).json({ error: "Your name and consent are required to sign" });
+    const { consent, signatureImageDataUrl } = req.body || {};
+    const signedByName = String(req.body?.signedByName || "").trim().slice(0, 120);
+    const signedByTitle = String(req.body?.signedByTitle || "").trim().slice(0, 120);
+    if (signedByName.length < 2 || !consent) {
+      return res.status(400).json({ error: "Your full name and consent are required to sign" });
     }
     if (signatureImageDataUrl && (typeof signatureImageDataUrl !== "string" || !/^data:image\/(png|jpe?g);base64,/.test(signatureImageDataUrl) || signatureImageDataUrl.length > 1_500_000)) {
       return res.status(400).json({ error: "Signature image is invalid" });
@@ -56,12 +70,19 @@ export default async function handler(req, res) {
     contract.status = "signed";
     contract.signedAt = new Date().toISOString();
     contract.signedByName = signedByName;
+    contract.signedByTitle = signedByTitle;
     contract.signedSignatureImageDataUrl = signatureImageDataUrl || "";
+    contract.signatureMethod = signatureImageDataUrl ? "drawn" : "typed";
     contract.signedIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
 
     const allSignatories = await listRecords("signatories");
     const signatories = allSignatories.filter(s => (contract.signatoryIds || []).includes(s.id));
-    const pdfBytes = await renderContractPdf(contract, signatories);
+    const template = await getRecord("templates", contract.templateId);
+    const def = CONTRACT_TEMPLATES[contract.type] || {};
+    const pdfBytes = await renderContractPdfV2(contract, signatories, {
+      template: { kind: contract.kind || def.kind, docLabel: contract.docLabel || def.docLabel, name: template?.name },
+      payments: [], payLinkUrl: payable ? payLink(contract) : "",
+    });
     const signedKey = `orionsoft:files:contract_signed_${contract.id}`;
     await set(signedKey, Buffer.from(pdfBytes).toString("base64"));
     contract.signedPdfKey = signedKey;
@@ -70,8 +91,10 @@ export default async function handler(req, res) {
     await putRecord("contracts", contract.id, contract);
 
     try { await notifyContractSigned(contract); } catch { /* best-effort */ }
+    // Payable contracts: the client gets their payment link straight away.
+    if (payable && c.client.email) { try { await sendPaymentLinkEmail(contract); } catch { /* the page shows the link too */ } }
 
-    return res.json({ ok: true, contract: { id: contract.id, status: contract.status, signedPdfKey: contract.signedPdfKey } });
+    return res.json({ ok: true, contract: { id: contract.id, status: contract.status, signedPdfKey: contract.signedPdfKey }, payLink: payable ? payLink(contract) : "" });
   }
 
   return res.status(405).json({ error: "Method not allowed" });

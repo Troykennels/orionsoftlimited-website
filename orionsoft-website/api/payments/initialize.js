@@ -1,7 +1,8 @@
 // Initializes a Paystack transaction for a contract's outstanding amount and
 // returns the hosted checkout URL. Server-side only — the secret key never
 // reaches the client.
-import { getRecord, putRecord, newId } from "../_lib/records.js";
+import { getRecord, putRecord, newId, listRecords } from "../_lib/records.js";
+import { normaliseContract, paymentSummary } from "../_lib/contracts.js";
 import { getAdminSession, verifySession } from "../_lib/auth.js";
 
 function isAuthorized(req, contract) {
@@ -35,6 +36,11 @@ export default async function handler(req, res) {
   if (!contract.amount || contract.amount <= 0) return res.status(400).json({ error: "Contract has no payable amount" });
   if (!["signed", "active"].includes(contract.status)) return res.status(400).json({ error: "This contract must be signed before a payment can be requested" });
 
+  // Charges what is still owed, never the full value again after part-payments.
+  const summary = paymentSummary(normaliseContract(contract), (await listRecords("payments")).filter(p => p.contractId === contract.id));
+  if (summary.balance <= 0) return res.status(400).json({ error: "This contract is already fully paid" });
+  const amountDue = summary.balance;
+
   const paymentId = newId("pmt");
   const reference = `orionsoft_${paymentId}`;
   const baseUrl = process.env.APP_BASE_URL || "";
@@ -45,7 +51,7 @@ export default async function handler(req, res) {
       headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         email: contract.recipientEmail,
-        amount: Math.round(Number(contract.amount) * 100), // kobo/cents
+        amount: Math.round(amountDue * 100), // kobo/cents
         currency: contract.currency === "USD" ? "USD" : "NGN",
         reference,
         callback_url: `${baseUrl}/pay/callback?reference=${reference}`,
@@ -59,7 +65,7 @@ export default async function handler(req, res) {
 
     const payment = {
       id: paymentId, contractId: contract.id, reference,
-      amount: contract.amount, currency: contract.currency,
+      amount: amountDue, currency: contract.currency || "NGN", method: "paystack",
       status: "initialized", paystackData: {}, receiptSentAt: null,
       createdAt: new Date().toISOString(), verifiedAt: null,
     };

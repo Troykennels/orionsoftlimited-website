@@ -3,8 +3,8 @@
 // this is the only server-to-server entry point that mutates payment/contract
 // state based on an external call, so signature verification is mandatory.
 import crypto from "node:crypto";
-import { getRecord, putRecord, listRecords } from "../_lib/records.js";
-import { sendPaymentReceipt } from "../_lib/emailTemplates.js";
+import { putRecord, listRecords } from "../_lib/records.js";
+import { recordSuccessfulPayment, paystackAmountMatches } from "../_lib/contractPayments.js";
 
 export const config = { api: { bodyParser: false } };
 
@@ -53,26 +53,14 @@ export default async function handler(req, res) {
     const payments = await listRecords("payments");
     const payment = payments.find(p => p.reference === reference);
     if (payment && payment.status !== "success") {
-      payment.status = "success";
-      payment.paystackData = {
-        channel: event.data.channel, paidAt: event.data.paid_at,
-        authorizationCode: event.data.authorization?.authorization_code || "",
-      };
-      payment.verifiedAt = new Date().toISOString();
-      await putRecord("payments", payment.id, payment);
-
-      const contract = await getRecord("contracts", payment.contractId);
-      if (contract) {
-        if (contract.status === "signed") {
-          contract.status = "active";
-          contract.updatedAt = new Date().toISOString();
-          await putRecord("contracts", contract.id, contract);
-        }
-        try {
-          await sendPaymentReceipt(payment, contract);
-          payment.receiptSentAt = new Date().toISOString();
-          await putRecord("payments", payment.id, payment);
-        } catch { /* best-effort */ }
+      if (!paystackAmountMatches(payment, event.data)) {
+        payment.status = "amount_mismatch"; payment.paystackAmount = event.data?.amount;
+        await putRecord("payments", payment.id, payment);
+      } else {
+        await recordSuccessfulPayment(payment.id, {
+          paystackData: { channel: event.data.channel, paidAt: event.data.paid_at, authorizationCode: event.data.authorization?.authorization_code || "" },
+          paidAt: event.data.paid_at || undefined,
+        });
       }
     }
   }

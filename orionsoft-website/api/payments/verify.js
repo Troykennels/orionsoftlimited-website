@@ -1,8 +1,11 @@
 // Client-facing fallback verification — called from the Paystack callback page
 // so the payer sees an immediate result even if the webhook hasn't landed yet.
 // Re-verifies directly against Paystack's API rather than trusting query params.
-import { getRecord, putRecord, listRecords } from "../_lib/records.js";
-import { sendPaymentReceipt } from "../_lib/emailTemplates.js";
+import { putRecord, listRecords } from "../_lib/records.js";
+import { recordSuccessfulPayment, paystackAmountMatches } from "../_lib/contractPayments.js";
+
+// Only what the callback page shows; never the raw Paystack data.
+const publicPayment = p => ({ id: p.id, contractId: p.contractId, amount: p.amount, currency: p.currency, status: p.status, receiptNumber: p.receiptNumber || "", paidAt: p.paidAt || p.verifiedAt || null });
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -18,7 +21,7 @@ export default async function handler(req, res) {
   if (!payment) return res.status(404).json({ error: "Payment not found" });
 
   if (payment.status === "success") {
-    return res.json({ ok: true, status: "success", payment });
+    return res.json({ ok: true, status: "success", payment: publicPayment(payment) });
   }
 
   try {
@@ -28,32 +31,20 @@ export default async function handler(req, res) {
     const json = await verifyRes.json();
     if (!verifyRes.ok || !json.status) return res.status(502).json({ error: "Could not verify payment" });
 
-    if (json.data.status === "success" && payment.status !== "success") {
-      payment.status = "success";
-      payment.paystackData = {
-        channel: json.data.channel, paidAt: json.data.paid_at,
-        authorizationCode: json.data.authorization?.authorization_code || "",
-      };
-      payment.verifiedAt = new Date().toISOString();
-      await putRecord("payments", payment.id, payment);
-
-      const contract = await getRecord("contracts", payment.contractId);
-      if (contract) {
-        if (contract.status === "signed") {
-          contract.status = "active";
-          contract.updatedAt = new Date().toISOString();
-          await putRecord("contracts", contract.id, contract);
-        }
-        try {
-          await sendPaymentReceipt(payment, contract);
-          payment.receiptSentAt = new Date().toISOString();
-          await putRecord("payments", payment.id, payment);
-        } catch { /* best-effort */ }
+    if (json.data.status === "success") {
+      if (!paystackAmountMatches(payment, json.data)) {
+        payment.status = "amount_mismatch"; payment.paystackAmount = json.data.amount;
+        await putRecord("payments", payment.id, payment);
+        return res.json({ ok: true, status: "amount_mismatch", payment: publicPayment(payment) });
       }
-      return res.json({ ok: true, status: "success", payment });
+      const done = await recordSuccessfulPayment(payment.id, {
+        paystackData: { channel: json.data.channel, paidAt: json.data.paid_at, authorizationCode: json.data.authorization?.authorization_code || "" },
+        paidAt: json.data.paid_at || undefined,
+      });
+      return res.json({ ok: true, status: "success", payment: publicPayment(done) });
     }
 
-    return res.json({ ok: true, status: json.data.status, payment });
+    return res.json({ ok: true, status: json.data.status, payment: publicPayment(payment) });
   } catch (err) {
     return res.status(502).json({ error: "Could not reach Paystack", details: err.message });
   }

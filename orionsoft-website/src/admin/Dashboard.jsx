@@ -883,6 +883,7 @@ function NeedsAttentionWidget({ navigate }) {
     { key: "tickets", label: "Open Tickets", icon: "🎫", color: C.blue, nav: "tickets" },
     { key: "invoices", label: "Overdue Invoices", icon: "💳", color: C.rose, nav: "invoices" },
     { key: "idCards", label: "ID Cards to Sign", icon: "🪪", color: C.gold, nav: "employees" },
+    { key: "transfers", label: "Transfers to Confirm", icon: "🏦", color: C.mint, nav: "contracts" },
   ];
 
   return (
@@ -4062,14 +4063,6 @@ function RichText({ text }) {
   ));
 }
 
-function fillPlaceholders(text, fillData, recipientName) {
-  return String(text || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (m, key) => {
-    if (key === "recipientName") return recipientName || "[Recipient Name]";
-    const val = fillData?.[key];
-    return val ? val : m;
-  });
-}
-
 // Mirrors the real letterhead PDF (api/_lib/pdf.js) as closely as HTML/CSS
 // allows, so this on-screen preview isn't a rough stand-in but an accurate
 // picture of what recipients actually receive: navy header band with the
@@ -4221,7 +4214,7 @@ function TemplatesSection() {
       <SectionCard>
         <SectionTitle>Document templates</SectionTitle>
         <p style={{ color: C.textMuted, fontSize: 13, marginTop: 6, lineHeight: 1.7 }}>
-          Use <code>{"{{placeholder}}"}</code> tokens: they become fillable fields when composing a document.
+          Use <code>{"{{placeholder}}"}</code> tokens: they become fillable fields when composing a document, and <code>{"{{placeholder|default}}"}</code> supplies a default. Client, company, contract number, dates and value (<code>{"{{clientName}}"}</code>, <code>{"{{companyName}}"}</code>, <code>{"{{contractNumber}}"}</code>, <code>{"{{effectiveDate}}"}</code>, <code>{"{{contractValue}}"}</code>…) are filled in automatically. Parties, scope, deliverables, the payment schedule and signatures are added to agreements for you, so the body only needs the terms.
           Basic formatting is supported and renders properly in the PDF and on the signing page: <code>{"<b>bold</b>"}</code>, <code>{"<i>italic</i>"}</code>, <code>{"<br>"}</code> for a line break, and <code>{"<p>...</p>"}</code> or <code>{"<ul><li>...</li></ul>"}</code> for paragraphs and bullet lists. Any other tags are stripped, not shown literally.
         </p>
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 8 }}>{msg}</p>}
@@ -4253,7 +4246,7 @@ function TemplatesSection() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2, textTransform: "capitalize" }}>{t.type.replace(/_/g, " ")}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{t.docLabel || t.type.replace(/_/g, " ")}{t.payable ? " · takes payments" : ""}{t.isDefault === false ? " · edited" : ""}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <Btn small variant="ghost" onClick={() => resetTemplate(t)}>Reset to default</Btn>
@@ -4346,12 +4339,47 @@ function SignatoriesSection() {
 }
 
 // ─── Contracts ───────────────────────────────────────────────────────────────
-function extractPlaceholders(bodyMarkup) {
-  const found = new Set();
-  const re = /\{\{\s*(\w+)\s*\}\}/g;
-  let m;
-  while ((m = re.exec(bodyMarkup || ""))) { if (m[1] !== "recipientName") found.add(m[1]); }
-  return Array.from(found);
+// Compose from a template with structured details (client, dates, scope,
+// deliverables, value and a milestone payment schedule), send for e-signature,
+// then take payments: the client pays online or reports a bank transfer on
+// their payment page; the admin confirms transfers or records payments, and
+// every payment gets a numbered receipt.
+const CONTRACT_STATUS = {
+  draft: ["Draft", C.textMuted], sent: ["Awaiting signature", C.blue], signed: ["Signed", C.mint],
+  active: ["Active", C.mint], completed: ["Completed", C.gold], cancelled: ["Cancelled", C.rose],
+};
+const PAY_STATUS = { paid: ["Paid", C.mint], part_paid: ["Part-paid", C.amber], overdue: ["Overdue", C.rose], unpaid: ["Due", C.textMuted] };
+const CTR_PAY_METHODS = [["bank_transfer", "Bank transfer"], ["card", "Card"], ["cash", "Cash"], ["pos", "POS"], ["cheque", "Cheque"], ["other", "Other"], ["paystack", "Paystack"]];
+const payMethodLabel = m => (CTR_PAY_METHODS.find(([k]) => k === m) || [m, m || "Payment"])[1];
+const ctrMoney = (n, cur = "NGN") => `${cur} ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const ctrRound = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const ctrDay = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
+const localToday = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const humanKey = k => { const s = k.replace(/([A-Z])/g, " $1").toLowerCase().trim(); return s.charAt(0).toUpperCase() + s.slice(1); };
+let rowSeq = 0;
+const newRow = (title = "", amount = "", trigger = "") => ({ key: `r${++rowSeq}`, id: "", title, amount: amount === "" ? "" : String(amount), dueDate: "", trigger });
+const SCHEDULE_PRESETS = [
+  ["Single payment", [[100, "Full payment", "On signing"]]],
+  ["50 / 50", [[50, "Deposit", "On signing"], [50, "Final payment", "On completion and acceptance"]]],
+  ["40 / 40 / 20", [[40, "Deposit", "On signing"], [40, "Second payment", "On delivery for testing"], [20, "Final payment", "On final acceptance"]]],
+  ["30 / 30 / 30 / 10", [[30, "Deposit", "On signing"], [30, "Second payment", "On design approval"], [30, "Third payment", "On delivery for testing"], [10, "Final payment", "On go-live"]]],
+];
+const emptyContractForm = () => ({
+  id: "", templateId: "", title: "", client: { name: "", organisation: "", email: "", phone: "", address: "" },
+  effectiveDate: localToday(), endDate: "", scope: "", deliverables: "", currency: "NGN", amount: "", vatIncluded: false, allowPartial: true,
+  paymentTerms: "", schedule: [], fillData: {}, signatoryIds: [],
+});
+const subHead = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", margin: "20px 0 10px" };
+const grid2 = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 };
+
+async function contractApi(body, method = "PATCH") {
+  const r = await fetch("/api/admin/contracts", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "That didn't work. Please try again.");
+  return j;
+}
+function copyText(t) {
+  try { navigator.clipboard.writeText(t); return true; } catch { return false; }
 }
 
 function ContractsSection() {
@@ -4359,286 +4387,482 @@ function ContractsSection() {
   const [templates, setTemplates] = useState([]);
   const [signatories, setSignatories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCompose, setShowCompose] = useState(false);
-  const [form, setForm] = useState({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: [], fillData: {} });
+  const [form, setForm] = useState(null); // null = closed
   const [expanded, setExpanded] = useState(null);
-  const [milestoneTitle, setMilestoneTitle] = useState({});
-  const [payments, setPayments] = useState([]);
-  const [paymentLinks, setPaymentLinks] = useState({});
+  const [filter, setFilter] = useState("all");
+  const [q, setQ] = useState("");
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [links, setLinks] = useState({}); // contractId -> signing link (shown when the email couldn't be sent)
+  const [confirmCancel, setConfirmCancel] = useState(null);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
     try {
-      const [rC, rT, rS, rP] = await Promise.all([fetch("/api/admin/contracts"), fetch("/api/admin/templates"), fetch("/api/admin/signatories"), fetch("/api/admin/payments")]);
-      const [jC, jT, jS, jP] = await Promise.all([rC.json(), rT.json(), rS.json(), rP.json()]);
+      const [rC, rT, rS] = await Promise.all([fetch("/api/admin/contracts"), fetch("/api/admin/templates"), fetch("/api/admin/signatories")]);
+      const [jC, jT, jS] = await Promise.all([rC.json(), rT.json(), rS.json()]);
       if (rC.ok) setContracts(jC.contracts || []);
       if (rT.ok) setTemplates(jT.templates || []);
       if (rS.ok) setSignatories(jS.signatories || []);
-      if (rP.ok) setPayments(jP.payments || []);
-    } finally { if (!silent) setLoading(false); }
+    } catch { /* keep what's on screen; the next poll retries */ } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
     load();
-    // Picks up externally-driven changes (a recipient signing, a webhook
-    // updating payment status) without requiring a manual page reload.
-    // Silent: doesn't toggle the loading flag, so the list doesn't flicker
-    // every cycle, and it never touches the open compose form's state.
+    // Picks up signings, online payments and reported transfers without a reload.
     const t = setInterval(() => load(true), 15000);
     return () => clearInterval(t);
   }, []);
 
-  // Every signatory is pre-selected by default when the compose panel opens,
-  // so a forgotten click can no longer produce a document with no company
-  // signature (the exact bug that slipped through before this).
+  function flash(text) { setMsg(text); setTimeout(() => setMsg(""), 5000); }
+  function replace(c) { setContracts(list => list.map(x => (x.id === c.id ? c : x))); }
+
+  async function run(fn) {
+    setErr(""); setBusy(true);
+    try { return await fn(); } catch (e) { setErr(e.message); return null; } finally { setBusy(false); }
+  }
+
+  const template = form && templates.find(t => t.id === form.templateId);
+  const kind = template?.kind || "agreement";
+  const payable = !!template?.payable;
+  const scheduleTotal = form ? ctrRound(form.schedule.reduce((s, r) => s + (Number(r.amount) || 0), 0)) : 0;
+  const value = form ? ctrRound(Number(form.amount) || 0) : 0;
+  const scheduleOff = payable && value > 0 && form.schedule.length > 0 && Math.abs(scheduleTotal - value) > 0.009;
+
+  function setF(patch) { setForm(f => ({ ...f, ...patch })); }
+  function setClient(patch) { setForm(f => ({ ...f, client: { ...f.client, ...patch } })); }
+  function setRow(key, patch) { setForm(f => ({ ...f, schedule: f.schedule.map(r => (r.key === key ? { ...r, ...patch } : r)) })); }
+  function applyPreset(parts) {
+    if (!(value > 0)) { setErr("Enter the contract value first, then choose a split."); return; }
+    setErr("");
+    let left = value;
+    const rows = parts.map(([pct, title, trigger], i) => {
+      const amt = i === parts.length - 1 ? ctrRound(left) : ctrRound((value * pct) / 100);
+      left = ctrRound(left - amt);
+      return newRow(title, amt.toFixed(2), trigger);
+    });
+    setF({ schedule: rows });
+  }
+
   function openCompose() {
-    setForm(f => ({ ...f, signatoryIds: signatories.map(s => s.id) }));
-    setShowCompose(true);
+    setErr(""); setExpanded(null);
+    setForm({ ...emptyContractForm(), signatoryIds: signatories.map(s => s.id) });
+  }
+  function openEdit(c) {
+    setErr("");
+    setForm({
+      id: c.id, templateId: c.templateId, title: c.title, client: { ...emptyContractForm().client, ...c.client },
+      effectiveDate: c.effectiveDate || localToday(), endDate: c.endDate || "", scope: c.scope || "", deliverables: (c.deliverables || []).join("\n"),
+      currency: c.currency || "NGN", amount: c.amount ? String(c.amount) : "", vatIncluded: !!c.vatIncluded, allowPartial: c.allowPartial !== false,
+      paymentTerms: c.paymentTerms || "", schedule: (c.schedule || []).map(m => ({ ...newRow(m.title, m.amount, m.trigger || ""), id: m.id, dueDate: m.dueDate || "" })),
+      fillData: { ...(c.fillData || {}) }, signatoryIds: c.signatoryIds || [],
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function requestPayment(c) {
-    const r = await fetch("/api/payments/initialize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId: c.id }) });
-    const json = await r.json();
-    if (!r.ok) { alert(json.error || "Failed to create payment link."); return; }
-    setPaymentLinks(links => ({ ...links, [c.id]: json.authorizationUrl }));
-    auditLog("request_payment", c.title);
-    load();
-  }
-
-  const selectedTemplate = templates.find(t => t.id === form.templateId);
-  const placeholders = selectedTemplate ? extractPlaceholders(selectedTemplate.bodyMarkup) : [];
-
-  async function compose() {
-    setErr(""); setMsg("");
-    if (!form.templateId || !form.recipientName) { setErr("Template and recipient name are required."); return; }
-    if (form.signatoryIds.length === 0 && signatories.length > 0) {
-      if (!confirm("No signatory is selected, so this document will have no company signature on it. Continue anyway?")) return;
-    }
-    const r = await fetch("/api/admin/contracts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    const json = await r.json();
-    if (!r.ok) { setErr(json.error || "Failed to create contract."); return; }
-    auditLog("create_contract", form.recipientName);
-    setForm({ templateId: "", recipientName: "", recipientEmail: "", amount: "", currency: "NGN", signatoryIds: signatories.map(s => s.id), fillData: {} });
-    setShowCompose(false);
-    setMsg("Draft created.");
-    setTimeout(() => setMsg(""), 3000);
-    load();
+  async function saveForm() {
+    if (!form.templateId) { setErr("Choose a template."); return; }
+    if (!form.client.name.trim()) { setErr(`Enter the ${kind === "letter" ? "recipient's" : "client's"} name.`); return; }
+    if (payable && value > 0 && form.schedule.length && scheduleOff) { setErr(`The payment schedule adds up to ${ctrMoney(scheduleTotal, form.currency)} but the contract value is ${ctrMoney(value, form.currency)}.`); return; }
+    if (form.signatoryIds.length === 0 && signatories.length > 0 && !confirm("No company signatory is selected, so the document will carry no Orion Soft signature. Continue anyway?")) return;
+    const body = {
+      templateId: form.templateId, title: form.title.trim() || undefined, client: form.client,
+      effectiveDate: form.effectiveDate, endDate: form.endDate, fillData: form.fillData, signatoryIds: form.signatoryIds,
+      ...(kind === "agreement" ? { scope: form.scope, deliverables: form.deliverables } : {}),
+      ...(payable
+        ? { currency: form.currency, amount: value, vatIncluded: form.vatIncluded, allowPartial: form.allowPartial, paymentTerms: form.paymentTerms, schedule: form.schedule.map(r => ({ id: r.id || undefined, title: r.title, amount: Number(r.amount) || 0, dueDate: r.dueDate || null, trigger: r.trigger })) }
+        : { amount: 0, schedule: [] }),
+    };
+    const j = await run(() => (form.id ? contractApi({ id: form.id, ...body }) : contractApi(body, "POST")));
+    if (!j) return;
+    auditLog(form.id ? "update_contract" : "create_contract", j.contract.number);
+    setForm(null);
+    setExpanded(j.contract.id);
+    flash(form.id ? `${j.contract.number} updated.` : `Draft ${j.contract.number} created. Preview the PDF, then send it for signature.`);
+    load(true);
   }
 
   async function send(c) {
-    if (!confirm(`Send "${c.title}" to ${c.recipientEmail}?`)) return;
-    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "send" }) });
-    const json = await r.json();
-    if (!r.ok) { alert(json.error || "Failed to send."); return; }
-    auditLog("send_contract", c.title);
-    load();
+    const word = c.kind === "certificate" ? "Issue" : "Send";
+    if (!c.client?.email) { setErr("Add the client's email address first (Edit draft)."); return; }
+    if (!confirm(`${word} ${c.number} "${c.title}" to ${c.client.email}?`)) return;
+    const j = await run(() => contractApi({ id: c.id, action: "send" }));
+    if (!j) return;
+    replace(j.contract); auditLog("send_contract", c.number);
+    if (j.emailSent) flash(c.kind === "certificate" ? `${c.number} issued and emailed.` : `${c.number} sent for signature to ${c.client.email}.`);
+    else {
+      if (j.signLink) setLinks(l => ({ ...l, [c.id]: j.signLink }));
+      setErr(j.signLink ? "The email couldn't be sent. Copy the signing link below and send it to the client yourself." : "The email couldn't be sent. Download the PDF and send it yourself.");
+    }
   }
 
-  async function cancelContract(c) {
-    setErr("");
-    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "cancel" }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to cancel this contract."); return; }
-    auditLog("cancel_contract", c.title);
-    load();
-  }
-  const [confirmCancel, setConfirmCancel] = useState(null);
-
-  async function completeContract(c) {
-    if (!confirm(`Mark "${c.title}" as completed? This closes out the engagement.`)) return;
-    setErr("");
-    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "complete" }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to mark this contract completed."); return; }
-    auditLog("complete_contract", c.title);
-    load();
+  async function action(c, body, done) {
+    const j = await run(() => contractApi({ id: c.id, ...body }));
+    if (!j) return null;
+    if (j.contract) replace(j.contract);
+    if (done) flash(typeof done === "function" ? done(j) : done);
+    return j;
   }
 
-  async function addMilestone(c) {
-    const title = milestoneTitle[c.id];
-    if (!title) return;
-    setErr("");
-    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "add_milestone", title }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to add milestone."); return; }
-    setMilestoneTitle(m => ({ ...m, [c.id]: "" }));
-    load();
+  async function removeDraft(c) {
+    if (!confirm(`Delete draft ${c.number}? This can't be undone.`)) return;
+    const r = await fetch(`/api/admin/contracts?id=${encodeURIComponent(c.id)}`, { method: "DELETE" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(j.error || "Couldn't delete this draft."); return; }
+    setContracts(list => list.filter(x => x.id !== c.id)); flash(`Draft ${c.number} deleted.`);
   }
 
-  async function toggleMilestone(c, ms) {
-    setErr("");
-    const status = ms.status === "completed" ? "pending" : "completed";
-    const r = await fetch("/api/admin/contracts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, action: "update_milestone", milestoneId: ms.id, status }) });
-    const json = await r.json().catch(() => ({}));
-    if (!r.ok) { setErr(json.error || "Failed to update milestone."); return; }
-    auditLog("update_milestone", `${c.title}: ${ms.title}`, status);
-    load();
-  }
-
-  const statusColor = { draft: C.textMuted, sent: C.blue, signed: C.mint, active: C.mint, completed: C.gold, cancelled: C.rose };
+  const pendingTransfers = contracts.reduce((n, c) => n + (c.payments || []).filter(p => p.status === "awaiting_confirmation").length, 0);
+  const outstanding = contracts.filter(c => ["signed", "active"].includes(c.status) && c.currency === "NGN").reduce((s, c) => s + (c.balance || 0), 0);
+  const FILTERS = [["all", "All"], ["draft", "Drafts"], ["sent", "Awaiting signature"], ["live", "Signed / active"], ["completed", "Completed"], ["cancelled", "Cancelled"]];
+  const shown = contracts.filter(c => (filter === "all" || (filter === "live" ? ["signed", "active"].includes(c.status) : c.status === filter)))
+    .filter(c => !q.trim() || `${c.number} ${c.title} ${c.client?.name} ${c.client?.organisation} ${c.client?.email}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const groups = [["agreement", "Agreements"], ["letter", "Letters"], ["certificate", "Certificates"]];
 
   return (
     <div>
-      <ConfirmDialog open={!!confirmCancel} onClose={() => setConfirmCancel(null)} onConfirm={() => confirmCancel && cancelContract(confirmCancel)} message={confirmCancel ? `Cancel "${confirmCancel.title}"? This cannot be undone.` : ""} confirmLabel="Cancel Contract" />
+      <ConfirmDialog open={!!confirmCancel} onClose={() => setConfirmCancel(null)} onConfirm={() => confirmCancel && action(confirmCancel, { action: "cancel" }, `${confirmCancel.number} cancelled.`)} message={confirmCancel ? `Cancel ${confirmCancel.number} "${confirmCancel.title}"? The client can no longer sign it.` : ""} confirmLabel="Cancel contract" />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
-        <StatCard label="Total Contracts" value={contracts.length} color={C.blue} icon="📑" />
-        <StatCard label="Awaiting Signature" value={contracts.filter(c => c.status === "sent").length} color={C.amber} icon="⏳" />
-        <StatCard label="Signed / Active" value={contracts.filter(c => ["signed", "active"].includes(c.status)).length} color={C.mint} icon="✅" />
+        <StatCard label="Total documents" value={contracts.length} color={C.blue} icon="📑" />
+        <StatCard label="Awaiting signature" value={contracts.filter(c => c.status === "sent").length} color={C.amber} icon="⏳" />
+        <StatCard label="Signed / active" value={contracts.filter(c => ["signed", "active"].includes(c.status)).length} color={C.mint} icon="✅" />
+        <StatCard label="Outstanding (NGN)" value={`₦${Math.round(outstanding).toLocaleString("en-US")}`} color={C.gold} icon="💼" sub="Balance on signed contracts" />
+        <StatCard label="Transfers to confirm" value={pendingTransfers} color={pendingTransfers ? C.rose : C.textMuted} icon="🏦" />
       </div>
 
       <SectionCard style={{ marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <SectionTitle>Contracts</SectionTitle>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Btn small variant="ghost" onClick={() => downloadCSV("contracts",
-              ["Title", "Type", "Recipient", "Email", "Status", "Amount", "Currency", "Created"],
-              contracts.map(c => [c.title, c.type, c.recipientName, c.recipientEmail, c.status, c.amount, c.currency, new Date(c.createdAt).toLocaleDateString("en-NG")]),
-              "contracts")}>Export CSV</Btn>
-            <Btn small onClick={() => showCompose ? setShowCompose(false) : openCompose()}>{showCompose ? "Cancel" : "+ Compose Document"}</Btn>
+          <SectionTitle>{form ? (form.id ? "Edit draft" : "New document") : "Contracts & documents"}</SectionTitle>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {!form && <Btn small variant="ghost" onClick={() => downloadCSV("contracts",
+              ["Number", "Title", "Client", "Organisation", "Email", "Status", "Currency", "Value", "Paid", "Balance", "Created"],
+              contracts.map(c => [c.number, c.title, c.client?.name, c.client?.organisation, c.client?.email, c.status, c.currency, c.amount, c.paid, c.balance, new Date(c.createdAt).toLocaleDateString("en-NG")]),
+              "contracts")}>Export CSV</Btn>}
+            <Btn small variant={form ? "ghost" : "primary"} onClick={() => (form ? (setForm(null), setErr("")) : openCompose())}>{form ? "Close" : "+ New document"}</Btn>
           </div>
         </div>
-        {showCompose && (
-          <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${C.border}` }}>
-            <SplitEditor
-              left={
-                <div>
-                  <div style={{ marginBottom: 14 }}>
-                    <Label>Template</Label>
-                    <Select value={form.templateId} onChange={e => setForm(f => ({ ...f, templateId: e.target.value, fillData: {} }))}>
-                      <option value="">Select a template…</option>
-                      {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </Select>
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>RECIPIENT</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
-                    <div><Label>Recipient name</Label><Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} /></div>
-                    <div><Label>Recipient email (optional)</Label><Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} /></div>
-                  </div>
-                  {placeholders.length > 0 && (
-                    <div style={{ marginBottom: 18 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>TEMPLATE FIELDS</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        {placeholders.map(p => (
-                          <Input key={p} placeholder={p} value={form.fillData[p] || ""} onChange={e => setForm(f => ({ ...f, fillData: { ...f.fillData, [p]: e.target.value } }))} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>PAYMENT (OPTIONAL)</div>
-                    <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 10px" }}>Only fill this in if the document has a monetary value attached (e.g. a service contract). Leave blank for letters, NDAs, and other non-paid documents.</p>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                      <div><Label>Amount</Label><Input type="number" placeholder="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} /></div>
-                      <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.06em", marginBottom: 8 }}>SIGNATORIES</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {signatories.map(s => {
-                        const active = form.signatoryIds.includes(s.id);
-                        return (
-                          <button key={s.id} type="button" onClick={() => setForm(f => ({ ...f, signatoryIds: active ? f.signatoryIds.filter(id => id !== s.id) : [...f.signatoryIds, s.id] }))}
-                            style={{ background: active ? C.goldDim : C.surface, border: `1px solid ${active ? C.gold : C.border}`, borderRadius: 8, padding: "6px 12px", color: active ? C.gold : C.text, fontSize: 12.5, cursor: "pointer" }}>
-                            {active ? "✓ " : ""}{s.fullName}
-                          </button>
-                        );
-                      })}
-                      {signatories.length === 0 && <span style={{ color: C.textMuted, fontSize: 12.5 }}>No signatories yet — add one under Signatories.</span>}
-                    </div>
-                    <p style={{ fontSize: 12, margin: "8px 0 0", color: form.signatoryIds.length === 0 && signatories.length > 0 ? C.amber : C.textMuted }}>
-                      {form.signatoryIds.length === 0 && signatories.length > 0
-                        ? "No signatory selected: this document will have no company signature on it."
-                        : "Selected signatories are pre-checked automatically; deselect any who shouldn't sign this specific document."}
-                    </p>
-                  </div>
-                  <Btn onClick={compose}>Create draft & generate PDF</Btn>
-                  {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
-                </div>
-              }
-              right={
-                selectedTemplate ? (
-                  <LetterPreview
-                    subject={selectedTemplate.name}
-                    recipientName={form.recipientName}
-                    recipientEmail={form.recipientEmail}
-                    signatoryName={signatories.find(s => s.id === form.signatoryIds[0])?.fullName}
-                    signatoryTitle={signatories.find(s => s.id === form.signatoryIds[0])?.title}
-                    bodyMarkup={fillPlaceholders(selectedTemplate.bodyMarkup, form.fillData, form.recipientName)}
-                  />
-                ) : (
-                  <div style={{ color: C.textMuted, fontSize: 13, fontFamily: font, padding: "40px 0", textAlign: "center" }}>Select a template to preview the letter.</div>
-                )
-              }
-            />
-          </div>
-        )}
-        {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
-      </SectionCard>
 
-      <SectionCard>
-        {err && !showCompose && <p style={{ color: C.rose, fontSize: 13, marginBottom: 14 }}>{err}</p>}
-        {loading && <SkeletonRows count={5} />}
-        {!loading && contracts.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No contracts yet. Compose your first document above.</p>}
-        {!loading && contracts.map(c => (
-          <div key={c.id} style={{ padding: "16px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setExpanded(e => e === c.id ? null : c.id)}>
+        {form && (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, maxWidth: 860 }}>
+            <div style={grid2}>
               <div>
-                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{c.title}</div>
-                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{c.recipientEmail} · {c.currency} {Number(c.amount).toLocaleString()}</div>
+                <Label>Template</Label>
+                <Select value={form.templateId} onChange={e => setF({ templateId: e.target.value })} style={form.id ? { opacity: 0.7 } : {}}>
+                  <option value="">Choose a template…</option>
+                  {groups.map(([k, label]) => (
+                    <optgroup key={k} label={label}>
+                      {templates.filter(t => (t.kind || "agreement") === k).map(t => <option key={t.id} value={t.id} disabled={!!form.id && t.id !== form.templateId}>{t.name}</option>)}
+                    </optgroup>
+                  ))}
+                </Select>
               </div>
-              <Badge color={statusColor[c.status] || C.textMuted}>{c.status}</Badge>
+              <div><Label>Document title (optional)</Label><Input value={form.title} onChange={e => setF({ title: e.target.value })} placeholder={template ? `${template.name}: ${form.client.organisation || form.client.name || "client"}` : "Filled in automatically"} /></div>
             </div>
-            {expanded === c.id && (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44` }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-                  <a href={`/api/files/download?key=${encodeURIComponent(c.pdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View draft PDF →</a>
-                  <a href={`/api/files/download?key=${encodeURIComponent(c.pdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.blue, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
-                    <Download size={13} /> Download draft
-                  </a>
-                  {c.signedPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}`} target="_blank" rel="noreferrer" style={{ color: C.mint, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>View signed PDF →</a>}
-                  {c.signedPdfKey && (
-                    <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}&download=1`} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: C.mint, fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>
-                      <Download size={13} /> Download signed
-                    </a>
-                  )}
-                  {c.status === "draft" && <Btn small onClick={() => send(c)}>Send for signature</Btn>}
-                  {["signed", "active"].includes(c.status) && c.amount > 0 && <Btn small onClick={() => requestPayment(c)}>Request Payment</Btn>}
-                  {["signed", "active"].includes(c.status) && <Btn small variant="ghost" onClick={() => completeContract(c)}>Mark Completed</Btn>}
-                  {!["signed", "active", "completed", "cancelled"].includes(c.status) && <Btn small danger onClick={() => setConfirmCancel(c)}>Cancel</Btn>}
+            {template && <p style={{ fontSize: 12.5, color: C.textMuted, margin: "8px 0 0" }}>{template.docLabel} · {kind === "agreement" ? "both parties sign" : kind === "letter" ? "the recipient signs to accept" : "issued and signed by Orion Soft only"}{payable ? " · takes payments" : ""}</p>}
+
+            {template && (
+              <>
+                <div style={subHead}>{kind === "letter" ? "RECIPIENT" : kind === "certificate" ? "LICENSEE" : "CLIENT"}</div>
+                <div style={grid2}>
+                  <div><Label>Full name *</Label><Input value={form.client.name} onChange={e => setClient({ name: e.target.value })} placeholder={kind === "letter" ? "e.g. Adaeze Okafor" : "Contact person's full name"} /></div>
+                  {kind !== "letter" && <div><Label>Organisation</Label><Input value={form.client.organisation} onChange={e => setClient({ organisation: e.target.value })} placeholder="e.g. Expert Hive Limited" /></div>}
+                  <div><Label>Email {kind === "certificate" ? "" : "(for signing)"}</Label><Input type="email" value={form.client.email} onChange={e => setClient({ email: e.target.value })} placeholder="name@company.com" /></div>
+                  <div><Label>Phone</Label><Input value={form.client.phone} onChange={e => setClient({ phone: e.target.value })} placeholder="+234…" /></div>
                 </div>
-                {paymentLinks[c.id] && (
-                  <div style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5, color: C.text, wordBreak: "break-all" }}>
-                    Payment link: <a href={paymentLinks[c.id]} target="_blank" rel="noreferrer" style={{ color: C.gold }}>{paymentLinks[c.id]}</a>
-                  </div>
+                <div style={{ marginTop: 12 }}><Label>Address</Label><Input value={form.client.address} onChange={e => setClient({ address: e.target.value })} placeholder="Registered or postal address" /></div>
+
+                <div style={subHead}>DATES</div>
+                <div style={grid2}>
+                  <div><Label>Effective date</Label><Input type="date" value={form.effectiveDate} onChange={e => setF({ effectiveDate: e.target.value })} /></div>
+                  {kind !== "letter" && <div><Label>End date (optional)</Label><Input type="date" value={form.endDate} onChange={e => setF({ endDate: e.target.value })} /></div>}
+                </div>
+
+                {kind === "agreement" && (
+                  <>
+                    <div style={subHead}>SCOPE OF WORK{template.requiresScope ? " *" : " (OPTIONAL)"}</div>
+                    <Label>What will be done</Label>
+                    <Textarea rows={4} value={form.scope} onChange={e => setF({ scope: e.target.value })} placeholder="e.g. Design, build and deploy a school management web app with student records, fees, results and parent portal." />
+                    <div style={{ marginTop: 12 }}>
+                      <Label>Deliverables (one per line)</Label>
+                      <Textarea rows={4} value={form.deliverables} onChange={e => setF({ deliverables: e.target.value })} placeholder={"Web application deployed to the Client's domain\nAdmin and user guides\n3 months of post-launch support"} />
+                    </div>
+                  </>
                 )}
-                {payments.filter(p => p.contractId === c.id).length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Label>Payments</Label>
-                    {payments.filter(p => p.contractId === c.id).map(p => (
-                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 12.5 }}>
-                        <span style={{ color: C.text }}>{p.currency} {Number(p.amount).toLocaleString()} · {p.reference}</span>
-                        <Badge color={p.status === "success" ? C.mint : p.status === "failed" ? C.rose : C.amber}>{p.status}</Badge>
+
+                {payable && (
+                  <>
+                    <div style={subHead}>FEES AND PAYMENT SCHEDULE</div>
+                    <div style={grid2}>
+                      <div><Label>Currency</Label><Select value={form.currency} onChange={e => setF({ currency: e.target.value })}>{["NGN", "USD", "GBP", "EUR"].map(c => <option key={c}>{c}</option>)}</Select></div>
+                      <div><Label>Contract value</Label><Input type="number" value={form.amount} onChange={e => setF({ amount: e.target.value })} placeholder="0.00" /></div>
+                    </div>
+                    <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 12 }}>
+                      <Toggle value={form.vatIncluded} onChange={v => setF({ vatIncluded: v })} label="Value includes 7.5% VAT" />
+                      <Toggle value={form.allowPartial} onChange={v => setF({ allowPartial: v })} label="Allow part-payments" />
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "16px 0 10px" }}>
+                      <span style={{ fontSize: 12.5, color: C.textMuted }}>Quick split:</span>
+                      {SCHEDULE_PRESETS.map(([label, parts]) => <Btn key={label} small variant="ghost" onClick={() => applyPreset(parts)}>{label}</Btn>)}
+                    </div>
+                    {form.schedule.map((r, i) => (
+                      <div key={r.key} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr)) 34px", gap: 8, alignItems: "end", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
+                        <div><Label>Milestone {i + 1}</Label><Input value={r.title} onChange={e => setRow(r.key, { title: e.target.value })} placeholder="e.g. Deposit" /></div>
+                        <div><Label>Amount</Label><Input type="number" value={r.amount} onChange={e => setRow(r.key, { amount: e.target.value })} placeholder="0.00" /></div>
+                        <div><Label>Due when</Label><Input value={r.trigger} onChange={e => setRow(r.key, { trigger: e.target.value })} placeholder="e.g. On signing" /></div>
+                        <div><Label>Due date (optional)</Label><Input type="date" value={r.dueDate} onChange={e => setRow(r.key, { dueDate: e.target.value })} /></div>
+                        <button type="button" aria-label={`Remove milestone ${i + 1}`} onClick={() => setF({ schedule: form.schedule.filter(x => x.key !== r.key) })} style={{ height: 40, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
                       </div>
                     ))}
-                  </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+                      <Btn small variant="ghost" onClick={() => setF({ schedule: [...form.schedule, newRow("", value > scheduleTotal ? (value - scheduleTotal).toFixed(2) : "")] })}>+ Add milestone</Btn>
+                      {form.schedule.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOff ? C.rose : C.mint }}>Schedule total {ctrMoney(scheduleTotal, form.currency)}{scheduleOff ? ` ≠ value ${ctrMoney(value, form.currency)}` : " ✓"}</span>}
+                      {form.schedule.length === 0 && value > 0 && <span style={{ fontSize: 12.5, color: C.textMuted }}>No schedule: the full value is due on signing.</span>}
+                    </div>
+                    <div style={{ marginTop: 12 }}><Label>Extra payment terms (optional)</Label><Textarea rows={2} value={form.paymentTerms} onChange={e => setF({ paymentTerms: e.target.value })} placeholder="e.g. Hosting is billed separately at cost." /></div>
+                  </>
                 )}
-                <Label>Milestones</Label>
-                {(c.milestones || []).map(ms => (
-                  <div key={ms.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
-                    <input type="checkbox" checked={ms.status === "completed"} onChange={() => toggleMilestone(c, ms)} />
-                    <span style={{ color: ms.status === "completed" ? C.mint : C.text, fontSize: 13, textDecoration: ms.status === "completed" ? "line-through" : "none" }}>{ms.title}</span>
-                  </div>
-                ))}
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <Input placeholder="New milestone" value={milestoneTitle[c.id] || ""} onChange={e => setMilestoneTitle(m => ({ ...m, [c.id]: e.target.value }))} style={{ maxWidth: 240 }} />
-                  <Btn small variant="ghost" onClick={() => addMilestone(c)}>+ Add</Btn>
+
+                {template.fields?.length > 0 && (
+                  <>
+                    <div style={subHead}>DOCUMENT DETAILS</div>
+                    <div style={grid2}>
+                      {template.fields.map(f => (
+                        <div key={f.key}>
+                          <Label>{humanKey(f.key)}{f.defaultValue == null ? " *" : ""}</Label>
+                          <Input value={form.fillData[f.key] || ""} onChange={e => setF({ fillData: { ...form.fillData, [f.key]: e.target.value } })} placeholder={f.defaultValue != null ? `Default: ${f.defaultValue}` : ""} />
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div style={subHead}>SIGNING FOR ORION SOFT</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {signatories.map(s => {
+                    const on = form.signatoryIds.includes(s.id);
+                    return (
+                      <button key={s.id} type="button" aria-pressed={on} onClick={() => setF({ signatoryIds: on ? form.signatoryIds.filter(id => id !== s.id) : [...form.signatoryIds, s.id] })}
+                        style={{ background: on ? C.goldDim : C.surface, border: `1px solid ${on ? C.gold : C.border}`, borderRadius: 8, padding: "7px 12px", color: on ? C.gold : C.text, fontSize: 13, cursor: "pointer", fontFamily: font }}>
+                        {on ? "✓ " : ""}{s.fullName}{s.title ? ` · ${s.title}` : ""}
+                      </button>
+                    );
+                  })}
+                  {signatories.length === 0 && <span style={{ color: C.amber, fontSize: 13 }}>No signatories yet. Add one under Signatories so documents carry a company signature.</span>}
                 </div>
-              </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>
+                  <Btn onClick={saveForm} disabled={busy}>{busy ? "Saving…" : form.id ? "Save changes" : "Create draft"}</Btn>
+                  <Btn variant="ghost" onClick={() => { setForm(null); setErr(""); }}>Cancel</Btn>
+                </div>
+              </>
             )}
           </div>
-        ))}
+        )}
+        {err && <p role="alert" style={{ color: C.rose, fontSize: 13, marginTop: 12 }}>{err}</p>}
+        {msg && <p role="status" style={{ color: C.mint, fontSize: 13, marginTop: 12 }}>{msg}</p>}
       </SectionCard>
+
+      {!form && (
+        <SectionCard>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {FILTERS.map(([k, label]) => (
+                <button key={k} type="button" onClick={() => setFilter(k)} style={{ background: filter === k ? C.goldDim : "transparent", border: `1px solid ${filter === k ? C.gold : C.border}`, color: filter === k ? C.gold : C.text, borderRadius: 20, padding: "6px 12px", fontSize: 12.5, cursor: "pointer", fontFamily: font }}>{label}</button>
+              ))}
+            </div>
+            <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search number, title or client" style={{ maxWidth: 280, marginLeft: "auto" }} />
+          </div>
+          {loading && <SkeletonRows count={5} />}
+          {!loading && shown.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>{contracts.length ? "Nothing matches this filter." : "No documents yet. Create your first one above."}</p>}
+          {!loading && shown.map(c => {
+            const [label, color] = CONTRACT_STATUS[c.status] || [c.status, C.textMuted];
+            const transfers = (c.payments || []).filter(p => p.status === "awaiting_confirmation").length;
+            return (
+              <div key={c.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
+                <button type="button" aria-expanded={expanded === c.id} onClick={() => setExpanded(e => (e === c.id ? null : c.id))}
+                  style={{ all: "unset", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, cursor: "pointer", width: "100%", boxSizing: "border-box" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: C.heading, fontSize: 14, overflowWrap: "anywhere" }}><span style={{ color: C.gold }}>{c.number}</span> · {c.title}</div>
+                    <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>
+                      {c.client?.organisation || c.client?.name}{c.client?.email ? ` · ${c.client.email}` : ""}
+                      {c.amount > 0 && ` · ${ctrMoney(c.amount, c.currency)}${["signed", "active", "completed"].includes(c.status) ? ` · paid ${ctrMoney(c.paid, c.currency)}` : ""}`}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    {transfers > 0 && <Badge color={C.rose}>{transfers} to confirm</Badge>}
+                    <Badge color={color}>{label}</Badge>
+                  </div>
+                </button>
+                {expanded === c.id && <ContractDetail c={c} busy={busy} signLink={links[c.id]} onSend={() => send(c)} onEdit={() => openEdit(c)} onDelete={() => removeDraft(c)} onCancel={() => setConfirmCancel(c)} action={(body, done) => action(c, body, done)} flash={flash} />}
+              </div>
+            );
+          })}
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+function ContractDetail({ c, busy, signLink, onSend, onEdit, onDelete, onCancel, action, flash }) {
+  const [rec, setRec] = useState(null); // record-payment form
+  const [newWork, setNewWork] = useState("");
+  const signed = ["signed", "active", "completed"].includes(c.status);
+  const pdf = download => `/api/admin/contracts?pdf=${encodeURIComponent(c.id)}${download ? "&download=1" : ""}`;
+  const receipt = (p, download) => `/api/admin/contracts?receipt=${encodeURIComponent(p.id)}${download ? "&download=1" : ""}`;
+  const transfers = (c.payments || []).filter(p => p.status === "awaiting_confirmation");
+  const received = (c.payments || []).filter(p => p.status === "success");
+  const other = (c.payments || []).filter(p => !["success", "awaiting_confirmation"].includes(p.status));
+  const pct = c.amount > 0 ? Math.min(100, Math.round(((c.paid || 0) / c.amount) * 100)) : 0;
+  const link = { color: C.blue, fontSize: 13, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 };
+  const row = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "9px 0", borderTop: `1px solid ${C.border}`, fontSize: 13 };
+
+  async function recordPayment() {
+    const amount = Number(rec.amount);
+    if (!(amount > 0)) return;
+    const j = await action({ action: "record_payment", amount, milestoneId: rec.milestoneId || null, method: rec.method, reference: rec.reference, paidAt: rec.paidAt }, j2 => `Payment recorded. Receipt ${j2.receiptNumber} emailed to the client.`);
+    if (j) setRec(null);
+  }
+  async function reject(p) {
+    const reason = prompt("Why are you rejecting this transfer? (The client isn't emailed; this is for your records.)", "Not received in our account");
+    if (reason === null) return;
+    action({ action: "reject_payment", paymentId: p.id, reason }, "Transfer marked as not received.");
+  }
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}44` }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+        <a href={pdf(false)} target="_blank" rel="noreferrer" style={link}>View PDF →</a>
+        <a href={pdf(true)} style={link}><Download size={13} /> Download</a>
+        {c.signedPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}`} target="_blank" rel="noreferrer" style={{ ...link, color: C.mint }}>Signed copy →</a>}
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        {c.status === "draft" && <Btn small onClick={onSend} disabled={busy}>{c.kind === "certificate" ? "Issue & email" : "Send for signature"}</Btn>}
+        {c.status === "draft" && <Btn small variant="ghost" onClick={onEdit}>Edit draft</Btn>}
+        {c.status === "draft" && <Btn small danger onClick={onDelete}>Delete draft</Btn>}
+        {c.payLink && c.balance > 0 && <Btn small onClick={() => action({ action: "send_payment_link" }, j => (j.emailSent ? `Payment link emailed to ${c.client.email}.` : "The email couldn't be sent. Use Copy payment link instead."))} disabled={busy}>Email payment link</Btn>}
+        {c.payLink && <Btn small variant="ghost" onClick={() => flash(copyText(c.payLink) ? "Payment link copied." : c.payLink)}>Copy payment link</Btn>}
+        {signed && c.status !== "completed" && c.balance > 0 && <Btn small variant="ghost" onClick={() => setRec(r => (r ? null : { amount: "", milestoneId: "", method: "bank_transfer", reference: "", paidAt: localToday() }))}>Record a payment</Btn>}
+        {["signed", "active"].includes(c.status) && <Btn small variant="ghost" onClick={() => confirm(`Mark ${c.number} as completed?${c.balance > 0 ? ` ${ctrMoney(c.balance, c.currency)} is still unpaid.` : ""}`) && action({ action: "complete" }, `${c.number} marked completed.`)}>Mark completed</Btn>}
+        {["draft", "sent"].includes(c.status) && <Btn small danger onClick={onCancel}>Cancel</Btn>}
+      </div>
+      {signLink && c.status === "sent" && (
+        <div style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5, color: C.text, wordBreak: "break-all" }}>
+          Signing link: <a href={signLink} target="_blank" rel="noreferrer" style={{ color: C.gold }}>{signLink}</a>{" "}
+          <button type="button" onClick={() => flash(copyText(signLink) ? "Signing link copied." : signLink)} style={{ background: "none", border: "none", color: C.gold, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Copy</button>
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, fontSize: 13, color: C.text, marginBottom: 16 }}>
+        <div><div style={{ color: C.textMuted, fontSize: 11.5 }}>{c.kind === "letter" ? "RECIPIENT" : "CLIENT"}</div>{c.client?.name}{c.client?.organisation ? `, ${c.client.organisation}` : ""}<div style={{ color: C.textMuted }}>{[c.client?.email, c.client?.phone].filter(Boolean).join(" · ")}</div></div>
+        <div><div style={{ color: C.textMuted, fontSize: 11.5 }}>TERM</div>{ctrDay(c.effectiveDate) || "—"}{c.endDate ? ` to ${ctrDay(c.endDate)}` : ""}</div>
+        <div><div style={{ color: C.textMuted, fontSize: 11.5 }}>SENT / SIGNED</div>{c.sentAt ? ctrDay(c.sentAt) : "Not sent"}{c.signedAt ? ` · signed ${ctrDay(c.signedAt)} by ${c.signedByName}` : ""}</div>
+      </div>
+
+      {c.amount > 0 && (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13.5, color: C.text }}>
+            <span>Value <strong style={{ color: C.heading }}>{ctrMoney(c.amount, c.currency)}</strong>{c.vatIncluded ? " (incl. VAT)" : ""}</span>
+            <span>Paid <strong style={{ color: C.mint }}>{ctrMoney(c.paid, c.currency)}</strong></span>
+            <span>Balance <strong style={{ color: c.balance > 0 ? C.amber : C.mint }}>{ctrMoney(c.balance, c.currency)}</strong></span>
+          </div>
+          <div role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} style={{ height: 6, background: C.border, borderRadius: 6, marginTop: 10, overflow: "hidden" }}>
+            <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg, ${C.gold}, ${C.mint})` }} />
+          </div>
+          {(c.scheduleStatus || []).map(m => {
+            const [label, color] = PAY_STATUS[m.payStatus] || ["", C.textMuted];
+            return (
+              <div key={m.id} style={row}>
+                <span style={{ minWidth: 0 }}>
+                  <strong style={{ color: C.heading }}>{m.title}</strong>
+                  <span style={{ color: C.textMuted }}> · {m.dueDate ? `due ${ctrDay(m.dueDate)}` : m.trigger || "—"}</span>
+                  {signed && (
+                    <label style={{ marginLeft: 10, color: C.textMuted, fontSize: 12, cursor: "pointer" }}>
+                      <input type="checkbox" checked={m.status === "completed"} onChange={() => action({ action: "update_milestone", milestoneId: m.id, status: m.status === "completed" ? "pending" : "completed" })} style={{ verticalAlign: "middle", marginRight: 4 }} />
+                      work delivered
+                    </label>
+                  )}
+                </span>
+                <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{ctrMoney(m.amount, c.currency)}</span>
+                  {signed && <Badge color={color}>{label}</Badge>}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {rec && (
+        <div style={{ background: C.surface, border: `1px solid ${C.gold}44`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, color: C.heading, fontSize: 14, marginBottom: 10 }}>Record a payment received outside the payment page</div>
+          <div style={grid2}>
+            <div><Label>Amount ({c.currency})</Label><Input type="number" value={rec.amount} onChange={e => setRec(r => ({ ...r, amount: e.target.value }))} placeholder={`Up to ${c.balance}`} /></div>
+            <div><Label>For milestone</Label><Select value={rec.milestoneId} onChange={e => { const m = (c.scheduleStatus || []).find(x => x.id === e.target.value); setRec(r => ({ ...r, milestoneId: e.target.value, amount: m ? String(m.balance) : r.amount })); }}>
+              <option value="">Earliest unpaid</option>
+              {(c.scheduleStatus || []).filter(m => m.balance > 0).map(m => <option key={m.id} value={m.id}>{m.title} ({ctrMoney(m.balance, c.currency)} due)</option>)}
+            </Select></div>
+            <div><Label>Method</Label><Select value={rec.method} onChange={e => setRec(r => ({ ...r, method: e.target.value }))}>{CTR_PAY_METHODS.filter(([k]) => k !== "paystack").map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></div>
+            <div><Label>Reference</Label><Input value={rec.reference} onChange={e => setRec(r => ({ ...r, reference: e.target.value }))} placeholder="Bank / teller reference" /></div>
+            <div><Label>Date received</Label><Input type="date" value={rec.paidAt} onChange={e => setRec(r => ({ ...r, paidAt: e.target.value }))} /></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <Btn small onClick={recordPayment} disabled={busy || !(Number(rec.amount) > 0)}>Record & email receipt</Btn>
+            <Btn small variant="ghost" onClick={() => setRec(null)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+
+      {transfers.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <Label>Bank transfers to confirm</Label>
+          {transfers.map(p => (
+            <div key={p.id} style={row}>
+              <span><strong style={{ color: C.heading }}>{ctrMoney(p.amount, c.currency)}</strong> · ref {p.bankReference || "—"} · from {p.payerName || "—"} · reported {ctrDay(p.createdAt)}</span>
+              <span style={{ display: "flex", gap: 8 }}>
+                <Btn small onClick={() => confirm(`Confirm you received ${ctrMoney(p.amount, c.currency)} in your bank? The client will be emailed a receipt.`) && action({ action: "confirm_payment", paymentId: p.id }, "Transfer confirmed and receipt emailed.")} disabled={busy}>Confirm received</Btn>
+                <Btn small danger onClick={() => reject(p)} disabled={busy}>Not received</Btn>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {received.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <Label>Payments and receipts</Label>
+          {received.map(p => (
+            <div key={p.id} style={row}>
+              <span><strong style={{ color: C.heading }}>{p.receiptNumber}</strong> · {ctrDay(p.paidAt)} · {payMethodLabel(p.method)}{p.bankReference ? ` · ${p.bankReference}` : ""}</span>
+              <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <strong style={{ color: C.mint, fontVariantNumeric: "tabular-nums" }}>{ctrMoney(p.amount, c.currency)}</strong>
+                <a href={receipt(p, false)} target="_blank" rel="noreferrer" style={link}>Receipt</a>
+                <a href={receipt(p, true)} style={link} aria-label={`Download receipt ${p.receiptNumber}`}><Download size={13} /></a>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {other.length > 0 && (
+        <details style={{ marginBottom: 16, fontSize: 12.5, color: C.textMuted }}>
+          <summary style={{ cursor: "pointer" }}>Other payment attempts ({other.length})</summary>
+          {other.map(p => <div key={p.id} style={row}><span>{ctrMoney(p.amount, c.currency)} · {payMethodLabel(p.method)} · {ctrDay(p.createdAt)}</span><Badge color={p.status === "rejected" || p.status === "amount_mismatch" ? C.rose : C.textMuted}>{p.status.replace(/_/g, " ")}</Badge></div>)}
+        </details>
+      )}
+
+      {signed && (
+        <div>
+          <Label>Work checklist</Label>
+          {(c.milestones || []).map(ms => (
+            <label key={ms.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", cursor: "pointer" }}>
+              <input type="checkbox" checked={ms.status === "completed"} onChange={() => action({ action: "update_milestone", milestoneId: ms.id, status: ms.status === "completed" ? "pending" : "completed" })} />
+              <span style={{ color: ms.status === "completed" ? C.mint : C.text, fontSize: 13, textDecoration: ms.status === "completed" ? "line-through" : "none" }}>{ms.title}</span>
+            </label>
+          ))}
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <Input placeholder="Add a task" value={newWork} onChange={e => setNewWork(e.target.value)} style={{ maxWidth: 260 }} />
+            <Btn small variant="ghost" disabled={!newWork.trim()} onClick={async () => { if (await action({ action: "add_milestone", title: newWork.trim() })) setNewWork(""); }}>+ Add</Btn>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

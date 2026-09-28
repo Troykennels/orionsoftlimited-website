@@ -18,10 +18,10 @@ export default async function handler(req, res) {
   const session = requireAuth(req, res, "admin");
   if (!session) return;
 
-  const [leave, reports, contracts, payroll, applicants, employees, expenses, tickets, invoices] = await Promise.all([
+  const [leave, reports, contracts, payroll, applicants, employees, expenses, tickets, invoices, payments] = await Promise.all([
     listRecords("leave"), listRecords("reports"), listRecords("contracts"),
     listRecords("payroll"), listRecords("applicants"), listRecords("employees"),
-    listRecords("expenses"), listRecords("tickets"), listRecords("invoices"),
+    listRecords("expenses"), listRecords("tickets"), listRecords("invoices"), listRecords("payments"),
   ]);
 
   const employeeName = (id) => employees.find(e => e.id === id)?.fullName || "Unknown";
@@ -59,6 +59,13 @@ export default async function handler(req, res) {
   }
 
   // Staff ID cards waiting for the admin to sign and authorise them.
+  // Bank transfers clients reported on the payment page, waiting to be checked.
+  const transfers = payments.filter(p => p.status === "awaiting_confirmation");
+  for (const p of transfers) {
+    const c = contracts.find(x => x.id === p.contractId);
+    items.push({ id: `transfer_${p.id}`, type: "payment", label: `Confirm a ${p.currency || "NGN"} ${Number(p.amount).toLocaleString("en-US")} bank transfer`, detail: c ? `${c.number || c.title}${p.bankReference ? ` · ref ${p.bankReference}` : ""}` : p.bankReference || "", at: p.createdAt, nav: "contracts" });
+  }
+
   const cardsToSign = employees.filter(e => e.status === "active" && e.idCard?.code && !e.idCard.authorizedAt);
   for (const e of cardsToSign) {
     items.push({ id: `idcard_${e.id}`, type: "idcard", label: `${e.fullName}'s ID card is waiting for your signature`, detail: e.idPhotoDataUrl ? "Passport photo added" : "Waiting for a passport photo", at: e.idPhotoUpdatedAt || e.idCard.issuedAt, nav: "employees" });
@@ -76,6 +83,7 @@ export default async function handler(req, res) {
     tickets: tickets.filter(t => t.status === "open").length,
     invoices: invoices.filter(i => isOverdue(normaliseInvoice(i))).length,
     idCards: cardsToSign.length,
+    transfers: transfers.length,
   };
 
   return res.json({ ok: true, items, counts, total: items.length });

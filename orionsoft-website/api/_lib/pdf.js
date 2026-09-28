@@ -798,3 +798,9 @@ export async function renderPayslipPdf(payroll, employee) {
   drawFooter(page, font, 1, 1, `Ref: PAY-${payroll.id.replace(/^pay_/, "").toUpperCase()}`, company);
   return doc.save();
 }
+
+// Shared building blocks for the contract and receipt layouts (contractPdf.js).
+export {
+  PAGE_W, PAGE_H, MARGIN, NAVY, GOLD, TEXT, MUTED, HAIRLINE, PANEL, WHITE, WHITE_DIM,
+  drawPageChrome, drawFooter, makeCursor, embedAllFonts, embedSignatureImage, drawParagraphs, wrapPlain, rightAlignedX,
+};

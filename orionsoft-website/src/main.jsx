@@ -9,6 +9,7 @@ const path = window.location.pathname
 const isStaffPath = path === '/staff' || path.startsWith('/staff/')
 const isSignPath = path.startsWith('/sign/')
 const isPayCallbackPath = path === '/pay/callback'
+const isPayContractPath = path.startsWith('/pay/contract/')
 const isApplicantPath = path === '/applicant' || path.startsWith('/applicant/')
 const isVisitConfirmPath = path.startsWith('/confirm-visit/')
 const isIdCardPath = path === '/id-card'
@@ -39,6 +40,9 @@ async function start() {
   } else if (isSignPath) {
     const SignContractPage = React.lazy(() => import('./pages/SignContractPage.jsx'))
     root = <React.Suspense fallback={null}><SignContractPage /></React.Suspense>
+  } else if (isPayContractPath) {
+    const PayContractPage = React.lazy(() => import('./pages/PayContractPage.jsx'))
+    root = <React.Suspense fallback={null}><PayContractPage /></React.Suspense>
   } else if (isPayCallbackPath) {
     const PaymentCallbackPage = React.lazy(() => import('./pages/PaymentCallbackPage.jsx'))
     root = <React.Suspense fallback={null}><PaymentCallbackPage /></React.Suspense>

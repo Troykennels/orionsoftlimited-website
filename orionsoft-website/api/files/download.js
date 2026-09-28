@@ -2,7 +2,8 @@
 // `key` (an orionsoft:files:* blob key):
 //   1. Admin session cookie — any key.
 //   2. Staff session cookie — only their own issued payslip.
-//   3. Contract sign token (?token=&contractId=) — only that contract's PDF.
+//   3. Contract sign/pay token (?token=&contractId=) — only that contract's
+//      PDFs and its payment receipts.
 import { get } from "../store.js";
 import { getAdminSession, getStaffSession, verifySession } from "../_lib/auth.js";
 import { listRecords } from "../_lib/records.js";
@@ -25,9 +26,13 @@ export default async function handler(req, res) {
 
   if (!authorized && req.query.token && req.query.contractId) {
     const payload = verifySession(req.query.token);
-    if (payload?.role === "contract-sign" && payload.contractId === req.query.contractId) {
+    if (["contract-sign", "contract-pay"].includes(payload?.role) && payload.contractId === req.query.contractId) {
       if (key === `orionsoft:files:contract_${req.query.contractId}` || key === `orionsoft:files:contract_signed_${req.query.contractId}`) {
         authorized = true;
+      } else if (key.startsWith("orionsoft:files:receipt_")) {
+        const payments = await listRecords("payments");
+        const p = payments.find(x => x.receiptPdfKey === key);
+        if (p && p.contractId === req.query.contractId && p.status === "success") authorized = true;
       }
     }
   }
@@ -41,5 +46,6 @@ export default async function handler(req, res) {
   const disposition = req.query.download ? "attachment" : "inline";
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `${disposition}; filename="${key.split(":").pop()}.pdf"`);
+  res.setHeader("Cache-Control", "private, no-store");
   return res.status(200).send(buffer);
 }
