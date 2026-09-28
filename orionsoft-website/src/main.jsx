@@ -11,15 +11,23 @@ const isSignPath = path.startsWith('/sign/')
 const isPayCallbackPath = path === '/pay/callback'
 const isApplicantPath = path === '/applicant' || path.startsWith('/applicant/')
 const isVisitConfirmPath = path.startsWith('/confirm-visit/')
+const isIdCardPath = path === '/id-card'
+const isVerifyStaffPath = path.startsWith('/verify/staff/')
 
 async function start() {
   // The website's brand colour is chosen before its code loads, so pages
   // render in the admin's theme from the first frame. The Staff Office keeps
   // its own look and doesn't wait for it.
-  if (!isStaffPath) await prepareTheme()
+  if (!isStaffPath && !isIdCardPath && !isVerifyStaffPath) await prepareTheme()
 
   let root
-  if (isVisitConfirmPath) {
+  if (isIdCardPath) {
+    const IdCardPage = React.lazy(() => import('./pages/IdCardPage.jsx'))
+    root = <React.Suspense fallback={null}><IdCardPage /></React.Suspense>
+  } else if (isVerifyStaffPath) {
+    const VerifyStaff = React.lazy(() => import('./pages/VerifyStaff.jsx'))
+    root = <React.Suspense fallback={null}><VerifyStaff /></React.Suspense>
+  } else if (isVisitConfirmPath) {
     const VisitConfirm = React.lazy(() => import('./pages/VisitConfirm.jsx'))
     root = <React.Suspense fallback={null}><VisitConfirm /></React.Suspense>
   } else if (isStaffPath) {

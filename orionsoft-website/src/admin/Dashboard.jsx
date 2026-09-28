@@ -882,6 +882,7 @@ function NeedsAttentionWidget({ navigate }) {
     { key: "expenses", label: "Pending Expenses", icon: "🧾", color: C.rose, nav: "expenses" },
     { key: "tickets", label: "Open Tickets", icon: "🎫", color: C.blue, nav: "tickets" },
     { key: "invoices", label: "Overdue Invoices", icon: "💳", color: C.rose, nav: "invoices" },
+    { key: "idCards", label: "ID Cards to Sign", icon: "🪪", color: C.gold, nav: "employees" },
   ];
 
   return (

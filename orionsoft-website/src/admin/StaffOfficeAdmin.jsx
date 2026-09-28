@@ -4,7 +4,7 @@
 //  - StaffOfficeSection: targeted announcements, feed moderation, share kits,
 //    roles & permissions, office settings/handbook, and advocacy analytics.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, KeyRound, Eye, Pencil, Megaphone, Pin, Trash2, Plus, Copy, Save, Network, Users, Download } from "lucide-react";
+import { Building2, KeyRound, Eye, Pencil, Megaphone, Pin, Trash2, Plus, Copy, Save, Network, Users, Download, IdCard } from "lucide-react";
 import { C, font, PRESENCE, SOCIAL_META } from "../staff/theme.js";
 import { Btn, Badge, SectionCard, SectionTitle, Input, Textarea, Select, Field, Grid, Modal, Tabs, EmptyState, StatCard, Avatar, Progress, Toaster, toast } from "../staff/components.jsx";
 import { resizeImageToDataUrl } from "../staff/imageUtils.js";
@@ -158,7 +158,10 @@ function Employee360({ id, roles, onClose, onEdit }) {
           </div>
           {e.headline && <div style={{ fontSize: 13, color: C.heading, marginTop: 6 }}>{e.headline}</div>}
         </div>
-        <Btn small variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Btn>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Btn small variant="ghost" icon={IdCard} onClick={() => window.open(`/id-card?employee=${encodeURIComponent(e.id)}`, "_blank", "noopener")}>ID card</Btn>
+          <Btn small variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Btn>
+        </div>
       </div>
       <Tabs active={tab} onChange={setTab} tabs={[{ id: "profile", label: "Profile & HR" }, { id: "work", label: "Work & goals", count: d.goals.length }, { id: "hr", label: "Leave, reports, attendance" }, { id: "social", label: "Social & advocacy" }, { id: "activity", label: "Activity" }]} />
       {tab === "profile" && (
@@ -324,6 +327,7 @@ export function EmployeesSection() {
                       <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "flex-end" }}>
                         <Btn small variant="ghost" icon={Eye} onClick={() => setViewing(e.id)}>View</Btn>
                         <Btn small variant="ghost" icon={Pencil} onClick={() => setForm(e)}>Edit</Btn>
+                        <Btn small variant="ghost" icon={IdCard} onClick={() => window.open(`/id-card?employee=${encodeURIComponent(e.id)}`, "_blank", "noopener")} title={e.idCard?.authorizedAt ? "ID card (authorised)" : "ID card (needs your signature)"}>{e.idCard?.code && !e.idCard?.authorizedAt ? "ID card · sign" : "ID card"}</Btn>
                         {!e.linkedAdminId && <Btn small variant="ghost" icon={KeyRound} onClick={() => resetPassword(e)} title="Reset password">Reset</Btn>}
                         {!e.linkedAdminId && <Btn small variant="ghost" onClick={() => toggleStatus(e)}>{e.status === "active" ? "Suspend" : "Reactivate"}</Btn>}
                       </div>

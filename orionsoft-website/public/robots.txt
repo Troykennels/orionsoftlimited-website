@@ -8,6 +8,8 @@ Disallow: /sign/
 Disallow: /pay/
 Disallow: /api/
 Disallow: /confirm-visit/
+Disallow: /id-card
+Disallow: /verify/
 Crawl-delay: 5
 
 User-agent: GPTBot

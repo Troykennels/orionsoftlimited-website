@@ -181,7 +181,7 @@ export default async function handler(req, res) {
       "fullName", "phone", "title", "department", "status", "staffRole", "salaryAmount", "salaryCurrency",
       "bankName", "bankAccountNumber", "bankAccountName",
       "dateOfBirth", "gender", "address", "bio", "headline", "location", "startDate", "employeeNumber", "employmentType",
-      "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship",
+      "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship", "bloodGroup",
     ];
     const before = { staffRole: employee.staffRole, managerId: employee.managerId || null, status: employee.status };
     for (const key of allowed) {

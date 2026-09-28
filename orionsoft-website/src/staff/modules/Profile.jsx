@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Globe, ExternalLink, Copy, ShieldCheck, Lock } from "lucide-react";
+import { Camera, Globe, ExternalLink, Copy, ShieldCheck, Lock, IdCard } from "lucide-react";
 import { C, SOCIAL_META } from "../theme.js";
 import { api, profileUrl, shareUrl, SHARE_TARGETS, copyText, fmtDate } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Field, Grid, PageHeader, toast } from "../components.jsx";
@@ -81,7 +81,7 @@ export default function Profile() {
     socials: { ...(me.socials || {}) }, publicProfile: !!me.publicProfile, slug: me.slug || "",
     publicFields: { location: false, email: false, tenure: true, ...(me.publicFields || {}) },
     dateOfBirth: me.dateOfBirth || "", gender: me.gender || "", address: me.address || "",
-    emergencyContactName: me.emergencyContactName || "", emergencyContactPhone: me.emergencyContactPhone || "", emergencyContactRelationship: me.emergencyContactRelationship || "",
+    emergencyContactName: me.emergencyContactName || "", emergencyContactPhone: me.emergencyContactPhone || "", emergencyContactRelationship: me.emergencyContactRelationship || "", bloodGroup: me.bloodGroup || "",
     bankName: me.bankName || "", bankAccountNumber: me.bankAccountNumber || "", bankAccountName: me.bankAccountName || "",
   }));
   const [saving, setSaving] = useState(false);
@@ -111,7 +111,8 @@ export default function Profile() {
 
   return (
     <div>
-      <PageHeader title="My Profile" sub="Your profile is how colleagues get to know you, and your public page is how the world does." />
+      <PageHeader title="My Profile" sub="Your profile is how colleagues get to know you, and your public page is how the world does."
+        action={<a href="/id-card" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small icon={IdCard}>My ID card</Btn></a>} />
       <SectionCard style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
         <div style={{ height: 110, background: "linear-gradient(120deg, rgba(10,37,64,0.92), rgba(22,52,92,0.7) 55%, rgba(59,47,18,0.85)), url(/assets/cloud-infrastructure-team.jpg) center 40% / cover" }} />
         <div style={{ padding: "0 20px 20px", display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -192,6 +193,12 @@ export default function Profile() {
               <Field label="Name"><Input value={f.emergencyContactName} onChange={set("emergencyContactName")} /></Field>
               <Field label="Phone"><Input value={f.emergencyContactPhone} onChange={set("emergencyContactPhone")} /></Field>
               <Field label="Relationship"><Input value={f.emergencyContactRelationship} onChange={set("emergencyContactRelationship")} /></Field>
+              <Field label="Blood group (optional, shown on your ID card)">
+                <Select value={f.bloodGroup} onChange={set("bloodGroup")}>
+                  <option value="">Not set</option>
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(g => <option key={g} value={g}>{g}</option>)}
+                </Select>
+              </Field>
             </Grid>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, marginBottom: 6 }}>BANK DETAILS (FOR PAYROLL)</div>
             <Grid min={180} style={{ marginBottom: 12 }}>

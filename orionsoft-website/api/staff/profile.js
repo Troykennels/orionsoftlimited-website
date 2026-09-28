@@ -5,7 +5,7 @@ import { cleanSocials, slugify, logActivity } from "../_lib/office.js";
 const SELF_EDITABLE = [
   "phone", "bankName", "bankAccountNumber", "bankAccountName",
   "avatarDataUrl", "dateOfBirth", "gender", "address", "bio",
-  "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship",
+  "emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship", "bloodGroup",
   "headline", "location", "coverDataUrl", "whatsapp",
 ];
 

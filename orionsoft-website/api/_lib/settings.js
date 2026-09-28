@@ -21,6 +21,8 @@ export const DEFAULT_COMPANY_SETTINGS = {
   invoiceTerms: "Payment is due by the date shown above. Please use the invoice number as your payment reference.",
   // Default invoice design: classic | minimal | bold.
   invoiceTemplate: "classic",
+  // Signatory whose signature is printed on staff ID cards ("" = first one).
+  idCardSignatoryId: "",
 };
 
 const FIELDS = Object.keys(DEFAULT_COMPANY_SETTINGS);

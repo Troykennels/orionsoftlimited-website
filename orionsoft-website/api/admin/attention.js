@@ -58,6 +58,12 @@ export default async function handler(req, res) {
     items.push({ id: `invoice_${i.id}`, type: "invoice", label: `Invoice ${i.invoiceNumber} is overdue`, detail: i.clientName, at: i.dueDate, nav: "invoices" });
   }
 
+  // Staff ID cards waiting for the admin to sign and authorise them.
+  const cardsToSign = employees.filter(e => e.status === "active" && e.idCard?.code && !e.idCard.authorizedAt);
+  for (const e of cardsToSign) {
+    items.push({ id: `idcard_${e.id}`, type: "idcard", label: `${e.fullName}'s ID card is waiting for your signature`, detail: e.idPhotoDataUrl ? "Passport photo added" : "Waiting for a passport photo", at: e.idPhotoUpdatedAt || e.idCard.issuedAt, nav: "employees" });
+  }
+
   items.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
 
   const counts = {
@@ -69,6 +75,7 @@ export default async function handler(req, res) {
     expenses: expenses.filter(e => e.status === "pending").length,
     tickets: tickets.filter(t => t.status === "open").length,
     invoices: invoices.filter(i => isOverdue(normaliseInvoice(i))).length,
+    idCards: cardsToSign.length,
   };
 
   return res.json({ ok: true, items, counts, total: items.length });
