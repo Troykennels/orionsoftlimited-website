@@ -3066,6 +3066,8 @@ function Footer({ setCurrentPage }) {
   return (
     <footer style={{ padding: "64px clamp(20px, 5vw, 60px) 28px", background: C.surface, borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        {/* Admin → Feature Flags → "Newsletter Signup" switches this off. */}
+        {cms?.features?.newsletter_footer !== false && <NewsletterSignup variant="band" source="footer" />}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 36, marginBottom: 40 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
@@ -3423,6 +3425,59 @@ function EventsPage({ setCurrentPage }) {
 const blogDate = p => { const d = p.date || p.createdAt; const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""; };
 const blogReadTime = p => p.readTime || `${Math.max(1, Math.round(String(p.content || p.body || "").split(/\s+/).length / 200))} min read`;
 
+// Newsletter sign-up: the subscriber lands in Admin → Newsletter at once,
+// gets the welcome email, and every new blog post by email after that.
+function NewsletterSignup({ variant = "band", source = "website" }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [state, setState] = useState("idle"); // idle | sending | done | error
+  const [msg, setMsg] = useState("");
+  const [trap, setTrap] = useState("");
+  const opened = useRef(Date.now());
+  async function submit(e) {
+    e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setState("error"); setMsg("Enter a valid email address."); return; }
+    setState("sending"); setMsg("");
+    try {
+      const r = await fetch("/api/contact", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "newsletter", email: email.trim(), name: name.trim(), message: `Newsletter sign-up (${source})`, honeypot: trap, timing: Date.now() - opened.current }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "We couldn't subscribe you. Please try again.");
+      setState("done");
+    } catch (err) { setState("error"); setMsg(err.message); }
+  }
+  const band = variant === "band";
+  const input = { flex: "1 1 200px", minWidth: 0, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", color: C.heading, fontFamily: font, fontSize: 14, outline: "none" };
+  return (
+    <section aria-label="Newsletter sign-up" style={{
+      background: band ? `linear-gradient(135deg, ${C.gold}14, ${C.accent}0D)` : C.card, border: `1px solid ${band ? C.gold + "33" : C.border}`,
+      borderRadius: 16, padding: band ? "26px clamp(18px, 3vw, 32px)" : "24px clamp(18px, 3vw, 28px)",
+      display: "flex", gap: 20, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", margin: band ? "0 0 44px" : "40px 0 0",
+    }}>
+      <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: C.gold, fontFamily: font, letterSpacing: "0.12em", marginBottom: 6 }}>NEWSLETTER</div>
+        <h2 style={{ fontSize: band ? 22 : 19, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 6px", letterSpacing: "-0.01em" }}>Get our updates by email</h2>
+        <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.6, margin: 0 }}>New articles, product news and project stories from Orion Soft. No spam; unsubscribe any time.</p>
+      </div>
+      {state === "done" ? (
+        <p role="status" style={{ flex: "1 1 280px", fontSize: 15, color: C.mint, fontFamily: font, fontWeight: 700, margin: 0 }}>✓ You're subscribed. Check your inbox for a welcome email.</p>
+      ) : (
+        <form onSubmit={submit} style={{ flex: "1 1 360px", minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="First name (optional)" aria-label="First name" autoComplete="given-name" style={{ ...input, flex: "1 1 140px" }} />
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" aria-label="Email address" autoComplete="email" style={input} />
+            <input type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" value={trap} onChange={e => setTrap(e.target.value)} style={{ position: "absolute", left: -9999, width: 1, height: 1, opacity: 0 }} />
+            <button type="submit" disabled={state === "sending"} style={{ background: C.gold, color: "#05070A", border: "none", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 800, fontFamily: font, cursor: state === "sending" ? "wait" : "pointer", whiteSpace: "nowrap" }}>{state === "sending" ? "Subscribing…" : "Subscribe"}</button>
+          </div>
+          {state === "error" && <p role="alert" style={{ fontSize: 13, color: C.rose, fontFamily: font, margin: "8px 0 0" }}>{msg}</p>}
+        </form>
+      )}
+    </section>
+  );
+}
+
 function BlogShare({ post }) {
   const base = window.location.origin;
   const url = `${base}/api/public/share?blog=${encodeURIComponent(post.slug || post.id)}`;
@@ -3498,6 +3553,7 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
         )}
         <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><RichText text={post.content || post.body || post.excerpt || ""} font={font} headingColor={C.heading} textColor={C.text} linkColor={C.accent} /></div>
         <BlogShare post={post} />
+        <NewsletterSignup variant="card" source={`blog: ${post.title}`} />
       </article>
     );
   }
@@ -3510,6 +3566,8 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
           <h1 style={{ fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 800, color: C.heading, fontFamily: font, marginTop: 10, marginBottom: 14, letterSpacing: "-0.025em", lineHeight: 1.15 }}>Blog</h1>
           <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7 }}>Thoughts on healthcare software, engineering, and building in Nigeria.</p>
         </div>
+
+        <div style={{ marginBottom: 36 }}><NewsletterSignup variant="card" source="blog page" /></div>
 
         {posts.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0" }}>

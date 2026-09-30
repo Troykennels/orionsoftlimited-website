@@ -2614,7 +2614,7 @@ const DEFAULT_FEATURES = {
   careers: true,
   resources: true,
   pricing: true,
-  newsletter_footer: false,
+  newsletter_footer: true,
   maintenance_mode: false,
 };
 
