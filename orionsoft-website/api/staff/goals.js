@@ -1,7 +1,7 @@
 // Goals & progress (OKR-style). Staff track goals with measurable key results,
 // post check-ins, and can publish progress to the office feed or publicly.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { officeContext, notify, award, logActivity, addAchievement, systemPost } from "../_lib/office.js";
+import { officeContext, notify, logActivity, addAchievement, systemPost, awardOnce } from "../_lib/office.js";
 import { managerChain, subordinates } from "../_lib/roles.js";
 
 const CATEGORIES = ["Sales & revenue", "Project delivery", "Learning & growth", "Customer success", "Team", "Personal"];
@@ -26,8 +26,11 @@ function cleanKrs(krs) {
 
 async function onCompleted(goal, owner, employees, catalog) {
   goal.status = "completed";
+  const firstTime = !goal.completedAt;
   goal.completedAt = new Date().toISOString();
-  await award(owner.id, "goal_completed");
+  // Re-opening and re-completing a goal doesn't pay out or celebrate twice.
+  if (!firstTime) return;
+  await awardOnce(owner.id, "goal_completed", goal.id);
   await addAchievement(owner.id, `Completed goal: ${goal.title}`, "goal");
   await logActivity(owner.id, "goal", `Completed goal "${goal.title}"`);
   const post = await systemPost({ type: "win", authorId: owner.id, text: `🏆 Goal achieved: ${goal.title}`, meta: { kind: "goal_completed", goalId: goal.id } });
@@ -74,7 +77,7 @@ export default async function handler(req, res) {
       const note = String(b.note || "").slice(0, 600);
       goal.checkins = [{ id: newId("chk"), at: new Date().toISOString(), progress: goal.progress, note, confidence: b.confidence || "on_track" }, ...(goal.checkins || [])].slice(0, 60);
       goal.updatedAt = new Date().toISOString();
-      await award(me.id, "goal_checkin");
+      await awardOnce(me.id, "goal_checkin", `${goal.id}:${new Date().toISOString().slice(0, 10)}`); // once per goal per day
       await logActivity(me.id, "progress", `"${goal.title}" moved to ${goal.progress}%`);
       let post = null;
       if (b.shareToFeed && goal.progress !== before) {

@@ -5,7 +5,7 @@
 //   3. Contract sign/pay token (?token=&contractId=) — only that contract's
 //      PDFs and its payment receipts.
 import { get } from "../store.js";
-import { getAdminSession, getStaffSession, verifySession } from "../_lib/auth.js";
+import { getAdminSession, getStaffSession, verifySession, isEditor } from "../_lib/auth.js";
 import { listRecords } from "../_lib/records.js";
 
 export default async function handler(req, res) {
@@ -16,7 +16,8 @@ export default async function handler(req, res) {
   let authorized = false;
 
   const session = getStaffSession(req);
-  if (getAdminSession(req)) {
+  const admin = getAdminSession(req);
+  if (admin && !isEditor(admin)) {
     authorized = true;
   } else if (session) {
     const payrolls = await listRecords("payroll");

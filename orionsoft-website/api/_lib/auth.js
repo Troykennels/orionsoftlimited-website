@@ -121,11 +121,23 @@ export function getAnySession(req) {
   return getAdminSession(req) || getStaffSession(req);
 }
 
+// Admin "editor" accounts manage website content only (as the Admin Users
+// screen describes them). Every other admin route is super-admin only.
+export const EDITOR_ROUTES = new Set([
+  "/api/admin/content", "/api/admin/analytics", "/api/admin/change-password", "/api/admin/security-pin",
+]);
+const routeOf = req => String(req.originalUrl || req.url || "").split("?")[0].replace(/\/+$/, "");
+export const isEditor = session => session?.role === "admin" && session.adminRole === "editor";
+
 // Returns the session payload if valid and (when role given) matching, else sends 401 and returns null.
 export function requireAuth(req, res, role) {
   const session = role === "admin" ? getAdminSession(req) : role === "staff" ? getStaffSession(req) : getAnySession(req);
   if (!session || (role && session.role !== role)) {
     res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  if (role === "admin" && isEditor(session) && !EDITOR_ROUTES.has(routeOf(req))) {
+    res.status(403).json({ error: "Your admin role (Editor) covers website content only. Ask a super admin for access." });
     return null;
   }
   return session;

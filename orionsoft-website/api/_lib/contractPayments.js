@@ -3,7 +3,7 @@
 // admin confirmed, or a payment the admin recorded by hand): numbers the
 // receipt, marks the contract active, stores the receipt PDF and emails it.
 import { getRecord, putRecord, listRecords } from "./records.js";
-import { set, get } from "../store.js";
+import { set, get, claim } from "../store.js";
 import { sendEmail, brandedShell } from "./mailer.js";
 import { getCompanySettings } from "./settings.js";
 import { normaliseContract, paymentSummary, nextReceiptNumber, money, payLink } from "./contracts.js";
@@ -23,6 +23,12 @@ export async function recordSuccessfulPayment(paymentId, details = {}) {
   const payment = await getRecord("payments", paymentId);
   if (!payment) return null;
   if (payment.status === "success") return payment; // already recorded (webhook + callback both fire)
+  // The webhook and the payer's callback page usually arrive together: only
+  // one of them may number the receipt and email it.
+  if (!(await claim(`orionsoft:lock:payment:${paymentId}`, 120))) {
+    await new Promise(r => setTimeout(r, 1500));
+    return (await getRecord("payments", paymentId)) || payment;
+  }
   const raw = await getRecord("contracts", payment.contractId);
   if (!raw) return null;
   const contract = normaliseContract(raw);

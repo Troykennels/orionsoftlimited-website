@@ -190,9 +190,10 @@ export function IdCardBack({ data }) {
               ? <img src={signatory.signatureImageDataUrl} alt="Authorised signature" style={{ maxHeight: "8.5mm", maxWidth: "34mm", objectFit: "contain", display: "block" }} />
               : <span style={{ fontSize: "5pt", fontWeight: 800, color: "#B45309", letterSpacing: "0.08em" }}>AWAITING AUTHORISATION</span>}
           </div>
+          {/* Signature only: the signer's name and title are never printed. */}
           <div style={{ borderTop: `0.2mm solid ${INK}`, width: "42mm", paddingTop: "0.6mm" }}>
-            <p style={{ ...text, fontWeight: 700, fontSize: "5pt" }}>{card.authorized && signatory ? signatory.fullName : "Authorised signatory"}</p>
-            <p style={{ ...text, fontSize: "4.4pt", color: MUTED }}>{card.authorized && signatory?.title ? `${signatory.title} · ` : ""}{card.authorized ? `Authorised ${fmtDay(card.authorizedAt)}` : "Authorised signatory"}</p>
+            <p style={{ ...text, fontWeight: 700, fontSize: "5pt" }}>Authorised signatory</p>
+            {card.authorized && <p style={{ ...text, fontSize: "4.4pt", color: MUTED }}>For {company.companyName || "Orion Soft Limited"} · {fmtDay(card.authorizedAt)}</p>}
           </div>
         </div>
       </div>
@@ -235,6 +236,7 @@ function SignaturePad({ onDone, onCancel }) {
     <div style={{ display: "grid", gap: 10 }}>
       <canvas ref={ref} aria-label="Draw your signature" style={{ width: "100%", maxWidth: 420, height: 150, background: "#fff", border: "1px dashed #94A3B8", borderRadius: 10, touchAction: "none", cursor: "crosshair" }}
         onMouseDown={down} onMouseMove={move} onMouseUp={up} onMouseLeave={up} onTouchStart={down} onTouchMove={move} onTouchEnd={up} />
+      <p style={{ fontSize: 12.5, color: MUTED, margin: 0 }}>Only the signature is printed on cards. The name and title below just label it in your list of saved signatures.</p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" aria-label="Signatory name" style={inputStyle} />
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Your title, e.g. Managing Director" aria-label="Signatory title" style={inputStyle} />

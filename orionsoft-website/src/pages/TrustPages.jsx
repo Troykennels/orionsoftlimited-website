@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 
 import { BRAND } from "../lib/brand.js";
+import { usePublishedList } from "../lib/siteContent.js";
 // Self-contained design tokens duplicated intentionally for lazy-load isolation
 const C = {
   bg: "#060810", surface: "#0B1120", card: "#0F1828",
@@ -74,6 +75,11 @@ const FEATURED_CLIENTS = [
 ];
 
 export function ClientsPage({ setCurrentPage }) {
+  // Clients published from Admin → Clients replace the built-in list.
+  const cms = usePublishedList("orionsoft_clients_v1");
+  const clients = cms
+    ? cms.filter(c => c.name).map(c => ({ name: c.name, sector: "", product: c.industry || "Client", desc: c.desc || c.description || "", logoUrl: c.logoUrl || "", website: c.website || "" }))
+    : FEATURED_CLIENTS;
   return (
     <div style={{ background: C.bg }}>
       <PageHero
@@ -103,15 +109,17 @@ export function ClientsPage({ setCurrentPage }) {
             <h2 style={{ fontSize: "clamp(26px,3.5vw,40px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.025em", margin: "12px 0 0", lineHeight: 1.15 }}>Real organisations. Real results.</h2>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,320px),1fr))", gap: 18 }}>
-            {FEATURED_CLIENTS.map((c, i) => (
+            {clients.map((c, i) => (
               <article key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: "28px", display: "flex", flexDirection: "column", gap: 12, transition: "all 0.3s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${C.gold}33`; e.currentTarget.style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = ""; }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: C.goldDim, border: `1px solid ${C.gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, color: C.gold, fontFamily: font }}>{c.name[0]}</div>
+                  {c.logoUrl
+                    ? <img src={c.logoUrl} alt={`${c.name} logo`} loading="lazy" style={{ width: 44, height: 44, borderRadius: 12, objectFit: "contain", background: "#fff", padding: 4, boxSizing: "border-box" }} />
+                    : <div style={{ width: 44, height: 44, borderRadius: 12, background: C.goldDim, border: `1px solid ${C.gold}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, color: C.gold, fontFamily: font }}>{c.name[0]}</div>}
                   <Tag label={c.product} color={C.blue} />
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: 0 }}>{c.name}</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, margin: 0 }}>{c.website ? <a href={c.website} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>{c.name} ↗</a> : c.name}</h3>
                 <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0, flex: 1 }}>{c.desc}</p>
                 <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font, fontWeight: 600 }}>{c.sector}</span>
               </article>
@@ -281,10 +289,20 @@ const ALL_TESTIMONIALS = [
   { name: "Reverend Grace Okoro", role: "General Overseer", company: "New Dawn Tabernacle", product: "ChurchCore", color: C.purple, quote: "ChurchCore helped us grow from tracking 800 members manually to managing 3,200 members digitally, including home cells, giving units, and event registrations. We didn't just manage growth — we enabled it." },
 ];
 
+const TESTIMONIAL_COLORS = [C.blue, C.mint, C.purple, "#06B6D4", C.gold, C.amber, C.rose];
+
 export function TestimonialsPage({ setCurrentPage }) {
   const [filter, setFilter] = useState("All");
-  const products = ["All", ...Array.from(new Set(ALL_TESTIMONIALS.map(t => t.product)))];
-  const visible = filter === "All" ? ALL_TESTIMONIALS : ALL_TESTIMONIALS.filter(t => t.product === filter);
+  // Testimonials published from Admin → Testimonials replace the built-in ones.
+  const cms = usePublishedList("orionsoft_testimonials_v1");
+  const all = cms
+    ? cms.filter(t => t.quote && t.name).map((t, i) => ({
+        name: t.name, role: t.role || "", company: t.company || "", product: t.product || t.company || "Client",
+        quote: t.quote, rating: Math.min(5, Math.max(1, Number(t.rating) || 5)), color: TESTIMONIAL_COLORS[i % TESTIMONIAL_COLORS.length],
+      }))
+    : ALL_TESTIMONIALS;
+  const products = ["All", ...Array.from(new Set(all.map(t => t.product)))];
+  const visible = filter === "All" ? all : all.filter(t => t.product === filter);
 
   return (
     <div style={{ background: C.bg }}>
@@ -322,7 +340,7 @@ export function TestimonialsPage({ setCurrentPage }) {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${t.color}33`; e.currentTarget.style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = ""; }}>
                 <div style={{ display: "flex", gap: 3, marginBottom: 16 }}>
-                  {[...Array(5)].map((_, si) => (
+                  {[...Array(t.rating || 5)].map((_, si) => (
                     <svg key={si} width="14" height="14" viewBox="0 0 24 24" fill={C.amber} stroke="none" aria-hidden="true">
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
@@ -335,7 +353,7 @@ export function TestimonialsPage({ setCurrentPage }) {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                     <cite style={{ fontStyle: "normal" }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: C.heading, fontFamily: font }}>{t.name}</div>
-                      <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 2 }}>{t.role} · {t.company}</div>
+                      <div style={{ fontSize: 12.5, color: C.textMuted, fontFamily: font, marginTop: 2 }}>{[t.role, t.company].filter(Boolean).join(" · ")}</div>
                     </cite>
                     <Tag label={t.product} color={t.color} />
                   </div>
@@ -574,11 +592,28 @@ const FAQ_CATEGORIES = [
   },
 ];
 
+const FAQ_COLORS = [C.blue, C.gold, C.mint, C.purple, C.rose, C.amber];
+
+// FAQs published from Admin → FAQs, grouped by their category.
+function faqCategoriesFrom(items) {
+  const groups = new Map();
+  for (const f of items) {
+    if (!f.question || !f.answer) continue;
+    const name = String(f.category || "General");
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push({ q: f.question, a: f.answer });
+  }
+  return [...groups].map(([name, faqs], i) => ({ name, faqs, color: FAQ_COLORS[i % FAQ_COLORS.length] }));
+}
+
 export function FAQPage({ setCurrentPage }) {
-  const [activeCategory, setActiveCategory] = useState(FAQ_CATEGORIES[0].name);
+  const cmsFaqs = usePublishedList("orionsoft_faqs_v1");
+  const categories = cmsFaqs && faqCategoriesFrom(cmsFaqs).length ? faqCategoriesFrom(cmsFaqs) : FAQ_CATEGORIES;
+  const [activeCategory, setActiveCategory] = useState(null);
   const [openIdx, setOpenIdx] = useState(null);
-  const activeFaqs = FAQ_CATEGORIES.find(c => c.name === activeCategory)?.faqs || [];
-  const activeColor = FAQ_CATEGORIES.find(c => c.name === activeCategory)?.color || C.gold;
+  const active = categories.find(c => c.name === activeCategory) || categories[0];
+  const activeFaqs = active?.faqs || [];
+  const activeColor = active?.color || C.gold;
 
   return (
     <div style={{ background: C.bg }}>
@@ -593,11 +628,11 @@ export function FAQPage({ setCurrentPage }) {
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           {/* Category tabs */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 40 }}>
-            {FAQ_CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button key={cat.name} type="button" onClick={() => { setActiveCategory(cat.name); setOpenIdx(null); }} style={{
-                padding: "9px 20px", borderRadius: 999, border: `1px solid ${activeCategory === cat.name ? cat.color + "88" : C.border}`,
-                background: activeCategory === cat.name ? `${cat.color}18` : "transparent",
-                color: activeCategory === cat.name ? cat.color : C.textMuted,
+                padding: "9px 20px", borderRadius: 999, border: `1px solid ${active?.name === cat.name ? cat.color + "88" : C.border}`,
+                background: active?.name === cat.name ? `${cat.color}18` : "transparent",
+                color: active?.name === cat.name ? cat.color : C.textMuted,
                 fontSize: 13.5, fontWeight: 600, fontFamily: font, cursor: "pointer", transition: "all 0.2s",
               }}>{cat.name}</button>
             ))}

@@ -8,7 +8,7 @@
 //    with each engagement credited on the advocacy leaderboard.
 import { get, set } from "../store.js";
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { officeContext, notify, award, logActivity, cleanUrl, SOCIAL_PLATFORMS, systemPost } from "../_lib/office.js";
+import { officeContext, notify, awardOnce, awardDaily, logActivity, cleanUrl, SOCIAL_PLATFORMS, systemPost } from "../_lib/office.js";
 
 const followersKey = id => `orionsoft:social:followers:${id}`;
 const METRICS = ["likes", "comments", "shares", "views", "clicks"];
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         createdAt: new Date().toISOString(),
       };
       await putRecord("socialposts", id, post);
-      await award(me.id, "social_activity");
+      await awardDaily(me.id, "social_activity", 3);
       await logActivity(me.id, "social", `Posted on ${platform}${post.caption ? `: ${post.caption.slice(0, 80)}` : ""}`, { url });
       if (post.boost) {
         const feedPost = await systemPost({ type: "update", authorId: me.id, text: `📣 I just posted on ${platform}! Please like, comment and reshare to help it reach more people.${post.caption ? `\n\n${post.caption}` : ""}`, meta: { kind: "social_boost", socialPostId: id } });
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
       if (post.employeeId !== me.id && !(post.engagedBy || []).includes(me.id)) {
         post.engagedBy = [...(post.engagedBy || []), me.id];
         await putRecord("socialposts", post.id, post);
-        await award(me.id, "reshare");
+        await awardOnce(me.id, "reshare", `boost:${post.id}`);
         await notify([post.employeeId], { type: "boost", title: `${me.fullName} engaged with your ${post.platform} post`, link: "social", actorId: me.id });
       }
       return res.json({ ok: true, post });
@@ -121,7 +121,7 @@ export default async function handler(req, res) {
       kit.shares = { ...(kit.shares || {}), [me.id]: ((kit.shares || {})[me.id] || 0) + 1 };
       kit.platformShares = { ...(kit.platformShares || {}), [b.platform || "other"]: ((kit.platformShares || {})[b.platform || "other"] || 0) + 1 };
       await putRecord("sharekits", kit.id, kit);
-      await award(me.id, "social_share");
+      await awardOnce(me.id, "social_share", `kit:${kit.id}`);
       await logActivity(me.id, "share", `Shared "${kit.title}" to ${b.platform || "social media"}`);
       return res.json({ ok: true, kit });
     }
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
     if (b.action === "create-kit") {
       if (!ctx.can("sharekits")) return res.status(403).json({ error: "Your role can't publish share kits" });
       if (!String(b.title || "").trim() || !String(b.caption || "").trim()) return res.status(400).json({ error: "Title and caption are required" });
-      if (b.imageDataUrl && !/^data:image\/(png|jpe?g|webp);base64,/.test(b.imageDataUrl)) return res.status(400).json({ error: "Invalid image" });
+      if (b.imageDataUrl && (!/^data:image\/(png|jpe?g|webp);base64,/.test(b.imageDataUrl) || b.imageDataUrl.length > 900_000)) return res.status(400).json({ error: "Image must be PNG/JPEG/WebP under ~650KB" });
       const id = newId("kit");
       const kit = {
         id, title: String(b.title).slice(0, 120), caption: String(b.caption).slice(0, 2000), link: cleanUrl(b.link),

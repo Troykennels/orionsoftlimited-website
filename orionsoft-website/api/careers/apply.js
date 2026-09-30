@@ -1,6 +1,6 @@
 import { newId, putRecord, setLookup, getByLookup } from "../_lib/records.js";
 import { notifyNewApplicant, sendApplicationReceived } from "../_lib/emailTemplates.js";
-import { signSession, setSessionCookie, APPLICANT_COOKIE } from "../_lib/auth.js";
+import { signSession, setSessionCookie, getSessionFromRequest, APPLICANT_COOKIE } from "../_lib/auth.js";
 import { portalLinkFor } from "../applicant/portal.js";
 
 async function uniqueReference() {
@@ -77,9 +77,17 @@ export default async function handler(req, res) {
   try { await notifyNewApplicant(applicant); } catch { /* best-effort */ }
   try { await sendApplicationReceived(applicant, portalLinkFor(applicant.email)); } catch { /* best-effort */ }
 
-  // Sign the candidate straight into their applicant portal.
+  // Sign the candidate straight into their applicant portal, but only for the
+  // application they just sent: anyone can type any email into this form, so
+  // it must never open other applications under that address. Those need the
+  // reference or the magic link emailed to the address.
   try {
-    setSessionCookie(res, signSession({ role: "applicant", email: applicant.email }, 60 * 60 * 24 * 30), APPLICANT_COOKIE, 60 * 60 * 24 * 30);
+    const prev = getSessionFromRequest(req, APPLICANT_COOKIE);
+    const samePerson = prev?.role === "applicant" && prev.email === applicant.email;
+    const payload = samePerson && !prev.appIds
+      ? { role: "applicant", email: applicant.email }
+      : { role: "applicant", email: applicant.email, appIds: [...new Set([...(samePerson ? prev.appIds : []), id])].slice(-20) };
+    setSessionCookie(res, signSession(payload, 60 * 60 * 24 * 30), APPLICANT_COOKIE, 60 * 60 * 24 * 30);
   } catch { /* SESSION_SECRET missing: portal sign-in still works via email + reference */ }
 
   return res.json({ ok: true, applicantId: id, reference });

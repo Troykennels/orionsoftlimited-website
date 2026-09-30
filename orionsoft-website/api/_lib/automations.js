@@ -194,6 +194,9 @@ export async function runAutomations() {
     await meetingReminders();
     await spotChecks(now);
     await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
+    // Newsletter: email new blog posts to subscribers and send queued batches.
+    try { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); }
+    catch (err) { console.error("[newsletter]", err.message); }
   } catch (err) {
     console.error("[automations]", err.message);
   } finally { running = false; }

@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect, useRef } from "react";
 
 import { BRAND } from "../lib/brand.js";
+import { usePublished, usePublishedList } from "../lib/siteContent.js";
+import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const LC = {
   bg:           "#FFFFFF",
@@ -54,7 +56,7 @@ const WHY_REASONS = [
   { num:"04", color:"#F43F5E", title:"Architecture that holds up under scrutiny.", body:"API-first design, documented endpoints, role-based audit logs, and infrastructure on AWS. When a client's IT team or a government procurement committee asks technical questions, we hand them the documentation. Nothing is hidden behind 'our proprietary approach'.", stat:"25+", statLabel:"core modules shipped" },
 ];
 
-const TESTIMONIALS = [
+const BUILTIN_TESTIMONIALS = [
   { quote:"We interviewed four vendors. Three gave us demos. Orion Soft gave us a scoping document that showed they'd actually listened. The deployment took nine weeks. By week twelve, our billing reconciliation was closing in four hours instead of two days.", name:"Dr. Adewale Okonkwo", role:"Medical Director", company:"St. Mary's Hospital, Lagos", productColor:"#4F8EF7" },
   { quote:"Parents called the school on results day for the first time in years. Not to complain, but to say they had already seen their child's results online. SchoolCore published 234 results that morning. Nothing crashed. Nobody printed a single sheet of paper.", name:"Mrs. Blessing Eze", role:"Principal", company:"Excellence College, Abuja", productColor:"#F59E0B" },
   { quote:"Our CBN examination last year was the first one I've walked into without a folder of printed documents. ComplianceCore had every policy, risk register, and audit trail ready to share from a link. The examiner asked where we got the system. I said we built it in Nigeria.", name:"Emeka Nwosu", role:"Chief Compliance Officer", company:"Apex Microfinance Bank", productColor:BRAND.gold },
@@ -180,6 +182,8 @@ function HeroDashboard() {
 }
 
 function HeroSection({ setCurrentPage }) {
+  // Text from Admin → Homepage → Hero (built-in copy when not set).
+  const hero = usePublished("orionsoft_homepage_v1")?.hero || {};
   const [tourHov, setTourHov] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   return (
@@ -218,7 +222,7 @@ function HeroSection({ setCurrentPage }) {
         {/* Badge */}
         <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:`rgba(${BRAND.rgb},0.1)`, border:`1px solid rgba(${BRAND.rgb},0.28)`, borderRadius:999, padding:"7px 16px", marginBottom:26 }}>
           <span style={{ width:7, height:7, borderRadius:"50%", background:LC.gold, flexShrink:0, animation:"pulse 2s ease-in-out infinite" }}/>
-          <span style={{ fontSize:10.5, fontWeight:800, color:LC.gold, fontFamily:font, letterSpacing:"0.11em" }}>ENTERPRISE SOFTWARE · ORION SOFT LIMITED</span>
+          <span style={{ fontSize:10.5, fontWeight:800, color:LC.gold, fontFamily:font, letterSpacing:"0.11em" }}>{hero.badge ? String(hero.badge).toUpperCase() : "ENTERPRISE SOFTWARE · ORION SOFT LIMITED"}</span>
         </div>
 
         {/* H1 */}
@@ -232,7 +236,7 @@ function HeroSection({ setCurrentPage }) {
 
         {/* Subheadline */}
         <p style={{ fontSize:"clamp(15px,1.3vw,17px)", color:"rgba(200,210,226,0.68)", fontFamily:font, lineHeight:1.88, margin:"0 0 34px", maxWidth:470 }}>
-          Orion Soft Limited builds software that hospitals, schools, government agencies, and businesses across Nigeria use every day to run their operations.
+          {hero.subheadline || "Orion Soft Limited builds software that hospitals, schools, government agencies, and businesses across Nigeria use every day to run their operations."}
         </p>
 
         {/* CTAs */}
@@ -242,14 +246,14 @@ function HeroSection({ setCurrentPage }) {
             style={{ background:`linear-gradient(135deg,${BRAND.gold},${BRAND.goldLight})`, color:"#06100E", border:"none", borderRadius:11, padding:"14px 26px", fontSize:14.5, fontWeight:800, fontFamily:font, cursor:"pointer", boxShadow:`0 8px 28px rgba(${BRAND.rgb},0.38)`, transition:"all 0.28s cubic-bezier(0.16,1,0.3,1)" }}
             onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px) scale(1.02)"; e.currentTarget.style.boxShadow=`0 18px 48px rgba(${BRAND.rgb},0.48)`; }}
             onMouseLeave={e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=`0 8px 28px rgba(${BRAND.rgb},0.38)`; }}>
-            Book Free Demo
+            {hero.ctaPrimary || "Book Free Demo"}
           </button>
           {/* Explore Products */}
           <button type="button" onClick={() => setCurrentPage("products")}
             style={{ background:"rgba(255,255,255,0.08)", color:"#F2F6FF", border:"1px solid rgba(255,255,255,0.15)", borderRadius:11, padding:"14px 26px", fontSize:14.5, fontWeight:700, fontFamily:font, cursor:"pointer", transition:"all 0.25s" }}
             onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.14)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.28)"; }}
             onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.15)"; }}>
-            Explore Our Products
+            {hero.ctaSecondary || "Explore Our Products"}
           </button>
           {/* Watch Tour */}
           <button type="button"
@@ -595,9 +599,25 @@ function IndustriesSection({ setCurrentPage }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // §4 OUR PRODUCTS interactive list-left / showcase-right
 // ═══════════════════════════════════════════════════════════════════════════════
-function ProductsSection({ setCurrentPage }) {
+// Admin → Products: built-in products switched off are hidden here, and
+// products added in the admin (no dedicated page) are listed after them.
+function showcaseProducts(products) {
+  const live = new Set((products || []).map(p => p.id));
+  const builtinIds = new Set(DEFAULT_PRODUCTS_CATALOG.map(p => p.id));
+  const kept = HP_PRODUCTS.filter(p => !builtinIds.has(p.page) || live.has(p.page));
+  const added = (products || []).filter(p => !builtinIds.has(p.id) && !p.hasPage && p.name).map(p => ({
+    id: `cms-${p.id}`, name: p.name, category: p.tag || "Product", color: p.color || LC.gold, emoji: "🧩",
+    tagline: p.tagline || p.tag || "", desc: p.desc || "", page: p.id,
+    benefits: (Array.isArray(p.features) ? p.features : String(p.features || "").split(/\n|,/)).map(x => String(x).trim()).filter(Boolean).slice(0, 5),
+  }));
+  const all = [...kept, ...added];
+  return all.length ? all : HP_PRODUCTS;
+}
+
+function ProductsSection({ setCurrentPage, products }) {
+  const HP_PRODUCTS = showcaseProducts(products);
   const [activeId, setActiveId] = useState(HP_PRODUCTS[0].id);
-  const active = HP_PRODUCTS.find(p => p.id === activeId);
+  const active = HP_PRODUCTS.find(p => p.id === activeId) || HP_PRODUCTS[0];
 
   return (
     <section style={{ background:LC.bg, padding:"120px clamp(24px,5vw,80px)" }}>
@@ -750,7 +770,16 @@ function WhyChooseSection({ setCurrentPage }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // §6 CUSTOMER SUCCESS STORIES dark auto-advancing carousel
 // ═══════════════════════════════════════════════════════════════════════════════
+const STORY_COLORS = ["#4F8EF7", "#F59E0B", BRAND.gold, "#10B981", "#8B5CF6"];
+
 function SuccessStoriesSection() {
+  // Admin → Testimonials (featured ones first) replace the built-in stories.
+  const cms = usePublishedList("orionsoft_testimonials_v1");
+  const fromCms = (cms || []).filter(t => t.quote && t.name);
+  const picked = fromCms.some(t => t.featured) ? fromCms.filter(t => t.featured) : fromCms;
+  const TESTIMONIALS = picked.length
+    ? picked.map((t, i) => ({ quote: t.quote, name: t.name, role: t.role || "", company: t.company || "", productColor: STORY_COLORS[i % STORY_COLORS.length] }))
+    : BUILTIN_TESTIMONIALS;
   const [idx, setIdx] = useState(0);
   const [animating, setAnimating] = useState(false);
 
@@ -765,7 +794,7 @@ function SuccessStoriesSection() {
     return () => clearInterval(t);
   }, [idx]);
 
-  const t = TESTIMONIALS[idx];
+  const t = TESTIMONIALS[idx % TESTIMONIALS.length];
 
   return (
     <section style={{ background:LC.bgSlate, padding:"120px clamp(24px,5vw,80px)", position:"relative", overflow:"hidden" }}>
@@ -1088,8 +1117,18 @@ function ConsultationSection({ setCurrentPage }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // §10 LATEST NEWS asymmetric 1-large + 2-small grid
 // ═══════════════════════════════════════════════════════════════════════════════
+const NEWS_COLORS = ["#4F8EF7", BRAND.gold, "#06B6D4"];
+const newsDate = p => { const d = p.date || p.createdAt; const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : ""; };
+
 function LatestNewsSection({ setCurrentPage }) {
-  const [feat, ...rest] = NEWS_ITEMS;
+  // The latest posts from Admin → Blog; the built-in updates until there are some.
+  const posts = usePublishedList("orionsoft_blog_v1");
+  const items = posts
+    ? [...posts].sort((a, b) => String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || ""))).slice(0, 3)
+        .map((p, i) => ({ id: p.slug || p.id, date: newsDate(p), tag: p.category || "Blog", color: NEWS_COLORS[i % 3], title: p.title, excerpt: p.excerpt || String(p.content || p.body || "").slice(0, 220) }))
+    : NEWS_ITEMS;
+  const open = n => (n.id ? setCurrentPage("blog", n.id) : setCurrentPage("contact"));
+  const [feat, ...rest] = items;
   return (
     <section style={{ background:LC.bg, padding:"120px clamp(24px,5vw,80px) 100px" }}>
       <div style={{ maxWidth:1360, margin:"0 auto" }}>
@@ -1119,7 +1158,7 @@ function LatestNewsSection({ setCurrentPage }) {
                 </div>
                 <h3 style={{ fontSize:"clamp(18px,2vw,24px)", fontWeight:800, color:LC.navy, fontFamily:font, lineHeight:1.3, margin:"0 0 14px", letterSpacing:"-0.015em" }}>{feat.title}</h3>
                 <p style={{ fontSize:14.5, color:LC.textLight, fontFamily:font, lineHeight:1.72, margin:"0 0 auto" }}>{feat.excerpt}</p>
-                <button type="button" onClick={() => setCurrentPage("contact")}
+                <button type="button" onClick={() => open(feat)}
                   style={{ marginTop:28, background:"none", border:"none", color:feat.color, fontFamily:font, fontSize:14, fontWeight:700, cursor:"pointer", padding:0, display:"flex", alignItems:"center", gap:6, transition:"gap 0.2s" }}
                   onMouseEnter={e => e.currentTarget.style.gap="10px"}
                   onMouseLeave={e => e.currentTarget.style.gap="6px"}>
@@ -1132,7 +1171,7 @@ function LatestNewsSection({ setCurrentPage }) {
           {/* 2 small */}
           <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
             {rest.map((n, i) => (
-              <Reveal key={n.title} delay={0.1 + i*0.08} style={{ flex:1 }}>
+              <Reveal key={n.id || n.title} delay={0.1 + i*0.08} style={{ flex:1 }}>
                 <article style={{ background:LC.bgAlt, borderRadius:18, overflow:"hidden", border:`1px solid ${LC.border}`, display:"flex", flexDirection:"column", height:"100%", transition:"all 0.28s cubic-bezier(0.16,1,0.3,1)" }}
                   onMouseEnter={e => { e.currentTarget.style.boxShadow=LC.shadowMd; e.currentTarget.style.transform="translateY(-4px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.transform=""; }}>
@@ -1144,7 +1183,7 @@ function LatestNewsSection({ setCurrentPage }) {
                     </div>
                     <h3 style={{ fontSize:16, fontWeight:800, color:LC.navy, fontFamily:font, lineHeight:1.35, margin:"0 0 10px" }}>{n.title}</h3>
                     <p style={{ fontSize:13, color:LC.textLight, fontFamily:font, lineHeight:1.65, margin:"0 0 auto", display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{n.excerpt}</p>
-                    <button type="button" onClick={() => setCurrentPage("contact")}
+                    <button type="button" onClick={() => open(n)}
                       style={{ marginTop:16, background:"none", border:"none", color:n.color, fontFamily:font, fontSize:13, fontWeight:700, cursor:"pointer", padding:0, display:"flex", alignItems:"center", gap:5, transition:"gap 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.gap="9px"}
                       onMouseLeave={e => e.currentTarget.style.gap="5px"}>
@@ -1164,13 +1203,13 @@ function LatestNewsSection({ setCurrentPage }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main export
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function HomePage({ setCurrentPage }) {
+export default function HomePage({ setCurrentPage, products }) {
   return (
     <div style={{ background:LC.bg, overflowX:"hidden" }}>
       <HeroSection           setCurrentPage={setCurrentPage}/>
       <WhoWeAreSection       setCurrentPage={setCurrentPage}/>
       <IndustriesSection     setCurrentPage={setCurrentPage}/>
-      <ProductsSection       setCurrentPage={setCurrentPage}/>
+      <ProductsSection       setCurrentPage={setCurrentPage} products={products}/>
       <WhyChooseSection      setCurrentPage={setCurrentPage}/>
       <SuccessStoriesSection/>
       <TechStackSection/>

@@ -5,11 +5,24 @@
 // Crawlers read the tags; humans are immediately redirected to the real page.
 import { listRecords, getRecord } from "../_lib/records.js";
 import { escapeHtml } from "../_lib/office.js";
+import { readAllContent, publicView } from "../_lib/content.js";
 
-const BASE = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
+const BASE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
 
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
+  // A published blog post: /api/public/share?blog=<slug or id>
+  if (req.query.blog) {
+    const want = String(req.query.blog);
+    const posts = publicView(await readAllContent()).orionsoft_blog_v1 || [];
+    const post = posts.find(p => p && (p.slug === want || p.id === want));
+    if (!post) { res.setHeader("Location", `${BASE}/blog`); return res.status(302).end(); }
+    const image = /^https:\/\//.test(post.coverImage || "") ? post.coverImage : /^\//.test(post.coverImage || "") ? `${BASE}${post.coverImage}` : `${BASE}/og-image.png`;
+    return sendPage(res, {
+      title: `${post.title} | Orion Soft`, description: String(post.excerpt || post.content || "").replace(/[#*_[\]()]/g, "").slice(0, 200),
+      target: `${BASE}/blog/${encodeURIComponent(post.slug || post.id)}`, image, type: "article",
+    });
+  }
   const slug = String(req.query.person || "").toLowerCase();
   const employees = await listRecords("employees");
   const person = employees.find(e => e.slug === slug && e.publicProfile && e.status === "active");
@@ -40,11 +53,11 @@ export default async function handler(req, res) {
   return sendPage(res, { title, description, target, image: `${BASE}/og-image.png`, name: person.fullName });
 }
 
-function sendPage(res, { title, description, target, image, name = "Orion Soft" }) {
+function sendPage(res, { title, description, target, image, name = "Orion Soft", type = "profile" }) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description.slice(0, 200))}">
-<meta property="og:type" content="profile"><meta property="og:site_name" content="Orion Soft Limited">
+<meta property="og:type" content="${escapeHtml(type)}"><meta property="og:site_name" content="Orion Soft Limited">
 <meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description.slice(0, 200))}">
 <meta property="og:url" content="${escapeHtml(target)}"><meta property="og:image" content="${escapeHtml(image)}">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeHtml(title)}">

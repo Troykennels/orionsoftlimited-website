@@ -67,6 +67,16 @@ async function mountApiRoutes() {
     app.all(routePath, (req, res) => handler(req, res));
     console.log(`Mounted ${routePath}`);
   }
+  app.use("/api", (req, res) => res.status(404).json({ error: "Not found" }));
+  // A handler that throws gets a JSON error (never Express's HTML page with a
+  // stack trace), and the details stay in the server log.
+  // eslint-disable-next-line no-unused-vars
+  app.use((err, req, res, next) => {
+    const status = err?.type === "entity.too.large" ? 413 : err?.type === "entity.parse.failed" ? 400 : 500;
+    if (status === 500) console.error(`[api] ${req.method} ${req.path}:`, err?.stack || err);
+    if (res.headersSent) return;
+    res.status(status).json({ error: status === 413 ? "That upload is too large." : status === 400 ? "Invalid request body." : "Something went wrong on our side. Please try again." });
+  });
 }
 
 async function start() {

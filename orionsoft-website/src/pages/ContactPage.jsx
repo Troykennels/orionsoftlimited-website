@@ -516,16 +516,16 @@ export default function ContactPage({ setCurrentPage }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok && res.status !== 200) throw new Error("API error");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // Only a saved submission counts as sent: a rejected one (rate limit,
+      // validation, server error) must not show "success" and be lost.
+      if (!res.ok) throw new Error(data.error || "We couldn't send your form.");
       saveLead(tab, form, data.ref || ref);
       setResultRef(data.ref || ref);
       setStatus("success");
-    } catch {
-      // Still save locally and show success email delivery is best-effort
-      saveLead(tab, form, ref);
-      setResultRef(ref);
-      setStatus("success");
+    } catch (err) {
+      setApiError(`${err.message || "We couldn't send your form."} Please try again, or reach us on WhatsApp or at ${ADMIN_EMAIL}.`);
+      setStatus("error");
     }
   }
 

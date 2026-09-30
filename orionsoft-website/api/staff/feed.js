@@ -1,7 +1,7 @@
 // Office feed: the company's internal social wall. Posts, reactions, comments,
 // reshares, kudos, announcements, and tracking of shares out to social media.
 import { readIndex, getRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { officeContext, notify, mentionedIds, award, logActivity, addAchievement, cleanUrl, cleanAudience, inAudience, audienceIds } from "../_lib/office.js";
+import { officeContext, notify, mentionedIds, awardOnce, awardDaily, logActivity, addAchievement, cleanUrl, cleanAudience, inAudience, audienceIds } from "../_lib/office.js";
 import { sendAnnouncementEmail } from "../_lib/emailTemplates.js";
 
 const TYPES = ["update", "win", "progress", "kudos", "announcement", "question", "reshare"];
@@ -79,14 +79,16 @@ export default async function handler(req, res) {
       let reshareOf = null;
       if (type === "reshare") {
         const original = await getRecord("posts", body.reshareOf);
-        if (!original) return res.status(404).json({ error: "Original post not found" });
+        const seeable = p => p && (p.authorId === me.id || ctx.can("moderate") || inAudience(p, me));
+        if (!seeable(original)) return res.status(404).json({ error: "Original post not found" });
         reshareOf = original.reshareOf || original.id;
         const root = original.reshareOf ? await getRecord("posts", original.reshareOf) : original;
+        if (root && !seeable(root)) return res.status(404).json({ error: "Original post not found" });
         if (root) {
           root.reshares = (root.reshares || 0) + 1;
           await putRecord("posts", root.id, root);
           await notify([root.authorId], { type: "reshare", title: `${me.fullName} reshared your post`, body: text || root.text, link: `feed:${root.id}`, actorId: me.id });
-          await award(root.authorId, "reshare");
+          await awardOnce(root.authorId, "reshare", `${root.id}:${me.id}`);
         }
       } else if (!text && !body.imageDataUrl && !body.link) {
         return res.status(400).json({ error: "Write something, or add a link or image" });
@@ -106,7 +108,7 @@ export default async function handler(req, res) {
         automated: false, meta: body.goalId ? { goalId: body.goalId } : {}, createdAt: new Date().toISOString(),
       };
       await putRecord("posts", id, post);
-      await award(me.id, "post");
+      await awardDaily(me.id, "post", 5);
 
       if (type === "announcement") {
         const targets = audienceIds(post.audience, active);
@@ -119,8 +121,8 @@ export default async function handler(req, res) {
       }
       if (type === "kudos") {
         await notify([kudosTo], { type: "kudos", title: `${me.fullName} gave you kudos: ${post.kudosBadge} 🙌`, body: text, link: `feed:${id}`, actorId: me.id });
-        await award(kudosTo, "kudos_received");
-        await award(me.id, "kudos_given");
+        await awardOnce(kudosTo, "kudos_received", `${me.id}:${new Date(Date.now() + 3600000).toISOString().slice(0, 10)}`); // once per colleague per day
+        await awardDaily(me.id, "kudos_given", 3);
         await logActivity(kudosTo, "kudos", `Received "${post.kudosBadge}" kudos from ${me.fullName}`);
         await addAchievement(kudosTo, `Kudos from ${me.fullName}: ${post.kudosBadge}`, "kudos");
       }
@@ -144,7 +146,7 @@ export default async function handler(req, res) {
       post.reactions = reactions;
       await putRecord("posts", post.id, post);
       if (!had && reactions[me.id] && post.authorId !== me.id) {
-        await award(post.authorId, "like_received");
+        await awardOnce(post.authorId, "like_received", `${post.id}:${me.id}`);
         await notify([post.authorId], { type: "reaction", title: `${me.fullName} reacted ${reaction} to your post`, body: post.text, link: `feed:${post.id}`, actorId: me.id });
       }
       return res.json({ ok: true, post });
@@ -156,7 +158,7 @@ export default async function handler(req, res) {
       const comment = { id: newId("cmt"), authorId: me.id, text, at: new Date().toISOString(), likes: [], parentId: body.parentId || null };
       post.comments = [...(post.comments || []), comment];
       await putRecord("posts", post.id, post);
-      await award(me.id, "comment");
+      await awardDaily(me.id, "comment", 10);
       // Notify the author, earlier commenters in the thread, and anyone @mentioned.
       const thread = new Set([post.authorId, ...(post.comments || []).map(c => c.authorId)]);
       if (post.kudosTo) thread.add(post.kudosTo);
@@ -193,7 +195,7 @@ export default async function handler(req, res) {
       }
       post.socialShares = { ...(post.socialShares || {}), [platform]: ((post.socialShares || {})[platform] || 0) + 1 };
       await putRecord("posts", post.id, post);
-      await award(me.id, "social_share");
+      await awardOnce(me.id, "social_share", `post:${post.id}`);
       await logActivity(me.id, "share", `Shared a post to ${platform}`);
       return res.json({ ok: true, post });
     }

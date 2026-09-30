@@ -2,7 +2,7 @@
 // cards, in-app notifications, @mentions, gamification points, activity
 // timelines and system-generated feed posts. Used by every api/staff/* route
 // and by api/_lib/automations.js.
-import { push, list, get, set, ltrim, hincrby, hgetall } from "../store.js";
+import { push, list, get, set, ltrim, hincrby, hgetall, claim, incrTtl } from "../store.js";
 import { listRecords, putRecord, newId, getRecord } from "./records.js";
 import { requireStaff } from "./auth.js";
 import { getRoleCatalog, permissionsOf, roleOf } from "./roles.js";
@@ -150,6 +150,26 @@ export async function award(employeeId, reason, n = POINTS[reason] || 0) {
       hincrby("orionsoft:office:points", employeeId, n),
       hincrby(`orionsoft:office:points:${monthKey()}`, employeeId, n),
     ]);
+  } catch { /* best-effort */ }
+}
+
+// Points that may only be earned once per thing (a like on a post, sharing a
+// post or kit, completing a task), so toggling something off and on again
+// can't farm the leaderboard.
+export async function awardOnce(employeeId, reason, onceKey, n) {
+  if (!employeeId || !onceKey) return;
+  try {
+    if (await claim(`orionsoft:points:once:${reason}:${employeeId}:${onceKey}`, 400 * 86400)) await award(employeeId, reason, n);
+  } catch { /* best-effort */ }
+}
+
+// Points for making things (posts, comments, meetings…) up to a daily limit,
+// so spamming doesn't climb the leaderboard.
+export async function awardDaily(employeeId, reason, perDay, n) {
+  if (!employeeId) return;
+  try {
+    const day = new Date(Date.now() + 3600000).toISOString().slice(0, 10);
+    if ((await incrTtl(`orionsoft:points:day:${day}:${reason}:${employeeId}`, 2 * 86400)) <= perDay) await award(employeeId, reason, n);
   } catch { /* best-effort */ }
 }
 

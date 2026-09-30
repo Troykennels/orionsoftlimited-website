@@ -6,6 +6,10 @@
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/$1"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "https://orionsoftlimited-website-production.up.railway.app/api/public/sitemap"
+    },
+    {
       "source": "/staff/playbook",
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/staff/playbook"
     },

@@ -2,7 +2,7 @@
 // Projects section manages). Staff see their own tasks; anyone with
 // tasks.assign also sees and assigns work down their reporting line.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { officeContext, notify, award, logActivity } from "../_lib/office.js";
+import { officeContext, notify, awardOnce, logActivity } from "../_lib/office.js";
 import { subordinates } from "../_lib/roles.js";
 
 const STATUSES = ["todo", "in_progress", "review", "done"];
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       t.status = b.status;
       if (b.status === "done" && !wasDone) {
         t.completedAt = new Date().toISOString();
-        await award(t.assigneeId, "task_done");
+        await awardOnce(t.assigneeId, "task_done", t.id);
         await logActivity(t.assigneeId, "task", `Completed task "${t.title}"`);
         const notifyId = t.createdByEmployee && t.createdByEmployee !== t.assigneeId ? t.createdByEmployee : null;
         if (notifyId) await notify([notifyId], { type: "task", title: `✅ ${me.fullName} completed "${t.title}"`, link: `tasks:${t.id}`, actorId: me.id });

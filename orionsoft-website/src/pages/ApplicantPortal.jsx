@@ -278,6 +278,7 @@ export default function ApplicantPortal() {
         </div>
       </header>
       <main style={{ maxWidth: 1000, margin: "0 auto", padding: "22px 16px 80px" }}>
+        {state.data.limited && apps.length > 0 && <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>Showing the application you just sent. To see all your applications, sign out and sign in with your email and application reference.</p>}
         {apps.length === 0 && <Card><p style={{ color: C.text, margin: 0 }}>We couldn't find applications for this email. <a href="/careers" style={{ color: C.gold }}>See open roles</a>.</p></Card>}
         {apps.length > 1 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>

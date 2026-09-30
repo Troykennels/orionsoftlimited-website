@@ -171,7 +171,39 @@ export async function set(key, value) {
     mem.set(key, JSON.stringify(value));
     return { result: "OK" };
   }
-  return u("POST", `/set/${key}`, value);
+  const res = await u("POST", `/set/${key}`, value);
+  // Upstash answers errors (e.g. a value over the request size limit) with
+  // { error }, not an HTTP failure. Log them so a lost write is visible.
+  if (res?.error) console.error(`[store] SET ${key} failed: ${res.error}`);
+  return res;
+}
+
+// Atomically claims `key` for `ttlSeconds` (Redis SET NX EX). Returns true only
+// for the first caller, so two requests racing on the same work (a Paystack
+// webhook and the payer's callback page, a double-clicked button) can't both
+// do it.
+export async function claim(key, ttlSeconds = 60) {
+  if (!BASE || !TOKEN) {
+    const hit = mem.get(key);
+    if (hit && hit.until > Date.now()) return false;
+    mem.set(key, { until: Date.now() + ttlSeconds * 1000 });
+    return true;
+  }
+  const res = await u("POST", "", ["SET", key, "1", "NX", "EX", String(Math.max(1, Math.trunc(ttlSeconds)))]);
+  return res?.result === "OK";
+}
+
+// Increments a counter that expires after `ttlSeconds` (daily caps etc.).
+export async function incrTtl(key, ttlSeconds) {
+  if (!BASE || !TOKEN) {
+    const hit = mem.get(key);
+    const cur = hit && typeof hit === "object" && hit.until > Date.now() ? hit : { n: 0, until: Date.now() + ttlSeconds * 1000 };
+    cur.n++; mem.set(key, cur);
+    return cur.n;
+  }
+  const res = await u("POST", "", ["INCR", key]);
+  if (res?.result === 1) await u("POST", "", ["EXPIRE", key, String(Math.trunc(ttlSeconds))]);
+  return res?.result ?? 0;
 }
 
 // Delete a key

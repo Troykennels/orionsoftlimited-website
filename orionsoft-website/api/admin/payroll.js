@@ -1,7 +1,7 @@
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
 import { requireAuth, verifyPassword } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
-import { set } from "../store.js";
+import { set, get, claim } from "../store.js";
 import { renderPayslipPdf } from "../_lib/pdf.js";
 import { sendPayslipIssued } from "../_lib/emailTemplates.js";
 import { resolveAccount, createRecipient, initiateTransfer, verifyTransfer } from "../_lib/paystackTransfer.js";
@@ -108,17 +108,28 @@ export default async function handler(req, res) {
       if (payroll.currency !== "NGN") return res.status(400).json({ error: "Automatic bank transfer only supports NGN. Use \"Mark Paid\" to record this payment manually." });
 
       const { amount, bankCode, pin } = req.body;
-      const payAmount = Number(amount);
+      const payAmount = Math.round(Number(amount) * 100) / 100;
       if (!payAmount || payAmount <= 0) return res.status(400).json({ error: "A valid amount is required" });
+      // Never more than the payslip's net pay (the amount comes from the browser).
+      if (payAmount > Number(payroll.netAmount || 0) + 0.004) return res.status(400).json({ error: `The transfer can't be more than the net pay on this payslip (${payroll.currency} ${Number(payroll.netAmount || 0).toLocaleString()}).` });
       if (!bankCode) return res.status(400).json({ error: "bankCode is required" });
 
       const actingAdmin = await getRecord("admins", session.sub);
       if (!actingAdmin?.securityPinHash) {
         return res.status(403).json({ error: "Set an approval PIN under My Account before sending a bank transfer." });
       }
+      // A 4–6 digit PIN must not be guessable: 5 wrong tries locks transfers for 30 minutes.
+      const pinKey = `orionsoft:payroll:pin-fails:${actingAdmin.id}`;
+      const fails = (await get(pinKey)) || { n: 0, at: 0 };
+      if (fails.n >= 5 && Date.now() - fails.at < 30 * 60 * 1000) return res.status(429).json({ error: "Too many wrong PIN attempts. Transfers are locked for 30 minutes." });
       if (!pin || !(await verifyPassword(pin, actingAdmin.securityPinHash))) {
+        await set(pinKey, { n: (Date.now() - fails.at < 30 * 60 * 1000 ? fails.n : 0) + 1, at: Date.now() });
+        await logAudit(session, "payroll_pin_failed", `payroll ${payroll.id}`, "Wrong approval PIN");
         return res.status(401).json({ error: "Incorrect approval PIN." });
       }
+      await set(pinKey, { n: 0, at: 0 });
+      // One transfer at a time per payslip (double clicks, two tabs).
+      if (!(await claim(`orionsoft:lock:payroll-pay:${payroll.id}`, 120))) return res.status(409).json({ error: "A transfer for this payslip is already being sent." });
 
       const employee = await getRecord("employees", payroll.employeeId);
       if (!employee) return res.status(404).json({ error: "Employee not found" });
@@ -128,14 +139,20 @@ export default async function handler(req, res) {
         const resolved = await resolveAccount(employee.bankAccountNumber, bankCode);
 
         let recipientCode = employee.paystackRecipientCode;
-        if (!recipientCode || employee.bankCode !== bankCode) {
+        // The saved Paystack recipient belongs to one bank + account number; if
+        // either changed, a new recipient is needed or the money would go to
+        // the old account.
+        if (!recipientCode || employee.bankCode !== bankCode || employee.paystackRecipientAccount !== employee.bankAccountNumber) {
           recipientCode = await createRecipient({ name: resolved.accountName, accountNumber: employee.bankAccountNumber, bankCode });
           employee.bankCode = bankCode;
           employee.paystackRecipientCode = recipientCode;
+          employee.paystackRecipientAccount = employee.bankAccountNumber;
           await putRecord("employees", employee.id, employee);
         }
 
-        const reference = `payroll_${payroll.id}`;
+        // A retry after a failed transfer needs a fresh reference (Paystack rejects reused ones).
+        payroll.transferAttempts = (payroll.transferAttempts || 0) + 1;
+        const reference = payroll.transferAttempts === 1 ? `payroll_${payroll.id}` : `payroll_${payroll.id}_${payroll.transferAttempts}`;
         const transfer = await initiateTransfer({
           amount: payAmount, recipientCode, reference,
           reason: `Salary: ${payroll.period}`,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Gauge, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, naira } from "../api.js";
-import { Avatar, Badge, Btn, SectionCard, Input, Modal, EmptyState, PageHeader, Tabs, Grid, Progress, toast } from "../components.jsx";
+import { Avatar, Badge, Btn, SectionCard, Input, Textarea, Modal, EmptyState, PageHeader, Tabs, Grid, Progress, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
 
 export const GRADE_COLOR = { A: C.mint, B: C.blue, C: C.amber, D: C.rose, E: C.rose };
@@ -93,6 +93,52 @@ export function Scorecard({ card, weights }) {
   );
 }
 
+const RUBRIC_LABEL = { communication: "Communication", quality: "Quality of work", teamwork: "Teamwork", ownership: "Ownership", initiative: "Initiative" };
+
+// Performance reviews the manager/HR has finalised and shared.
+function MyReviews({ onCount }) {
+  const [list, setList] = useState(null);
+  const [comment, setComment] = useState({});
+  const load = useCallback(() => api("/api/staff/appraisals").then(j => { setList(j.appraisals); onCount?.(j.appraisals.filter(a => a.status === "finalized").length); }).catch(e => toast(e.message, "err")), [onCount]);
+  useEffect(() => { load(); }, [load]);
+  async function ack(a) {
+    try { await api("/api/staff/appraisals", { method: "POST", body: { action: "acknowledge", id: a.id, comment: comment[a.id] || "" } }); toast("Review acknowledged"); load(); }
+    catch (e) { toast(e.message, "err"); }
+  }
+  if (!list) return <EmptyState>Loading…</EmptyState>;
+  if (!list.length) return <EmptyState icon={Gauge}>No performance reviews shared with you yet.</EmptyState>;
+  return list.map(a => (
+    <SectionCard key={a.id} style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: C.heading }}>{a.cycle}</div>
+          <div style={{ fontSize: 12.5, color: C.textMuted }}>Reviewed by {a.reviewerName || "your manager"}</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: C.gold }}>{a.overallRating || "—"}<span style={{ fontSize: 13, color: C.textMuted }}> / 5</span></div>
+          <Badge color={a.status === "acknowledged" ? C.mint : C.amber}>{a.status === "acknowledged" ? "Acknowledged" : "Please read & acknowledge"}</Badge>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8, marginBottom: 12 }}>
+        {Object.entries(a.ratings || {}).map(([k, v]) => (
+          <div key={k} style={{ fontSize: 13 }}><div style={{ color: C.textMuted }}>{RUBRIC_LABEL[k] || k}</div><Progress value={(Number(v) || 0) * 20} height={6} /><div style={{ color: C.heading, fontWeight: 700 }}>{v || "—"} / 5</div></div>
+        ))}
+      </div>
+      {a.strengths && <p style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}><strong style={{ color: C.heading }}>Strengths:</strong> {a.strengths}</p>}
+      {a.areasForImprovement && <p style={{ fontSize: 13.5, color: C.text, lineHeight: 1.6 }}><strong style={{ color: C.heading }}>Areas to grow:</strong> {a.areasForImprovement}</p>}
+      {a.goals?.length > 0 && <div style={{ fontSize: 13.5, color: C.text }}><strong style={{ color: C.heading }}>Goals for next cycle:</strong><ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>{a.goals.map((g, i) => <li key={i}>{g}</li>)}</ul></div>}
+      {a.status === "acknowledged"
+        ? (a.employeeComment && <p style={{ fontSize: 13.5, color: C.text, marginTop: 10 }}><strong style={{ color: C.heading }}>Your comments:</strong> {a.employeeComment}</p>)
+        : (
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <Textarea rows={3} value={comment[a.id] || ""} onChange={e => setComment(c => ({ ...c, [a.id]: e.target.value }))} placeholder="Your comments (optional): anything you'd like on record about this review" />
+            <div><Btn onClick={() => ack(a)}>I've read this review</Btn></div>
+          </div>
+        )}
+    </SectionCard>
+  ));
+}
+
 function monthStart() { const d = new Date(Date.now() + 3600000).toISOString(); return `${d.slice(0, 8)}01`; }
 
 export default function Performance() {
@@ -101,6 +147,7 @@ export default function Performance() {
   const [tab, setTab] = useState("me");
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(null);
+  const [toAck, setToAck] = useState(0);
   const manager = can("team.view") || can("org.approve") || can("hr.records");
 
   const load = useCallback(() => api(`/api/staff/performance?scope=team&from=${range.from}&to=${range.to}`).then(setData).catch(e => toast(e.message, "err")), [range]);
@@ -115,8 +162,9 @@ export default function Performance() {
     <div>
       <PageHeader title="Performance" sub="Scores come from verified activity (clock-ins, GPS-verified and client-confirmed visits, location checks, tasks, goals and reports), never from claims alone."
         action={<div style={{ display: "flex", gap: 6, alignItems: "center" }}><Input type="date" value={range.from} onChange={e => setRange(r => ({ ...r, from: e.target.value }))} style={{ width: 150 }} aria-label="From" /><span style={{ color: C.textMuted }}>to</span><Input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} style={{ width: 150 }} aria-label="To" /></div>} />
-      {manager && <Tabs active={tab} onChange={setTab} tabs={[{ id: "me", label: "My scorecard" }, { id: "team", label: data?.companyWide ? "Company" : "My team", count: data?.team?.filter(c => c.integrity === "concern").length || 0 }]} />}
-      {!data && <EmptyState>Loading…</EmptyState>}
+      <Tabs active={tab} onChange={setTab} tabs={[{ id: "me", label: "My scorecard" }, { id: "reviews", label: "My reviews", count: toAck }, ...(manager ? [{ id: "team", label: data?.companyWide ? "Company" : "My team", count: data?.team?.filter(c => c.integrity === "concern").length || 0 }] : [])]} />
+      {tab === "reviews" && <MyReviews onCount={setToAck} />}
+      {!data && tab !== "reviews" && <EmptyState>Loading…</EmptyState>}
       {data && tab === "me" && (data.me ? <SectionCard><Scorecard card={data.me} weights={data.weights} /></SectionCard> : <EmptyState icon={Gauge}>No scorecard for your role yet.</EmptyState>)}
       {data && tab === "team" && (
         <SectionCard>

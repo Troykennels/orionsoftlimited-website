@@ -14,6 +14,7 @@ import ErrorBoundary from "../staff/ErrorBoundary.jsx";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
+import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
 import { computeTotals as computeInvoiceTotals, amountInWords as invoiceAmountInWords } from "../../shared/invoicing.js";
 import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
 
@@ -113,13 +114,13 @@ function auditLog(action, target, details = "") {
 // only this browser's storage.
 const PUBLISHED_KEYS = new Set([
   SK.settings, SK.homepage, SK.testimonials, SK.faqs, SK.blog, SK.careers, SK.clients, SK.menus,
-  SK.team, SK.seo, SK.announcements, SK.features, SK.products, SK.portfolio, SK.services, SK.theme,
+  SK.team, SK.seo, SK.announcements, SK.features, SK.products, SK.portfolio, SK.services, SK.theme, SK.events,
 ]);
 const PUBLISH_LABEL = {
   [SK.careers]: "Careers", [SK.blog]: "Blog", [SK.announcements]: "Announcements", [SK.products]: "Products",
   [SK.services]: "Services", [SK.portfolio]: "Case Studies", [SK.testimonials]: "Testimonials", [SK.faqs]: "FAQs",
   [SK.homepage]: "Homepage", [SK.clients]: "Clients", [SK.menus]: "Navigation", [SK.team]: "Team",
-  [SK.seo]: "SEO", [SK.features]: "Site features", [SK.settings]: "Site settings", [SK.theme]: "Theme",
+  [SK.seo]: "SEO", [SK.features]: "Site features", [SK.settings]: "Site settings", [SK.theme]: "Theme", [SK.events]: "Events",
 };
 const publishTimers = {};
 function publishContent(key, val) {
@@ -495,6 +496,12 @@ const NAV_GROUPS = [
   },
 ];
 
+// Editor admins manage website content only (the server enforces the same).
+const EDITOR_SECTIONS = new Set(["dashboard", "analytics", "live", "homepage", "announcements", "products", "services", "blog", "portfolio", "testimonials", "faqs", "team", "events", "careers", "seo", "features", "clients", "menus", "theme", "settings", "media", "my-account"]);
+const navFor = session => session?.adminRole === "editor"
+  ? NAV_GROUPS.map(g => ({ ...g, items: g.items.filter(i => EDITOR_SECTIONS.has(i.id)) })).filter(g => g.items.length)
+  : NAV_GROUPS;
+
 // ─── Login Screen ────────────────────────────────────────────────────────────
 function AdminLogin({ onLogin, notice }) {
   const [email, setEmail] = useState("");
@@ -614,12 +621,13 @@ function useAnalytics() {
 // unsigned contracts, unpaid payroll, new applicants) — single source shared
 // by the Dashboard widget and the notification bell so counts always match.
 const ATTENTION_LASTSEEN_KEY = "orionsoft_attention_lastseen";
-function useAttention() {
+function useAttention(enabled = true) {
   const [items, setItems] = useState([]);
   const [counts, setCounts] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   async function load(silent = false) {
+    if (!enabled) return;
     if (!silent) setLoading(true);
     try {
       const r = await fetch("/api/admin/attention");
@@ -923,7 +931,7 @@ function NeedsAttentionWidget({ navigate }) {
   );
 }
 
-function DashboardOverview({ navigate }) {
+function DashboardOverview({ navigate, editor = false }) {
   const { data, loading, error, lastUpdated, countdown, refresh } = useAnalytics();
   const clients = lsGet(SK.clients, []);
   const audit   = lsGet(SK.audit,   []);
@@ -960,7 +968,7 @@ function DashboardOverview({ navigate }) {
         </Btn>
       </div>
 
-      <NeedsAttentionWidget navigate={navigate} />
+      {!editor && <NeedsAttentionWidget navigate={navigate} />}
 
       {/* 8 live stat cards */}
       <div className="admin-stat-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px,1fr))", gap:14, marginBottom:24 }}>
@@ -1157,32 +1165,42 @@ const LEAD_TYPE_META = {
   partnership: { label: "Partnership",    color: C.amber,  icon: "🤝" },
   career:      { label: "Career",         color: C.rose,   icon: "🚀" },
   newsletter:  { label: "Newsletter",     color: C.cyan,   icon: "📬" },
+  consultation:{ label: "Consultation",   color: C.purple, icon: "🗓️" },
 };
 
-const LEAD_STATUSES = ["new", "contacted", "qualified", "converted", "closed"];
-const STATUS_COLORS = { new: C.rose, contacted: C.amber, qualified: C.blue, converted: C.mint, closed: C.textMuted };
+const LEAD_STATUSES = ["new", "contacted", "qualified", "converted", "closed", "spam"];
+const STATUS_COLORS = { new: C.rose, contacted: C.amber, qualified: C.blue, converted: C.mint, closed: C.textMuted, spam: C.textMuted };
+
+// Status, read and delete are saved on the server (api/admin/leads.js), so
+// every admin on every device sees the same inbox.
+function patchLead(body) {
+  return fetch("/api/admin/leads", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then(r => r.ok ? r : r.json().then(j => { throw new Error(j.error || "Couldn't save"); }));
+}
+
+// Nigerian number in any common form (0803…, +234 803…, 234803…) → 234803….
+const waIntl = p => { const d = String(p || "").replace(/\D/g, ""); return d.startsWith("234") ? d : d.startsWith("0") ? `234${d.slice(1)}` : d.length === 10 ? `234${d}` : d; };
 
 function LeadsSection() {
-  const [leads, setLeads] = useState(() => lsGet(SK.leads, []));
+  const [leads, setLeads] = useState([]);
   const [selected, setSelected] = useState(null);
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
-  const reload = useCallback(() => setLeads(lsGet(SK.leads, [])), []);
-  useEffect(() => { window.addEventListener("localstoreupdate", reload); return () => window.removeEventListener("localstoreupdate", reload); }, [reload]);
+  const [saveErr, setSaveErr] = useState("");
 
   const syncFromServer = useCallback(async () => {
     setSyncing(true);
-    const data = await fetchServerData("leads");
-    setSyncing(false);
-    if (data?.leads?.length) {
-      const merged = mergeById(data.leads, lsGet(SK.leads, []));
-      setLeads(merged);
-      lsSet(SK.leads, merged);
-      setLastSync(new Date().toLocaleTimeString("en-NG"));
-    }
+    try {
+      const r = await fetch("/api/admin/leads");
+      const j = await r.json();
+      if (r.ok) {
+        setLeads((j.leads || []).sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0)));
+        setLastSync(new Date().toLocaleTimeString("en-NG"));
+      }
+    } catch { /* keep what's shown */ } finally { setSyncing(false); }
   }, []);
 
   // Auto-sync on mount
@@ -1211,22 +1229,22 @@ function LeadsSection() {
   if (statusFilter !== "all") filtered = filtered.filter(l => l.status === statusFilter);
 
   function markRead(id) {
-    const updated = leads.map(l => l.id === id ? { ...l, read: true } : l);
-    setLeads(updated); lsSet(SK.leads, updated);
+    if (leads.find(l => l.id === id)?.read) return;
+    setLeads(ls => ls.map(l => l.id === id ? { ...l, read: true } : l));
+    patchLead({ id, read: true }).catch(() => {});
   }
 
   function updateStatus(id, status) {
     const updated = leads.map(l => l.id === id ? { ...l, status, read: true, updatedAt: new Date().toISOString() } : l);
-    setLeads(updated); lsSet(SK.leads, updated);
-    auditLog("update_status", "lead", `Lead ${id} → ${status}`);
+    setLeads(updated); setSaveErr("");
+    patchLead({ id, status }).catch(e => { setSaveErr(e.message); syncFromServer(); });
     if (selected?.id === id) setSelected(prev => norm(updated.find(l => l.id === id) || prev));
   }
 
   function deleteLead(id) {
     if (!confirm("Delete this submission?")) return;
-    const updated = leads.filter(l => l.id !== id);
-    setLeads(updated); lsSet(SK.leads, updated);
-    auditLog("delete", "lead", `Lead ID ${id}`);
+    setLeads(ls => ls.filter(l => l.id !== id)); setSaveErr("");
+    patchLead({ id, deleted: true }).catch(e => { setSaveErr(e.message); syncFromServer(); });
     if (selected?.id === id) setSelected(null);
   }
 
@@ -1252,6 +1270,7 @@ function LeadsSection() {
         <div>
           <span style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font }}>Leads</span>
           {lastSync && <span style={{ fontSize: 11, color: C.mint, fontFamily: font, marginLeft: 10 }}>✓ Synced {lastSync}</span>}
+          {saveErr && <span role="alert" style={{ fontSize: 11.5, color: C.rose, fontFamily: font, marginLeft: 10 }}>⚠ {saveErr}</span>}
         </div>
         <button type="button" onClick={syncFromServer} disabled={syncing} style={{
           background: C.card, border: `1px solid ${C.border}`, color: syncing ? C.textMuted : C.gold,
@@ -1380,7 +1399,7 @@ function LeadsSection() {
                   Reply by Email →
                 </a>
                 {selected.phone && (
-                  <a href={`https://wa.me/234${selected.phone.replace(/^0/, "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${selected.name}, this is Orion Soft following up on your ${selected.type} submission. `)}`}
+                  <a href={`https://wa.me/${waIntl(selected.phone)}?text=${encodeURIComponent(`Hi ${selected.name}, this is Orion Soft following up on your ${selected.type} submission. `)}`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ padding: "11px 16px", background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.25)", color: "#25D366", borderRadius: 10, textDecoration: "none", fontSize: 13, fontWeight: 700, fontFamily: font }}>
                     WhatsApp
@@ -1398,50 +1417,52 @@ function LeadsSection() {
 
 // ─── Newsletter ──────────────────────────────────────────────────────────────
 function NewsletterSection() {
-  const [subs, setSubs] = useState(() => lsGet(SK.newsletter, []));
+  const [data, setData] = useState(null);
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
+  const [compose, setCompose] = useState({ subject: "", body: "", link: "", linkText: "" });
+  const [busy, setBusy] = useState("");
 
-  const reload = useCallback(() => setSubs(lsGet(SK.newsletter, [])), []);
-  useEffect(() => { window.addEventListener("localstoreupdate", reload); return () => window.removeEventListener("localstoreupdate", reload); }, [reload]);
+  const load = useCallback(async () => {
+    try { const r = await fetch("/api/admin/newsletter"); const j = await r.json(); if (r.ok) setData(j); else setMsg(j.error || "Couldn't load subscribers"); }
+    catch { setMsg("Couldn't load subscribers"); }
+  }, []);
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
 
-  function addSub() {
-    if (!email || !email.includes("@")) { setMsg("Enter a valid email."); return; }
-    if (subs.find(s => s.email === email)) { setMsg("Already subscribed."); return; }
-    const updated = [...subs, { id: Date.now(), email, source: "admin", subscribedAt: new Date().toISOString(), active: true }];
-    setSubs(updated);
-    lsSet(SK.newsletter, updated);
-    auditLog("add_subscriber", "newsletter", email);
-    setEmail("");
-    setMsg("Added.");
-    setTimeout(() => setMsg(""), 3000);
+  async function call(method, body, url = "/api/admin/newsletter") {
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Something went wrong");
+    return j;
   }
+  const flash = t => { setMsg(t); setTimeout(() => setMsg(""), 5000); };
 
-  function toggleSub(id) {
-    const updated = subs.map(s => s.id === id ? { ...s, active: !s.active } : s);
-    setSubs(updated);
-    lsSet(SK.newsletter, updated);
-    auditLog("toggle_subscriber", "newsletter", `ID ${id}`);
-  }
-
-  function deleteSub(id) {
-    if (!confirm("Remove subscriber?")) return;
-    const updated = subs.filter(s => s.id !== id);
-    setSubs(updated);
-    lsSet(SK.newsletter, updated);
-    auditLog("delete_subscriber", "newsletter", `ID ${id}`);
-  }
-
-  function exportCSV() {
-    const rows = [["Email", "Source", "Subscribed", "Active"], ...subs.map(s => [s.email, s.source || "", s.subscribedAt || "", s.active ? "Yes" : "No"])];
-    const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = `newsletter-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-  }
-
+  const subs = data?.subscribers || [];
   const active = subs.filter(s => s.active).length;
+  const settings = data?.settings || {};
+
+  async function addSub() {
+    try { await call("POST", { action: "add", email }); setEmail(""); flash("Subscriber added."); load(); } catch (e) { flash(e.message); }
+  }
+  async function toggleSub(s) { try { await call("PATCH", { email: s.email, active: !s.active }); load(); } catch (e) { flash(e.message); } }
+  async function deleteSub(s) {
+    if (!confirm(`Remove ${s.email} from the newsletter?`)) return;
+    try { await call("DELETE", null, `/api/admin/newsletter?email=${encodeURIComponent(s.email)}`); load(); } catch (e) { flash(e.message); }
+  }
+  async function setSetting(k, v) { try { await call("POST", { action: "settings", [k]: v }); load(); } catch (e) { flash(e.message); } }
+  async function send(action) {
+    if (action === "send" && !confirm(`Send "${compose.subject}" to ${active} subscriber${active === 1 ? "" : "s"}?`)) return;
+    setBusy(action);
+    try {
+      const j = await call("POST", { action, ...compose });
+      if (action === "test") flash(`Test sent to ${j.sentTo}.`);
+      else { flash(`Queued for ${j.campaign.recipients} subscriber(s). It goes out in batches; progress shows below.`); setCompose({ subject: "", body: "", link: "", linkText: "" }); load(); }
+    } catch (e) { flash(e.message); } finally { setBusy(""); }
+  }
+  function exportCSV() {
+    downloadCSV(`newsletter-${new Date().toISOString().split("T")[0]}.csv`, ["Email", "Name", "Source", "Subscribed", "Active"],
+      subs.map(s => [s.email, s.name || "", s.source || "", s.subscribedAt || "", s.active ? "Yes" : "No"]), "newsletter subscribers");
+  }
 
   return (
     <div>
@@ -1450,8 +1471,52 @@ function NewsletterSection() {
         <StatCard label="Active"             value={active}       color={C.mint}   icon="✅" />
         <StatCard label="Unsubscribed"       value={subs.length - active} color={C.rose} icon="❌" />
       </div>
+      {msg && <p role="status" style={{ fontSize: 13, color: C.gold, fontFamily: font, margin: "0 0 14px" }}>{msg}</p>}
 
       <SectionCard>
+        <SectionTitle>Automatic emails</SectionTitle>
+        <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, margin: "6px 0 14px", lineHeight: 1.6 }}>People who subscribe on the website are added here automatically. Every email carries an unsubscribe link, and big lists go out in batches (about 400 a day) so no subscriber is missed.</p>
+        <div style={{ display: "grid", gap: 10 }}>
+          <Toggle value={settings.autoBlog !== false} onChange={v => setSetting("autoBlog", v)} label="Email every new blog post to subscribers when it's published" />
+          <Toggle value={settings.welcome !== false} onChange={v => setSetting("welcome", v)} label="Send a welcome email when someone subscribes on the website" />
+        </div>
+      </SectionCard>
+
+      <SectionCard style={{ marginTop: 20 }}>
+        <SectionTitle>Write a newsletter</SectionTitle>
+        <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+          <div><Label>Subject</Label><Input value={compose.subject} onChange={e => setCompose(c => ({ ...c, subject: e.target.value }))} placeholder="e.g. What's new at Orion Soft this month" /></div>
+          <div><Label>Message</Label><Textarea rows={9} value={compose.body} onChange={e => setCompose(c => ({ ...c, body: e.target.value }))} placeholder="Write your update. Leave a blank line between paragraphs. Links starting with https:// become clickable." /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+            <div><Label>Button link (optional)</Label><Input value={compose.link} onChange={e => setCompose(c => ({ ...c, link: e.target.value }))} placeholder="https://www.orionsoftlimited.com/…" /></div>
+            <div><Label>Button text</Label><Input value={compose.linkText} onChange={e => setCompose(c => ({ ...c, linkText: e.target.value }))} placeholder="Read more" /></div>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Btn variant="ghost" onClick={() => send("test")} disabled={!!busy || !compose.subject || !compose.body}>{busy === "test" ? "Sending…" : "Send me a test"}</Btn>
+            <Btn onClick={() => send("send")} disabled={!!busy || !compose.subject || !compose.body || !active}>{busy === "send" ? "Queuing…" : `Send to ${active} subscriber${active === 1 ? "" : "s"}`}</Btn>
+          </div>
+        </div>
+      </SectionCard>
+
+      {(data?.campaigns || []).length > 0 && (
+        <SectionCard style={{ marginTop: 20 }}>
+          <SectionTitle>Sent and sending</SectionTitle>
+          {data.campaigns.slice(0, 20).map(c => (
+            <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "10px 0", borderBottom: `1px solid ${C.border}`, fontFamily: font }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: C.text, fontWeight: 600 }}>{c.subject}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{c.kind === "blog" ? "Automatic · new blog post" : `By ${c.by}`} · {new Date(c.createdAt).toLocaleString("en-NG")}</div>
+              </div>
+              <div style={{ fontSize: 12.5, color: C.textMuted, textAlign: "right" }}>
+                <Badge color={c.done ? C.mint : C.amber}>{c.done ? "Sent" : "Sending"}</Badge>
+                <div style={{ marginTop: 4 }}>{c.sent}/{c.recipients} delivered{c.failed ? ` · ${c.failed} failed` : ""}{c.skipped ? ` · ${c.skipped} unsubscribed` : ""}</div>
+              </div>
+            </div>
+          ))}
+        </SectionCard>
+      )}
+
+      <SectionCard style={{ marginTop: 20 }}>
         <SectionTitle>Add Subscriber</SectionTitle>
         <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
           <div style={{ flex: 1 }}>
@@ -1459,7 +1524,6 @@ function NewsletterSection() {
           </div>
           <Btn onClick={addSub}>Add</Btn>
         </div>
-        {msg && <p style={{ fontSize: 13, color: C.mint, fontFamily: font, marginTop: 8 }}>{msg}</p>}
       </SectionCard>
 
       <SectionCard style={{ marginTop: 20 }}>
@@ -1467,20 +1531,21 @@ function NewsletterSection() {
           <SectionTitle>Subscribers ({subs.length})</SectionTitle>
           <Btn variant="ghost" small onClick={exportCSV}>Export CSV</Btn>
         </div>
-        {subs.length === 0 && <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No subscribers yet. Add a newsletter signup form to your website pages.</p>}
+        {!data && <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>Loading…</p>}
+        {data && subs.length === 0 && <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No subscribers yet. People who subscribe on the website appear here automatically.</p>}
         {subs.map(s => (
-          <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, color: C.text, fontFamily: font, fontWeight: 500 }}>{s.email}</div>
+          <div key={s.email} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, color: C.text, fontFamily: font, fontWeight: 500, overflowWrap: "anywhere" }}>{s.email}</div>
               <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font, marginTop: 2 }}>
                 {s.source || "website"} · {s.subscribedAt ? new Date(s.subscribedAt).toLocaleDateString("en-NG") : ""}
               </div>
             </div>
             <Badge color={s.active ? C.mint : C.rose}>{s.active ? "Active" : "Unsubscribed"}</Badge>
-            <button type="button" onClick={() => toggleSub(s.id)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 13, fontFamily: font }}>
+            <button type="button" onClick={() => toggleSub(s)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 13, fontFamily: font }}>
               {s.active ? "Unsub" : "Resub"}
             </button>
-            <button type="button" onClick={() => deleteSub(s.id)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16, padding: "0 2px" }}>×</button>
+            <button type="button" aria-label={`Remove ${s.email}`} onClick={() => deleteSub(s)} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer", fontSize: 16, padding: "0 2px" }}>×</button>
           </div>
         ))}
       </SectionCard>
@@ -1551,7 +1616,7 @@ function SplitEditor({ left, right }) {
   );
 }
 
-function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview, defaultList = [] }) {
+function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview, defaultList = [], normalize, extraActions }) {
   const [items, setItems] = useState(() => lsGet(sk, defaultList));
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ ...defaultItem });
@@ -1562,10 +1627,13 @@ function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview
 
   function save() {
     let updated;
+    const others = items.filter((_, i) => i !== editing);
+    let clean = normalize ? normalize(form, others) : form;
+    if (typeof clean === "string") { setMsg(clean); return; } // a validation message
     if (editing !== null) {
-      updated = items.map((it, i) => i === editing ? { ...form, updatedAt: new Date().toISOString() } : it);
+      updated = items.map((it, i) => i === editing ? { ...clean, updatedAt: new Date().toISOString() } : it);
     } else {
-      updated = [...items, { ...form, id: form.id || uid(), createdAt: new Date().toISOString() }];
+      updated = [...items, { ...clean, id: clean.id || uid(), createdAt: new Date().toISOString() }];
     }
     setItems(updated);
     lsSet(sk, updated, editing !== null ? "update" : "create", title);
@@ -1625,6 +1693,7 @@ function CrudSection({ title, sk, defaultItem, fields, renderItem, renderPreview
           <div key={item.id || i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 10, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }}>
             <div style={{ flex: 1 }}>{renderItem(item)}</div>
             <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              {extraActions && extraActions(item)}
               <Btn small variant="ghost" onClick={() => edit(i)}>Edit</Btn>
               <Btn small danger onClick={() => del(i)}>Delete</Btn>
             </div>
@@ -1645,6 +1714,17 @@ function ProductsSection() {
     <CrudSection
       title="Product"
       sk={SK.products}
+      defaultList={DEFAULT_PRODUCTS_CATALOG}
+      normalize={(f, others) => {
+        const list = v => (Array.isArray(v) ? v : String(v || "").split(",")).map(x => String(x).trim()).filter(Boolean);
+        const id = String(f.id || f.name || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+        if (!String(f.name || "").trim()) return "Enter a product name.";
+        if (!id) return "Enter an ID / URL slug.";
+        if (others.some(o => o.id === id)) return `Another product already uses the address /${id}.`;
+        // Only the built-in products have hand-made pages; new ones use the generated product page.
+        const builtIn = DEFAULT_PRODUCTS_CATALOG.some(p => p.id === id);
+        return { ...f, id, name: String(f.name).trim(), industries: list(f.industries), solutions: list(f.solutions), order: Number(f.order) || 99, hasPage: builtIn && f.hasPage !== false };
+      }}
       defaultItem={{
         id: "", name: "", tag: "", tagline: "", desc: "", color: "#C8A850",
         status: "live", published: true, featured: false, order: 99, soon: false, hasPage: false,
@@ -1757,14 +1837,26 @@ function BlogSection() {
       title="Blog Post"
       sk={SK.blog}
       defaultList={[]}
-      defaultItem={{ title: "", slug: "", excerpt: "", content: "", author: "Orion Soft", category: "", published: false, createdAt: new Date().toISOString() }}
+      defaultItem={{ title: "", slug: "", excerpt: "", content: "", author: "Orion Soft", category: "", coverImage: "", date: "", published: false }}
+      normalize={(f, others) => {
+        if (!String(f.title || "").trim()) return "Enter a title.";
+        const slug = String(f.slug || f.title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+        if (others.some(o => o.slug === slug)) return `Another post already uses the address /blog/${slug}.`;
+        if (f.coverImage && !/^(https:\/\/|\/)/.test(f.coverImage)) return "The cover image must be an https:// link or a /assets/… path.";
+        return { ...f, slug, date: f.date || new Date().toISOString().slice(0, 10) };
+      }}
+      extraActions={p => p.published && (p.slug || p.id) ? (
+        <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${window.location.origin}/api/public/share?blog=${encodeURIComponent(p.slug || p.id)}`)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost">Share</Btn></a>
+      ) : null}
       fields={[
         { key: "title", label: "Title", placeholder: "Post title" },
-        { key: "slug", label: "Slug", placeholder: "url-friendly-slug" },
+        { key: "slug", label: "Slug", placeholder: "url-friendly-slug (made from the title if left blank)" },
         { key: "category", label: "Category", placeholder: "e.g. Technology, Healthcare" },
         { key: "author", label: "Author", placeholder: "Author name" },
-        { key: "excerpt", label: "Excerpt", type: "textarea", rows: 2, placeholder: "Short summary shown in lists" },
-        { key: "content", label: "Content (Markdown)", type: "textarea", rows: 8, placeholder: "Full post content..." },
+        { key: "date", label: "Publish date", type: "date" },
+        { key: "coverImage", label: "Cover image link", placeholder: "https://… (also used when the post is shared on social media)" },
+        { key: "excerpt", label: "Excerpt", type: "textarea", rows: 2, placeholder: "Short summary shown in lists and social previews" },
+        { key: "content", label: "Content", type: "textarea", rows: 12, placeholder: "Write the post. Blank line = new paragraph. # Heading, **bold**, *italic*, - bullet, [link text](https://…)" },
         { key: "published", label: "Published", type: "toggle", toggleLabel: "Published" },
       ]}
       renderItem={p => (
@@ -2612,7 +2704,9 @@ function MenusSection() {
 
   return (
     <div>
-      <p style={{ color: C.textMuted, fontSize: 13, fontFamily: font, marginBottom: 16 }}>Manage the main navigation links. Stored as <code>{`{ main: [...] }`}</code>.</p>
+      <div role="note" style={{ background: C.amberDim, border: `1px solid ${C.amber}44`, borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: C.amber, fontFamily: font, lineHeight: 1.6 }}>
+        The website's top menu is built into the site and lists your published products automatically (Admin → Products). Links saved here are not shown on the website yet. To show or hide the Blog, Team, Careers, Resources or Pricing pages, use Feature Flags.
+      </div>
       <SectionCard>
         <SectionTitle>{editing !== null ? "Edit Nav Link" : "Add Nav Link"}</SectionTitle>
         <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2687,7 +2781,8 @@ function SettingsSection() {
       const letterheadUpdates = Object.fromEntries(LETTERHEAD_FIELDS.map(k => [k, form[k]]));
       const r = await fetch("/api/admin/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(letterheadUpdates) });
       const json = await r.json().catch(() => ({}));
-      if (!r.ok) { setErr(json.error || "Failed to save company info to the letterhead settings."); return; }
+      // Editors can't change the letterhead/bank settings; the website settings still save.
+      if (!r.ok && r.status !== 403) { setErr(json.error || "Failed to save company info to the letterhead settings."); return; }
       lsSet(SK.settings, form, "save", "Site Settings");
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -2711,7 +2806,7 @@ function SettingsSection() {
           <SectionCard>
             <SectionTitle>Social Links</SectionTitle>
             <div style={{ marginTop: 14 }}>
-              {[["linkedin", "LinkedIn URL"], ["twitter", "Twitter/X URL"], ["github", "GitHub URL"]].map(([k, l]) => (
+              {[["linkedin", "LinkedIn URL"], ["instagram", "Instagram URL"], ["facebook", "Facebook URL"], ["twitter", "X (Twitter) URL"], ["tiktok", "TikTok URL"], ["youtube", "YouTube URL"], ["github", "GitHub URL"]].map(([k, l]) => (
                 <div key={k} style={{ marginBottom: 14 }}><Label>{l}</Label><Input {...f(k)} placeholder="https://..." /></div>
               ))}
             </div>
@@ -5688,8 +5783,11 @@ function AppraisalsSection() {
                     <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>{a.goals.map((g, i) => <li key={i}>{g}</li>)}</ul>
                   </div>
                 )}
+                {a.status === "finalized" && <p style={{ marginBottom: 8, color: C.amber }}>Shared with {a.employeeName}. Waiting for them to acknowledge it in the Staff Office.</p>}
+                {a.status === "acknowledged" && <p style={{ marginBottom: 8, color: C.blue }}>Acknowledged {a.acknowledgedAt ? new Date(a.acknowledgedAt).toLocaleDateString("en-NG") : ""}{a.acknowledgedVia === "admin" ? " (recorded by admin)" : ""}.</p>}
+                {a.employeeComment && <p style={{ marginBottom: 8 }}><strong>{a.employeeName}'s comments:</strong> {a.employeeComment}</p>}
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  {a.status === "draft" && <Btn small onClick={() => finalize(a)}>Finalize</Btn>}
+                  {a.status === "draft" && <Btn small onClick={() => finalize(a)} title="Shares the review with the staff member">Finalize &amp; share</Btn>}
                   <Btn small danger onClick={() => remove(a)}>Delete</Btn>
                 </div>
               </div>
@@ -6577,7 +6675,7 @@ function LettersSection() {
 // ─── Section router ──────────────────────────────────────────────────────────
 function DashboardContent({ active, session, navigate }) {
   switch (active) {
-    case "dashboard":     return <DashboardOverview navigate={navigate} />;
+    case "dashboard":     return <DashboardOverview navigate={navigate} editor={session?.adminRole === "editor"} />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;
@@ -6638,8 +6736,8 @@ function adminInitials(name) {
   return String(name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "?";
 }
 
-function NotificationBell({ navigate }) {
-  const { items, loading } = useAttention();
+function NotificationBell({ navigate, enabled = true }) {
+  const { items, loading } = useAttention(enabled);
   const [open, setOpen] = useState(false);
   const [lastSeen, setLastSeen] = useState(() => {
     try { return localStorage.getItem(ATTENTION_LASTSEEN_KEY) || ""; } catch { return ""; }
@@ -6736,7 +6834,7 @@ function TopBar({ session, navigate, onMenuClick }) {
         <Menu size={17} />
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto" }}>
-      <NotificationBell navigate={navigate} />
+      {session.adminRole !== "editor" && <NotificationBell navigate={navigate} />}
 
       <div style={{ width: 1, height: 24, background: C.border }} />
 
@@ -6845,7 +6943,7 @@ export default function AdminDashboard({ setCurrentPage }) {
     applySession(null);
   }
 
-  const navigate = (id) => { setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
+  const navigate = (id) => { if (session.adminRole === "editor" && !EDITOR_SECTIONS.has(id)) return; setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
@@ -6880,7 +6978,7 @@ export default function AdminDashboard({ setCurrentPage }) {
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
-          {NAV_GROUPS.map(g => (
+          {navFor(session).map(g => (
             <div key={g.label} style={{ padding: sidebarOpen ? "16px 12px 8px" : "16px 8px 8px" }}>
               {sidebarOpen && <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.1em", padding: "0 8px 8px" }}>{g.label}</div>}
               {g.items.map(item => {

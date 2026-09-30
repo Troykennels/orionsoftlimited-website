@@ -18,14 +18,14 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     await ensureIdCard(emp);
-    return res.json({ ok: true, ...(await cardPayload(emp)) });
+    return res.json({ ok: true, ...(await cardPayload(emp, { forAdmin: true })) });
   }
 
   const action = req.body?.action;
   if (req.method === "POST" && action === "reissue") {
     await ensureIdCard(emp, { reissue: true });
     await logAudit(session, "reissue_id_card", `employee ${emp.id}`, `${emp.fullName} · card v${emp.idCard.version}`);
-    return res.json({ ok: true, ...(await cardPayload(emp)) });
+    return res.json({ ok: true, ...(await cardPayload(emp, { forAdmin: true })) });
   }
 
   // Passport photo (uploaded by the admin, or the profile photo reused).
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     if (!validPassport(dataUrl)) return res.status(400).json({ error: req.body.useProfilePhoto ? "This staff member has no profile photo to use" : "Upload a JPEG or PNG photo under about 1 MB" });
     await setPassport(emp, dataUrl);
     await logAudit(session, "set_id_photo", `employee ${emp.id}`, emp.fullName);
-    return res.json({ ok: true, ...(await cardPayload(emp)) });
+    return res.json({ ok: true, ...(await cardPayload(emp, { forAdmin: true })) });
   }
 
   // Sign & authorise: the chosen signatory's signature is printed on the back.
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     await putRecord("employees", emp.id, emp);
     await logAudit(session, "authorize_id_card", `employee ${emp.id}`, `${emp.fullName} · card v${emp.idCard.version} · signed by ${sig.fullName}`);
     try { await notify([emp.id], { type: "system", title: "Your staff ID card is ready", body: "It has been signed and authorised. Open My Profile → My ID card to view or print it.", link: "profile" }); } catch { /* best-effort */ }
-    return res.json({ ok: true, ...(await cardPayload(emp)) });
+    return res.json({ ok: true, ...(await cardPayload(emp, { forAdmin: true })) });
   }
 
   return res.status(405).json({ error: "Method not allowed" });

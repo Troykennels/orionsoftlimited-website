@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': process.env.VITE_API_PROXY || 'http://localhost:3000',
+      '/sitemap.xml': { target: process.env.VITE_API_PROXY || 'http://localhost:3000', rewrite: () => '/api/public/sitemap' },
       // Same clean address as production (vercel.json) for the staff playbook.
       '/staff/playbook': { target: process.env.VITE_API_PROXY || 'http://localhost:3000', rewrite: () => '/api/staff/playbook' },
     },

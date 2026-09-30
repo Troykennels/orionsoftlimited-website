@@ -2,7 +2,8 @@
 import { BRAND } from "./lib/brand.js";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
-import { readPublished, loadSiteContent } from "./lib/siteContent.js";
+import { readPublished, loadSiteContent, usePublishedList } from "./lib/siteContent.js";
+import { DEFAULT_PRODUCTS_CATALOG } from "./lib/products.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
@@ -253,35 +254,7 @@ const DEFAULT_MAIN_MENU = [
 // Admin panel reads/writes to the same localStorage key (orionsoft_products_v1).
 // When a new product is added via admin and given the right industries/solutions,
 // every page (Nav, Industries, Solutions, Pricing, Login, etc.) updates automatically.
-const DEFAULT_PRODUCTS_CATALOG = [
-  { id: "carecore",       name: "CareCore",       tag: "Hospital Management",   color: "#4F8EF7", status: "live",  published: true,  featured: true,  order: 1, soon: false, hasPage: true,
-    industries: ["Healthcare"],
-    solutions:  ["Go Paperless","Process Automation","Data & Reporting","Enterprise Integration","Training & Adoption"] },
-  { id: "schoolcore",     name: "SchoolCore",     tag: "School Management",     color: "#10B981", status: "live",  published: true,  featured: false, order: 2, soon: false, hasPage: true,
-    industries: ["Education"],
-    solutions:  ["Go Paperless","Training & Adoption"] },
-  { id: "compliancecore", name: "ComplianceCore", tag: "Compliance & Risk",     color: "#F59E0B", status: "live",  published: true,  featured: false, order: 3, soon: false, hasPage: true,
-    industries: ["Financial Services","Government & NGOs"],
-    solutions:  ["Compliance & Audit"] },
-  { id: "inventorycore",  name: "InventoryCore",  tag: "Inventory & Supply",    color: "#8B5CF6", status: "live",  published: true,  featured: false, order: 4, soon: false, hasPage: true,
-    industries: ["Healthcare","Manufacturing & Retail","Logistics & Fleet"],
-    solutions:  ["Process Automation","Data & Reporting"] },
-  { id: "financecore",    name: "FinanceCore",    tag: "Finance & Accounting",  color: BRAND.gold, status: "live",  published: true,  featured: false, order: 5, soon: false, hasPage: true,
-    industries: ["Education","Financial Services","Faith Organisations","Manufacturing & Retail","Government & NGOs"],
-    solutions:  ["Data & Reporting","Compliance & Audit","Enterprise Integration"] },
-  { id: "hrcore",         name: "HRCore",         tag: "Human Resources",       color: "#F43F5E", status: "live",  published: true,  featured: false, order: 6, soon: false, hasPage: true,
-    industries: ["Education","Financial Services","Manufacturing & Retail","Government & NGOs"],
-    solutions:  ["Process Automation","Compliance & Audit","Enterprise Integration"] },
-  { id: "churchcore",     name: "ChurchCore",     tag: "Faith Organisations",   color: "#7C3AED", status: "live",  published: true,  featured: false, order: 7, soon: false, hasPage: true,
-    industries: ["Faith Organisations"],
-    solutions:  ["Go Paperless","Training & Adoption"] },
-  { id: "fleetcore",      name: "FleetCore",      tag: "Fleet Management",      color: "#06B6D4", status: "live",  published: true,  featured: false, order: 8, soon: false, hasPage: true,
-    industries: ["Logistics & Fleet"],
-    solutions:  ["Data & Reporting"] },
-  { id: "telehealth",     name: "TeleHealth",     tag: "Telemedicine · Soon",   color: "#4F8EF7", status: "soon",  published: true,  featured: false, order: 9, soon: true,  hasPage: true,
-    industries: ["Healthcare"],
-    solutions:  [] },
-];
+
 
 // Top-level desktop nav (fixed structure no longer CMS-driven)
 const TOP_NAV = [
@@ -3057,6 +3030,19 @@ function Footer({ setCurrentPage }) {
   const fRC = s.rc || COMPANY_RC;
   const fTagline = s.tagline || "Building production software for healthcare providers and ambitious businesses.";
   const fLinkedin = s.linkedin || "https://linkedin.com/company/orionsoftlimited";
+  const footerProducts = (cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG)
+    .filter(p => p && p.id && p.name && p.published !== false && !p.soon)
+    .sort((a, b) => (Number(a.order) || 99) - (Number(b.order) || 99)).slice(0, 10);
+  // Company social accounts from Admin → Site Settings (each shown once set).
+  const socialLinks = [
+    ["linkedin", "LinkedIn", fLinkedin, <><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></>],
+    ["instagram", "Instagram", s.instagram, <><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/></>],
+    ["facebook", "Facebook", s.facebook, <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>],
+    ["twitter", "X (Twitter)", s.twitter, <path d="M4 4l16 16M20 4L4 20"/>],
+    ["tiktok", "TikTok", s.tiktok, <path d="M9 12a4 4 0 1 0 4 4V3c1 2.5 3 4 6 4"/>],
+    ["youtube", "YouTube", s.youtube, <><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></>],
+    ["github", "GitHub", s.github, <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>],
+  ].filter(([, , href]) => typeof href === "string" && /^https:\/\//.test(href.trim()));
 
   const goHomeAnchor = (anchor) => (event) => {
     event.preventDefault();
@@ -3079,17 +3065,15 @@ function Footer({ setCurrentPage }) {
               {fTagline} Registered · RC {fRC}.
             </p>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <a href={fLinkedin} target="_blank" rel="noreferrer"
-                 aria-label="Orion Soft on LinkedIn"
-                 style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
-                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
-                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-                  <rect x="2" y="9" width="4" height="12"/>
-                  <circle cx="4" cy="4" r="2"/>
-                </svg>
-              </a>
+              {socialLinks.map(([key, label, href, icon]) => (
+                <a key={key} href={href} target="_blank" rel="noopener noreferrer"
+                   aria-label={`Orion Soft on ${label}`} title={label}
+                   style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
+                   onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.color = C.accent; }}
+                   onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icon}</svg>
+                </a>
+              ))}
               <a href={asDirectMessageLink(fPhone)} target="_blank" rel="noreferrer"
                  aria-label="Message Orion Soft on WhatsApp"
                  style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, transition: "all 0.2s", textDecoration: "none" }}
@@ -3114,14 +3098,8 @@ function Footer({ setCurrentPage }) {
 
           {[
             { title: "Products", twoCol: true, links: [
-              { l: "CareCore", a: "/carecore", onClick: (e) => { e.preventDefault(); setCurrentPage("carecore"); } },
-              { l: "SchoolCore", a: "/schoolcore", onClick: (e) => { e.preventDefault(); setCurrentPage("schoolcore"); } },
-              { l: "FinanceCore", a: "/financecore", onClick: (e) => { e.preventDefault(); setCurrentPage("financecore"); } },
-              { l: "HRCore", a: "/hrcore", onClick: (e) => { e.preventDefault(); setCurrentPage("hrcore"); } },
-              { l: "InventoryCore", a: "/inventorycore", onClick: (e) => { e.preventDefault(); setCurrentPage("inventorycore"); } },
-              { l: "ComplianceCore", a: "/compliancecore", onClick: (e) => { e.preventDefault(); setCurrentPage("compliancecore"); } },
-              { l: "ChurchCore", a: "/churchcore", onClick: (e) => { e.preventDefault(); setCurrentPage("churchcore"); } },
-              { l: "FleetCore", a: "/fleetcore", onClick: (e) => { e.preventDefault(); setCurrentPage("fleetcore"); } },
+              // Published products (Admin → Products), in their display order.
+              ...footerProducts.map(p => ({ l: p.name, a: `/${p.id}`, onClick: (e) => { e.preventDefault(); setCurrentPage(p.id); } })),
             ]},
             { title: "Company", links: [
               { l: "Why Orion Soft", a: "/why", onClick: (e) => { e.preventDefault(); setCurrentPage("why"); } },
@@ -3133,6 +3111,7 @@ function Footer({ setCurrentPage }) {
               { l: "Track my application", a: "/applicant" },
               { l: "Staff Office", a: "/staff" },
               { l: "Blog", a: "/blog", onClick: (e) => { e.preventDefault(); setCurrentPage("blog"); } },
+              { l: "Events", a: "/events", onClick: (e) => { e.preventDefault(); setCurrentPage("events"); } },
               { l: "Awards", a: "/awards", onClick: (e) => { e.preventDefault(); setCurrentPage("awards"); } },
               { l: "Investors", a: "/investors", onClick: (e) => { e.preventDefault(); setCurrentPage("investors"); } },
             ]},
@@ -3357,16 +3336,123 @@ function AnnouncementBar() {
 }
 
 // ═══════════════════════════════════════
+// EVENTS PAGE (Admin → Events)
+// ═══════════════════════════════════════
+function EventsPage({ setCurrentPage }) {
+  const events = usePublishedList("orionsoft_events_v1") || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const valid = events.filter(e => e.title);
+  const upcoming = valid.filter(e => !e.date || e.date >= today).sort((a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")));
+  const past = valid.filter(e => e.date && e.date < today).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+  const day = d => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric" }) : "Date to be announced");
+  const card = (e, isPast) => (
+    <article key={e.id || e.title} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, opacity: isPast ? 0.75 : 1 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.gold, fontFamily: font, letterSpacing: "0.04em" }}>{day(e.date)}{e.location ? ` · ${e.location}` : ""}</div>
+      <h2 style={{ fontSize: 19, fontWeight: 800, color: C.heading, fontFamily: font, margin: "8px 0 8px", lineHeight: 1.3 }}>{e.title}</h2>
+      {e.desc && <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>{e.desc}</p>}
+      {!isPast && /^https?:\/\//.test(e.registerLink || "") && <a href={e.registerLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: C.gold, color: "#060810", borderRadius: 9, padding: "9px 18px", fontWeight: 800, fontSize: 13.5, fontFamily: font, textDecoration: "none" }}>Register →</a>}
+    </article>
+  );
+  return (
+    <section style={{ background: C.bg, padding: "110px clamp(16px, 4vw, 32px) 80px" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.1em" }}>EVENTS</span>
+          <h1 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: C.heading, fontFamily: font, margin: "10px 0 12px" }}>Meet the Orion Soft team</h1>
+          <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>Demo days, webinars and industry events we're hosting or attending.</p>
+        </div>
+        {upcoming.length === 0 && <p style={{ textAlign: "center", color: C.textMuted, fontFamily: font }}>No upcoming events right now. <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontFamily: font, fontSize: "inherit", padding: 0 }}>Book a private demo instead →</button></p>}
+        <div style={{ display: "grid", gap: 16 }}>{upcoming.map(e => card(e, false))}</div>
+        {past.length > 0 && <>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: C.heading, fontFamily: font, margin: "48px 0 16px" }}>Past events</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>{past.map(e => card(e, true))}</div>
+        </>}
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════
 // BLOG PAGE
 // ═══════════════════════════════════════
+// Blog bodies are written in simple Markdown in the admin: # headings,
+// **bold**, *italic*, [links](https://…), "- " bullet lists and blank-line
+// paragraphs. Rendered as React elements, never as raw HTML.
+function mdInline(text, keyBase) {
+  const out = [];
+  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  let last = 0, m, i = 0;
+  while ((m = re.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const k = `${keyBase}-${i++}`;
+    if (m[1]) out.push(<strong key={k} style={{ color: C.heading }}>{m[1]}</strong>);
+    else if (m[2]) out.push(<em key={k}>{m[2]}</em>);
+    else out.push(<a key={k} href={m[4]} target="_blank" rel="noopener noreferrer" style={{ color: C.accent }}>{m[3]}</a>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function MarkdownBody({ text }) {
+  const blocks = String(text || "").replace(/\r/g, "").split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+  return blocks.map((b, i) => {
+    const h = b.match(/^(#{1,3})\s+(.*)$/);
+    if (h) {
+      const size = { 1: 28, 2: 23, 3: 19 }[h[1].length];
+      return <h2 key={i} style={{ fontSize: size, fontWeight: 800, color: C.heading, fontFamily: font, margin: "32px 0 12px", lineHeight: 1.3 }}>{mdInline(h[2], i)}</h2>;
+    }
+    const lines = b.split("\n");
+    if (lines.every(l => /^\s*[-*•]\s+/.test(l))) {
+      return <ul key={i} style={{ margin: "0 0 18px", paddingLeft: 22 }}>{lines.map((l, j) => <li key={j} style={{ marginBottom: 6 }}>{mdInline(l.replace(/^\s*[-*•]\s+/, ""), `${i}-${j}`)}</li>)}</ul>;
+    }
+    return <p key={i} style={{ margin: "0 0 18px" }}>{lines.map((l, j) => <span key={j}>{j > 0 && <br />}{mdInline(l, `${i}-${j}`)}</span>)}</p>;
+  });
+}
+const blogDate = p => { const d = p.date || p.createdAt; const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""; };
+const blogReadTime = p => p.readTime || `${Math.max(1, Math.round(String(p.content || p.body || "").split(/\s+/).length / 200))} min read`;
+
+function BlogShare({ post }) {
+  const base = window.location.origin;
+  const url = `${base}/api/public/share?blog=${encodeURIComponent(post.slug || post.id)}`;
+  const pageUrl = `${base}/blog/${encodeURIComponent(post.slug || post.id)}`;
+  const text = post.title || "";
+  const [copied, setCopied] = useState(false);
+  const links = [
+    ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`],
+    ["X", `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`],
+    ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`],
+    ["WhatsApp", `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`],
+  ];
+  const btn = { background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer", textDecoration: "none" };
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 36 }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: C.textMuted, fontFamily: font, marginRight: 4 }}>Share this post</span>
+      {links.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={btn}>{label}</a>)}
+      <button type="button" style={btn} onClick={() => { navigator.clipboard?.writeText(pageUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {}); }}>{copied ? "Link copied ✓" : "Copy link"}</button>
+    </div>
+  );
+}
+
 function BlogPage({ setCurrentPage, postId, setPostId }) {
   const cms = useContext(CMSContext);
-  const posts = (cms?.blog || []).filter(p => p.published !== false);
+  const posts = (cms?.blog || []).filter(p => p && p.published !== false && p.title)
+    .sort((a, b) => String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")));
+  const openPost = postId ? posts.find(p => p.id === postId || p.slug === postId) : null;
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [postId]);
+  // Each post gets its own title and description (search results, bookmarks).
+  useEffect(() => {
+    if (!openPost) return undefined;
+    const prev = document.title;
+    document.title = `${openPost.title} | Orion Soft Blog`;
+    const meta = document.querySelector('meta[name="description"]');
+    const prevDesc = meta?.getAttribute("content");
+    if (meta && openPost.excerpt) meta.setAttribute("content", openPost.excerpt.slice(0, 160));
+    return () => { document.title = prev; if (meta && prevDesc != null) meta.setAttribute("content", prevDesc); };
+  }, [openPost]);
 
   if (postId) {
-    const post = posts.find(p => p.id === postId || p.slug === postId);
+    const post = openPost;
     if (!post) {
       return (
         <section style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
@@ -3388,13 +3474,14 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
         <h1 style={{ fontSize: "clamp(24px, 3.5vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, marginTop: 8, marginBottom: 16, lineHeight: 1.2, letterSpacing: "-0.02em" }}>{post.title}</h1>
         <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
           {post.author && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{post.author}</span>}
-          {post.date && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {post.date}</span>}
-          {post.readTime && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {post.readTime}</span>}
+          {blogDate(post) && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {blogDate(post)}</span>}
+          <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {blogReadTime(post)}</span>
         </div>
         {post.coverImage && (
           <img src={post.coverImage} alt={post.title} style={{ width: "100%", borderRadius: 12, marginBottom: 32, objectFit: "cover", maxHeight: 400 }} loading="lazy" />
         )}
-        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{post.body || post.excerpt || ""}</div>
+        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><MarkdownBody text={post.content || post.body || post.excerpt || ""} /></div>
+        <BlogShare post={post} />
       </article>
     );
   }
@@ -3415,7 +3502,7 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 28 }}>
             {posts.map(post => (
-              <button type="button" key={post.id || post.slug || post.title} onClick={() => setPostId(post.id || post.slug || post.title)}
+              <button type="button" key={post.id || post.slug || post.title} onClick={() => setPostId(post.slug || post.id)}
                 style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "24px", textAlign: "left", cursor: "pointer", transition: "all 0.25s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent + "44"; e.currentTarget.style.transform = "translateY(-3px)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -3428,8 +3515,8 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 8, lineHeight: 1.35 }}>{post.title}</h3>
                 {post.excerpt && <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6, marginBottom: 12 }}>{post.excerpt}</p>}
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {post.date && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{post.date}</span>}
-                  {post.readTime && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>·  {post.readTime}</span>}
+                  {blogDate(post) && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{blogDate(post)}</span>}
+                  <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>·  {blogReadTime(post)}</span>
                 </div>
               </button>
             ))}
@@ -3854,6 +3941,10 @@ function ProductsPage({ setCurrentPage, products }) {
 // SERVICES PAGE
 // ═══════════════════════════════════════
 function ServicesPage({ setCurrentPage }) {
+  const cms = useContext(CMSContext);
+  const cmsServices = (Array.isArray(cms?.services) ? cms.services : [])
+    .filter(s => s && s.title && s.published !== false)
+    .sort((a, b) => (Number(a.order) || 99) - (Number(b.order) || 99));
   useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
   return (
     <div style={{ background: C.light, minHeight: "100vh" }}>
@@ -3871,7 +3962,25 @@ function ServicesPage({ setCurrentPage }) {
           </Reveal>
         </div>
       </div>
-      <Services setCurrentPage={setCurrentPage} />
+      {cmsServices.length > 0 ? (
+        // Services published from Admin → Services.
+        <section style={{ padding: "70px clamp(16px, 4vw, 32px)", background: C.bg }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 20 }}>
+            {cmsServices.map((s, i) => (
+              <article key={s.id || s.title || i} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 26 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{s.title}</h2>
+                {s.tagline && <div style={{ fontSize: 13.5, color: C.gold, fontFamily: font, fontWeight: 700, marginBottom: 10 }}>{s.tagline}</div>}
+                {s.desc && <p style={{ fontSize: 14.5, color: C.text, fontFamily: font, lineHeight: 1.7, margin: "0 0 12px" }}>{s.desc}</p>}
+                {s.features && (
+                  <ul style={{ margin: 0, paddingLeft: 18, color: C.text, fontFamily: font, fontSize: 13.5, lineHeight: 1.7 }}>
+                    {String(s.features).split("\n").map(l => l.trim()).filter(Boolean).map(l => <li key={l}>{l}</li>)}
+                  </ul>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : <Services setCurrentPage={setCurrentPage} />}
       <ProcessSection />
       <About />
       <CTABanner setCurrentPage={setCurrentPage} />
@@ -5197,7 +5306,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5291,6 +5400,7 @@ export default function App() {
 
   // Dynamic page titles from SEO settings
   useEffect(() => {
+    if (currentPage === "blog" && blogPostId) return; // BlogPage titles each post
     const seoData = cms?.seo?.[currentPage];
     if (seoData?.title) { document.title = seoData.title; return; }
     const defaults = {
@@ -5318,6 +5428,7 @@ export default function App() {
       contact: "Contact Orion Soft Limited",
       careers: "Careers Orion Soft Limited",
       blog: "Blog Orion Soft Limited",
+      events: "Events | Orion Soft Limited",
       team: "Team Orion Soft Limited",
     };
     if (!defaults[currentPage]) {
@@ -5326,7 +5437,7 @@ export default function App() {
     } else {
       document.title = defaults[currentPage];
     }
-  }, [currentPage, cms]);
+  }, [currentPage, cms, blogPostId]);
 
   const navSetPage = (page, param = null) => {
     const path = pathFor(page, param);
@@ -5340,18 +5451,33 @@ export default function App() {
     setBlogPostId(id); window.scrollTo({ top: 0 });
   };
   const cmsProductIds = (cms?.products?.length ? cms.products : DEFAULT_PRODUCTS_CATALOG).map(p => p.id);
-  const isKnownPage = KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage);
+  // Admin → Feature Flags: a page switched off behaves as if it doesn't exist.
+  const flags = cms?.features || {};
+  // …and so does a built-in product the admin has switched off or removed.
+  const productOff = cms?.products?.length > 0 && DEFAULT_PRODUCTS_CATALOG.some(p => p.id === currentPage) && !cms.products.some(p => p.id === currentPage);
+  const pageOff = productOff || (["blog", "team", "careers", "resources", "pricing"].includes(currentPage) && flags[currentPage] === false);
+  const maintenance = flags.maintenance_mode === true && currentPage !== "admin";
+  const isKnownPage = !pageOff && (KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage));
 
   return (
   <CMSContext.Provider value={cms}>
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       {/* Global styles are in src/App.css */}
 
-      {currentPage !== "admin" && <AnnouncementBar />}
+      {currentPage !== "admin" && flags.announcements !== false && <AnnouncementBar />}
       {currentPage !== "admin" && <a className="skip-link" href="#main-content">Skip to main content</a>}
       {currentPage !== "admin" && <Nav currentPage={currentPage} setCurrentPage={navSetPage} />}
 
       <main id="main-content" tabIndex={-1}>
+        {maintenance && (
+          <section role="status" style={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "140px 24px 80px", textAlign: "center" }}>
+            <div style={{ maxWidth: 560 }}>
+              <h1 style={{ fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 14px" }}>We'll be back shortly</h1>
+              <p style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.7, margin: 0 }}>Our website is undergoing scheduled maintenance. For anything urgent, email orionsoftlimited@gmail.com or call 08169577059.</p>
+            </div>
+          </section>
+        )}
+        {!maintenance && <>
         {currentPage === "home" && (
           <Suspense fallback={<div style={{ minHeight: "100vh", background: "#FFFFFF" }} />}>
             <HomePage
@@ -5363,35 +5489,35 @@ export default function App() {
 
         {currentPage === "products" && (
           <Suspense fallback={<div style={{ minHeight: "100vh", background: "#F5F7FC" }} />}>
-            <ProductsPageFull setCurrentPage={navSetPage} />
+            <ProductsPageFull setCurrentPage={navSetPage} products={cms?.products?.length ? cms.products.filter(p => p.published !== false) : null} />
           </Suspense>
         )}
 
-        {currentPage === "carecore" && (
+        {currentPage === "carecore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><CareCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "schoolcore" && (
+        {currentPage === "schoolcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><SchoolCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "compliancecore" && (
+        {currentPage === "compliancecore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><ComplianceCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "inventorycore" && (
+        {currentPage === "inventorycore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><InventoryCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "financecore" && (
+        {currentPage === "financecore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><FinanceCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "hrcore" && (
+        {currentPage === "hrcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><HRCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "churchcore" && (
+        {currentPage === "churchcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><ChurchCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "fleetcore" && (
+        {currentPage === "fleetcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><FleetCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
-        {currentPage === "telehealth" && (
+        {currentPage === "telehealth" && !pageOff && (
           <Suspense fallback={<PageLoader />}><TeleHealthPage setCurrentPage={navSetPage} /></Suspense>
         )}
 
@@ -5413,7 +5539,7 @@ export default function App() {
         {currentPage === "services" && (
           <ServicesPage setCurrentPage={navSetPage} />
         )}
-        {currentPage === "pricing" && (
+        {currentPage === "pricing" && !pageOff && (
           <PricingPage setCurrentPage={navSetPage} />
         )}
         {currentPage === "about" && (
@@ -5436,7 +5562,7 @@ export default function App() {
             <ConsultationPageFull setCurrentPage={navSetPage} />
           </Suspense>
         )}
-        {currentPage === "resources" && (
+        {currentPage === "resources" && !pageOff && (
           <ResourcesPage setCurrentPage={navSetPage} />
         )}
         {currentPage === "login" && (
@@ -5453,7 +5579,7 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentPage === "careers" && (
+        {currentPage === "careers" && !pageOff && (
           <CareersPage setCurrentPage={navSetPage} />
         )}
 
@@ -5495,11 +5621,14 @@ export default function App() {
           </Suspense>
         )}
 
-        {currentPage === "blog" && (
+        {currentPage === "blog" && !pageOff && (
           <BlogPage setCurrentPage={navSetPage} postId={blogPostId} setPostId={openBlogPost} />
         )}
 
-        {currentPage === "team" && (
+        {currentPage === "events" && (
+          <EventsPage setCurrentPage={navSetPage} />
+        )}
+        {currentPage === "team" && !pageOff && (
           <TeamPage setCurrentPage={navSetPage} />
         )}
 
@@ -5540,7 +5669,8 @@ export default function App() {
         {currentPage === "person" && personSlug && (
           <Suspense fallback={<PageLoader />}><PersonPageLazy key={personSlug} slug={personSlug} setCurrentPage={navSetPage} /></Suspense>
         )}
-        {!isKnownPage && <NotFoundPage setCurrentPage={navSetPage} />}
+        </>}
+        {!maintenance && !isKnownPage && <NotFoundPage setCurrentPage={navSetPage} />}
 
         {currentPage === "admin" && (
           <Suspense fallback={<PageLoader label="Loading admin…" />}>
@@ -5551,7 +5681,7 @@ export default function App() {
 
       {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
       {currentPage !== "admin" && <ChatBot setCurrentPage={navSetPage} />}
-      {currentPage !== "admin" && <TawkLiveChat />}
+      {currentPage !== "admin" && flags.chat !== false && <TawkLiveChat />}
     </div>
   </CMSContext.Provider>
   );

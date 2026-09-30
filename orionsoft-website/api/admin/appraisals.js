@@ -3,6 +3,10 @@
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
+import { notify } from "../_lib/office.js";
+
+// Ratings are 1–5; 0 means "not rated".
+const rating = v => Math.min(5, Math.max(0, Math.round(Number(v) || 0)));
 
 const RUBRIC = ["communication", "quality", "teamwork", "ownership", "initiative"];
 
@@ -37,8 +41,8 @@ export default async function handler(req, res) {
     const appraisal = {
       id, employeeId, employeeName: employee.fullName, cycle,
       reviewerName: reviewerName || session.name || "Admin",
-      ratings: RUBRIC.reduce((o, k) => ({ ...o, [k]: Number(ratings?.[k]) || 0 }), {}),
-      overallRating: overallOf(ratings),
+      ratings: RUBRIC.reduce((o, k) => ({ ...o, [k]: rating(ratings?.[k]) }), {}),
+      overallRating: overallOf(RUBRIC.reduce((o, k) => ({ ...o, [k]: rating(ratings?.[k]) }), {})),
       strengths: strengths || "", areasForImprovement: areasForImprovement || "",
       goals: Array.isArray(goals) ? goals : [],
       status: "draft", acknowledgedAt: null,
@@ -56,13 +60,21 @@ export default async function handler(req, res) {
     if (!appraisal) return res.status(404).json({ error: "Appraisal not found" });
 
     if (action === "finalize") {
+      if (appraisal.status !== "draft") return res.status(400).json({ error: "This review has already been shared" });
       appraisal.status = "finalized";
       appraisal.updatedAt = new Date().toISOString();
       await putRecord("appraisals", id, appraisal);
       await logAudit(session, "finalize_appraisal", `appraisal ${id}`, appraisal.employeeName);
+      // The review is now shared with the staff member to read and acknowledge.
+      try { await notify([appraisal.employeeId], { type: "system", title: `Your performance review (${appraisal.cycle}) is ready`, body: "Read it and acknowledge it in Performance → My reviews.", link: "performance" }); } catch { /* best-effort */ }
       return res.json({ ok: true, appraisal });
     }
+    // Normally the staff member acknowledges in the Staff Office; this records
+    // an acknowledgement given outside it (e.g. signed on paper).
     if (action === "acknowledge") {
+      if (appraisal.status !== "finalized") return res.status(400).json({ error: "Only a shared (finalised) review can be acknowledged" });
+      appraisal.acknowledgedVia = "admin";
+      await logAudit(session, "acknowledge_appraisal_for_staff", `appraisal ${id}`, appraisal.employeeName);
       appraisal.status = "acknowledged";
       appraisal.acknowledgedAt = new Date().toISOString();
       appraisal.updatedAt = new Date().toISOString();
@@ -74,7 +86,7 @@ export default async function handler(req, res) {
     if (appraisal.status !== "draft") return res.status(400).json({ error: "Only a draft appraisal can be edited directly. Use an action instead." });
     if (cycle !== undefined) appraisal.cycle = cycle;
     if (reviewerName !== undefined) appraisal.reviewerName = reviewerName;
-    if (ratings !== undefined) { appraisal.ratings = RUBRIC.reduce((o, k) => ({ ...o, [k]: Number(ratings?.[k]) || 0 }), {}); appraisal.overallRating = overallOf(ratings); }
+    if (ratings !== undefined) { appraisal.ratings = RUBRIC.reduce((o, k) => ({ ...o, [k]: rating(ratings?.[k]) }), {}); appraisal.overallRating = overallOf(appraisal.ratings); }
     if (strengths !== undefined) appraisal.strengths = strengths;
     if (areasForImprovement !== undefined) appraisal.areasForImprovement = areasForImprovement;
     if (goals !== undefined) appraisal.goals = Array.isArray(goals) ? goals : [];

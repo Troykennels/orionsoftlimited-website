@@ -40,11 +40,13 @@ export async function ensureIdCard(emp, { reissue = false } = {}) {
   return emp;
 }
 
-// Everything the card needs to print.
-export async function cardPayload(emp) {
+// Everything the card needs to print. The card carries only the authorising
+// signature, never the signer's name: staff get the signature image alone,
+// and only the admin view learns who signed.
+export async function cardPayload(emp, { forAdmin = false } = {}) {
   const [company, signatories] = await Promise.all([getCompanySettings(), listRecords("signatories")]);
-  // Only the signature of the admin who authorised this card is printed.
   const sig = emp.idCard.authorizedAt ? signatories.find(s => s.id === emp.idCard.signatoryId && s.signatureImageDataUrl) || null : null;
+  const { authorizedBy, signatoryId, ...cardPublic } = emp.idCard;
   return {
     employee: {
       id: emp.id, fullName: emp.fullName, title: emp.title || "", department: emp.department || "",
@@ -55,9 +57,9 @@ export async function cardPayload(emp) {
       emergencyContactName: emp.emergencyContactName || "", emergencyContactPhone: emp.emergencyContactPhone || "",
       emergencyContactRelationship: emp.emergencyContactRelationship || "", bloodGroup: emp.bloodGroup || "",
     },
-    card: { ...emp.idCard, authorized: !!emp.idCard.authorizedAt, verifyUrl: verifyUrl(emp.idCard.code) },
+    card: { ...cardPublic, ...(forAdmin ? { authorizedBy, signatoryId } : {}), authorized: !!emp.idCard.authorizedAt, verifyUrl: verifyUrl(emp.idCard.code) },
     company: { companyName: company.companyName, address: company.address, phone: company.phone, email: company.email, website: company.website, rc: company.rc },
-    signatory: sig ? { id: sig.id, fullName: sig.fullName, title: sig.title, signatureImageDataUrl: sig.signatureImageDataUrl } : null,
+    signatory: sig ? { signatureImageDataUrl: sig.signatureImageDataUrl, ...(forAdmin ? { id: sig.id, fullName: sig.fullName, title: sig.title } : {}) } : null,
   };
 }
 

@@ -1,7 +1,7 @@
 // Meetings: scheduling with an auto-generated video room, RSVPs, minutes, and
 // action items that become assigned tasks automatically.
 import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
-import { officeContext, notify, award, cleanUrl } from "../_lib/office.js";
+import { officeContext, notify, cleanUrl, awardDaily } from "../_lib/office.js";
 
 function jitsiRoom(title) {
   const slug = String(title || "meeting").replace(/[^a-zA-Z0-9]+/g, "").slice(0, 24) || "Meeting";
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       status: "scheduled", reminded: false, createdAt: new Date().toISOString(),
     };
     await putRecord("meetings", id, meeting);
-    await award(me.id, "meeting_hosted");
+    await awardDaily(me.id, "meeting_hosted", 3);
     const when = new Date(start).toLocaleString("en-NG", { timeZone: "Africa/Lagos", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     await notify(attendeeIds, { type: "meeting", title: `${me.fullName} invited you: ${meeting.title}`, body: when, link: `meetings:${id}`, actorId: me.id });
     return res.json({ ok: true, meeting });

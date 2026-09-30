@@ -7,6 +7,8 @@ Disallow: /applicant
 Disallow: /sign/
 Disallow: /pay/
 Disallow: /api/
+# Share links must stay readable so LinkedIn, X, Facebook and WhatsApp show previews.
+Allow: /api/public/share
 Disallow: /confirm-visit/
 Disallow: /id-card
 Disallow: /verify/
@@ -18,4 +20,4 @@ Disallow: /
 User-agent: ChatGPT-User
 Disallow: /
 
-Sitemap: https://orionsoftlimited.com/sitemap.xml
+Sitemap: https://www.orionsoftlimited.com/sitemap.xml

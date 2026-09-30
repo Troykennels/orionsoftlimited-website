@@ -1,6 +1,6 @@
 // Comprehensive analytics endpoint — all metrics from Upstash in one call
 import { list, getCount, hgetall, available } from "../store.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAuth, isEditor } from "../_lib/auth.js";
 
 function safeParse(item) {
   if (item && typeof item === "object") return item;
@@ -38,7 +38,8 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  if (!requireAuth(req, res, "admin")) return;
+  const session = requireAuth(req, res, "admin");
+  if (!session) return;
 
   if (!available()) return res.json(EMPTY);
 
@@ -159,7 +160,8 @@ export default async function handler(req, res) {
       topProducts,
       trafficSources,
       leadTypes: leadsByType,
-      recentActivities,
+      // Editors see traffic, not visitors' contact details.
+      recentActivities: isEditor(session) ? [] : recentActivities,
       health: {
         upstash: true,
         email: !!(process.env.GMAIL_USER || process.env.RESEND_API_KEY),

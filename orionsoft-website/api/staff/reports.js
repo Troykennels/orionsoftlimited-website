@@ -1,5 +1,5 @@
 import { newId, putRecord, getRecord, listRecords, listByArrayIndex, addToArrayIndex } from "../_lib/records.js";
-import { officeContext, notify, award, logActivity } from "../_lib/office.js";
+import { officeContext, notify, logActivity, awardOnce } from "../_lib/office.js";
 import { approversFor, canApproveFor } from "../_lib/roles.js";
 import { notifyReportSubmitted, notifyReportReviewed } from "../_lib/emailTemplates.js";
 
@@ -37,28 +37,35 @@ export default async function handler(req, res) {
     if (!weekStart || !weekEnd || !summary || !declarationConfirmed) {
       return res.status(400).json({ error: "weekStart, weekEnd, a summary, and the declaration confirmation are required" });
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(weekStart)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(weekEnd))) {
+      return res.status(400).json({ error: "weekStart and weekEnd must be dates" });
+    }
+    // Free text and lists are size-capped; totals are numbers only.
+    const txt = (v, n = 3000) => (v == null ? "" : String(v).slice(0, n));
+    const nums = o => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).slice(0, 20).map(([k, v]) => [String(k).slice(0, 40), Number(v) || 0]));
+    const rows = a => (Array.isArray(a) ? a : []).slice(0, 100).map(r => (r && typeof r === "object" ? Object.fromEntries(Object.entries(r).slice(0, 20).map(([k, v]) => [String(k).slice(0, 40), typeof v === "number" ? v : txt(v, 500)])) : txt(r, 500)));
     const id = newId("rpt");
     const report = {
       id, employeeId: session.sub, weekStart, weekEnd,
-      territory: territory || "", reportingManager: reportingManager || "",
-      productFocus: productFocus || "", summary,
+      territory: txt(territory, 200), reportingManager: txt(reportingManager, 120),
+      productFocus: txt(productFocus, 200), summary: txt(summary, 5000),
       totals: {
         prospectsContacted: 0, physicalVisits: 0, meetingsHeld: 0, productDemos: 0,
         proposalsSent: 0, newLeadsGenerated: 0, salesClosed: 0, salesValue: 0,
-        ...totals,
+        ...nums(totals),
       },
-      prospects: Array.isArray(prospects) ? prospects : [],
-      sales: Array.isArray(sales) ? sales : [],
-      followUps: Array.isArray(followUps) ? followUps : [],
-      challenges: challenges || "", objections: objections || "", supportNeeded: supportNeeded || "",
-      competitors: competitors || "", competitorPricing: competitorPricing || "",
-      marketTrends: marketTrends || "", otherInfo: otherInfo || "",
+      prospects: rows(prospects),
+      sales: rows(sales),
+      followUps: rows(followUps),
+      challenges: txt(challenges), objections: txt(objections), supportNeeded: txt(supportNeeded),
+      competitors: txt(competitors), competitorPricing: txt(competitorPricing),
+      marketTrends: txt(marketTrends), otherInfo: txt(otherInfo),
       nextWeekPlan: {
         organisationsToVisit: 0, prospectsToFollowUp: 0, meetingsPlanned: 0, demosPlanned: 0,
         expectedProposals: 0, expectedSales: 0,
-        ...nextWeekPlan,
+        ...nums(nextWeekPlan),
       },
-      keyTargets: Array.isArray(keyTargets) ? keyTargets.filter(Boolean) : [],
+      keyTargets: Array.isArray(keyTargets) ? keyTargets.filter(Boolean).slice(0, 30).map(t => txt(t, 300)) : [],
       declarationConfirmed: true,
       status: "submitted", reviewedBy: null, reviewNotes: "",
       submittedAt: new Date().toISOString(), reviewedAt: null,
@@ -66,7 +73,7 @@ export default async function handler(req, res) {
     await putRecord("reports", id, report);
     await addToArrayIndex("reports", "employee", session.sub, id);
 
-    await award(me.id, "report");
+    await awardOnce(me.id, "report", String(weekStart)); // one report per week earns points
     await logActivity(me.id, "report", `Submitted weekly report (${weekStart} to ${weekEnd})`);
     await notify(approversFor(me, employees, catalog), { type: "approval", title: `${me.fullName} submitted a weekly report`, body: summary.slice(0, 160), link: "approvals", actorId: me.id });
     try { await notifyReportSubmitted(report, me); } catch { /* email is best-effort, never block the submission */ }
@@ -87,7 +94,7 @@ export default async function handler(req, res) {
     }
 
     report.status = status;
-    report.reviewNotes = reviewNotes || "";
+    report.reviewNotes = String(reviewNotes || "").slice(0, 2000);
     report.reviewedBy = session.sub;
     report.reviewedByName = me.fullName;
     report.reviewedAt = new Date().toISOString();

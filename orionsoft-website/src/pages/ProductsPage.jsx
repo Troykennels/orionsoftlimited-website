@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
 
 import { BRAND } from "../lib/brand.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
@@ -597,12 +598,37 @@ function ProductCard({ p, setCurrentPage }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-export default function ProductsPage({ setCurrentPage }) {
+// Plain illustration for products added in Admin → Products.
+function cmsIllustration(color) {
+  return function CmsIllustration() {
+    return <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${color}14, ${color}33)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 56 }} aria-hidden="true">🧩</div>;
+  };
+}
+
+// Built-in cards, minus products switched off in the admin, plus products
+// added there (which open their generated product page).
+function productList(products) {
+  if (!products) return PRODUCTS;
+  const live = new Set(products.map(p => p.id));
+  const builtinIds = new Set(DEFAULT_PRODUCTS_CATALOG.map(p => p.id));
+  const kept = PRODUCTS.filter(p => !builtinIds.has(p.page) || live.has(p.page));
+  const added = products.filter(p => !builtinIds.has(p.id) && !p.hasPage && p.name).map(p => ({
+    id: `cms-${p.id}`, name: p.name, category: "Business Software", tagline: p.tagline || p.tag || "", desc: p.desc || "",
+    color: p.color || LC.gold, badge: p.status === "beta" ? "NEW" : null, Illustration: cmsIllustration(p.color || LC.gold),
+    benefits: (Array.isArray(p.features) ? p.features : String(p.features || "").split(/\n|,/)).map(x => String(x).trim()).filter(Boolean).slice(0, 4),
+    page: p.id, cta: `Explore ${p.name} →`,
+  }));
+  return [...kept, ...added];
+}
+
+export default function ProductsPage({ setCurrentPage, products }) {
   const [activeCat, setActiveCat] = useState("All");
+  const all = productList(products);
+  const countOf = cat => (cat === "All" ? all.length : all.filter(p => p.category === cat).length);
 
   const displayed = activeCat === "All"
-    ? PRODUCTS
-    : PRODUCTS.filter(p => p.category === activeCat);
+    ? all
+    : all.filter(p => p.category === activeCat);
 
   return (
     <div style={{ background: LC.bg, minHeight: "100vh" }}>
@@ -667,7 +693,7 @@ export default function ProductsPage({ setCurrentPage }) {
                   background: active ? "rgba(255,255,255,0.15)" : LC.bgSection,
                   borderRadius: 4, padding: "1px 6px",
                   transition: "all 0.22s",
-                }}>{info.count}</span>
+                }}>{countOf(cat)}</span>
               </button>
             );
           })}

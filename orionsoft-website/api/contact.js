@@ -1,5 +1,6 @@
 import { push } from "./store.js";
 import { sendEmail } from "./_lib/mailer.js";
+import { escapeHtml as esc } from "./_lib/office.js";
 
 const rateMap = new Map();
 const RATE_LIMIT = 10;
@@ -68,7 +69,7 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
   const label = TYPE_LABELS[type] || "Enquiry";
   const p = PRODUCT_INFO[product?.toLowerCase?.()];
   const next = type === "demo" && p
-    ? `Your demo for <strong>${p.name}</strong> has been confirmed ✅${demoSlot ? ` Preferred time: <strong>${demoSlot}</strong>.` : ""} Our team will contact you within 1 business day to send a calendar invite and meeting link. Please check your phone and email.`
+    ? `Your demo for <strong>${p.name}</strong> has been confirmed ✅${demoSlot ? ` Preferred time: <strong>${esc(demoSlot)}</strong>.` : ""} Our team will contact you within 1 business day to send a calendar invite and meeting link. Please check your phone and email.`
     : NEXT_STEPS[type] || NEXT_STEPS.contact;
 
   const productBlock = p ? `
@@ -91,7 +92,7 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
   const demoSlotBlock = demoSlot ? `
     <div style="background:#060810;border:1px solid rgba(200,168,80,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
       <p style="color:#6B7A96;font-size:11px;font-weight:700;letter-spacing:0.1em;margin:0 0 4px;">YOUR DEMO SLOT</p>
-      <p style="color:#C8A850;font-size:15px;font-weight:700;margin:0;">📅 ${demoSlot}</p>
+      <p style="color:#C8A850;font-size:15px;font-weight:700;margin:0;">📅 ${esc(demoSlot)}</p>
     </div>` : "";
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Orion Soft: ${label}</title></head>
@@ -107,14 +108,14 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
   <tr><td style="background:#0F1828;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:36px;">
     <div style="text-align:center;font-size:40px;margin-bottom:16px;">${type === "demo" ? "🗓️" : "✓"}</div>
     <h1 style="color:#F2F6FF;font-size:22px;font-weight:700;margin:0 0 6px;text-align:center;">${p ? p.name + " " : ""}${label} Confirmed</h1>
-    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${name || "there"}, thank you for reaching out to Orion Soft. We're excited to show you what we've built.</p>
+    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${esc(name || "there")}, thank you for reaching out to Orion Soft. We're excited to show you what we've built.</p>
     ${productBlock}
     ${demoSlotBlock}
     <div style="background:#060810;border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:18px;margin-bottom:22px;">
       <p style="color:#6B7A96;font-size:11px;font-weight:700;letter-spacing:0.1em;margin:0 0 6px;">WHAT HAPPENS NEXT</p>
       <p style="color:#C8D0E0;font-size:14px;line-height:1.65;margin:0;">${next}</p>
     </div>
-    ${ref ? `<p style="color:#6B7A96;font-size:12px;text-align:center;margin:0 0 22px;">Reference: <strong style="color:#C8D0E0;">${ref}</strong></p>` : ""}
+    ${ref ? `<p style="color:#6B7A96;font-size:12px;text-align:center;margin:0 0 22px;">Reference: <strong style="color:#C8D0E0;">${esc(ref)}</strong></p>` : ""}
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:18px;">
       <p style="color:#6B7A96;font-size:11px;font-weight:700;letter-spacing:0.08em;margin:0 0 8px;">NEED IMMEDIATE HELP?</p>
       <p style="margin:0 0 5px;"><a href="mailto:orionsoftlimited@gmail.com" style="color:#4F8EF7;font-size:13px;text-decoration:none;">📧 orionsoftlimited@gmail.com</a></p>
@@ -139,8 +140,8 @@ function adminHtml(data) {
       const display = k.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase());
       const val = Array.isArray(v) ? v.join(", ") : String(v);
       return `<tr>
-        <td style="padding:9px 14px;color:#6B7A96;font-size:12px;font-weight:700;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.04);text-transform:uppercase;letter-spacing:0.06em;">${display}</td>
-        <td style="padding:9px 14px;color:#C8D0E0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);word-break:break-word;">${val}</td>
+        <td style="padding:9px 14px;color:#6B7A96;font-size:12px;font-weight:700;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.04);text-transform:uppercase;letter-spacing:0.06em;">${esc(display)}</td>
+        <td style="padding:9px 14px;color:#C8D0E0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04);word-break:break-word;">${esc(val).replace(/\n/g, "<br>")}</td>
       </tr>`;
     }).join("");
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>New ${label}</title></head>
@@ -151,7 +152,7 @@ function adminHtml(data) {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
       <tr>
         <td><h1 style="color:#F2F6FF;font-size:18px;font-weight:700;margin:0;">🔔 New ${label}</h1></td>
-        <td align="right"><span style="background:rgba(200,168,80,0.12);color:#C8A850;border:1px solid rgba(200,168,80,0.3);border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;">${ref}</span></td>
+        <td align="right"><span style="background:rgba(200,168,80,0.12);color:#C8A850;border:1px solid rgba(200,168,80,0.3);border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;">${esc(ref)}</span></td>
       </tr>
     </table>
     <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid rgba(255,255,255,0.05);border-radius:10px;overflow:hidden;">
@@ -176,7 +177,14 @@ export default async function handler(req, res) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
   if (!checkRate(ip)) return res.status(429).json({ error: "Too many requests. Please wait a few minutes." });
 
-  const body = req.body || {};
+  // Unauthenticated input: keep simple fields only, size-capped.
+  const body = {};
+  for (const [k, v] of Object.entries(req.body || {}).slice(0, 40)) {
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k) || v == null) continue;
+    body[k] = typeof v === "number" || typeof v === "boolean" ? v
+      : Array.isArray(v) ? v.map(x => String(x).slice(0, 200)).slice(0, 30)
+      : typeof v === "object" ? undefined : String(v).slice(0, 4000);
+  }
 
   // Honeypot & timing spam checks — fail silently
   if (body.honeypot) return res.status(200).json({ ok: true, ref: "OK" });
@@ -193,7 +201,12 @@ export default async function handler(req, res) {
     body.type = body.type || "demo";
   }
 
-  const ref = body.ref || `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const ref = /^ORN-[A-Z0-9]{4,10}$/.test(body.ref || "") ? body.ref : `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  // The demo form sends a preferred date and time; the emails show them as one slot.
+  if (!body.demoSlot && (body.preferredDate || body.preferredTime)) {
+    const day = body.preferredDate ? new Date(`${body.preferredDate}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "";
+    body.demoSlot = [day === "Invalid Date" ? "" : day, body.preferredTime].filter(Boolean).join(", ");
+  }
   const emailData = { ...body, ref };
 
   // Store lead server-side (Upstash) — visible in admin panel from any device
@@ -229,6 +242,11 @@ export default async function handler(req, res) {
       clientSubject,
       confirmHtml({ type: body.type, name: body.name, ref, product: body.product, demoSlot: body.demoSlot }),
     );
+  }
+  // Newsletter signups join the list at once and get a welcome email.
+  if (body.type === "newsletter") {
+    try { const { sendWelcome } = await import("./_lib/newsletter.js"); await sendWelcome(body.email, body.name); }
+    catch (err) { console.error("[newsletter] welcome:", err.message); }
   }
   // Always notify admin
   await sendEmail(

@@ -96,14 +96,17 @@ export default async function handler(req, res) {
   const session = getSessionFromRequest(req, APPLICANT_COOKIE);
   if (!session || session.role !== "applicant" || !session.email) return res.status(401).json({ error: "Please sign in" });
   const email = session.email;
+  // A session made straight after applying only covers the application(s)
+  // sent from this browser (see api/careers/apply.js).
+  const allowed = a => !Array.isArray(session.appIds) || session.appIds.includes(a.id);
 
   if (req.method === "GET") {
-    const apps = await applicationsFor(email);
-    return res.json({ ok: true, email, applications: apps.map(candidateView) });
+    const apps = (await applicationsFor(email)).filter(allowed);
+    return res.json({ ok: true, email, applications: apps.map(candidateView), limited: Array.isArray(session.appIds) });
   }
 
   const app = await getRecord("applicants", b.applicationId);
-  if (!app || String(app.email || "").toLowerCase() !== email) return res.status(404).json({ error: "Application not found" });
+  if (!app || String(app.email || "").toLowerCase() !== email || !allowed(app)) return res.status(404).json({ error: "Application not found" });
   const now = new Date().toISOString();
 
   if (req.method === "POST" && b.action === "read") {

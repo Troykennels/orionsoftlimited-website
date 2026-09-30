@@ -88,8 +88,11 @@ export default async function handler(req, res) {
       const from = STAGES.find(s => s.id === d.stage)?.label, to = STAGES.find(s => s.id === b.stage).label;
       d.timeline = [{ at: new Date().toISOString(), by: me.id, text: `Stage: ${from} → ${to}`, kind: "stage" }, ...(d.timeline || [])];
       d.stage = b.stage;
-      if (b.stage === "won") {
-        d.wonAt = new Date().toISOString();
+      // Celebrate and award a win once: moving a deal out of "won" and back
+      // again doesn't pay out or post twice.
+      const firstWin = b.stage === "won" && !d.wonAt;
+      if (b.stage === "won") d.wonAt = d.wonAt || new Date().toISOString();
+      if (firstWin) {
         const owner = employees.find(e => e.id === d.ownerId) || me;
         await award(owner.id, "deal_won");
         await addAchievement(owner.id, `Closed a deal with ${d.organisation}`, "deal");

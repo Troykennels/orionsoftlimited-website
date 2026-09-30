@@ -3,7 +3,7 @@
 // so every new automation (contracts, payroll, staff, leave, payments) uses one
 // implementation. Every send is logged to orionsoft:emails:sent for the admin
 // "Email Log" section.
-import { push } from "../store.js";
+import { push, ltrim } from "../store.js";
 
 const RESEND_FROM = process.env.RESEND_FROM_EMAIL || "Orion Soft <onboarding@resend.dev>";
 
@@ -74,6 +74,7 @@ export async function sendEmail(to, subject, html, { attachments, kind } = {}) {
     await push("orionsoft:emails:sent", {
       to, subject, kind: kind || "generic", ok, sentAt: new Date().toISOString(),
     });
+    await ltrim("orionsoft:emails:sent", 3000);
   } catch { /* logging failure must never block the caller */ }
   return ok;
 }

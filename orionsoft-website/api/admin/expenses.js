@@ -3,6 +3,7 @@
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
 import { requireAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
+import { notify } from "../_lib/office.js";
 
 const CATEGORIES = ["Travel", "Meals & Entertainment", "Office Supplies", "Software & Subscriptions", "Client Costs", "Other"];
 
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
       expense.updatedAt = new Date().toISOString();
       await putRecord("expenses", id, expense);
       await logAudit(session, `${action}_expense`, `expense ${id}`, expense.employeeName);
+      try { await notify([expense.employeeId], { type: "approval", title: `Your expense claim was ${expense.status}`, body: `₦${Number(expense.amount).toLocaleString()}${expense.decisionNotes ? ` · ${expense.decisionNotes}` : ""}`, link: "expenses" }); } catch { /* best-effort */ }
       return res.json({ ok: true, expense });
     }
 
@@ -67,6 +69,7 @@ export default async function handler(req, res) {
       expense.updatedAt = new Date().toISOString();
       await putRecord("expenses", id, expense);
       await logAudit(session, "reimburse_expense", `expense ${id}`, expense.employeeName);
+      try { await notify([expense.employeeId], { type: "approval", title: "Your expense claim has been reimbursed 💸", body: `₦${Number(expense.amount).toLocaleString()} · ${expense.category}`, link: "expenses" }); } catch { /* best-effort */ }
       return res.json({ ok: true, expense });
     }
 

@@ -3,10 +3,11 @@
 // reaches the client.
 import { getRecord, putRecord, newId, listRecords } from "../_lib/records.js";
 import { normaliseContract, paymentSummary } from "../_lib/contracts.js";
-import { getAdminSession, verifySession } from "../_lib/auth.js";
+import { getAdminSession, verifySession, isEditor } from "../_lib/auth.js";
 
 function isAuthorized(req, contract) {
-  if (getAdminSession(req)) return true;
+  const admin = getAdminSession(req);
+  if (admin && !isEditor(admin)) return true;
   const { token } = req.body || {};
   if (token) {
     const payload = verifySession(token);
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
 
   const paymentId = newId("pmt");
   const reference = `orionsoft_${paymentId}`;
-  const baseUrl = process.env.APP_BASE_URL || "";
+  const baseUrl = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
 
   try {
     const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
