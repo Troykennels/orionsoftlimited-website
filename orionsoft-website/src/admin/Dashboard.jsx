@@ -2453,7 +2453,8 @@ function AnnouncementsSection() {
         </div>
         <div style={{ marginBottom: 14 }}>
           <Label>Message</Label>
-          <Textarea value={form.text || ""} onChange={e => setForm(s => ({ ...s, text: e.target.value }))} rows={2} placeholder="e.g. We're accepting new clients for Q3 2026." />
+          <Textarea value={form.text || ""} onChange={e => setForm(s => ({ ...s, text: e.target.value }))} rows={4} placeholder="e.g. We're accepting new clients for Q3 2026." />
+          <p style={{ fontSize: 12, color: C.textMuted, fontFamily: font, margin: "6px 0 0", lineHeight: 1.6 }}>Shown as one line across the top of every page. A short first line becomes the bold headline; longer messages show the start with a "Read more" link. Keep it to a sentence or two for best results.</p>
         </div>
         <div style={{ marginBottom: 14 }}>
           <Label>Type</Label>

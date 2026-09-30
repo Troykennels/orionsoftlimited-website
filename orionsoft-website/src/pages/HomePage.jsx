@@ -3,6 +3,7 @@
 import { BRAND } from "../lib/brand.js";
 import { usePublished, usePublishedList } from "../lib/siteContent.js";
 import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
+import { summary } from "../lib/RichText.jsx";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const LC = {
   bg:           "#FFFFFF",
@@ -1201,12 +1202,84 @@ function LatestNewsSection({ setCurrentPage }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Latest from Orion Soft: what the admin publishes (blog posts, case studies),
+// shown straight after the hero so visitors see it without scrolling to the end.
+// ═══════════════════════════════════════════════════════════════════════════════
+const sortNewest = list => [...list].sort((a, b) => String(b.date || b.updatedAt || b.createdAt || "").localeCompare(String(a.date || a.updatedAt || a.createdAt || "")));
+
+function LatestCard({ kind, title, meta, text, image, color, onOpen, cta }) {
+  return (
+    <article style={{ background:LC.white, border:`1px solid ${LC.border}`, borderRadius:18, overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 2px 16px rgba(6,24,40,0.05)", transition:"transform 0.25s, box-shadow 0.25s" }}
+      onMouseEnter={e => { e.currentTarget.style.transform="translateY(-4px)"; e.currentTarget.style.boxShadow=LC.shadowMd; }}
+      onMouseLeave={e => { e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow="0 2px 16px rgba(6,24,40,0.05)"; }}>
+      {image
+        ? <img src={image} alt="" loading="lazy" style={{ width:"100%", height:170, objectFit:"cover", display:"block" }}/>
+        : <div style={{ height:6, background:color }}/>}
+      <div style={{ padding:"20px 22px 22px", display:"flex", flexDirection:"column", flex:1 }}>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10, flexWrap:"wrap" }}>
+          <span style={{ fontSize:10.5, fontWeight:800, color, background:`${color}14`, borderRadius:5, padding:"3px 9px", fontFamily:font, letterSpacing:"0.06em" }}>{kind}</span>
+          {meta && <span style={{ fontSize:12, color:LC.textMuted, fontFamily:font }}>{meta}</span>}
+        </div>
+        <h3 style={{ fontSize:17, fontWeight:800, color:LC.navy, fontFamily:font, lineHeight:1.35, margin:"0 0 8px" }}>{title}</h3>
+        {text && <p style={{ fontSize:13.5, color:LC.textLight, fontFamily:font, lineHeight:1.65, margin:"0 0 16px" }}>{text}</p>}
+        <button type="button" onClick={onOpen} style={{ marginTop:"auto", alignSelf:"flex-start", background:"none", border:"none", padding:0, color, fontFamily:font, fontSize:14, fontWeight:800, cursor:"pointer" }}>{cta} →</button>
+      </div>
+    </article>
+  );
+}
+
+function LatestSection({ setCurrentPage }) {
+  const posts = sortNewest(usePublishedList("orionsoft_blog_v1") || []).filter(p => p.title);
+  const cases = [...(usePublishedList("orionsoft_portfolio_v1") || [])].reverse().filter(c => c.clientName || c.projectTitle);
+  const items = [
+    ...posts.slice(0, 3).map(p => ({
+      key: `b-${p.id}`, kind: (p.category || "BLOG").toUpperCase(), title: p.title, color: "#4F8EF7",
+      meta: newsDate(p), text: p.excerpt || summary(p.content || p.body || "", 150), image: p.coverImage || "",
+      cta: "Read article", onOpen: () => setCurrentPage("blog", p.slug || p.id),
+    })),
+    ...cases.slice(0, 3).map(c => ({
+      key: `c-${c.id}`, kind: "CASE STUDY", title: c.projectTitle ? `${c.projectTitle}${c.clientName ? ` · ${c.clientName}` : ""}` : c.clientName, color: LC.gold,
+      meta: c.industry || "", text: summary(c.description || c.desc || "", 150), image: c.coverImage || c.screenshots?.[0]?.url || "",
+      cta: "Read the story", onOpen: () => { window.history.pushState({}, "", `/case-studies#case-${c.id}`); setCurrentPage("case-studies"); },
+    })),
+  ];
+  // Mix blog posts and case studies, newest blog first, up to 6.
+  const mixed = [];
+  const b = items.filter(i => i.key.startsWith("b-")), c = items.filter(i => i.key.startsWith("c-"));
+  while ((b.length || c.length) && mixed.length < 6) { if (b.length) mixed.push(b.shift()); if (c.length && mixed.length < 6) mixed.push(c.shift()); }
+  if (!mixed.length) return null;
+  return (
+    <section aria-labelledby="latest-heading" style={{ background:LC.bgAlt, padding:"72px clamp(24px,5vw,80px)" }}>
+      <div style={{ maxWidth:1360, margin:"0 auto" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:16, flexWrap:"wrap", marginBottom:32 }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:800, color:LC.gold, fontFamily:font, letterSpacing:"0.14em", marginBottom:10 }}>LATEST FROM ORION SOFT</div>
+            <h2 id="latest-heading" style={{ fontSize:"clamp(26px,3vw,40px)", fontWeight:900, color:LC.navy, fontFamily:font, lineHeight:1.08, letterSpacing:"-0.03em", margin:0 }}>News, insights and recent projects.</h2>
+          </div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            {posts.length > 0 && <button type="button" onClick={() => setCurrentPage("blog")} style={{ background:"none", border:`1.5px solid ${LC.borderStrong}`, color:LC.navy, borderRadius:9, padding:"10px 18px", fontFamily:font, fontSize:14, fontWeight:700, cursor:"pointer" }}>All articles</button>}
+            {cases.length > 0 && <button type="button" onClick={() => setCurrentPage("case-studies")} style={{ background:"none", border:`1.5px solid ${LC.borderStrong}`, color:LC.navy, borderRadius:9, padding:"10px 18px", fontFamily:font, fontSize:14, fontWeight:700, cursor:"pointer" }}>All case studies</button>}
+          </div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap:22 }}>
+          {mixed.map(({ key, ...it }) => <LatestCard key={key} {...it}/>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Main export
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function HomePage({ setCurrentPage, products }) {
+  const publishedPosts = usePublishedList("orionsoft_blog_v1") || [];
+  const publishedCases = usePublishedList("orionsoft_portfolio_v1") || [];
+  const hasPublished = publishedPosts.length > 0 || publishedCases.length > 0;
   return (
     <div style={{ background:LC.bg, overflowX:"hidden" }}>
       <HeroSection           setCurrentPage={setCurrentPage}/>
+      <LatestSection         setCurrentPage={setCurrentPage}/>
       <WhoWeAreSection       setCurrentPage={setCurrentPage}/>
       <IndustriesSection     setCurrentPage={setCurrentPage}/>
       <ProductsSection       setCurrentPage={setCurrentPage} products={products}/>
@@ -1215,7 +1288,7 @@ export default function HomePage({ setCurrentPage, products }) {
       <TechStackSection/>
       <ImplementationSection/>
       <ConsultationSection   setCurrentPage={setCurrentPage}/>
-      <LatestNewsSection     setCurrentPage={setCurrentPage}/>
+      {!hasPublished && <LatestNewsSection setCurrentPage={setCurrentPage}/>}
     </div>
   );
 }

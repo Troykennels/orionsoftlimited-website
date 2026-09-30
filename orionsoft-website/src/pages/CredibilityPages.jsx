@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 
 import { BRAND } from "../lib/brand.js";
+import { usePublishedList } from "../lib/siteContent.js";
+import { RichText, summary } from "../lib/RichText.jsx";
 // ── Design tokens ──────────────────────────────────────────────────
 const C = {
   bg:        "#060810",
@@ -171,8 +173,49 @@ const CASE_STUDIES = [
   },
 ];
 
+const INDUSTRY_COLOR = { Healthcare: C.accent, Education: C.mint, Finance: C.gold, Retail: C.purple, Logistics: "#06B6D4", Government: C.rose, Technology: C.purple };
+
+// A case study published from Admin → Case Studies.
+function PublishedCase({ cs, i, setCurrentPage }) {
+  const [open, setOpen] = useState(false);
+  const color = INDUSTRY_COLOR[cs.industry] || C.gold;
+  const text = String(cs.description || cs.desc || "");
+  const long = text.length > 420;
+  const image = cs.coverImage || cs.screenshots?.[0]?.url || "";
+  const link = /^https?:\/\//.test(cs.link || "") ? cs.link : "";
+  return (
+    <Reveal delay={Math.min(i, 4) * 0.07}>
+      <article id={`case-${cs.id}`} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, overflow: "hidden", scrollMarginTop: 110 }}>
+        {image && <img src={image} alt={cs.projectTitle || cs.clientName} loading="lazy" style={{ width: "100%", maxHeight: 320, objectFit: "cover", display: "block" }} />}
+        <div style={{ padding: "26px clamp(20px,3vw,32px) 22px", borderBottom: `1px solid ${C.border}` }}>
+          {cs.industry && <span style={{ display: "inline-block", marginBottom: 10, fontSize: 11.5, fontWeight: 700, background: color + "1A", color, border: `1px solid ${color}30`, borderRadius: 6, padding: "3px 10px", fontFamily: font }}>{cs.industry}</span>}
+          <h2 style={{ fontSize: "clamp(19px,2.5vw,25px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.02em", margin: "0 0 4px" }}>{cs.projectTitle || cs.title || cs.clientName}</h2>
+          {cs.clientName && <div style={{ fontSize: 14.5, color: C.textMuted, fontFamily: font, fontWeight: 600 }}>{cs.clientName}</div>}
+        </div>
+        <div style={{ padding: "24px clamp(20px,3vw,32px) 26px", fontSize: 15, lineHeight: 1.78, fontFamily: font }}>
+          {long && !open
+            ? <p style={{ margin: 0, color: C.text }}>{summary(text, 360)}</p>
+            : <RichText text={text} font={font} headingColor={C.heading} textColor={C.text} linkColor={C.accent} size={15} />}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+            {long && <button type="button" onClick={() => setOpen(o => !o)} style={{ background: color, color: "#05070A", border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 800, fontFamily: font, cursor: "pointer" }}>{open ? "Show less" : "Read the full story"}</button>}
+            {link && <a href={link} target="_blank" rel="noopener noreferrer" style={{ border: `1px solid ${C.border}`, color: C.text, borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: font, textDecoration: "none" }}>Visit project ↗</a>}
+            <button type="button" onClick={() => setCurrentPage("contact")} style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>Talk to us about a similar project</button>
+          </div>
+        </div>
+      </article>
+    </Reveal>
+  );
+}
+
 export function CaseStudiesPage({ setCurrentPage }) {
   useEffect(() => { window.scrollTo({ top: 0 }); }, []);
+  const published = (usePublishedList("orionsoft_portfolio_v1") || []).filter(c => c.clientName || c.projectTitle);
+  // /case-studies#case-<id> (from the homepage) scrolls to that story.
+  useEffect(() => {
+    if (!published.length || !window.location.hash.startsWith("#case-")) return undefined;
+    const t = setTimeout(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: "smooth" }), 300);
+    return () => clearTimeout(t);
+  }, [published.length]);
 
   return (
     <PageShell>
@@ -184,7 +227,13 @@ export function CaseStudiesPage({ setCurrentPage }) {
         subtitle="Every case study below represents a genuine implementation. Outcomes are described as they were reported, without inflation."
       />
 
-      <div style={{ display: "grid", gap: 28 }}>
+      {published.length > 0 && (
+        <div style={{ display: "grid", gap: 28 }}>
+          {[...published].reverse().map((cs, i) => <PublishedCase key={cs.id || i} cs={cs} i={i} setCurrentPage={setCurrentPage} />)}
+        </div>
+      )}
+
+      {published.length === 0 && <div style={{ display: "grid", gap: 28 }}>
         {CASE_STUDIES.map((cs, i) => (
           <Reveal key={cs.id} delay={i * 0.07}>
             <article
@@ -257,7 +306,7 @@ export function CaseStudiesPage({ setCurrentPage }) {
             </article>
           </Reveal>
         ))}
-      </div>
+      </div>}
 
       <Reveal delay={0.2}>
         <div style={{ marginTop: 56, background: `linear-gradient(135deg,${C.accent}10,${C.mint}06)`, border: `1px solid ${C.accent}28`, borderRadius: 16, padding: "36px clamp(20px,4vw,48px)", textAlign: "center" }}>
@@ -272,7 +321,7 @@ export function CaseStudiesPage({ setCurrentPage }) {
               Request a Demo
             </button>
             <button type="button" onClick={() => setCurrentPage("products")} style={{ background: "none", border: `1px solid ${C.border}`, color: C.text, borderRadius: 10, padding: "13px 24px", fontSize: 14, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>
-              View CareCore Features
+              See our products
             </button>
           </div>
         </div>

@@ -2,8 +2,9 @@
 import { BRAND } from "./lib/brand.js";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
-import { readPublished, loadSiteContent, usePublishedList } from "./lib/siteContent.js";
+import { readPublished, loadSiteContent, usePublishedList, contentLoaded } from "./lib/siteContent.js";
 import { DEFAULT_PRODUCTS_CATALOG } from "./lib/products.js";
+import { RichText, summary } from "./lib/RichText.jsx";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
@@ -263,8 +264,10 @@ const TOP_NAV = [
   { label: "Why Us",       page: "why" },
   { label: "Pricing",      page: "pricing" },
   { label: "About",        page: "about" },
-  { label: "Resources",    page: "resources" },
-  { label: "Partners",     page: "partners" },
+  // What the admin publishes (case studies, blog) is one click from every page;
+  // Resources and Partners stay in the footer.
+  { label: "Our Work",     page: "case-studies" },
+  { label: "Blog",         page: "blog" },
   { label: "Contact",      page: "contact" },
 ];
 // Default testimonials (matches current SocialProof hardcoded values)
@@ -628,11 +631,20 @@ function Nav({ currentPage, setCurrentPage }) {
   const [mobileProducts, setMobileProducts] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Sit below the announcement bar until the visitor scrolls past it.
+  const [annH, setAnnH] = useState(0);
+  const [offset, setOffset] = useState(0);
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 48);
+    const onAnn = e => setAnnH(Number(e.detail) || 0);
+    window.addEventListener("announcement-height", onAnn);
+    return () => window.removeEventListener("announcement-height", onAnn);
+  }, []);
+  useEffect(() => {
+    const h = () => { setScrolled(window.scrollY > 48); setOffset(Math.max(0, annH - window.scrollY)); };
+    h();
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
-  }, []);
+  }, [annH]);
 
   // Below 768px the nav is otherwise transparent-until-scrolled, which on
   // phones left the bar effectively invisible (white text on whatever
@@ -666,7 +678,7 @@ function Nav({ currentPage, setCurrentPage }) {
     <nav aria-label="Main navigation"
       onMouseLeave={() => setMegaOpen(false)}
       style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
+        position: "fixed", top: offset, left: 0, right: 0, zIndex: 1000,
         background: isMobile
           ? "#FFFFFF"
           : isHome
@@ -823,7 +835,7 @@ function Nav({ currentPage, setCurrentPage }) {
               ))}
             </div>
           )}
-          {TOP_NAV.filter(l => !l.hasMenu).map(l => (
+          {[...TOP_NAV.filter(l => !l.hasMenu), { label: "Careers", page: "careers" }, { label: "Events", page: "events" }].map(l => (
             <button key={l.label} type="button" onClick={() => go(l.page)}
               style={{ display: "block", width: "100%", textAlign: "left", color: C.text, background: "none", border: "none", textDecoration: "none", fontSize: 16, fontFamily: font, padding: "14px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
               {l.label}
@@ -2632,13 +2644,12 @@ function TawkLiveChat() {
 
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
-    // The site also has its own AI chat launcher fixed at bottom-right, so
-    // Tawk's bubble is pinned bottom-left instead of its bottom-right
-    // default, otherwise the two would overlap.
+    // Tawk sits bottom-right, stacked above the site's own "Ask Ori" button.
+    // (Bottom-left put its greeting pop-up over the hero's "Book Free Demo".)
     window.Tawk_API.customStyle = {
       visibility: {
-        desktop: { position: "bl", xOffset: 24, yOffset: 24 },
-        mobile: { position: "bl", xOffset: 8, yOffset: 8 },
+        desktop: { position: "br", xOffset: 28, yOffset: 104 },
+        mobile: { position: "br", xOffset: 14, yOffset: 92 },
       },
     };
 
@@ -3296,40 +3307,74 @@ function TrustSection({ portfolio = [] }) {
 // ═══════════════════════════════════════
 // ANNOUNCEMENT BAR
 // ═══════════════════════════════════════
+// The announcement from Admin → Announcements. It sits above the menu (the
+// menu is pinned, so it's pushed down by the bar's height until the visitor
+// scrolls) and shows one tidy line: the headline in bold and the start of the
+// message, with "Read more" for the rest.
+function setAnnouncementHeight(h) {
+  document.documentElement.style.setProperty("--ann-h", `${h}px`);
+  window.dispatchEvent(new CustomEvent("announcement-height", { detail: h }));
+}
 function AnnouncementBar() {
   const cms = useContext(CMSContext);
   const ann = cms?.announcements;
-  const [dismissed, setDismissed] = useState(false);
+  const text = String(ann?.text || "").trim();
+  const dismissKey = `ann-dismissed:${text.slice(0, 80)}`;
+  const [dismissed, setDismissed] = useState(() => { try { return sessionStorage.getItem(dismissKey) === "1"; } catch { return false; } });
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const show = !!(ann?.active && text && !dismissed);
 
-  if (!ann?.active || !ann?.text || dismissed) return null;
+  useEffect(() => {
+    if (!show || !ref.current) { setAnnouncementHeight(0); return undefined; }
+    const el = ref.current;
+    const ro = new ResizeObserver(() => setAnnouncementHeight(el.offsetHeight));
+    ro.observe(el);
+    setAnnouncementHeight(el.offsetHeight);
+    return () => { ro.disconnect(); setAnnouncementHeight(0); };
+  }, [show]);
 
-  const typeColors = {
-    info:    { bg: C.accent + "18", border: C.accent + "44", text: C.accent },
-    warning: { bg: C.gold   + "18", border: C.gold   + "44", text: C.gold },
-    success: { bg: C.mint   + "18", border: C.mint   + "44", text: C.mint },
-  };
-  const tc = typeColors[ann.type] || typeColors.info;
+  if (!show) return null;
+
+  const typeColors = { info: C.accent, warning: C.gold, success: C.mint };
+  const color = typeColors[ann.type] || typeColors.info;
+  const paras = text.split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean);
+  const headline = paras.length > 1 && paras[0].length <= 80 ? paras[0] : "";
+  const body = (headline ? paras.slice(1) : paras).join(" ");
+  const long = text.length > 110 || paras.length > 2;
+  const link = ann.link && ann.linkText ? (
+    <a href={ann.link} style={{ color, fontWeight: 700, marginLeft: 8, textDecoration: "underline", whiteSpace: "nowrap" }}
+       target={ann.link.startsWith("http") ? "_blank" : undefined} rel={ann.link.startsWith("http") ? "noreferrer" : undefined}>{ann.linkText}</a>
+  ) : null;
 
   return (
-    <div role="banner" style={{
-      background: tc.bg, borderBottom: `1px solid ${tc.border}`,
-      padding: "10px clamp(16px, 4vw, 32px)",
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-      position: "relative",
+    <div ref={ref} role="region" aria-label="Announcement" style={{
+      position: "relative", zIndex: 1001, background: `linear-gradient(90deg, ${C.surface}, ${color}14, ${C.surface})`,
+      borderBottom: `1px solid ${color}44`, padding: "9px 48px 9px clamp(16px, 4vw, 32px)", fontFamily: font,
     }}>
-      <span style={{ fontSize: 13.5, fontFamily: font, color: tc.text, fontWeight: 500 }}>
-        {ann.text}
-        {ann.link && ann.linkText && (
-          <a href={ann.link} style={{ color: tc.text, fontWeight: 700, marginLeft: 8, textDecoration: "underline" }}
-             target={ann.link.startsWith("http") ? "_blank" : undefined}
-             rel={ann.link.startsWith("http") ? "noreferrer" : undefined}>
-            {ann.linkText}
-          </a>
+      <div style={{ maxWidth: 1180, margin: "0 auto", display: "flex", alignItems: open ? "flex-start" : "center", justifyContent: "center", gap: 10, fontSize: 13.5, color: C.text, lineHeight: 1.5 }}>
+        <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0, marginTop: open ? 7 : 0 }} />
+        {open ? (
+          <div style={{ minWidth: 0 }}>
+            {headline && <strong style={{ color: C.heading, display: "block", marginBottom: 4 }}>{headline}</strong>}
+            {(headline ? paras.slice(1) : paras).map((p, i) => <p key={i} style={{ margin: "0 0 4px" }}>{p}</p>)}
+            {link}
+            <button type="button" onClick={() => setOpen(false)} style={{ background: "none", border: "none", color, fontWeight: 700, cursor: "pointer", padding: 0, marginLeft: link ? 12 : 0, fontFamily: font, fontSize: 13 }}>Show less</button>
+          </div>
+        ) : (
+          <>
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {headline && <strong style={{ color: C.heading, marginRight: 8 }}>{headline}</strong>}
+              {body}
+            </span>
+            {long && <button type="button" onClick={() => setOpen(true)} style={{ background: "none", border: "none", color, fontWeight: 700, cursor: "pointer", padding: 0, whiteSpace: "nowrap", fontFamily: font, fontSize: 13 }}>Read more</button>}
+            {!long && link}
+          </>
         )}
-      </span>
+      </div>
       {ann.dismissible !== false && (
-        <button type="button" onClick={() => setDismissed(true)} aria-label="Dismiss announcement"
-          style={{ background: "none", border: "none", color: tc.text, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px", position: "absolute", right: 16 }}>×</button>
+        <button type="button" onClick={() => { setDismissed(true); try { sessionStorage.setItem(dismissKey, "1"); } catch { /* private mode */ } }} aria-label="Dismiss announcement"
+          style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 4, position: "absolute", right: 12, top: 6 }}>×</button>
       )}
     </div>
   );
@@ -3375,39 +3420,6 @@ function EventsPage({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // BLOG PAGE
 // ═══════════════════════════════════════
-// Blog bodies are written in simple Markdown in the admin: # headings,
-// **bold**, *italic*, [links](https://…), "- " bullet lists and blank-line
-// paragraphs. Rendered as React elements, never as raw HTML.
-function mdInline(text, keyBase) {
-  const out = [];
-  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-  let last = 0, m, i = 0;
-  while ((m = re.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const k = `${keyBase}-${i++}`;
-    if (m[1]) out.push(<strong key={k} style={{ color: C.heading }}>{m[1]}</strong>);
-    else if (m[2]) out.push(<em key={k}>{m[2]}</em>);
-    else out.push(<a key={k} href={m[4]} target="_blank" rel="noopener noreferrer" style={{ color: C.accent }}>{m[3]}</a>);
-    last = re.lastIndex;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
-}
-function MarkdownBody({ text }) {
-  const blocks = String(text || "").replace(/\r/g, "").split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
-  return blocks.map((b, i) => {
-    const h = b.match(/^(#{1,3})\s+(.*)$/);
-    if (h) {
-      const size = { 1: 28, 2: 23, 3: 19 }[h[1].length];
-      return <h2 key={i} style={{ fontSize: size, fontWeight: 800, color: C.heading, fontFamily: font, margin: "32px 0 12px", lineHeight: 1.3 }}>{mdInline(h[2], i)}</h2>;
-    }
-    const lines = b.split("\n");
-    if (lines.every(l => /^\s*[-*•]\s+/.test(l))) {
-      return <ul key={i} style={{ margin: "0 0 18px", paddingLeft: 22 }}>{lines.map((l, j) => <li key={j} style={{ marginBottom: 6 }}>{mdInline(l.replace(/^\s*[-*•]\s+/, ""), `${i}-${j}`)}</li>)}</ul>;
-    }
-    return <p key={i} style={{ margin: "0 0 18px" }}>{lines.map((l, j) => <span key={j}>{j > 0 && <br />}{mdInline(l, `${i}-${j}`)}</span>)}</p>;
-  });
-}
 const blogDate = p => { const d = p.date || p.createdAt; const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""; };
 const blogReadTime = p => p.readTime || `${Math.max(1, Math.round(String(p.content || p.body || "").split(/\s+/).length / 200))} min read`;
 
@@ -3453,6 +3465,10 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
 
   if (postId) {
     const post = openPost;
+    // Opened by link: wait for the published posts before saying "not found".
+    if (!post && !contentLoaded()) {
+      return <section style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}><p style={{ color: C.textMuted, fontFamily: font }}>Loading article…</p></section>;
+    }
     if (!post) {
       return (
         <section style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: "120px 24px" }}>
@@ -3480,7 +3496,7 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
         {post.coverImage && (
           <img src={post.coverImage} alt={post.title} style={{ width: "100%", borderRadius: 12, marginBottom: 32, objectFit: "cover", maxHeight: 400 }} loading="lazy" />
         )}
-        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><MarkdownBody text={post.content || post.body || post.excerpt || ""} /></div>
+        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><RichText text={post.content || post.body || post.excerpt || ""} font={font} headingColor={C.heading} textColor={C.text} linkColor={C.accent} /></div>
         <BlogShare post={post} />
       </article>
     );
@@ -3513,7 +3529,7 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.accent, fontFamily: font, letterSpacing: "0.08em", display: "block", marginBottom: 8 }}>{post.category.toUpperCase()}</span>
                 )}
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, fontFamily: font, marginBottom: 8, lineHeight: 1.35 }}>{post.title}</h3>
-                {post.excerpt && <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6, marginBottom: 12 }}>{post.excerpt}</p>}
+                {(post.excerpt || post.content) && <p style={{ fontSize: 13.5, color: C.text, fontFamily: font, lineHeight: 1.6, marginBottom: 12 }}>{post.excerpt || summary(post.content, 160)}</p>}
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   {blogDate(post) && <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{blogDate(post)}</span>}
                   <span style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>·  {blogReadTime(post)}</span>

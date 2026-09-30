@@ -57,8 +57,11 @@ export async function loadSiteContent() {
     for (const [k, v] of Object.entries(content || {})) {
       if (JSON.stringify(published.get(k)) !== JSON.stringify(v)) { published.set(k, v); changed.push(k); }
     }
+    const first = !loaded;
     loaded = true;
     // Same signal the pages already listen to for content changes.
     changed.forEach(key => window.dispatchEvent(new CustomEvent("localstoreupdate", { detail: { key } })));
+    // Pages waiting for the first load (e.g. a blog post opened by link) re-check.
+    if (first && !changed.length) window.dispatchEvent(new CustomEvent("localstoreupdate", { detail: { key: "__loaded" } }));
   } catch { /* offline: pages keep their defaults */ }
 }
