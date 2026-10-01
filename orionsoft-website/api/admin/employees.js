@@ -3,7 +3,7 @@ import { newId, listRecords, getByLookup, getRecord, putRecord, setLookup, delet
 import { requireAuth, hashPassword } from "../_lib/auth.js";
 import { sendEmployeeWelcome } from "../_lib/emailTemplates.js";
 import { getRoleCatalog, PERMISSIONS, managerChain, directReports } from "../_lib/roles.js";
-import { ensureSlugs, systemPost, notify, listActivity, leaderboard, cleanSocials } from "../_lib/office.js";
+import { ensureSlugs, systemPost, notify, listActivity, leaderboard, cleanSocials, effectivePresence, loadSeen } from "../_lib/office.js";
 import { logAudit } from "../_lib/audit.js";
 import { get } from "../store.js";
 
@@ -18,8 +18,10 @@ function createsCycle(employeeId, managerId, employees) {
   return false;
 }
 
+// Presence shown is "really online" (Staff Office open recently), not the
+// last status the person picked. See effectivePresence in _lib/office.js.
 function publicShape(e) {
-  const rest = { ...e };
+  const rest = { ...e, presence: effectivePresence(e) };
   delete rest.passwordHash;
   return rest;
 }
@@ -42,6 +44,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     const [employees, catalog] = await Promise.all([listRecords("employees"), getRoleCatalog()]);
+    await loadSeen(employees.map(e => e.id));
     await ensureSlugs(employees);
     if (req.query.id) {
       const employee = employees.find(e => e.id === req.query.id);
