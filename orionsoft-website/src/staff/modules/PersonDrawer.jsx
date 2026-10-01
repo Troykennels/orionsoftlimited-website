@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { MessageSquare, Award, CalendarPlus, ExternalLink, Trophy } from "lucide-react";
-import { C, font, PRESENCE, SOCIAL_META } from "../theme.js";
+import { C, font, PRESENCE, SOCIAL_META, presenceLabel } from "../theme.js";
 import { api, timeAgo, fmtDate, profileUrl, waLink, firstName } from "../api.js";
 import { Avatar, Badge, Btn, Modal, Progress, EmptyState, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
@@ -67,7 +67,7 @@ export default function PersonDrawer({ id, onClose }) {
                 <div style={{ fontSize: 13, color: C.text }}>{p.title}{p.department ? ` · ${p.department}` : ""}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                   <Badge color={C.gold}>{p.roleLabel}</Badge>
-                  <Badge color={presence.color}>{presence.label}{p.presence?.note ? ` · ${p.presence.note}` : ""}</Badge>
+                  <Badge color={presence.color}>{presenceLabel(p.presence)}</Badge>
                 </div>
               </div>
             </div>

@@ -188,9 +188,13 @@ export default function StaffApp() {
 
   useEffect(() => {
     if (!session) return undefined;
+    // Also the presence heartbeat: the server counts you online while this
+    // keeps checking in (and again the moment you come back to the tab).
     const first = setTimeout(loadOffice, 0);
     const t = setInterval(loadOffice, 60_000);
-    return () => { clearTimeout(first); clearInterval(t); };
+    const onVisible = () => { if (document.visibilityState === "visible") loadOffice(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
   }, [session, loadOffice]);
 
   // Unread messages badge.

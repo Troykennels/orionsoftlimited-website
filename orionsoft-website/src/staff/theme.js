@@ -26,6 +26,18 @@ export const PRESENCE = {
   offline:   { label: "Offline", color: "#4B5870" },
 };
 
+// "Available · Back at 2pm", or "Offline · last seen 2h ago".
+export function presenceLabel(p) {
+  const meta = PRESENCE[p?.status] || PRESENCE.offline;
+  if ((p?.status || "offline") === "offline") {
+    if (!p?.lastSeenAt) return meta.label;
+    const mins = Math.max(1, Math.round((Date.now() - Date.parse(p.lastSeenAt)) / 60000));
+    const ago = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`;
+    return `${meta.label} · last seen ${ago} ago`;
+  }
+  return p?.note ? `${meta.label} · ${p.note}` : meta.label;
+}
+
 export const SOCIAL_META = {
   linkedin:  { label: "LinkedIn", color: "#0A66C2" },
   x:         { label: "X (Twitter)", color: "#E7E9EA" },

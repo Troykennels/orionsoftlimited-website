@@ -5,7 +5,7 @@ import { get, set } from "../store.js";
 import { listRecords } from "../_lib/records.js";
 import {
   officeContext, officeCard, ensureSlugs, listNotifications, markNotificationsRead,
-  leaderboard, listActivity,
+  leaderboard, listActivity, effectivePresence,
 } from "../_lib/office.js";
 import { PERMISSIONS, managerChain, directReports, subordinates, canApproveFor } from "../_lib/roles.js";
 import { runAutomations, lagosDate, toLagos } from "../_lib/automations.js";
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
       const lineManager = managerChain(me, employees, catalog)[0] || null;
       return res.json({
         ok: true,
-        me: { ...stripPrivate(me), permissions: [...ctx.perms], role: catalog.find(r => r.id === me.staffRole) || null, viaAdmin: !!ctx.session.viaAdmin, googleLinked: !!me.googleSub },
+        me: { ...stripPrivate(me), presence: effectivePresence(me), permissions: [...ctx.perms], role: catalog.find(r => r.id === me.staffRole) || null, viaAdmin: !!ctx.session.viaAdmin, googleLinked: !!me.googleSub },
         lineManager: lineManager ? officeCard(lineManager, catalog) : null,
         directReports: directReports(me, active, catalog).map(e => e.id),
         directory: active.map(e => officeCard(e, catalog)),

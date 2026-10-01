@@ -15,6 +15,10 @@ export default async function handler(req, res) {
     clearSessionCookie(res, ADMIN_COOKIE);
     if (shared?.role === "admin") clearSessionCookie(res); // pre-split admin session
   }
-  if (portal !== "admin" && shared?.role !== "admin") clearSessionCookie(res);
+  if (portal !== "admin" && shared?.role !== "admin") {
+    // Signing out of the Staff Office shows you offline straight away.
+    if (shared?.role === "staff") { try { const { clearPresence } = await import("../_lib/office.js"); await clearPresence(shared.sub); } catch { /* best-effort */ } }
+    clearSessionCookie(res);
+  }
   return res.json({ ok: true });
 }

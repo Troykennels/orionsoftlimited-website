@@ -6,7 +6,7 @@ import { listRecords, readIndex, getRecords, getRecord, putRecord, deleteRecord,
 import { requireAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { getRoleCatalog, saveRole, deleteRole, PERMISSIONS, BUILTIN_ROLES } from "../_lib/roles.js";
-import { notify, systemPost, cleanUrl, leaderboard, waNumber, cleanAudience, audienceIds } from "../_lib/office.js";
+import { notify, systemPost, cleanUrl, leaderboard, waNumber, cleanAudience, audienceIds, effectivePresence, loadSeen } from "../_lib/office.js";
 import { sendAnnouncementEmail } from "../_lib/emailTemplates.js";
 import { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } from "../staff/office.js";
 
@@ -29,12 +29,13 @@ export default async function handler(req, res) {
     const active = employees.filter(e => e.status === "active");
     const cfg = { ...DEFAULT_OFFICE_CONFIG, ...(config || {}) };
     const acks = await Promise.all(active.map(async e => ({ id: e.id, acks: (await get(`orionsoft:office:acks:${e.id}`)) || [] })));
+    const seen = await loadSeen(active.map(e => e.id));
     return res.json({
       ok: true,
       roles: catalog, builtinRoleIds: BUILTIN_ROLES.map(r => r.id), permissions: PERMISSIONS,
       config: cfg,
       acknowledgements: cfg.resources.map(r => ({ resourceId: r.id, done: acks.filter(a => a.acks.includes(r.id)).map(a => a.id), total: active.length })),
-      people: active.map(e => ({ id: e.id, fullName: e.fullName, title: e.title, department: e.department, staffRole: e.staffRole, managerId: e.managerId || null, avatarDataUrl: e.avatarDataUrl || "", presence: e.presence || null, publicProfile: !!e.publicProfile, slug: e.slug })),
+      people: active.map(e => ({ id: e.id, fullName: e.fullName, title: e.title, department: e.department, staffRole: e.staffRole, managerId: e.managerId || null, avatarDataUrl: e.avatarDataUrl || "", presence: effectivePresence(e, seen), publicProfile: !!e.publicProfile, slug: e.slug })),
       posts,
       kits: kits.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       advocacy: active.map(e => ({

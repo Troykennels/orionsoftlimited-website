@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
-import { C, font, PRESENCE } from "../theme.js";
+import { C, font, PRESENCE, presenceLabel } from "../theme.js";
 import { api, waLink, firstName } from "../api.js";
 import { Avatar, Badge, SectionCard, Input, Select, EmptyState, PageHeader, Tabs, Grid, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
@@ -22,7 +22,7 @@ function OrgNode({ node, childrenOf, depth = 0 }) {
             <div style={{ fontSize: 13.5, fontWeight: 800, color: C.heading, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{node.fullName}</div>
             <div style={{ fontSize: 11.5, color: C.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{node.roleLabel}{node.department ? ` · ${node.department}` : ""}</div>
           </div>
-          <span title={pres.label} style={{ width: 8, height: 8, borderRadius: "50%", background: pres.color, flexShrink: 0 }} />
+          <span title={presenceLabel(node.presence)} style={{ width: 8, height: 8, borderRadius: "50%", background: pres.color, flexShrink: 0 }} />
           {kids.length > 0 && <Badge color={C.textMuted}>{kids.length}</Badge>}
         </button>
       </div>
@@ -70,7 +70,7 @@ export default function People() {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14.5, fontWeight: 800, color: C.heading }}>{p.fullName}{p.id === me.id ? " (you)" : ""}</div>
                       <div style={{ fontSize: 12.5, color: C.text }}>{p.title}</div>
-                      <div style={{ fontSize: 11.5, color: pres.color, marginTop: 2 }}>● {pres.label}</div>
+                      <div style={{ fontSize: 11.5, color: pres.color, marginTop: 2 }}>● {presenceLabel(p.presence)}</div>
                     </div>
                   </button>
                   {p.headline && <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 10, lineHeight: 1.5 }}>{p.headline}</div>}

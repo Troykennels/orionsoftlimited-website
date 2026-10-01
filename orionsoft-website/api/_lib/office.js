@@ -2,7 +2,7 @@
 // cards, in-app notifications, @mentions, gamification points, activity
 // timelines and system-generated feed posts. Used by every api/staff/* route
 // and by api/_lib/automations.js.
-import { push, list, get, set, ltrim, hincrby, hgetall, claim, incrTtl } from "../store.js";
+import { push, list, get, set, del, mget, ltrim, hincrby, hgetall, claim, incrTtl } from "../store.js";
 import { listRecords, putRecord, newId, getRecord } from "./records.js";
 import { requireStaff } from "./auth.js";
 import { getRoleCatalog, permissionsOf, roleOf } from "./roles.js";
@@ -71,8 +71,53 @@ export function officeCard(e, catalog) {
     skills: e.skills || [], socials: e.socials || {}, email: e.email, phone: e.showPhone ? (e.phone || "") : "",
     location: e.location || "", startDate: e.startDate || "", whatsapp: waNumber(e.whatsapp),
     birthday: e.dateOfBirth ? e.dateOfBirth.slice(5) : "",
-    presence: e.presence || { status: "offline" }, publicProfile: !!e.publicProfile, status: e.status,
+    presence: effectivePresence(e), publicProfile: !!e.publicProfile, status: e.status,
   };
+}
+
+// ─── Presence: who is really online ──────────────────────────────────────────
+// A status ("Available", "In a meeting"…) is only shown while the person has
+// the Staff Office open. The app checks in every minute; anyone not seen for
+// ONLINE_MS shows as offline with "last seen", whatever status they picked.
+// "On leave" is shown regardless.
+export const ONLINE_MS = Number(process.env.PRESENCE_ONLINE_MS) || 4 * 60 * 1000;
+const seenKey = id => `orionsoft:presence:seen:${id}`;
+let seenMap = new Map();
+const lastTouch = new Map();
+
+export async function touchPresence(employeeId) {
+  if (!employeeId) return;
+  const now = Date.now();
+  seenMap.set(employeeId, new Date(now).toISOString());
+  if (now - (lastTouch.get(employeeId) || 0) < 45_000) return; // at most one write per 45s
+  lastTouch.set(employeeId, now);
+  try { await set(seenKey(employeeId), new Date(now).toISOString()); } catch { /* best-effort */ }
+}
+
+export async function clearPresence(employeeId) {
+  if (!employeeId) return;
+  seenMap.delete(employeeId);
+  lastTouch.delete(employeeId);
+  try { await del(seenKey(employeeId)); } catch { /* best-effort */ }
+}
+
+export async function loadSeen(ids) {
+  const vals = ids.length ? await mget(ids.map(seenKey)) : [];
+  const m = new Map();
+  ids.forEach((id, i) => { if (vals[i]) m.set(id, vals[i]); });
+  // Keep this process's own fresher heartbeats (writes are throttled).
+  for (const [id, at] of seenMap) if (!m.has(id) || at > m.get(id)) m.set(id, at);
+  seenMap = m;
+  return m;
+}
+
+export function effectivePresence(e, seen = seenMap) {
+  const p = e.presence || null;
+  const lastSeenAt = seen.get(e.id) || null;
+  if (p?.status === "leave") return { ...p, lastSeenAt };
+  const online = !!lastSeenAt && Date.now() - Date.parse(lastSeenAt) < ONLINE_MS;
+  if (!online) return { status: "offline", note: "", at: p?.at || null, lastSeenAt };
+  return p ? { ...p, lastSeenAt } : { status: "available", note: "", lastSeenAt };
 }
 
 // What the whole internet sees on /people/:slug. Only fields the person has
@@ -93,7 +138,9 @@ export function publicCard(e, catalog) {
 export async function officeContext(req, res) {
   const auth = await requireStaff(req, res);
   if (!auth) return null;
+  await touchPresence(auth.employee.id); // using the office = online
   const [employees, catalog] = await Promise.all([listRecords("employees"), getRoleCatalog()]);
+  await loadSeen(employees.map(e => e.id));
   const me = employees.find(e => e.id === auth.employee.id) || auth.employee;
   const perms = permissionsOf(me, catalog);
   return { session: auth.session, me, employees, active: employees.filter(e => e.status === "active"), catalog, perms, can: p => perms.has(p) };
