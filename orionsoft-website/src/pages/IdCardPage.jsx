@@ -252,32 +252,41 @@ function SignaturePad({ onDone, onCancel }) {
 // Passport photo: upload (or take) a picture, then drag and zoom it to fit
 // the card's photo frame (3:4). Saves a 600 × 800 JPEG.
 const FW = 240, FH = 320;
-function PassportEditor({ onSave, onCancel, busy }) {
+function PassportEditor({ onSave, onCancel, busy, initialSrc = "" }) {
   const [img, setImg] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [off, setOff] = useState({ x: 0, y: 0 });
   const [err, setErr] = useState("");
+  const [small, setSmall] = useState(false);
   const drag = useRef(null);
   const fileRef = useRef(null);
   const base = img ? Math.max(FW / img.naturalWidth, FH / img.naturalHeight) : 1;
   const s = base * zoom;
   const clamp = (o, sc = s) => img ? { x: Math.min(0, Math.max(FW - img.naturalWidth * sc, o.x)), y: Math.min(0, Math.max(FH - img.naturalHeight * sc, o.y)) } : o;
 
-  function pick(file) {
-    setErr("");
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) && !/\.(jpe?g|png|webp|heic)$/i.test(file.name)) { setErr("Choose a photo (JPEG or PNG)."); return; }
-    const url = URL.createObjectURL(file);
+  // Loads a picture into the frame. `lenient`: the current profile photo is
+  // accepted even when small (with a warning) rather than refused.
+  function load(url, lenient = false) {
+    setErr(""); setSmall(false);
     const i = new Image();
     i.onload = () => {
-      if (i.naturalWidth < 240 || i.naturalHeight < 300) { setErr("This picture is too small to print sharply. Use a larger photo."); return; }
+      const tooSmall = i.naturalWidth < 240 || i.naturalHeight < 300;
+      if (tooSmall && !lenient) { setErr("This picture is too small to print sharply. Use a larger photo."); return; }
+      setSmall(tooSmall);
       const b = Math.max(FW / i.naturalWidth, FH / i.naturalHeight);
       setImg(i); setZoom(1);
       setOff({ x: (FW - i.naturalWidth * b) / 2, y: (FH - i.naturalHeight * b) / 2 });
     };
-    i.onerror = () => setErr("That file couldn't be opened as a picture. Try a JPEG or PNG.");
+    i.onerror = () => setErr("That picture couldn't be opened. Try a JPEG or PNG.");
     i.src = url;
   }
+  function pick(file) {
+    setErr("");
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) && !/\.(jpe?g|png|webp|heic)$/i.test(file.name)) { setErr("Choose a photo (JPEG or PNG)."); return; }
+    load(URL.createObjectURL(file));
+  }
+  useEffect(() => { if (initialSrc) load(initialSrc, true); }, [initialSrc]); // eslint-disable-line react-hooks/exhaustive-deps
   function setZoomKeepCentre(z) {
     const cx = FW / 2, cy = FH / 2, ns = base * z;
     setOff(o => clamp({ x: cx - ((cx - o.x) / s) * ns, y: cy - ((cy - o.y) / s) * ns }, ns));
@@ -334,6 +343,7 @@ function PassportEditor({ onSave, onCancel, busy }) {
             </label>
             <p style={{ fontSize: 13, color: MUTED, margin: 0, lineHeight: 1.55 }}>Drag the photo so your face fills the oval and your shoulders sit on the lower line.</p>
             {lowRes && <p style={{ fontSize: 13, color: "#B45309", margin: 0 }}>Zoomed in quite far: the printed photo may look soft. Zoom out a little or use a larger picture.</p>}
+            {small && <p style={{ fontSize: 13, color: "#B45309", margin: 0 }}>This profile photo is quite small, so the printed card may look soft. A larger, plain-background photo prints best.</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" disabled={busy} onClick={save} style={btn(true, busy)}>{busy ? "Saving…" : "Save passport photo"}</button>
               <button type="button" onClick={() => fileRef.current?.click()} style={btn(false)}>Choose another</button>
@@ -382,7 +392,7 @@ export default function IdCardPage() {
   const [signing, setSigning] = useState(false);
   const [signatories, setSignatories] = useState([]);
   const [chosenSig, setChosenSig] = useState("");
-  const [editingPhoto, setEditingPhoto] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false); // false | "upload" | "profile"
   const [scale, setScale] = useState(1.6);
 
   const url = isAdmin ? `/api/admin/id-cards?employeeId=${encodeURIComponent(employeeId)}` : "/api/staff/id-card";
@@ -479,6 +489,13 @@ export default function IdCardPage() {
     </>
   );
   const canPrint = data.card.authorized && data.employee.status === "active";
+  // Signed & authorised: the staff member can't change the photo any more.
+  // The admin still can, after confirming that it removes the signature.
+  const photoLocked = !isAdmin && data.card.authorized;
+  function startPhotoChange(mode) {
+    if (isAdmin && data.card.authorized && !window.confirm("This card is signed and authorised. Changing the photo removes the signature, and the card must be signed again before it can be printed. Continue?")) return;
+    setEditingPhoto(mode);
+  }
   const slot = { position: "relative", width: `calc(${W}mm * ${scale})`, height: `calc(${H}mm * ${scale})` };
   const inner = { transform: `scale(${scale})`, transformOrigin: "top left", width: `${W}mm`, height: `${H}mm`, boxShadow: "0 12px 34px rgba(10,37,64,0.22)", borderRadius: "3.2mm" };
   return (
@@ -516,16 +533,34 @@ export default function IdCardPage() {
           <h2 style={{ fontSize: 16, margin: "0 0 4px", color: NAVY }}>Passport photo</h2>
           <p style={{ fontSize: 13.5, color: MUTED, margin: "0 0 12px", lineHeight: 1.6 }}>
             {data.employee.hasPassport
-              ? <>A passport photo is on the card. {data.card.authorized ? "Changing it sends the card back for signing." : ""}</>
+              ? <>A passport photo is on the card. {data.card.authorized && isAdmin ? "Changing it removes the signature and sends the card back for signing." : !data.card.authorized ? "You can change it until the card is signed and authorised." : ""}</>
               : <>{data.employee.hasProfilePhoto ? "The card is showing the profile photo for now. " : ""}A card can only be authorised with a proper passport photo: plain light background, face straight to the camera, head and shoulders, no caps or sunglasses, good light.</>}
           </p>
-          {!editingPhoto && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" disabled={!!busy} onClick={() => setEditingPhoto(true)} style={btn(!data.employee.hasPassport, !!busy)}>{data.employee.hasPassport ? "Change passport photo" : "Upload passport photo"}</button>
-              {!data.employee.hasPassport && data.employee.hasProfilePhoto && <button type="button" disabled={!!busy} onClick={() => savePhoto({ useProfilePhoto: true })} style={btn(false, !!busy)}>Use {isAdmin ? "their" : "my"} profile photo</button>}
+          {photoLocked && (
+            <p role="status" style={{ fontSize: 13.5, color: "#15803D", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: "10px 12px", margin: 0 }}>
+              🔒 Your card has been signed and authorised, so its photo is locked. If it needs to change, ask the admin.
+            </p>
+          )}
+          {!photoLocked && data.employee.profilePhotoNewer && !editingPhoto && (
+            <p role="status" style={{ fontSize: 13.5, color: "#B45309", background: "#FFF7E6", border: "1px solid #F5C77A", borderRadius: 10, padding: "10px 12px", margin: "0 0 12px" }}>
+              {isAdmin ? "Their" : "Your"} profile photo was changed after this card photo was set. Use the new one below if it should be on the card.
+            </p>
+          )}
+          {!photoLocked && !editingPhoto && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              {data.employee.profilePhotoDataUrl && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 10, border: "1px solid #E2E8F0", borderRadius: 10, padding: "6px 10px 6px 6px" }}>
+                  <img src={data.employee.profilePhotoDataUrl} alt="Current profile photo" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                  <button type="button" disabled={!!busy} onClick={() => startPhotoChange("profile")} style={btn(!!data.employee.profilePhotoNewer || !data.employee.hasPassport, !!busy)}>Use {isAdmin ? "their" : "my"} current profile photo</button>
+                </span>
+              )}
+              <button type="button" disabled={!!busy} onClick={() => startPhotoChange("upload")} style={btn(!data.employee.hasPassport && !data.employee.profilePhotoDataUrl, !!busy)}>{data.employee.hasPassport ? "Upload a different photo" : "Upload passport photo"}</button>
             </div>
           )}
-          {editingPhoto && <PassportEditor busy={busy === "photo"} onSave={dataUrl => savePhoto({ dataUrl })} onCancel={() => setEditingPhoto(false)} />}
+          {!photoLocked && editingPhoto && (
+            <PassportEditor busy={busy === "photo"} initialSrc={editingPhoto === "profile" ? data.employee.profilePhotoDataUrl : ""}
+              onSave={dataUrl => savePhoto({ dataUrl, fromProfile: editingPhoto === "profile" })} onCancel={() => setEditingPhoto(false)} />
+          )}
         </section>
         {!isAdmin && !data.card.authorized && (
           <section role="status" style={{ background: "#FFF7E6", border: "1px solid #F5C77A", borderRadius: 14, padding: 18, fontSize: 14, lineHeight: 1.6 }}>

@@ -47,6 +47,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Cover image must be a PNG/JPEG under ~1MB" });
     }
     const bankBefore = BANK_FIELDS.map(k => employee[k] || "").join("|");
+    const avatarBefore = employee.avatarDataUrl || "";
     for (const key of SELF_EDITABLE) {
       if (updates[key] === undefined || (typeof updates[key] === "object" && updates[key] !== null)) continue;
       employee[key] = String(updates[key] ?? "").slice(0, key.endsWith("DataUrl") ? 1_500_000 : 1500);
@@ -58,6 +59,8 @@ export default async function handler(req, res) {
     // member is emailed (in case it wasn't them) and HR is told.
     const bankChanged = bankBefore !== BANK_FIELDS.map(k => employee[k] || "").join("|") && bankBefore.replace(/\|/g, "") !== "";
     if (bankChanged) employee.bankChangedAt = new Date().toISOString();
+    // Lets the ID card page say "profile photo changed since the card photo".
+    if ((employee.avatarDataUrl || "") !== avatarBefore) employee.avatarUpdatedAt = new Date().toISOString();
     if (updates.skills !== undefined) {
       employee.skills = (Array.isArray(updates.skills) ? updates.skills : String(updates.skills).split(","))
         .map(s => String(s).trim()).filter(Boolean).slice(0, 20).map(s => s.slice(0, 40));

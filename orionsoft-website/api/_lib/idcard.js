@@ -54,6 +54,11 @@ export async function cardPayload(emp, { forAdmin = false } = {}) {
       // The card photo: the passport photo, or the profile photo until one is added.
       avatarDataUrl: emp.idPhotoDataUrl || emp.avatarDataUrl || "",
       hasPassport: !!emp.idPhotoDataUrl, hasProfilePhoto: !!emp.avatarDataUrl,
+      // The current profile picture when it differs from the card photo, so
+      // it can be moved onto the card (cropped to passport shape first).
+      profilePhotoDataUrl: emp.avatarDataUrl && emp.avatarDataUrl !== emp.idPhotoDataUrl && emp.idPhotoFromAvatar !== photoPrint(emp.avatarDataUrl) ? emp.avatarDataUrl : "",
+      // The profile picture was changed after the card photo was set.
+      profilePhotoNewer: !!(emp.idPhotoDataUrl && emp.avatarDataUrl && emp.avatarDataUrl !== emp.idPhotoDataUrl && emp.idPhotoFromAvatar !== photoPrint(emp.avatarDataUrl) && emp.avatarUpdatedAt && emp.avatarUpdatedAt > (emp.idPhotoUpdatedAt || "")),
       emergencyContactName: emp.emergencyContactName || "", emergencyContactPhone: emp.emergencyContactPhone || "",
       emergencyContactRelationship: emp.emergencyContactRelationship || "", bloodGroup: emp.bloodGroup || "",
     },
@@ -70,9 +75,14 @@ export function validPassport(dataUrl) {
 
 // A new passport photo on a signed card puts it back to pending, so a face
 // can never be swapped on an authorised card without the admin re-signing.
-export async function setPassport(emp, dataUrl) {
+// A short fingerprint of a photo (to remember which profile photo the card
+// photo was made from, without storing it twice).
+export const photoPrint = d => (d ? `${d.length}:${d.slice(-48)}` : "");
+
+export async function setPassport(emp, dataUrl, { fromProfile = false } = {}) {
   emp.idPhotoDataUrl = dataUrl;
   emp.idPhotoUpdatedAt = new Date().toISOString();
+  emp.idPhotoFromAvatar = fromProfile ? photoPrint(emp.avatarDataUrl) : "";
   if (emp.idCard?.authorizedAt) emp.idCard = { ...emp.idCard, authorizedAt: null, authorizedBy: "", signatoryId: "" };
   await putRecord("employees", emp.id, emp);
   return emp;

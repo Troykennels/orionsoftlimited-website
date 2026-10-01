@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     await ensureIdCard(emp);
     const dataUrl = req.body.useProfilePhoto ? emp.avatarDataUrl : req.body.dataUrl;
     if (!validPassport(dataUrl)) return res.status(400).json({ error: req.body.useProfilePhoto ? "This staff member has no profile photo to use" : "Upload a JPEG or PNG photo under about 1 MB" });
-    await setPassport(emp, dataUrl);
+    await setPassport(emp, dataUrl, { fromProfile: !!req.body.fromProfile || !!req.body.useProfilePhoto });
     await logAudit(session, "set_id_photo", `employee ${emp.id}`, emp.fullName);
     return res.json({ ok: true, ...(await cardPayload(emp, { forAdmin: true })) });
   }
