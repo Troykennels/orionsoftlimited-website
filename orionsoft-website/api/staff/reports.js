@@ -1,7 +1,8 @@
 import { newId, putRecord, getRecord, listRecords, listByArrayIndex, addToArrayIndex } from "../_lib/records.js";
 import { officeContext, notify, logActivity, awardOnce } from "../_lib/office.js";
-import { approversFor, canApproveFor } from "../_lib/roles.js";
+import { canReviewReport, reportReviewers, reportManagers } from "../_lib/roles.js";
 import { notifyReportSubmitted, notifyReportReviewed } from "../_lib/emailTemplates.js";
+import { renderWeeklyReportPdf, reportPdfName } from "../_lib/reportPdf.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -18,9 +19,22 @@ export default async function handler(req, res) {
   const byId = new Map(employees.map(e => [e.id, e]));
 
   if (req.method === "GET") {
+    // PDF download: your own report, or one you are allowed to review.
+    if (req.query.pdf) {
+      const report = await getRecord("reports", String(req.query.pdf));
+      const owner = report && byId.get(report.employeeId);
+      if (!report || (report.employeeId !== me.id && !canReviewReport(me, report, owner, employees, catalog))) {
+        return res.status(404).json({ error: "Report not found" });
+      }
+      const pdf = Buffer.from(await renderWeeklyReportPdf(report, owner));
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${reportPdfName(report, owner)}"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      return res.send(pdf);
+    }
     if (req.query.scope === "team") {
       const allReports = await listRecords("reports");
-      const teamReports = allReports.filter(r => canApproveFor(me, byId.get(r.employeeId), employees, catalog));
+      const teamReports = allReports.filter(r => canReviewReport(me, r, byId.get(r.employeeId), employees, catalog));
       return res.json({ ok: true, reports: teamReports.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt)) });
     }
     const reports = await listByArrayIndex("reports", "employee", session.sub);
@@ -75,10 +89,11 @@ export default async function handler(req, res) {
 
     await awardOnce(me.id, "report", String(weekStart)); // one report per week earns points
     await logActivity(me.id, "report", `Submitted weekly report (${weekStart} to ${weekEnd})`);
-    await notify(approversFor(me, employees, catalog), { type: "approval", title: `${me.fullName} submitted a weekly report`, body: summary.slice(0, 160), link: "approvals", actorId: me.id });
-    try { await notifyReportSubmitted(report, me); } catch { /* email is best-effort, never block the submission */ }
+    const managers = reportManagers(report, me, employees, catalog);
+    await notify(reportReviewers(report, me, employees, catalog), { type: "approval", title: `${me.fullName} submitted a weekly report`, body: summary.slice(0, 160), link: "approvals", actorId: me.id });
+    try { await notifyReportSubmitted(report, me, managers); } catch { /* email is best-effort, never block the submission */ }
 
-    return res.json({ ok: true, report });
+    return res.json({ ok: true, report, sentTo: managers.map(m => m.fullName) });
   }
 
   if (req.method === "PATCH") {
@@ -89,7 +104,7 @@ export default async function handler(req, res) {
     const report = await getRecord("reports", id);
     if (!report) return res.status(404).json({ error: "Report not found" });
     const targetEmployee = byId.get(report.employeeId);
-    if (!canApproveFor(me, targetEmployee, employees, catalog)) {
+    if (!canReviewReport(me, report, targetEmployee, employees, catalog)) {
       return res.status(403).json({ error: "You can only review reports from people in your reporting line" });
     }
 

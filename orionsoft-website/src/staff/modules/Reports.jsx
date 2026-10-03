@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { C, font } from "../theme.js";
-import { api, fmtDate, naira } from "../api.js";
+import { api, fmtDate } from "../api.js";
+import ReportView from "./ReportView.jsx";
 import { Btn, Badge, SectionCard, SectionTitle, Label, Input, Textarea, Select, EmptyState, PageHeader, Grid, Field, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
 
@@ -78,13 +79,13 @@ export default function Reports() {
     if (!form.declarationConfirmed) { toast("Please confirm the declaration at the bottom", "err"); return; }
     setSubmitting(true);
     try {
-      await api("/api/staff/reports", { method: "POST", body: {
+      const j = await api("/api/staff/reports", { method: "POST", body: {
         ...form,
         totals: Object.fromEntries(Object.entries(form.totals).map(([k, v]) => [k, num(v)])),
         nextWeekPlan: Object.fromEntries(Object.entries(form.nextWeekPlan).map(([k, v]) => [k, num(v)])),
         prospects, sales, followUps,
       } });
-      toast("Report submitted. Your manager has been notified.");
+      toast(j.sentTo?.length ? `Report submitted and sent to ${j.sentTo.join(" and ")}.` : "Report submitted. No line manager is set on your profile yet, so it went to management.");
       setForm(emptyForm(office.lineManager?.fullName)); setProspects([]); setSales([]); setFollowUps([]);
       load(); reload();
     } catch (e) { toast(e.message, "err"); } finally { setSubmitting(false); }
@@ -167,9 +168,7 @@ export default function Reports() {
               <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status === "submitted" ? "awaiting review" : r.status}</Badge>
             </button>
             {expanded === r.id && (
-              <div style={{ marginTop: 8, fontSize: 13, color: C.text, lineHeight: 1.7 }}>
-                Prospects {r.totals?.prospectsContacted || 0} · Meetings {r.totals?.meetingsHeld || 0} · Demos {r.totals?.productDemos || 0} · Sales {r.totals?.salesClosed || 0} ({naira(r.totals?.salesValue)})
-              </div>
+              <div style={{ marginTop: 10 }}><ReportView report={r} /></div>
             )}
             {r.reviewNotes && <div style={{ fontSize: 12.5, color: C.text, marginTop: 6 }}><strong>{r.reviewedByName || "Reviewer"}:</strong> {r.reviewNotes}</div>}
           </div>

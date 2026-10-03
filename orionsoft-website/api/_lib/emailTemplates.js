@@ -2,6 +2,7 @@
 // Every admin/staff workflow that changes a record's status calls the matching
 // function here, which renders the HTML and sends it via api/_lib/mailer.js.
 import { sendEmail, brandedShell } from "./mailer.js";
+import { renderWeeklyReportPdf, reportPdfName } from "./reportPdf.js";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
@@ -20,18 +21,102 @@ function fmtDate(d) {
 }
 
 // ─── Weekly reports ──────────────────────────────────────────────────────────
-export async function notifyReportSubmitted(report, employee) {
-  const html = brandedShell(`
-    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">New weekly report submitted</h2>
-    <p style="color:#3A4556;font-size:14px;line-height:1.7;">
-      <strong>${employee?.fullName || "An employee"}</strong> submitted their report for
-      ${fmtDate(report.weekStart)} – ${fmtDate(report.weekEnd)}.
-    </p>
-    ${report.productFocus ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Focus:</strong> ${report.productFocus}</p>` : ""}
-    <p style="color:#3A4556;font-size:14px;line-height:1.7;">${report.summary}</p>
-    <p style="margin-top:20px;"><a href="${APP_BASE_URL}/admin" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Review in Admin →</a></p>
-  `, { title: "Weekly Report Submitted" });
-  return sendEmail(ADMIN_EMAIL, `Weekly report submitted: ${employee?.fullName || "Employee"}`, html, { kind: "report_submitted" });
+// The whole report, section by section in the order of the form. Free text
+// keeps its line breaks; empty sections are left out.
+const naira = v => `₦${(Number(v) || 0).toLocaleString("en-NG")}`;
+const para = v => esc(v).replace(/\r?\n/g, "<br>");
+
+function rSection(title, inner) {
+  return `<tr><td style="padding:22px 0 0;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#A88A2E;padding-bottom:6px;border-bottom:2px solid #F0E6C8;margin-bottom:12px;">${title}</div>
+    ${inner}
+  </td></tr>`;
+}
+
+function rText(label, value) {
+  if (!value) return "";
+  return `<div style="margin:0 0 14px;">
+    ${label ? `<div style="font-size:12.5px;font-weight:700;color:#0A2540;margin-bottom:4px;">${label}</div>` : ""}
+    <div style="font-size:14px;color:#3A4556;line-height:1.7;">${para(value)}</div>
+  </div>`;
+}
+
+// Figures as a 2-column grid (reads well on phones, unlike a wide row).
+function rFigures(items, values) {
+  const cells = items.map(([k, label, money]) => `<td width="50%" style="padding:4px;">
+    <div style="background:#F4F6FA;border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11.5px;color:#6B7A96;">${label}</div>
+      <div style="font-size:17px;font-weight:800;color:#0A2540;margin-top:2px;">${money ? naira(values?.[k]) : (Number(values?.[k]) || 0)}</div>
+    </div></td>`);
+  let rows = "";
+  for (let i = 0; i < cells.length; i += 2) rows += `<tr>${cells[i]}${cells[i + 1] || '<td width="50%"></td>'}</tr>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 -4px;">${rows}</table>`;
+}
+
+// Each row of a repeating section as its own small card: a title line plus
+// labelled details, which stays readable in any mail client width.
+function rCards(rows, { title, badge, fields }) {
+  return rows.map(row => {
+    const details = fields
+      .map(([k, label, kind]) => {
+        const v = row?.[k];
+        if (v === "" || v == null) return "";
+        const shown = kind === "money" ? naira(v) : kind === "date" ? esc(fmtDate(v)) : esc(v);
+        return `<div style="font-size:13px;color:#3A4556;line-height:1.6;"><span style="color:#6B7A96;">${label}:</span> ${shown}</div>`;
+      }).join("");
+    return `<div style="border:1px solid #E5E9F0;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+      <div style="font-size:14px;font-weight:700;color:#0A2540;margin-bottom:4px;">${esc(row?.[title] || "—")}${badge && row?.[badge] ? ` <span style="font-size:11px;font-weight:700;color:#1D4ED8;background:#E8EFFE;border-radius:10px;padding:2px 8px;margin-left:4px;">${esc(row[badge])}</span>` : ""}</div>
+      ${details}
+    </div>`;
+  }).join("");
+}
+
+function reportEmailBody(report, employee, { intro, href, label }) {
+  const r = report;
+  const meta = [["Staff", employee?.fullName], ["Week", `${fmtDate(r.weekStart)} to ${fmtDate(r.weekEnd)}`], ["Territory", r.territory], ["Reporting manager", r.reportingManager], ["Product focus", r.productFocus]]
+    .filter(([, v]) => v)
+    .map(([k, v]) => `<tr><td style="font-size:13px;color:#6B7A96;padding:4px 12px 4px 0;white-space:nowrap;vertical-align:top;">${k}</td><td style="font-size:13px;color:#0A2540;font-weight:600;padding:4px 0;">${esc(v)}</td></tr>`).join("");
+  const targets = (r.keyTargets || []).filter(Boolean);
+  const intel = [["Challenges", r.challenges], ["Objections from prospects", r.objections], ["Support needed", r.supportNeeded], ["Competitors encountered", r.competitors], ["Competitor pricing/features", r.competitorPricing], ["Market trends", r.marketTrends], ["Other information", r.otherInfo]].filter(([, v]) => v);
+
+  return `
+    <h2 style="color:#0A2540;font-size:19px;margin:0 0 6px;">Weekly report: ${esc(employee?.fullName || "Staff member")}</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.6;margin:0 0 16px;">${intro}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="background:#F4F6FA;border-radius:10px;padding:12px 16px;width:100%;">${meta}</table>
+    ${btn(href, label)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${rSection("1. Weekly summary", rText("", r.summary) + rFigures([["prospectsContacted", "Prospects contacted"], ["physicalVisits", "Physical visits"], ["meetingsHeld", "Meetings held"], ["productDemos", "Product demos"], ["proposalsSent", "Proposals sent"], ["newLeadsGenerated", "New leads"], ["salesClosed", "Sales closed"], ["salesValue", "Sales value", true]], r.totals))}
+      ${r.prospects?.length ? rSection(`2. Prospect &amp; customer activity (${r.prospects.length})`, rCards(r.prospects, { title: "organisation", badge: "status", fields: [["contactPerson", "Contact"], ["contactDate", "Date", "date"], ["productInterest", "Interest"], ["nextAction", "Next action"]] })) : ""}
+      ${r.sales?.length ? rSection(`3. Sales &amp; revenue (${r.sales.length})`, rCards(r.sales, { title: "customer", fields: [["productPlan", "Product/plan"], ["saleValue", "Value", "money"], ["paymentStatus", "Payment"], ["onboardingStatus", "Onboarding"], ["expectedCommission", "Commission", "money"]] })) : ""}
+      ${r.followUps?.length ? rSection(`4. Follow-ups for next week (${r.followUps.length})`, rCards(r.followUps, { title: "prospect", fields: [["reason", "Reason"], ["plannedDate", "Planned", "date"], ["expectedOutcome", "Expected outcome"]] })) : ""}
+      ${intel.length ? rSection("5. Challenges &amp; market intelligence", intel.map(([l, v]) => rText(l, v)).join("")) : ""}
+      ${rSection("6. Next week's plan", rFigures([["organisationsToVisit", "Organisations to visit"], ["prospectsToFollowUp", "Prospects to follow up"], ["meetingsPlanned", "Meetings planned"], ["demosPlanned", "Demos planned"], ["expectedProposals", "Expected proposals"], ["expectedSales", "Expected sales", true]], r.nextWeekPlan)
+        + (targets.length ? `<div style="font-size:12.5px;font-weight:700;color:#0A2540;margin:14px 0 4px;">Key targets</div><ol style="margin:0;padding-left:20px;font-size:14px;color:#3A4556;line-height:1.7;">${targets.map(t => `<li>${esc(t)}</li>`).join("")}</ol>` : ""))}
+    </table>
+    <p style="color:#6B7A96;font-size:12px;line-height:1.6;margin-top:22px;">${esc(employee?.fullName || "The employee")} confirmed this report is accurate. Submitted ${esc(fmtDate(r.submittedAt || Date.now()))}.</p>
+  `;
+}
+
+// Sent to the admin inbox and to each of the submitter's managers (line
+// manager and/or the named reporting manager), each with their own review link.
+export async function notifyReportSubmitted(report, employee, managers = []) {
+  const name = employee?.fullName || "Employee";
+  const subject = `Weekly report: ${name} (${fmtDate(report.weekStart)} to ${fmtDate(report.weekEnd)})`;
+  // The same report as a PDF attachment, for filing or forwarding.
+  let attachments;
+  try { attachments = [{ filename: reportPdfName(report, employee), content: Buffer.from(await renderWeeklyReportPdf(report, employee)) }]; } catch { /* send without it */ }
+  const sends = [sendEmail(ADMIN_EMAIL, subject, brandedShell(reportEmailBody(report, employee, {
+    intro: `${esc(name)} has submitted their weekly report. The full report is below and attached as a PDF.`,
+    href: `${APP_BASE_URL}/admin`, label: "Review in Admin →",
+  }), { title: "Weekly Report Submitted" }), { kind: "report_submitted", attachments })];
+  for (const m of managers) {
+    if (!m?.email || m.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) continue;
+    sends.push(sendEmail(m.email, subject, brandedShell(reportEmailBody(report, employee, {
+      intro: `Hi ${esc(m.fullName)}, ${esc(name)} reports to you and has submitted their weekly report. Please review it in the Staff Office.`,
+      href: `${APP_BASE_URL}/staff/approvals`, label: "Review in the Staff Office →",
+    }), { title: "Weekly Report For Your Review" }), { kind: "report_submitted_manager", attachments }));
+  }
+  return Promise.allSettled(sends);
 }
 
 export async function notifyReportReviewed(report, employee) {
@@ -42,7 +127,7 @@ export async function notifyReportReviewed(report, employee) {
       Hi ${employee?.fullName || ""}, your report for ${fmtDate(report.weekStart)} – ${fmtDate(report.weekEnd)} has been
       <strong style="color:${approved ? "#10B981" : "#F43F5E"};">${report.status}</strong>.
     </p>
-    ${report.reviewNotes ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Reviewer notes:</strong> ${report.reviewNotes}</p>` : ""}
+    ${report.reviewNotes ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Reviewer notes:</strong><br>${para(report.reviewNotes)}</p>` : ""}
   `, { title: "Weekly Report Reviewed" });
   return sendEmail(employee.email, `Your weekly report was ${report.status}`, html, { kind: "report_reviewed" });
 }

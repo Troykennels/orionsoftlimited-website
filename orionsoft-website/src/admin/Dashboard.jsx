@@ -3829,13 +3829,38 @@ function ReportDetailCard({ title, children }) {
   );
 }
 
+const preWrap = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" };
+const reportPdfLink = { display: "inline-flex", alignItems: "center", gap: 6, color: C.gold, fontWeight: 700, fontSize: 13, fontFamily: font, textDecoration: "none", border: `1px solid ${C.gold}`, borderRadius: 8, padding: "5px 12px" };
+const naira = v => `₦${Number(v || 0).toLocaleString()}`;
+
+function ReportField({ label, value }) {
+  if (!value) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.heading, marginBottom: 3 }}>{label}</div>
+      <div style={preWrap}>{value}</div>
+    </div>
+  );
+}
+
 function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide, onBack }) {
   const activityCount = (r.prospects?.length || 0) + (r.sales?.length || 0) + (r.followUps?.length || 0);
   const [err, setErr] = useState("");
+  const [managers, setManagers] = useState(null);
+  const [fwd, setFwd] = useState({ busy: false, msg: "", ok: false });
+  useEffect(() => {
+    fetch(`/api/admin/reports?id=${encodeURIComponent(r.id)}`).then(x => x.json()).then(j => setManagers(j.managers || [])).catch(() => setManagers([]));
+  }, [r.id]);
   async function decideClick(status) {
     setErr("");
     const result = await onDecide(r, status);
     if (!result?.ok) setErr(result?.error || "Failed to save this decision.");
+  }
+  async function forward() {
+    setFwd({ busy: true, msg: "", ok: false });
+    const x = await fetch("/api/admin/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "forward", id: r.id }) });
+    const j = await x.json().catch(() => ({}));
+    setFwd({ busy: false, ok: x.ok, msg: x.ok ? `Sent to ${j.sentTo.join(" and ")}.` : (j.error || "Could not send the report.") });
   }
   return (
     <div>
@@ -3851,7 +3876,10 @@ function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide
             {r.productFocus ? `${r.productFocus} · ` : ""}{r.weekStart} – {r.weekEnd}{r.territory ? ` · ${r.territory}` : ""}
           </div>
         </div>
-        <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <a href={`/api/admin/reports?pdf=${encodeURIComponent(r.id)}&download=1`} style={reportPdfLink}><Download size={14} /> Download PDF</a>
+          <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 20 }}>
@@ -3862,64 +3890,85 @@ function WeeklyReportDetail({ report: r, employeeName, notes, setNotes, onDecide
         <ReportStat label="Reviewed" value={r.reviewedAt ? new Date(r.reviewedAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" }) : "—"} />
       </div>
 
-      <ReportDetailCard title="Summary">
-        {r.summary || "—"}
-        {r.reportingManager && <div style={{ marginTop: 10, fontSize: 12.5, color: C.textMuted }}>Reporting manager: {r.reportingManager}</div>}
+      <ReportDetailCard title="Sent to">
+        {managers === null ? <span style={{ color: C.textMuted }}>Checking…</span>
+          : managers.length > 0 ? <div>Admin inbox and <strong style={{ color: C.heading }}>{managers.map(m => m.fullName).join(" and ")}</strong> (line manager).</div>
+          : <div style={{ color: C.amber }}>Admin inbox only. {employeeName(r.employeeId)} has no line manager set{r.reportingManager ? `, and "${r.reportingManager}" does not match exactly one active employee` : ""}. Set their manager under Staff Office → Employees & Roles.</div>}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
+          <Btn small variant="ghost" onClick={forward} disabled={fwd.busy || !managers?.length}>{fwd.busy ? "Sending…" : "Send this report to the manager"}</Btn>
+          {fwd.msg && <span style={{ fontSize: 13, color: fwd.ok ? C.mint : C.rose }}>{fwd.msg}</span>}
+        </div>
+      </ReportDetailCard>
+
+      <ReportDetailCard title="1. Weekly summary">
+        <div style={preWrap}>{r.summary || "—"}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8, marginTop: 14 }}>
+          {[["Prospects contacted", r.totals?.prospectsContacted], ["Physical visits", r.totals?.physicalVisits], ["Meetings held", r.totals?.meetingsHeld], ["Product demos", r.totals?.productDemos], ["Proposals sent", r.totals?.proposalsSent], ["New leads", r.totals?.newLeadsGenerated], ["Sales closed", r.totals?.salesClosed], ["Sales value", naira(r.totals?.salesValue)]].map(([l, v]) => <ReportStat key={l} label={l} value={v || 0} />)}
+        </div>
+        {r.reportingManager && <div style={{ marginTop: 12, fontSize: 12.5, color: C.textMuted }}>Reporting manager (as typed): {r.reportingManager}</div>}
       </ReportDetailCard>
 
       {r.prospects?.length > 0 && (
-        <ReportDetailCard title={`Prospects (${r.prospects.length})`}>
+        <ReportDetailCard title={`2. Prospect & customer activity (${r.prospects.length})`}>
           {r.prospects.map((p, i) => (
             <div key={i} style={{ padding: "10px 0", borderBottom: i < r.prospects.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <strong style={{ color: C.heading }}>{p.organisation}</strong> — {p.contactPerson} <Badge color={C.blue}>{p.status}</Badge>
-              {p.nextAction && <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>Next: {p.nextAction}</div>}
+              <strong style={{ color: C.heading }}>{p.organisation || "—"}</strong> {p.status && <Badge color={C.blue}>{p.status}</Badge>}
+              <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>
+                {[p.contactPerson && `Contact: ${p.contactPerson}`, p.contactDate && `Date: ${p.contactDate}`, p.productInterest && `Interest: ${p.productInterest}`].filter(Boolean).join("  ·  ")}
+              </div>
+              {p.nextAction && <div style={{ fontSize: 12.5, color: C.text, marginTop: 3 }}>Next action: {p.nextAction}</div>}
             </div>
           ))}
         </ReportDetailCard>
       )}
 
       {r.sales?.length > 0 && (
-        <ReportDetailCard title={`Sales (${r.sales.length})`}>
+        <ReportDetailCard title={`3. Sales & revenue (${r.sales.length})`}>
           {r.sales.map((s, i) => (
             <div key={i} style={{ padding: "10px 0", borderBottom: i < r.sales.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <strong style={{ color: C.heading }}>{s.customer}</strong> — {s.productPlan} — ₦{Number(s.saleValue || 0).toLocaleString()} <Badge color={C.mint}>{s.paymentStatus}</Badge>
+              <strong style={{ color: C.heading }}>{s.customer || "—"}</strong> · {naira(s.saleValue)} {s.paymentStatus && <Badge color={C.mint}>{s.paymentStatus}</Badge>}
+              <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>
+                {[s.productPlan && `Product: ${s.productPlan}`, s.onboardingStatus && `Onboarding: ${s.onboardingStatus}`, s.expectedCommission && `Commission: ${naira(s.expectedCommission)}`].filter(Boolean).join("  ·  ")}
+              </div>
             </div>
           ))}
         </ReportDetailCard>
       )}
 
       {r.followUps?.length > 0 && (
-        <ReportDetailCard title={`Follow-ups (${r.followUps.length})`}>
+        <ReportDetailCard title={`4. Follow-ups for next week (${r.followUps.length})`}>
           {r.followUps.map((f, i) => (
             <div key={i} style={{ padding: "10px 0", borderBottom: i < r.followUps.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <strong style={{ color: C.heading }}>{f.prospect}</strong> — {f.reason} — by {f.plannedDate}
+              <strong style={{ color: C.heading }}>{f.prospect || "—"}</strong>{f.plannedDate ? ` · by ${f.plannedDate}` : ""}
+              {f.reason && <div style={{ fontSize: 12.5, color: C.text, marginTop: 3 }}>Reason: {f.reason}</div>}
+              {f.expectedOutcome && <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 3 }}>Expected outcome: {f.expectedOutcome}</div>}
             </div>
           ))}
         </ReportDetailCard>
       )}
 
-      {(r.challenges || r.objections || r.supportNeeded) && (
-        <ReportDetailCard title="Challenges & support needed">
-          {r.challenges && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Challenges:</strong> {r.challenges}</div>}
-          {r.objections && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Objections:</strong> {r.objections}</div>}
-          {r.supportNeeded && <div><strong style={{ color: C.heading }}>Support needed:</strong> {r.supportNeeded}</div>}
+      {(r.challenges || r.objections || r.supportNeeded || r.competitors || r.competitorPricing || r.marketTrends || r.otherInfo) && (
+        <ReportDetailCard title="5. Challenges & market intelligence">
+          <ReportField label="Challenges" value={r.challenges} />
+          <ReportField label="Objections from prospects" value={r.objections} />
+          <ReportField label="Support needed" value={r.supportNeeded} />
+          <ReportField label="Competitors encountered" value={r.competitors} />
+          <ReportField label="Competitor pricing/features" value={r.competitorPricing} />
+          <ReportField label="Market trends" value={r.marketTrends} />
+          <ReportField label="Other information" value={r.otherInfo} />
         </ReportDetailCard>
       )}
 
-      {(r.competitors || r.marketTrends) && (
-        <ReportDetailCard title="Market intelligence">
-          {r.competitors && <div style={{ marginBottom: 8 }}><strong style={{ color: C.heading }}>Competitors:</strong> {r.competitors}</div>}
-          {r.marketTrends && <div><strong style={{ color: C.heading }}>Market trends:</strong> {r.marketTrends}</div>}
-        </ReportDetailCard>
-      )}
-
-      {r.keyTargets?.filter(Boolean).length > 0 && (
-        <ReportDetailCard title="Next week's key targets">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
+      <ReportDetailCard title="6. Next week's plan">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 8 }}>
+          {[["Organisations to visit", r.nextWeekPlan?.organisationsToVisit], ["Prospects to follow up", r.nextWeekPlan?.prospectsToFollowUp], ["Meetings planned", r.nextWeekPlan?.meetingsPlanned], ["Demos planned", r.nextWeekPlan?.demosPlanned], ["Expected proposals", r.nextWeekPlan?.expectedProposals], ["Expected sales", naira(r.nextWeekPlan?.expectedSales)]].map(([l, v]) => <ReportStat key={l} label={l} value={v || 0} />)}
+        </div>
+        {r.keyTargets?.filter(Boolean).length > 0 && (
+          <ol style={{ margin: "14px 0 0", paddingLeft: 20 }}>
             {r.keyTargets.filter(Boolean).map((t, i) => <li key={i} style={{ marginBottom: 4 }}>{t}</li>)}
-          </ul>
-        </ReportDetailCard>
-      )}
+          </ol>
+        )}
+      </ReportDetailCard>
 
       <SectionCard>
         <SectionTitle>Review</SectionTitle>
@@ -3997,6 +4046,7 @@ function WeeklyReportsSection() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Badge color={r.status === "approved" ? C.mint : r.status === "rejected" ? C.rose : C.amber}>{r.status}</Badge>
+                <a href={`/api/admin/reports?pdf=${encodeURIComponent(r.id)}&download=1`} style={reportPdfLink} title="Download PDF"><Download size={14} /> PDF</a>
                 <Btn small variant="ghost" onClick={() => setViewing(r.id)}>Open full review</Btn>
               </div>
             </div>

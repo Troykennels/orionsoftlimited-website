@@ -7,7 +7,7 @@ import {
   officeContext, officeCard, ensureSlugs, listNotifications, markNotificationsRead,
   leaderboard, listActivity, effectivePresence,
 } from "../_lib/office.js";
-import { PERMISSIONS, managerChain, directReports, subordinates, canApproveFor } from "../_lib/roles.js";
+import { PERMISSIONS, managerChain, directReports, subordinates, canApproveFor, canReviewReport } from "../_lib/roles.js";
 import { runAutomations, lagosDate, toLagos } from "../_lib/automations.js";
 
 export const OFFICE_CONFIG_KEY = "orionsoft:office:config";
@@ -69,10 +69,14 @@ export default async function handler(req, res) {
       const byId = new Map(employees.map(e => [e.id, e]));
       const approvals = {
         leave: leave.filter(l => l.status === "pending" && canApprove(byId.get(l.employeeId))).length,
-        reports: reports.filter(r => r.status === "submitted" && canApprove(byId.get(r.employeeId))).length,
+        reports: reports.filter(r => r.status === "submitted" && canReviewReport(me, r, byId.get(r.employeeId), employees, catalog)).length,
         expenses: ctx.can("finance.approve") ? expenses.filter(x => x.status === "pending" && x.employeeId !== me.id).length : 0,
       };
       const lineManager = managerChain(me, employees, catalog)[0] || null;
+      // Line managers (and named reporting managers) review weekly reports even
+      // when their role carries no approval permission.
+      const reviewsReports = directReports(me, active, catalog).length > 0
+        || reports.some(r => canReviewReport(me, r, byId.get(r.employeeId), employees, catalog));
       return res.json({
         ok: true,
         me: { ...stripPrivate(me), presence: effectivePresence(me), permissions: [...ctx.perms], role: catalog.find(r => r.id === me.staffRole) || null, viaAdmin: !!ctx.session.viaAdmin, googleLinked: !!me.googleSub },
@@ -86,7 +90,7 @@ export default async function handler(req, res) {
         myOpenTasks: tasks.filter(t => t.assigneeId === me.id && t.status !== "done").length,
         todaysMeetings: meetings.filter(m => toLagos(m.startsAt).slice(0, 10) === today && m.status !== "cancelled"
           && (m.hostId === me.id || (m.attendeeIds || []).includes(me.id))).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
-        approvals,
+        approvals, reviewsReports,
         pendingSpotChecks: spots.filter(s => s.employeeId === me.id && s.status === "pending" && Date.parse(s.dueAt) > Date.now()).map(s => ({ id: s.id, dueAt: s.dueAt })),
         today,
       });

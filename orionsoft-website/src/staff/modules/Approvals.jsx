@@ -4,6 +4,7 @@ import { C } from "../theme.js";
 import { api, fmtDate, naira, timeAgo } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, Input, EmptyState, PageHeader, Tabs, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
+import ReportView from "./ReportView.jsx";
 
 function Row({ who, title, sub, children, extra }) {
   const { person, openPerson } = useOffice();
@@ -38,8 +39,10 @@ function Decide({ onDecide, approveLabel = "Approve" }) {
 }
 
 export default function Approvals() {
-  const { can, reload } = useOffice();
-  const [tab, setTab] = useState(can("team.approve") || can("org.approve") ? "leave" : "expenses");
+  const { can, reload, office } = useOffice();
+  const leaveApprover = can("team.approve") || can("org.approve");
+  const reportReviewer = leaveApprover || !!office.reviewsReports;
+  const [tab, setTab] = useState(leaveApprover ? "leave" : reportReviewer ? "reports" : "expenses");
   const [leave, setLeave] = useState([]);
   const [reports, setReports] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -47,13 +50,16 @@ export default function Approvals() {
 
   const load = useCallback(async () => {
     try {
-      if (can("team.approve") || can("org.approve")) {
-        const [l, r] = await Promise.all([api("/api/staff/leave?scope=team"), api("/api/staff/reports?scope=team")]);
-        setLeave(l.leave); setReports(r.reports);
-      }
-      if (can("finance.approve")) setExpenses((await api("/api/staff/expenses")).toApprove);
+      const [l, r, x] = await Promise.all([
+        leaveApprover ? api("/api/staff/leave?scope=team") : null,
+        reportReviewer ? api("/api/staff/reports?scope=team") : null,
+        can("finance.approve") ? api("/api/staff/expenses") : null,
+      ]);
+      if (l) setLeave(l.leave);
+      if (r) setReports(r.reports);
+      if (x) setExpenses(x.toApprove);
     } catch (e) { toast(e.message, "err"); }
-  }, [can]);
+  }, [can, leaveApprover, reportReviewer]);
   useEffect(() => { load(); }, [load]);
 
   async function decide(path, body, msg) {
@@ -63,14 +69,15 @@ export default function Approvals() {
   const pendingLeave = leave.filter(l => l.status === "pending");
   const pendingReports = reports.filter(r => r.status === "submitted");
   const tabs = [
-    ...(can("team.approve") || can("org.approve") ? [{ id: "leave", label: "Leave", count: pendingLeave.length }, { id: "reports", label: "Weekly reports", count: pendingReports.length }] : []),
+    ...(leaveApprover ? [{ id: "leave", label: "Leave", count: pendingLeave.length }] : []),
+    ...(reportReviewer ? [{ id: "reports", label: "Weekly reports", count: pendingReports.length }] : []),
     ...(can("finance.approve") ? [{ id: "expenses", label: "Expense claims", count: expenses.length }] : []),
-    ...(can("team.approve") || can("org.approve") ? [{ id: "history", label: "Decided" }] : []),
+    ...(reportReviewer ? [{ id: "history", label: "Decided" }] : []),
   ];
 
   return (
     <div>
-      <PageHeader title="Approvals" sub={can("org.approve") ? "Requests from across the company." : "Requests from people who report to you."} />
+      <PageHeader title="Approvals" sub={can("org.approve") ? "Requests from across the company." : leaveApprover ? "Requests from people who report to you." : "Weekly reports from people who report to you."} />
       <Tabs active={tab} onChange={setTab} tabs={tabs} />
 
       {tab === "leave" && (pendingLeave.length === 0 ? <EmptyState>No leave requests waiting. 🎉</EmptyState> : pendingLeave.map(l => (
@@ -80,22 +87,14 @@ export default function Approvals() {
       )))}
 
       {tab === "reports" && (pendingReports.length === 0 ? <EmptyState>No reports waiting for review.</EmptyState> : pendingReports.map(r => (
-        <Row key={r.id} who={r.employeeId} title={<>Week {fmtDate(r.weekStart)} to {fmtDate(r.weekEnd)}{r.productFocus ? ` · ${r.productFocus}` : ""}</>} sub={r.summary}
+        <Row key={r.id} who={r.employeeId} title={<>Week {fmtDate(r.weekStart)} to {fmtDate(r.weekEnd)}{r.productFocus ? ` · ${r.productFocus}` : ""}</>} sub={open === r.id ? null : (r.summary?.length > 220 ? `${r.summary.slice(0, 220)}…` : r.summary)}
           extra={<>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: C.textMuted, marginTop: 8 }}>
               <span>Prospects {r.totals?.prospectsContacted || 0}</span><span>Visits {r.totals?.physicalVisits || 0}</span><span>Meetings {r.totals?.meetingsHeld || 0}</span><span>Demos {r.totals?.productDemos || 0}</span><span>Sales {r.totals?.salesClosed || 0} ({naira(r.totals?.salesValue)})</span>
             </div>
-            <Btn small variant="ghost" onClick={() => setOpen(open === r.id ? null : r.id)} style={{ marginTop: 8 }}>{open === r.id ? "Hide details" : "Full report"}</Btn>
-            {open === r.id && (
-              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.7, marginTop: 8 }}>
-                {r.prospects?.length > 0 && <div><strong>Prospects:</strong> {r.prospects.map(p => `${p.organisation} (${p.status || "—"})`).join(", ")}</div>}
-                {r.sales?.length > 0 && <div><strong>Sales:</strong> {r.sales.map(s => `${s.customer} ${naira(s.saleValue)}`).join(", ")}</div>}
-                {r.challenges && <div><strong>Challenges:</strong> {r.challenges}</div>}
-                {r.supportNeeded && <div><strong>Support needed:</strong> {r.supportNeeded}</div>}
-                {r.keyTargets?.length > 0 && <div><strong>Next week:</strong> {r.keyTargets.join(" · ")}</div>}
-              </div>
-            )}
+            <Btn small variant="ghost" onClick={() => setOpen(open === r.id ? null : r.id)} style={{ marginTop: 8 }}>{open === r.id ? "Hide full report" : "Read full report"}</Btn>
           </>}>
+          {open === r.id && <div style={{ marginTop: 14, paddingTop: 4, borderTop: `1px solid ${C.border}` }}><ReportView report={r} /></div>}
           <Decide onDecide={(ok, notes) => decide("/api/staff/reports", { id: r.id, status: ok ? "approved" : "rejected", reviewNotes: notes }, ok ? "Report approved" : "Report sent back")} />
         </Row>
       )))}

@@ -177,3 +177,43 @@ export function approversFor(target, employees, catalog) {
   }
   return [...ids];
 }
+
+// ─── Weekly reports ──────────────────────────────────────────────────────────
+// A weekly report always reaches the person it is addressed to: the submitter's
+// line manager (even if their role has no approval permission) and whoever
+// they typed in the report's "Reporting manager" box, when that name matches
+// exactly one active colleague.
+const TITLES = new Set(["mr", "mrs", "ms", "miss", "dr", "engr", "sir", "madam", "prof", "pastor", "chief"]);
+const nameTokens = s => String(s || "").toLowerCase().replace(/[^a-z\s'-]/g, " ").split(/[\s'-]+/).filter(t => t.length > 1 && !TITLES.has(t));
+
+export function namedManager(report, target, employees) {
+  const typed = nameTokens(report?.reportingManager);
+  if (!typed.length) return null;
+  const matches = employees.filter(e => {
+    if (e.id === target?.id || e.status !== "active") return false;
+    const mine = new Set(nameTokens(e.fullName));
+    return typed.every(t => mine.has(t));
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
+export function reportManagers(report, target, employees, catalog) {
+  const out = new Map();
+  const line = target ? managerChain(target, employees, catalog)[0] : null;
+  if (line && line.status === "active") out.set(line.id, line);
+  const named = namedManager(report, target, employees);
+  if (named) out.set(named.id, named);
+  return [...out.values()];
+}
+
+export function canReviewReport(actor, report, target, employees, catalog) {
+  if (!actor || !target || actor.id === target.id) return false;
+  if (canApproveFor(actor, target, employees, catalog)) return true;
+  return reportManagers(report, target, employees, catalog).some(m => m.id === actor.id);
+}
+
+export function reportReviewers(report, target, employees, catalog) {
+  const ids = new Set(approversFor(target, employees, catalog));
+  for (const m of reportManagers(report, target, employees, catalog)) ids.add(m.id);
+  return [...ids];
+}

@@ -39,7 +39,7 @@ const Performance = lazy(() => import("./modules/Performance.jsx"));
 
 // Navigation, filtered by what the signed-in person's role allows.
 function buildNav(can, counts) {
-  const approver = can("team.approve") || can("org.approve") || can("finance.approve");
+  const approver = can("team.approve") || can("org.approve") || can("finance.approve") || counts.reviewsReports;
   const approvalsCount = (counts.approvals?.leave || 0) + (counts.approvals?.reports || 0) + (counts.approvals?.expenses || 0);
   return [
     { group: "WORKSPACE", items: [
@@ -265,7 +265,7 @@ export default function StaffApp() {
   if (!session) return <StaffLogin notice={loginNotice} onLogin={u => { setLoginNotice(""); setSession(u); }} />;
   if (!ctx) return <div className="so-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: font }}>Opening the office…</div>;
 
-  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, spotChecks: (office.pendingSpotChecks || []).length };
+  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length };
   const nav = buildNav(ctx.can, counts);
   const allowed = new Set(nav.flatMap(g => g.items.map(i => i.id)));
   const mod = allowed.has(route.module) ? route.module : "home";
