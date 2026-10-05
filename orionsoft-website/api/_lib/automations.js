@@ -96,6 +96,33 @@ async function dailyJobs(today) {
     await notify([id], { type: "meeting", title: `You have ${ms.length} meeting${ms.length === 1 ? "" : "s"} today`, body: ms.map(m => `${toLagos(m.startsAt).slice(11, 16)} ${m.title}`).join(" · "), link: "meetings" });
   }
 
+  // 7am email digest on working days, for anyone with something waiting.
+  try { await dailyDigests(today, active, employees, tasks, meetings, leave, reports); } catch (err) { console.error("[digest]", err.message); }
+
+  // Probation ending and documents expiring: 30 days, 7 days, and on the day.
+  {
+    const { getRoleCatalog, can, managerChain } = await import("./roles.js");
+    const catalog = await getRoleCatalog();
+    const hr = active.filter(e => e.staffRole === "owner" || can(e, "hr.records", catalog)).map(e => e.id);
+    const daysTo = d => Math.round((Date.parse(d) - Date.parse(today)) / 86400000);
+    const when = n => (n === 0 ? "today" : n < 0 ? `${-n} days ago` : `in ${n} days`);
+    for (const e of active) {
+      const mgr = managerChain(e, employees, catalog)[0];
+      if (e.probationEndDate && [30, 7, 0].includes(daysTo(e.probationEndDate))) {
+        const n = daysTo(e.probationEndDate);
+        await notify([...hr, mgr?.id].filter(id => id && id !== e.id), { type: "reminder", title: `${e.fullName}'s probation ends ${when(n)}`, body: "Confirm, extend or end it, and record the review.", link: "team" });
+      }
+      for (const d of e.documents || []) {
+        if (!d.expiresOn) continue;
+        const n = daysTo(d.expiresOn);
+        if (![30, 7, 0, -1].includes(n)) continue;
+        const title = n < 0 ? `${e.fullName}'s ${d.name} has expired` : `${e.fullName}'s ${d.name} expires ${when(n)}`;
+        await notify(hr.filter(id => id !== e.id), { type: "reminder", title, body: d.number ? `No. ${d.number}` : "", link: "team" });
+        await notify([e.id], { type: "reminder", title: n < 0 ? `Your ${d.name} has expired` : `Your ${d.name} expires ${when(n)}`, body: "Please renew it and send HR a copy.", link: "profile" });
+      }
+    }
+  }
+
   // Approved leave starting today → presence switches to "on leave".
   for (const l of leave) {
     if (l.status === "approved" && l.startDate <= today && l.endDate >= today) {
@@ -111,6 +138,48 @@ async function dailyJobs(today) {
         await putRecord("employees", e.id, e);
       }
     }
+  }
+}
+
+async function planSummaries(today) {
+  const [plans, visits, employees, { getRoleCatalog, fieldWatchers }, { comparePlan }] = await Promise.all([
+    listRecords("visitplans"), listRecords("visits"), listRecords("employees"), import("./roles.js"), import("./visitPlans.js"),
+  ]);
+  const catalog = await getRoleCatalog();
+  for (const p of plans.filter(x => x.date === today && x.stops?.length)) {
+    const emp = employees.find(e => e.id === p.employeeId && e.status === "active");
+    if (!emp) continue;
+    const c = comparePlan(p, visits.filter(v => v.employeeId === emp.id && toLagos(v.checkIn.at).slice(0, 10) === today), { dayOver: true });
+    const missed = c.stops.filter(s => s.status === "missed").map(s => s.organisation);
+    await notify(fieldWatchers(emp, employees, catalog), {
+      type: "field",
+      title: `${emp.fullName} visited ${c.visited} of ${c.planned} planned clients today${missed.length ? "" : " ✅"}`,
+      body: [missed.length && `Missed: ${missed.join(", ")}`, c.unplanned.length && `Unplanned: ${c.unplanned.map(u => u.organisation).join(", ")}`].filter(Boolean).join(" · "),
+      link: "team:field",
+    });
+  }
+}
+
+async function dailyDigests(today, active, employees, tasks, meetings, leave, reports) {
+  const { OFFICE_CONFIG_KEY } = await import("../staff/office.js");
+  const cfg = (await get(OFFICE_CONFIG_KEY)) || {};
+  if (cfg.dailyDigest === false) return;
+  const { scheduleFor, isWorkDay } = await import("./workHours.js");
+  const { getRoleCatalog, canApproveFor, canReviewReport } = await import("./roles.js");
+  const { listNotifications } = await import("./office.js");
+  const { sendDailyDigest } = await import("./emailTemplates.js");
+  const catalog = await getRoleCatalog();
+  const byId = new Map(employees.map(e => [e.id, e]));
+  for (const e of active.filter(x => x.email)) {
+    if (!isWorkDay(scheduleFor(e, cfg), today)) continue;
+    const mine = meetings.filter(m => m.status !== "cancelled" && toLagos(m.startsAt).slice(0, 10) === today && (m.hostId === e.id || (m.attendeeIds || []).includes(e.id)))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt)).map(m => `${toLagos(m.startsAt).slice(11, 16)} ${m.title}`);
+    const overdue = tasks.filter(t => t.assigneeId === e.id && t.status !== "done" && t.dueDate && t.dueDate < today).map(t => `${t.title} (due ${t.dueDate})`);
+    const approvals = leave.filter(l => l.status === "pending" && canApproveFor(e, byId.get(l.employeeId), employees, catalog)).length
+      + reports.filter(r => r.status === "submitted" && canReviewReport(e, r, byId.get(r.employeeId), employees, catalog)).length;
+    const unread = (await listNotifications(e.id, 30)).items.filter(n => !n.read && Date.parse(n.at) > Date.now() - 36 * 3600000).map(n => n.title);
+    if (!mine.length && !overdue.length && !approvals && !unread.length) continue;
+    await sendDailyDigest(e, { meetings: mine, overdue, approvals, unread });
   }
 }
 
@@ -219,6 +288,31 @@ export async function runAutomations() {
     await meetingReminders();
     await spotChecks(now);
     try { if (await claim("orionsoft:automation:noclockin:tick", 900)) await missingClockIns(now); } catch (err) { console.error("[noclockin]", err.message); }
+    // Nightly backup by email (after 02:00 Lagos), once a day.
+    if (now.getUTCHours() >= 2) {
+      try {
+        await once(`orionsoft:automation:backup:${today}`, async () => {
+          const { emailBackup } = await import("./backup.js");
+          const r = await emailBackup();
+          await set("orionsoft:backup:last", { at: new Date().toISOString(), ok: r.ok, bytes: r.bytes, records: r.total });
+        });
+      } catch (err) { console.error("[backup]", err.message); }
+    }
+    // 19:00 Lagos: planned client visits that didn't happen today.
+    if (now.getUTCHours() >= 19) {
+      try { await once(`orionsoft:automation:plans:${today}`, () => planSummaries(today)); }
+      catch (err) { console.error("[plans]", err.message); }
+    }
+    // Data retention: monthly, strip old GPS points and photos.
+    try {
+      await once(`orionsoft:automation:retention:${today.slice(0, 7)}`, async () => {
+        const { OFFICE_CONFIG_KEY } = await import("../staff/office.js");
+        const months = Number((await get(OFFICE_CONFIG_KEY))?.retentionMonths) || 24;
+        const { purgeOldLocationData } = await import("./photos.js");
+        const n = await purgeOldLocationData(months);
+        if (n) console.log(`[retention] cleared location data on ${n} records older than ${months} months`);
+      });
+    } catch (err) { console.error("[retention]", err.message); }
     await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); }

@@ -2,6 +2,7 @@
 // ("hr.records" or "org.approve") see the whole company. Full HR records
 // (personal, emergency contact, bank) are only returned with "hr.records".
 import { listRecords } from "../_lib/records.js";
+import { withoutSecrets } from "../_lib/auth.js";
 import { officeContext, officeCard, leaderboard } from "../_lib/office.js";
 import { subordinates } from "../_lib/roles.js";
 import { lagosDate, toLagos } from "../_lib/automations.js";
@@ -9,8 +10,9 @@ import { getSites } from "../_lib/fieldIntel.js";
 import { scheduleFor, isWorkDay, describeSchedule } from "../_lib/workHours.js";
 import { get } from "../store.js";
 import { OFFICE_CONFIG_KEY } from "./office.js";
+import { comparePlan } from "../_lib/visitPlans.js";
 
-function stripPrivate(e) { const r = { ...e }; delete r.passwordHash; return r; }
+const stripPrivate = withoutSecrets;
 
 function workingDays(start, end) {
   let n = 0;
@@ -31,8 +33,8 @@ async function fieldView(scope, query, today, catalog) {
   const to = DATE.test(query.to || "") ? query.to : today;
   const ids = new Set(scope.map(e => e.id));
   const name = id => scope.find(e => e.id === id)?.fullName || "Former staff";
-  const [attendance, visits, spots, leave, sites, cfg] = await Promise.all([
-    listRecords("attendance"), listRecords("visits"), listRecords("spotchecks"), listRecords("leave"), getSites(), get(OFFICE_CONFIG_KEY),
+  const [attendance, visits, spots, leave, sites, cfg, plans] = await Promise.all([
+    listRecords("attendance"), listRecords("visits"), listRecords("spotchecks"), listRecords("leave"), getSites(), get(OFFICE_CONFIG_KEY), listRecords("visitplans"),
   ]);
   const onLeave = new Set(leave.filter(l => l.status === "approved" && l.startDate <= today && l.endDate >= today).map(l => l.employeeId));
   const day = iso => toLagos(iso).slice(0, 10);
@@ -75,6 +77,7 @@ async function fieldView(scope, query, today, catalog) {
       attendance: att ? { clockIn: att.clockIn, clockOut: att.clockOut, mode: att.mode, minutes: att.minutes, lateMinutes: att.lateMinutes || 0, earlyMinutes: att.earlyMinutes || 0, standup: att.standup?.today || "" } : null,
       openVisit: openVisit ? { id: openVisit.id, organisation: openVisit.organisation, since: openVisit.checkIn.at, trust: openVisit.trust, level: openVisit.level } : null,
       lastSeen: lastGeo ? { at: lastGeo.at, geo: lastGeo.geo, text: lastGeo.text } : null,
+      plan: comparePlan(plans.find(p => p.employeeId === e.id && p.date === today), todays),
       timeline,
     };
   });

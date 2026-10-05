@@ -184,7 +184,7 @@ export function AttendanceFieldSection() {
                   <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                     <td style={td}>{r.date}</td>
                     <td style={{ ...td, color: C.heading, fontWeight: 700 }}>{r.employeeName}</td>
-                    <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}</td>
+                    <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}{r.offlineSync && <Badge color={C.blue}>sent later (offline)</Badge>}</td>
                     <td style={td}>{r.clockInGeo ? <><a href={maps(r.clockInGeo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map ±{r.clockInGeo.accuracy}m</a>{r.clockInGeoLateSec > 60 && <span style={{ color: C.amber, fontSize: 12 }}> · {Math.round(r.clockInGeoLateSec / 60)} min later</span>}</> : <span style={{ color: C.rose }}>not shared</span>}</td>
                     <td style={td}>{r.clockOut ? time(r.clockOut) : <span style={{ color: C.mint }}>in</span>} {r.forgotClockOut && <Badge color={C.rose}>forgot</Badge>}{r.earlyMinutes >= 15 && <Badge color={C.amber}>{mins(r.earlyMinutes)} early</Badge>}</td>
                     <td style={td}>{((r.minutes || 0) / 60).toFixed(1)}h{r.overtimeMinutes >= 15 && <div style={{ fontSize: 12, color: C.blue }}>+{mins(r.overtimeMinutes)} overtime</div>}</td>

@@ -6,6 +6,7 @@ import { Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Field, 
 import { getDeviceId, getLocation, mapsLink } from "../geo.js";
 import LocationStep from "../LocationStep.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
+import VisitPlanCard from "../VisitPlanCard.jsx";
 import CameraCapture from "../CameraCapture.jsx";
 import { useOffice } from "../office.js";
 import { startLateLocation } from "../lateLocation.jsx";
@@ -210,6 +211,7 @@ export default function FieldVisits() {
         action={!a && <Btn icon={LogIn} onClick={startCheckIn}>Check in at a client</Btn>} />
       {data.pendingSpotChecks.map(s => <SpotCheckResponder key={s.id} spot={s} onDone={load} />)}
       <PhoneCheck />
+      <VisitPlanCard />
 
       <Grid min={160} style={{ marginBottom: 16 }}>
         <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Visits today</div><div style={{ fontSize: 24, fontWeight: 800, color: C.blue }}>{todays.length}</div></SectionCard>

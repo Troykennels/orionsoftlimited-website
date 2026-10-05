@@ -6,6 +6,33 @@ import { Avatar, Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select,
 import { resizeImageToDataUrl } from "../imageUtils.js";
 import { loadGoogleIdentity, getGoogleClientId } from "../StaffLogin.jsx";
 import { useOffice } from "../office.js";
+import TwoStepSetup from "../TwoStepSetup.jsx";
+
+// Data protection (NDPA 2023): anyone can download what the company holds
+// about them, and read why location and photos are collected.
+function MyDataCard() {
+  const [busy, setBusy] = useState(false);
+  async function download() {
+    setBusy(true);
+    try {
+      const j = await api("/api/staff/mydata");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(j.data, null, 2)], { type: "application/json" }));
+      a.download = `my-orion-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+    } catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
+  }
+  return (
+    <SectionCard>
+      <SectionTitle sub="Under the Nigeria Data Protection Act you can see everything the company holds about you.">Your data & privacy</SectionTitle>
+      <p style={{ fontSize: 13, color: C.text, lineHeight: 1.6, margin: "0 0 10px" }}>
+        Location is recorded only when you clock in or out, check in at a client or answer a location check, never in the background. Photos are taken only at those moments.
+        Read the full notice in Handbook &amp; Links → Staff privacy notice.
+      </p>
+      <Btn small variant="ghost" onClick={download} disabled={busy}>{busy ? "Preparing…" : "Download my data"}</Btn>
+    </SectionCard>
+  );
+}
 
 const SOCIAL_KEYS = ["linkedin", "x", "facebook", "instagram", "tiktok", "github", "youtube", "website"];
 
@@ -229,6 +256,8 @@ export default function Profile() {
             {!me.viaAdmin && <><div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: "18px 0 8px" }}>PASSWORD</div><PasswordSection /></>}
             {me.viaAdmin && <p style={{ fontSize: 12.5, color: C.textMuted }}>You're using the office with your owner (admin) account. Your admin password is managed in the admin dashboard.</p>}
           </SectionCard>
+          {!me.viaAdmin && <TwoStepSetup portal="staff" />}
+          {!me.viaAdmin && <MyDataCard />}
         </div>
       </div>
     </div>

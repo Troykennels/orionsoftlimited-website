@@ -16,6 +16,7 @@ import { LateLocationBanner } from "./lateLocation.jsx";
 import { registerServiceWorker, applyStaffManifest, resyncPush } from "./push.js";
 import AlertsBanner from "./AlertsBanner.jsx";
 import { chime } from "./chime.js";
+import { flushQueue } from "./offlineQueue.js";
 import "./staff.css";
 
 const Lobby = lazy(() => import("./modules/Lobby.jsx"));
@@ -225,6 +226,15 @@ export default function StaffApp() {
 
   // Installable app + phone notifications for the office.
   useEffect(() => { applyStaffManifest(); registerServiceWorker().then(() => resyncPush()); }, []);
+
+  // Send anything saved while offline as soon as we're signed in and online.
+  useEffect(() => {
+    if (!session) return undefined;
+    const go = () => flushQueue().then(n => { if (n) { toast(`${n} saved action${n === 1 ? "" : "s"} sent`); loadOffice(); } });
+    go();
+    const t = setInterval(go, 60_000);
+    return () => clearInterval(t);
+  }, [session, loadOffice]);
 
   useEffect(() => {
     function onPop() { setRoute(parseRoute()); }

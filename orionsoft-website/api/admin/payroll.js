@@ -6,10 +6,41 @@ import { renderPayslipPdf } from "../_lib/pdf.js";
 import { sendPayslipIssued } from "../_lib/emailTemplates.js";
 import { resolveAccount, createRecipient, initiateTransfer, verifyTransfer } from "../_lib/paystackTransfer.js";
 import { notifyCommissionAdded } from "../_lib/emailTemplates.js";
+import { computeNigerianPayroll } from "../../shared/payrollNg.js";
 
 function computeNet(gross, deductions) {
   const totalDeductions = (deductions || []).reduce((s, d) => s + (Number(d.amount) || 0), 0);
   return Number(gross) - totalDeductions;
+}
+
+// Statutory lines (PAYE, pension, NHF, NHIS) are recalculated from the gross
+// whenever it changes; manual lines the admin added are kept as they are.
+function applyStatutory(payroll) {
+  const manual = (payroll.deductions || []).filter(d => !d.statutory);
+  if (!payroll.statutory || payroll.currency !== "NGN") {
+    payroll.deductions = manual;
+    payroll.employerCosts = [];
+    return payroll;
+  }
+  const calc = computeNigerianPayroll(payroll.grossAmount, payroll.statutory);
+  payroll.deductions = [...calc.deductions.map(d => ({ ...d, statutory: true })), ...manual];
+  payroll.employerCosts = calc.employerCosts;
+  payroll.taxInfo = { chargeableAnnual: calc.chargeableAnnual, rentRelief: calc.rentRelief, effectiveTaxRate: calc.effectiveTaxRate };
+  return payroll;
+}
+
+function cleanStatutory(s, employee) {
+  if (s === false) return null;
+  const o = s && typeof s === "object" ? s : {};
+  const num = v => (v === "" || v == null ? undefined : Math.max(0, Number(v) || 0));
+  return {
+    pensionable: num(o.pensionable ?? employee.pensionableMonthly),
+    basic: num(o.basic ?? employee.basicMonthly),
+    annualRent: num(o.annualRent ?? employee.annualRent) || 0,
+    nhf: o.nhf ?? !!employee.nhfOptIn,
+    nhis: num(o.nhis ?? employee.nhisMonthly) || 0,
+    pension: o.pension ?? employee.pensionExempt !== true,
+  };
 }
 
 function commissionsTotal(commissions) {
@@ -27,13 +58,30 @@ export default async function handler(req, res) {
   if (!session) return;
 
   if (req.method === "GET") {
+    // What to remit for a month: PAYE to the state IRS, pension to each PFA,
+    // NHF to FMBN, NSITF and ITF, one row per employee plus totals.
+    if (req.query.view === "remittance") {
+      const period = String(req.query.period || "");
+      const [entries, employees] = await Promise.all([listRecords("payroll"), listRecords("employees")]);
+      const rows = entries.filter(p => p.period === period && p.currency === "NGN").map(p => {
+        const e = employees.find(x => x.id === p.employeeId) || {};
+        const d = kind => (p.deductions || []).filter(x => x.kind === kind).reduce((s, x) => s + Number(x.amount || 0), 0);
+        const c = kind => (p.employerCosts || []).filter(x => x.kind === kind).reduce((s, x) => s + Number(x.amount || 0), 0);
+        return {
+          employeeId: p.employeeId, fullName: e.fullName || "Former staff", taxId: e.taxId || "", pfa: e.pfaName || "", rsaPin: e.rsaPin || "", nhfNumber: e.nhfNumber || "",
+          gross: p.grossAmount, paye: d("paye"), pensionEmployee: d("pension"), pensionEmployer: c("pension_er"), nhf: d("nhf"), nsitf: c("nsitf"), itf: c("itf"), status: p.status,
+        };
+      });
+      const sum = k => Math.round(rows.reduce((s, r) => s + Number(r[k] || 0), 0) * 100) / 100;
+      return res.json({ ok: true, period, rows, totals: { gross: sum("gross"), paye: sum("paye"), pension: sum("pensionEmployee") + sum("pensionEmployer"), nhf: sum("nhf"), nsitf: sum("nsitf"), itf: sum("itf") } });
+    }
     let payroll = await listRecords("payroll");
     if (req.query.employeeId) payroll = payroll.filter(p => p.employeeId === req.query.employeeId);
     return res.json({ ok: true, payroll: payroll.sort((a, b) => b.period.localeCompare(a.period)) });
   }
 
   if (req.method === "POST") {
-    const { employeeId, period, baseSalary, deductions, currency } = req.body || {};
+    const { employeeId, period, baseSalary, deductions, currency, statutory } = req.body || {};
     if (!employeeId || !period || baseSalary == null) {
       return res.status(400).json({ error: "employeeId, period, and baseSalary are required" });
     }
@@ -48,9 +96,13 @@ export default async function handler(req, res) {
       grossAmount: gross, deductions: deductions || [],
       netAmount: computeNet(gross, deductions),
       currency: currency || employee.salaryCurrency || "NGN",
+      statutory: null, employerCosts: [],
       status: "draft", payslipPdfKey: null, issuedAt: null,
       paidAmount: null, transferReference: null, transferRecipientCode: null, paidAt: null, payoutError: null,
     };
+    payroll.statutory = payroll.currency === "NGN" ? cleanStatutory(statutory, employee) : null;
+    applyStatutory(payroll);
+    payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
     await putRecord("payroll", id, payroll);
     return res.json({ ok: true, payroll });
   }
@@ -215,6 +267,7 @@ export default async function handler(req, res) {
       const commission = { id: newId("com"), amount: commissionAmount, label: label || "Commission", addedAt: new Date().toISOString(), addedBy: session.sub };
       payroll.commissions = [...(payroll.commissions || []), commission];
       payroll.grossAmount = Number(payroll.baseSalary || 0) + commissionsTotal(payroll.commissions);
+      applyStatutory(payroll);
       payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
       await putRecord("payroll", id, payroll);
 
@@ -231,6 +284,7 @@ export default async function handler(req, res) {
       const { commissionId } = req.body;
       payroll.commissions = (payroll.commissions || []).filter(c => c.id !== commissionId);
       payroll.grossAmount = Number(payroll.baseSalary || 0) + commissionsTotal(payroll.commissions);
+      applyStatutory(payroll);
       payroll.netAmount = computeNet(payroll.grossAmount, payroll.deductions);
       await putRecord("payroll", id, payroll);
       return res.json({ ok: true, payroll });

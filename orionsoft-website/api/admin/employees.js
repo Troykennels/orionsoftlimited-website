@@ -1,12 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { newId, listRecords, getByLookup, getRecord, putRecord, setLookup, deleteRecord, deleteLookup } from "../_lib/records.js";
-import { requireAuth, hashPassword } from "../_lib/auth.js";
+import { requireAuth, hashPassword, withoutSecrets } from "../_lib/auth.js";
 import { sendEmployeeWelcome } from "../_lib/emailTemplates.js";
 import { getRoleCatalog, PERMISSIONS, managerChain, directReports } from "../_lib/roles.js";
 import { ensureSlugs, systemPost, notify, listActivity, leaderboard, cleanSocials, effectivePresence, loadSeen } from "../_lib/office.js";
 import { logAudit } from "../_lib/audit.js";
 import { get } from "../store.js";
 import { cleanPersonalSchedule } from "../_lib/workHours.js";
+import { createChecklist } from "../_lib/checklists.js";
 
 // Reject a reporting line that would loop back to the employee themselves.
 function createsCycle(employeeId, managerId, employees) {
@@ -22,9 +23,7 @@ function createsCycle(employeeId, managerId, employees) {
 // Presence shown is "really online" (Staff Office open recently), not the
 // last status the person picked. See effectivePresence in _lib/office.js.
 function publicShape(e) {
-  const rest = { ...e, presence: effectivePresence(e) };
-  delete rest.passwordHash;
-  return rest;
+  return { ...withoutSecrets(e), presence: effectivePresence(e) };
 }
 
 function genTempPassword() {
@@ -148,6 +147,11 @@ export default async function handler(req, res) {
       await notify(all.filter(e => e.status === "active" && e.id !== id).map(e => e.id), { type: "celebration", title: `New teammate: ${fullName}`, body: title, link: `feed:${post.id}` });
     } catch { /* best-effort */ }
     await logAudit(session, "create_employee", `employee ${id}`, `${fullName} (${employee.staffRole})`);
+    // Automation: onboarding checklist, and tell the new starter and their manager.
+    try {
+      await createChecklist(fresh, "onboarding");
+      await notify([id, employee.managerId].filter(Boolean), { type: "system", title: `Onboarding checklist for ${fullName}`, body: "Your items are on the Staff Office home page.", link: "home" });
+    } catch { /* best-effort */ }
 
     // The temporary password is shown to the admin once, so access never
     // depends on the welcome email actually being delivered.
@@ -168,6 +172,14 @@ export default async function handler(req, res) {
       try { await sendEmployeeWelcome(employee, tempPassword); } catch { /* best-effort */ }
       await logAudit(session, "reset_staff_password", `employee ${id}`, employee.fullName);
       return res.json({ ok: true, tempPassword });
+    }
+
+    // Lost phone: turn off their two-step sign-in so they can set it up again.
+    if (updates.action === "reset-2fa") {
+      employee.totpEnabled = false; employee.totpSecret = null; employee.totpPending = null; employee.totpRecovery = []; employee.totpLastStep = null;
+      await putRecord("employees", id, employee);
+      await logAudit(session, "reset_staff_2fa", `employee ${id}`, employee.fullName);
+      return res.json({ ok: true });
     }
 
     const [employees, catalog] = await Promise.all([listRecords("employees"), getRoleCatalog()]);
@@ -198,9 +210,27 @@ export default async function handler(req, res) {
     if (updates.publicProfile !== undefined) employee.publicProfile = !!updates.publicProfile;
     // null = follow the company working hours.
     if (updates.workSchedule !== undefined) employee.workSchedule = cleanPersonalSchedule(updates.workSchedule);
+    // Statutory payroll details (see shared/payrollNg.js).
+    for (const k of ["taxId", "pfaName", "rsaPin", "nhfNumber"]) if (updates[k] !== undefined) employee[k] = String(updates[k] || "").trim().slice(0, 60);
+    for (const k of ["annualRent", "pensionableMonthly", "basicMonthly", "nhisMonthly"]) if (updates[k] !== undefined) employee[k] = updates[k] === "" || updates[k] == null ? null : Math.max(0, Number(updates[k]) || 0);
+    if (updates.nhfOptIn !== undefined) employee.nhfOptIn = !!updates.nhfOptIn;
+    if (updates.pensionExempt !== undefined) employee.pensionExempt = !!updates.pensionExempt;
+    // Onboarding dates (probation reminders, see automations).
+    if (updates.probationEndDate !== undefined) employee.probationEndDate = /^\d{4}-\d{2}-\d{2}$/.test(updates.probationEndDate || "") ? updates.probationEndDate : null;
+    if (updates.documents !== undefined) employee.documents = (Array.isArray(updates.documents) ? updates.documents : []).filter(d => d?.name).slice(0, 30)
+      .map(d => ({ name: String(d.name).slice(0, 80), number: String(d.number || "").slice(0, 60), expiresOn: /^\d{4}-\d{2}-\d{2}$/.test(d.expiresOn || "") ? d.expiresOn : null }));
     const changed = Object.keys(before).filter(k => (before[k] || null) !== (employee[k] || null));
     if (changed.length) {
       await logAudit(session, "update_employee_access", `employee ${id}`, changed.map(k => `${k}: ${before[k] || "-"} -> ${employee[k] || "-"}`).join(", "));
+      // Automation: leaving the company starts the offboarding checklist,
+      // listing every asset still assigned to them.
+      if (before.status !== "exited" && employee.status === "exited") {
+        try {
+          const assets = (await listRecords("assets")).filter(a => a.assignedToId === id);
+          await createChecklist(employee, "offboarding", { extraItems: assets.map(a => ["it", `Return ${a.name}${a.serialNumber ? ` (${a.serialNumber})` : ""}`]) });
+          if (employee.managerId) await notify([employee.managerId], { type: "system", title: `Offboarding started for ${employee.fullName}`, body: "Handover items are on your Staff Office home page.", link: "home" });
+        } catch { /* best-effort */ }
+      }
       if (before.staffRole !== employee.staffRole) {
         const label = catalog.find(r => r.id === employee.staffRole)?.label || employee.staffRole;
         await notify([id], { type: "role", title: `Your role is now ${label}`, body: "Your Staff Office tools have been updated to match.", link: "home" });

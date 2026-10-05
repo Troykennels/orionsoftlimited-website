@@ -150,8 +150,20 @@ export async function officeContext(req, res) {
 const notifKey = id => `orionsoft:notif:${id}`;
 const notifReadKey = id => `orionsoft:notif:${id}:readAt`;
 
+// Quiet hours (Staff Office settings): alerts still arrive, but without sound
+// or vibration. Location checks always ring.
+async function inQuietHours(type) {
+  if (type === "spotcheck") return false;
+  const { OFFICE_CONFIG_KEY } = await import("../staff/office.js");
+  const cfg = (await get(OFFICE_CONFIG_KEY)) || {};
+  if (!cfg.quietStart || !cfg.quietEnd) return false;
+  const now = new Date(Date.now() + 3600000).toISOString().slice(11, 16); // Lagos HH:mm
+  return cfg.quietStart < cfg.quietEnd ? now >= cfg.quietStart && now < cfg.quietEnd : now >= cfg.quietStart || now < cfg.quietEnd;
+}
+
 export async function notify(userIds, { type, title, body = "", link = "", actorId = "" }) {
   const ids = [...new Set((userIds || []).filter(Boolean))];
+  const quiet = ids.length ? await inQuietHours(type).catch(() => false) : false;
   await Promise.all(ids.filter(id => id !== actorId).map(async id => {
     try {
       await push(notifKey(id), { id: newId("ntf"), type, title, body: String(body).slice(0, 240), link, actorId, at: new Date().toISOString() });
@@ -161,13 +173,31 @@ export async function notify(userIds, { type, title, body = "", link = "", actor
     let pushed = 0;
     try {
       const { sendPush } = await import("./push.js");
-      pushed = await sendPush(id, { title, body, link, type });
+      pushed = await sendPush(id, { title, body, link, type, quiet });
     } catch { /* push is best-effort */ }
     // …and when no phone is set up, email anything that needs action.
     if (!pushed && EMAIL_FALLBACK.has(type)) {
       try { await emailFallback(id, { type, title, body, link }); } catch { /* best-effort */ }
     }
+    // Urgent alerts also go by WhatsApp/SMS (when configured): always for
+    // location checks, and for meetings when the person has no phone alerts.
+    if (type === "spotcheck" || (!pushed && URGENT_TEXT.has(type))) {
+      try { await textFallback(id, { type, title, body, link }); } catch { /* best-effort */ }
+    }
   }));
+}
+
+const URGENT_TEXT = new Set(["meeting", "approval"]);
+async function textFallback(id, { type, title, body, link }) {
+  const { whatsappReady, smsReady, sendUrgent } = await import("./channels.js");
+  if (!whatsappReady() && !smsReady()) return;
+  // One text per person per kind of alert every 30 minutes (cost control).
+  if (type !== "spotcheck" && !(await claim(`orionsoft:notif:text:${id}:${type}`, 1800))) return;
+  const emp = await getRecord("employees", id);
+  if (!emp || emp.status !== "active") return;
+  const { linkToUrl } = await import("./push.js");
+  const base = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
+  await sendUrgent(emp, { title, body: String(body || "").slice(0, 160), url: `${base}${linkToUrl(link)}` });
 }
 
 // Types worth an email when the person can't get a phone alert. Spot checks

@@ -267,6 +267,23 @@ export async function sendNotificationEmail(employee, { title, body, url }) {
   return sendEmail(employee.email, title, html, { kind: "staff_notification" });
 }
 
+// 7am digest: today's meetings, overdue tasks, things waiting for them and
+// unread alerts, in one email.
+export async function sendDailyDigest(employee, { meetings = [], overdue = [], approvals = 0, unread = [] }) {
+  const li = items => `<ul style="color:#3A4556;font-size:14px;line-height:1.7;padding-left:18px;margin:6px 0 14px;">${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>`;
+  const h = t => `<h3 style="color:#0A2540;font-size:15px;margin:16px 0 0;">${t}</h3>`;
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 6px;">Good morning, ${esc(String(employee.fullName || "").split(" ")[0])}</h2>
+    <p style="color:#6B7A96;font-size:13px;margin:0 0 6px;">Here's your day at Orion Soft.</p>
+    ${meetings.length ? h(`📅 Meetings today (${meetings.length})`) + li(meetings) : ""}
+    ${approvals ? h(`✅ Waiting for your approval: ${approvals}`) + li(["Open Approvals in the Staff Office"]) : ""}
+    ${overdue.length ? h(`⏰ Overdue tasks (${overdue.length})`) + li(overdue.slice(0, 8)) : ""}
+    ${unread.length ? h(`🔔 Unread alerts (${unread.length})`) + li(unread.slice(0, 8)) : ""}
+    ${btn(`${APP_BASE_URL}/staff`, "Open the Staff Office →")}
+  `, { title: "Your day" });
+  return sendEmail(employee.email, `Your day: ${[meetings.length && `${meetings.length} meeting${meetings.length === 1 ? "" : "s"}`, approvals && `${approvals} to approve`, overdue.length && `${overdue.length} overdue`].filter(Boolean).join(", ") || "updates"}`, html, { kind: "daily_digest" });
+}
+
 export async function sendAlertsSetupEmail(employee) {
   const html = brandedShell(`
     <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Turn on Staff Office alerts on your phone</h2>

@@ -1,4 +1,6 @@
-import { getByLookup } from "../_lib/records.js";
+import { getByLookup, putRecord } from "../_lib/records.js";
+import { checkSecondFactor } from "../_lib/totp.js";
+import { logAudit } from "../_lib/audit.js";
 import { verifyPassword, signSession, setSessionCookie, clearSessionCookie, getSessionFromRequest, REMEMBER_TTL_SECONDS, ADMIN_REMEMBER_TTL_SECONDS, ADMIN_COOKIE } from "../_lib/auth.js";
 
 // Only FAILED attempts count, keyed by IP + email. A whole office behind one
@@ -31,7 +33,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const { email, password, portal, remember } = req.body || {};
+  const { email, password, portal, remember, code } = req.body || {};
   if (!email || !password || !["admin", "staff"].includes(portal)) {
     return res.status(400).json({ error: "email, password, and portal are required" });
   }
@@ -53,6 +55,19 @@ export default async function handler(req, res) {
   if (!ok) {
     recordFail(key);
     return res.status(401).json({ error: "Invalid email or password" });
+  }
+  // Two-step sign-in: the password was right, now the authenticator code.
+  if (user.totpEnabled) {
+    if (!code) return res.json({ ok: false, needsCode: true });
+    const second = await checkSecondFactor(user, code);
+    if (!second) {
+      recordFail(key);
+      return res.status(401).json({ error: "That code didn't work. Use the newest code from your authenticator app, or a recovery code.", needsCode: true });
+    }
+    const usedRecovery = !!second.usedRecovery;
+    delete second.usedRecovery;
+    await putRecord(entity, user.id, { ...user, ...second });
+    if (usedRecovery && portal === "admin") await logAudit({ sub: user.id, name: user.username, role: "admin" }, "2fa_recovery_code_used", `admin ${user.id}`);
   }
   failMap.delete(key);
 

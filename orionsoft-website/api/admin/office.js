@@ -35,6 +35,11 @@ export default async function handler(req, res) {
     const seen = await loadSeen(active.map(e => e.id));
     const devices = await pushDeviceCounts(active.map(e => e.id));
     return res.json({
+      channels: {
+        email: !!((process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) || process.env.RESEND_API_KEY),
+        whatsapp: !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID),
+        sms: !!(process.env.TERMII_API_KEY && process.env.TERMII_SENDER_ID),
+      },
       phoneAlerts: active.map(e => ({ id: e.id, fullName: e.fullName, email: e.email || "", devices: devices[e.id] || 0 })),
       ok: true,
       roles: catalog, builtinRoleIds: BUILTIN_ROLES.map(r => r.id), permissions: PERMISSIONS,
@@ -87,6 +92,9 @@ export default async function handler(req, res) {
         alertFieldVisits: c.alertFieldVisits !== false,
         alertClockIns: !!c.alertClockIns,
         emailFallback: c.emailFallback !== false,
+        dailyDigest: c.dailyDigest !== false,
+        retentionMonths: Math.min(120, Math.max(3, parseInt(c.retentionMonths, 10) || 24)),
+        quietStart: cleanTime(c.quietStart, ""), quietEnd: cleanTime(c.quietEnd, ""),
         spotChecks: c.spotChecks !== false,
         spotWindowMinutes: Math.min(60, Math.max(10, parseInt(c.spotWindowMinutes, 10) || 20)),
         whatsappGroupLink: /^https:\/\/chat\.whatsapp\.com\//.test(String(c.whatsappGroupLink || "")) ? String(c.whatsappGroupLink).slice(0, 200) : "",

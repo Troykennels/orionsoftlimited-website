@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, fmtDate } from "../api.js";
 import ReportView from "./ReportView.jsx";
@@ -74,6 +75,23 @@ export default function Reports() {
   const setTotal = (k, v) => setForm(f => ({ ...f, totals: { ...f.totals, [k]: v } }));
   const setPlan = (k, v) => setForm(f => ({ ...f, nextWeekPlan: { ...f.nextWeekPlan, [k]: v } }));
 
+  // Fill the form from what the person actually did this week; they review it.
+  const [drafting, setDrafting] = useState(false);
+  async function draft() {
+    if (form.summary.trim() && !confirm("Replace what you've written with a draft from your week's activity?")) return;
+    setDrafting(true);
+    try {
+      const { draft: d, ai } = await api("/api/staff/ai", { method: "POST", body: { action: "report-draft", weekStart: form.weekStart, weekEnd: form.weekEnd } });
+      setForm(f => ({
+        ...f, summary: d.summary || f.summary, challenges: d.challenges || f.challenges, supportNeeded: d.supportNeeded || f.supportNeeded,
+        totals: Object.fromEntries(Object.entries(f.totals).map(([k, v]) => [k, d.totals[k] ? String(d.totals[k]) : v])),
+        nextWeekPlan: { ...f.nextWeekPlan, organisationsToVisit: d.nextWeekPlan.organisationsToVisit || f.nextWeekPlan.organisationsToVisit },
+      }));
+      if (d.followUps?.length && !followUps.length) setFollowUps(d.followUps);
+      toast(ai ? "Draft ready. Check it and add anything missing." : "Filled in from your activity. Add the details in your own words.");
+    } catch (e) { toast(e.message, "err"); } finally { setDrafting(false); }
+  }
+
   async function submit() {
     if (!form.summary.trim()) { toast("Add a summary of the week's main activities", "err"); return; }
     if (!form.declarationConfirmed) { toast("Please confirm the declaration at the bottom", "err"); return; }
@@ -104,7 +122,10 @@ export default function Reports() {
             <Field label="Reporting manager"><Input value={form.reportingManager} onChange={set("reportingManager")} /></Field>
             <Field label="Product focus"><Select value={form.productFocus} onChange={set("productFocus")}>{PRODUCTS.map(p => <option key={p}>{p}</option>)}</Select></Field>
           </Grid>
-          <Label>1. Weekly summary: main activities this week *</Label>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Label>1. Weekly summary: main activities this week *</Label>
+            <Btn small variant="ghost" icon={Sparkles} disabled={drafting} onClick={draft}>{drafting ? "Drafting…" : "Draft from my week"}</Btn>
+          </div>
           <Textarea value={form.summary} onChange={set("summary")} />
           <Grid min={150} style={{ marginTop: 14, marginBottom: 20 }}>
             {[["prospectsContacted", "Prospects contacted"], ["physicalVisits", "Physical visits"], ["meetingsHeld", "Meetings held"], ["productDemos", "Product demos"], ["proposalsSent", "Proposals/quotes sent"], ["newLeadsGenerated", "New leads"], ["salesClosed", "Sales closed"], ["salesValue", "Sales value (₦)"]].map(([k, l]) => (

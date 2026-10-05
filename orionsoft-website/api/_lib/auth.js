@@ -10,6 +10,14 @@ const COOKIE_NAME = "orionsoft_session";
 // Admin sessions, kept apart so admin and Staff Office can both be signed in
 // in one browser.
 export const ADMIN_COOKIE = "orionsoft_admin";
+
+// Sign-in secrets that must never leave the server in any API response.
+export const SECRET_FIELDS = ["passwordHash", "securityPinHash", "totpSecret", "totpPending", "totpRecovery", "totpLastStep"];
+export function withoutSecrets(record) {
+  const rest = { ...record };
+  for (const k of SECRET_FIELDS) delete rest[k];
+  return rest;
+}
 // Job applicants get their own cookie so a candidate signing in to track an
 // application on a shared machine never replaces an admin/staff session.
 export const APPLICANT_COOKIE = "orionsoft_applicant";

@@ -85,6 +85,10 @@ function EmployeeForm({ initial, roles, employees, onClose, onSaved }) {
     bankName: initial.bankName || "", bankAccountNumber: initial.bankAccountNumber || "", bankAccountName: initial.bankAccountName || "",
     publicProfile: !!initial.publicProfile,
     workSchedule: initial.workSchedule || null,
+    taxId: initial.taxId || "", pfaName: initial.pfaName || "", rsaPin: initial.rsaPin || "", nhfNumber: initial.nhfNumber || "",
+    annualRent: initial.annualRent ?? "", pensionableMonthly: initial.pensionableMonthly ?? "", basicMonthly: initial.basicMonthly ?? "", nhisMonthly: initial.nhisMonthly ?? "",
+    nhfOptIn: !!initial.nhfOptIn, pensionExempt: !!initial.pensionExempt,
+    probationEndDate: initial.probationEndDate || "", documents: initial.documents || [],
   } : { fullName: "", email: "", title: "", department: "", phone: "", staffRole: "staff", managerId: "", salaryAmount: "", salaryCurrency: "NGN", startDate: new Date().toISOString().slice(0, 10) });
   const [perms, setPerms] = useState({});
   const [busy, setBusy] = useState(false);
@@ -160,8 +164,83 @@ function EmployeeForm({ initial, roles, employees, onClose, onSaved }) {
         {creating && <Field label="Start date"><Input type="date" value={f.startDate} onChange={set("startDate")} /></Field>}
         {!creating && <><Field label="Bank"><Input value={f.bankName} onChange={set("bankName")} /></Field><Field label="Account number"><Input value={f.bankAccountNumber} onChange={set("bankAccountNumber")} /></Field><Field label="Account name"><Input value={f.bankAccountName} onChange={set("bankAccountName")} /></Field></>}
       </Grid>
+      {!creating && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "6px 0 4px" }}>TAX, PENSION & NHF</div>
+          <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 8px" }}>Used to work out PAYE, pension and NHF on each payslip. Leave pay splits blank to use the full monthly salary.</p>
+          <Grid min={180} style={{ marginBottom: 8 }}>
+            <Field label="Tax ID (TIN)"><Input value={f.taxId} onChange={set("taxId")} /></Field>
+            <Field label="Pension manager (PFA)"><Input value={f.pfaName} onChange={set("pfaName")} placeholder="e.g. Stanbic IBTC Pension" /></Field>
+            <Field label="RSA PIN"><Input value={f.rsaPin} onChange={set("rsaPin")} placeholder="PEN…" /></Field>
+            <Field label="NHF number"><Input value={f.nhfNumber} onChange={set("nhfNumber")} /></Field>
+            <Field label="Basic + housing + transport / month"><Input type="number" min="0" value={f.pensionableMonthly} onChange={set("pensionableMonthly")} placeholder="= salary" /></Field>
+            <Field label="Basic pay / month (for NHF)"><Input type="number" min="0" value={f.basicMonthly} onChange={set("basicMonthly")} placeholder="= above" /></Field>
+            <Field label="Rent paid / year (rent relief)"><Input type="number" min="0" value={f.annualRent} onChange={set("annualRent")} /></Field>
+            <Field label="Health insurance / month"><Input type="number" min="0" value={f.nhisMonthly} onChange={set("nhisMonthly")} /></Field>
+          </Grid>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginBottom: 12, fontSize: 13, color: C.text }}>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={f.nhfOptIn} onChange={e => setF(x => ({ ...x, nhfOptIn: e.target.checked }))} /> Contributes to NHF (2.5%)</label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={f.pensionExempt} onChange={e => setF(x => ({ ...x, pensionExempt: e.target.checked }))} /> No pension deduction</label>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "6px 0 8px" }}>PROBATION & DOCUMENTS</div>
+          <Grid min={200} style={{ marginBottom: 8 }}>
+            <Field label="Probation ends"><Input type="date" value={f.probationEndDate} onChange={set("probationEndDate")} /></Field>
+          </Grid>
+          <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 6px" }}>IDs, licences, guarantor forms, certifications… You and HR are reminded 30 and 7 days before anything expires.</p>
+          {f.documents.map((d, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1.4fr 1.2fr auto", gap: 6, marginBottom: 6 }}>
+              <Input value={d.name} onChange={e => setF(x => ({ ...x, documents: x.documents.map((y, j) => j === i ? { ...y, name: e.target.value } : y) }))} placeholder="Document (e.g. Driver's licence)" aria-label="Document name" />
+              <Input value={d.number || ""} onChange={e => setF(x => ({ ...x, documents: x.documents.map((y, j) => j === i ? { ...y, number: e.target.value } : y) }))} placeholder="Number" aria-label="Document number" />
+              <Input type="date" value={d.expiresOn || ""} onChange={e => setF(x => ({ ...x, documents: x.documents.map((y, j) => j === i ? { ...y, expiresOn: e.target.value } : y) }))} aria-label="Expiry date" />
+              <Btn small danger icon={Trash2} onClick={() => setF(x => ({ ...x, documents: x.documents.filter((_, j) => j !== i) }))} />
+            </div>
+          ))}
+          <Btn small variant="ghost" icon={Plus} onClick={() => setF(x => ({ ...x, documents: [...x.documents, { name: "", number: "", expiresOn: "" }] }))} style={{ marginBottom: 14 }}>Add document</Btn>
+        </>
+      )}
       <Btn onClick={save} disabled={busy || !f.fullName || !f.title || (creating && !f.email)} icon={Save}>{creating ? "Create & send welcome email" : "Save changes"}</Btn>
     </Modal>
+  );
+}
+
+// Onboarding / offboarding checklists for one person (admin can tick any item).
+function AdminChecklists({ employeeId }) {
+  const [data, setData] = useState(null);
+  const [draft, setDraft] = useState({});
+  const load = useCallback(() => call(`/api/admin/checklists?employeeId=${encodeURIComponent(employeeId)}`).then(setData).catch(e => toast(e.message, "err")), [employeeId]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (body, method = "PATCH") => { try { await call("/api/admin/checklists", { method, body }); load(); } catch (e) { toast(e.message, "err"); } };
+  if (!data) return <EmptyState>Loading…</EmptyState>;
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <Btn small variant="ghost" icon={Plus} onClick={() => act({ employeeId, kind: "onboarding" }, "POST")}>Start onboarding</Btn>
+        <Btn small variant="ghost" icon={Plus} onClick={() => act({ employeeId, kind: "offboarding" }, "POST")}>Start offboarding</Btn>
+      </div>
+      {data.checklists.length === 0 && <EmptyState>No checklists yet. One starts automatically when someone is hired or marked as exited.</EmptyState>}
+      {data.checklists.map(list => (
+        <SectionCard key={list.id} style={{ padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+            <strong style={{ color: C.heading, fontSize: 14 }}>{list.kind === "onboarding" ? "Onboarding" : "Offboarding"} · started {fmtDate(list.createdAt)}</strong>
+            <Badge color={list.progress.pct === 100 ? C.mint : C.blue}>{list.progress.done}/{list.progress.total}</Badge>
+          </div>
+          <Progress value={list.progress.pct} height={5} />
+          {list.items.map(i => (
+            <div key={i.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+              <input type="checkbox" checked={i.done} onChange={() => act({ id: list.id, action: "toggle", itemId: i.id, done: !i.done })} aria-label={i.text} />
+              <span style={{ flex: 1, color: i.done ? C.textMuted : C.text, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span>
+              <span style={{ fontSize: 11.5, color: C.textMuted }}>{data.owners[i.owner]}{i.doneBy ? ` · ✓ ${i.doneBy}` : ""}</span>
+              <button type="button" aria-label="Remove item" onClick={() => act({ id: list.id, action: "remove-item", itemId: i.id })} style={{ background: "none", border: "none", color: C.rose, cursor: "pointer" }}>×</button>
+            </div>
+          ))}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 150px auto", gap: 6, marginTop: 8 }}>
+            <Input value={draft[list.id]?.text || ""} onChange={ev => setDraft(d => ({ ...d, [list.id]: { ...d[list.id], text: ev.target.value } }))} placeholder="Add an item…" aria-label="New item" />
+            <Select value={draft[list.id]?.owner || "hr"} onChange={ev => setDraft(d => ({ ...d, [list.id]: { ...d[list.id], owner: ev.target.value } }))} aria-label="Who does it">{Object.entries(data.owners).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select>
+            <Btn small onClick={() => { act({ id: list.id, action: "add-item", text: draft[list.id]?.text, owner: draft[list.id]?.owner || "hr" }); setDraft(d => ({ ...d, [list.id]: {} })); }}>Add</Btn>
+          </div>
+        </SectionCard>
+      ))}
+    </div>
   );
 }
 
@@ -191,9 +270,13 @@ function Employee360({ id, roles, onClose, onEdit }) {
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Btn small variant="ghost" icon={IdCard} onClick={() => window.open(`/id-card?employee=${encodeURIComponent(e.id)}`, "_blank", "noopener")}>ID card</Btn>
           <Btn small variant="ghost" icon={Pencil} onClick={onEdit}>Edit</Btn>
+          {e.totpEnabled && <Btn small variant="ghost" icon={KeyRound} onClick={async () => {
+            if (!confirm(`Turn off two-step sign-in for ${e.fullName}? Do this only if they've lost their phone; they can set it up again from their profile.`)) return;
+            try { await call("/api/admin/employees", { method: "PATCH", body: { id: e.id, action: "reset-2fa" } }); toast("Two-step sign-in turned off"); } catch (err) { toast(err.message, "err"); }
+          }}>Reset two-step</Btn>}
         </div>
       </div>
-      <Tabs active={tab} onChange={setTab} tabs={[{ id: "profile", label: "Profile & HR" }, { id: "work", label: "Work & goals", count: d.goals.length }, { id: "hr", label: "Leave, reports, attendance" }, { id: "social", label: "Social & advocacy" }, { id: "activity", label: "Activity" }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ id: "profile", label: "Profile & HR" }, { id: "work", label: "Work & goals", count: d.goals.length }, { id: "hr", label: "Leave, reports, attendance" }, { id: "social", label: "Social & advocacy" }, { id: "checklists", label: "On/offboarding" }, { id: "activity", label: "Activity" }]} />
       {tab === "profile" && (
         <Grid min={320}>
           <div>
@@ -247,6 +330,7 @@ function Employee360({ id, roles, onClose, onEdit }) {
           {d.followers.length === 0 ? <EmptyState>No follower data.</EmptyState> : Object.entries(d.followers.reduce((m, s) => ({ ...m, [s.platform]: [...(m[s.platform] || []), s] }), {})).map(([k, pts]) => <div key={k} style={{ fontSize: 13, color: C.text }}>{SOCIAL_META[k]?.label || k}: {pts[0].followers.toLocaleString()} → <strong style={{ color: C.mint }}>{pts[pts.length - 1].followers.toLocaleString()}</strong> ({fmtDate(pts[0].date)} to {fmtDate(pts[pts.length - 1].date)})</div>)}
         </div>
       )}
+      {tab === "checklists" && <AdminChecklists employeeId={e.id} />}
       {tab === "activity" && (d.activity.length === 0 ? <EmptyState>No activity yet.</EmptyState> : d.activity.map(a => <div key={a.id} style={{ fontSize: 13, padding: "6px 0", borderBottom: `1px solid ${C.border}`, color: C.text, display: "flex", justifyContent: "space-between", gap: 10 }}><span>{a.text}</span><span style={{ color: C.textMuted, whiteSpace: "nowrap", fontSize: 12 }}>{ago(a.at)}</span></div>))}
     </Modal>
   );
@@ -458,7 +542,7 @@ function RolesEditor({ data, reload }) {
 const th = { textAlign: "left", fontSize: 11.5, color: C.textMuted, padding: 8, borderBottom: `1px solid ${C.border}`, fontFamily: font };
 
 // Who will actually get a phone alert, and a one-click email with set-up steps.
-function PhoneAlerts({ list }) {
+function PhoneAlerts({ list, channels }) {
   const [busy, setBusy] = useState(false);
   const off = list.filter(p => !p.devices);
   async function nudge(employeeId) {
@@ -485,6 +569,15 @@ function PhoneAlerts({ list }) {
           </div>
         ))}
       </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 12, fontSize: 12.5, color: C.textMuted }}>
+        Backup channels:
+        {[["email", "Email"], ["whatsapp", "WhatsApp"], ["sms", "SMS"]].map(([k, l]) => <Badge key={k} color={channels[k] ? C.mint : C.textMuted}>{l} {channels[k] ? "on" : "not set up"}</Badge>)}
+      </div>
+      {(!channels.whatsapp || !channels.sms) && (
+        <p style={{ fontSize: 12, color: C.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>
+          WhatsApp/SMS send location checks always, and meeting and approval alerts to people without phone alerts. To switch them on, add to the server settings (Railway): WhatsApp, <code>WHATSAPP_TOKEN</code>, <code>WHATSAPP_PHONE_ID</code> and an approved template named <code>staff_alert</code> with two variables (the alert and the link); SMS, <code>TERMII_API_KEY</code> and <code>TERMII_SENDER_ID</code>. About ₦12 per WhatsApp message and ₦15 per SMS.
+        </p>
+      )}
       <p style={{ fontSize: 12.5, color: C.textMuted, margin: "10px 0 0", lineHeight: 1.6 }}>
         You too: open the Staff Office as Owner on your phone and tap <strong>Turn on alerts</strong>, so check-ins and location checks reach you. iPhones must first add the Staff Office to the Home Screen (Share → Add to Home Screen).
       </p>
@@ -532,14 +625,23 @@ function OfficeSettings({ data, reload }) {
           ["alertFieldVisits", true, "Tell the line manager and owner every time someone checks in or out at a client, and answers or misses a location check"],
           ["alertClockIns", false, "Also tell them every time someone clocks in or out (late arrivals and early departures of 30+ minutes are always reported)"],
           ["emailFallback", true, "Email alerts (meetings, tasks, approvals, messages…) to anyone who hasn't turned on phone alerts"],
+          ["dailyDigest", true, "Send everyone a 7am email on working days with their meetings, approvals waiting, overdue tasks and unread alerts"],
         ].map(([k, def, label]) => (
           <label key={k} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, color: C.text, marginBottom: 8 }}>
             <input type="checkbox" checked={cfg[k] ?? def} onChange={e => setCfg(c => ({ ...c, [k]: e.target.checked }))} style={{ marginTop: 2 }} />
             {label}
           </label>
         ))}
+        <Grid min={180} style={{ marginTop: 10 }}>
+          <Field label="Quiet hours from (no sound)"><Input type="time" value={cfg.quietStart || ""} onChange={e => setCfg(c => ({ ...c, quietStart: e.target.value }))} /></Field>
+          <Field label="Quiet hours until"><Input type="time" value={cfg.quietEnd || ""} onChange={e => setCfg(c => ({ ...c, quietEnd: e.target.value }))} /></Field>
+          <Field label="Delete location & photos after (months)"><Input type="number" min="3" max="120" value={cfg.retentionMonths ?? 24} onChange={e => setCfg(c => ({ ...c, retentionMonths: e.target.value }))} /></Field>
+        </Grid>
+        <p style={{ fontSize: 12.5, color: C.textMuted, lineHeight: 1.6, margin: "8px 0 0" }}>
+          During quiet hours (e.g. 21:00 to 07:00) alerts still arrive but don't ring; location checks always ring. Old GPS points and visit photos are deleted automatically each month after the retention period (Nigeria Data Protection Act); times and outcomes are kept.
+        </p>
       </SectionCard>
-      <PhoneAlerts list={data.phoneAlerts || []} />
+      <PhoneAlerts list={data.phoneAlerts || []} channels={data.channels || {}} />
       <SectionCard>
         <SectionTitle action={<Btn small icon={Plus} onClick={() => setCfg(c => ({ ...c, quickLinks: [...c.quickLinks, { label: "", url: "" }] }))}>Add link</Btn>}>Quick links</SectionTitle>
         {cfg.quickLinks.map((l, i) => (

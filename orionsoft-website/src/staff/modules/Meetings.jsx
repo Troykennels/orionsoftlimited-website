@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Video, CalendarPlus, MapPin, Plus, Trash2 } from "lucide-react";
+import { Video, CalendarPlus, MapPin, Plus, Trash2, Sparkles } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, fmtDateTime } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Modal, Field, EmptyState, PageHeader, Grid, toast } from "../components.jsx";
@@ -71,6 +71,17 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
   const host = m.hostId === me.id;
   const attendees = m.everyone ? directory.map(p => p.id).filter(id => id !== m.hostId) : m.attendeeIds;
 
+  const [summarising, setSummarising] = useState(false);
+  async function summarise() {
+    setSummarising(true);
+    try {
+      const j = await api("/api/staff/ai", { method: "POST", body: { action: "meeting-summary", meetingId: m.id, notes } });
+      setNotes(j.minutes || notes);
+      if (j.actionItems?.length) setItems(list => [...list, ...j.actionItems]);
+      toast(j.actionItems?.length ? `Minutes tidied. ${j.actionItems.length} action item${j.actionItems.length === 1 ? "" : "s"} added below for you to check.` : "Minutes tidied.");
+    } catch (e) { toast(e.message, "err"); } finally { setSummarising(false); }
+  }
+
   async function patch(body, msg) {
     try { const j = await api("/api/staff/meetings", { method: "PATCH", body: { id: m.id, ...body } }); setM(j.meeting); if (msg) toast(msg); onChanged(); return j.meeting; }
     catch (e) { toast(e.message, "err"); return null; }
@@ -107,7 +118,8 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
       </div>
 
       {(host || m.notes) && <h3 style={h3}>MINUTES</h3>}
-      {host ? <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Key decisions and discussion points…" /> : m.notes && <p style={{ fontSize: 14, color: C.text, whiteSpace: "pre-wrap", margin: 0 }}>{m.notes}</p>}
+      {host && <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}><Btn small variant="ghost" icon={Sparkles} disabled={summarising || notes.trim().length < 20} onClick={summarise}>{summarising ? "Writing minutes…" : "Tidy notes & find action items"}</Btn></div>}
+      {host ? <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Key decisions and discussion points… (rough notes are fine, then tap 'Tidy notes')" /> : m.notes && <p style={{ fontSize: 14, color: C.text, whiteSpace: "pre-wrap", margin: 0 }}>{m.notes}</p>}
 
       {(m.actionItems || []).length > 0 && (
         <>

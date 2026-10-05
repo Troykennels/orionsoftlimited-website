@@ -15,6 +15,7 @@
 // Console, with https://orionsoftlimited.com as an authorised JS origin).
 import { getByLookup, putRecord, setLookup, deleteLookup } from "../_lib/records.js";
 import { signSession, setSessionCookie, requireStaff, REMEMBER_TTL_SECONDS } from "../_lib/auth.js";
+import { checkSecondFactor } from "../_lib/totp.js";
 import { staffPayload } from "./login.js";
 
 async function verifyGoogleToken(credential) {
@@ -92,6 +93,14 @@ export default async function handler(req, res) {
     if (!employee.avatarDataUrl && g.picture) employee.googlePicture = g.picture;
     await putRecord("employees", employee.id, employee);
     await setLookup("employees", "google", g.sub, employee.id);
+  }
+  // Two-step sign-in applies to Google sign-in too.
+  if (employee.totpEnabled) {
+    if (!req.body.code) return res.json({ ok: false, needsCode: true });
+    const second = await checkSecondFactor(employee, req.body.code);
+    if (!second) return res.status(401).json({ error: "That code didn't work. Use the newest code from your authenticator app, or a recovery code.", needsCode: true });
+    delete second.usedRecovery;
+    Object.assign(employee, second);
   }
   employee.lastLoginAt = new Date().toISOString();
   employee.lastLoginMethod = "google";

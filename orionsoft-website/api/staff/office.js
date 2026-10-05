@@ -2,6 +2,7 @@
 // plus presence, notifications, colleague profiles, org chart, handbook
 // acknowledgements and the points leaderboard.
 import { get, set } from "../store.js";
+import { SECRET_FIELDS } from "../_lib/auth.js";
 import { listRecords } from "../_lib/records.js";
 import {
   officeContext, officeCard, ensureSlugs, listNotifications, markNotificationsRead,
@@ -23,6 +24,7 @@ export const DEFAULT_OFFICE_CONFIG = {
   alertFieldVisits: true,
   alertClockIns: false,
   emailFallback: true,
+  retentionMonths: 24, // location points & visit photos are deleted after this
   spotChecks: true,
   spotWindowMinutes: 20,
   whatsappGroupLink: "",
@@ -38,8 +40,22 @@ export const DEFAULT_OFFICE_CONFIG = {
   ],
 };
 
+// Always in the handbook (NDPA 2023 transparency), whatever the admin edits.
+export const PRIVACY_NOTICE = {
+  id: "res_privacy", title: "Staff privacy notice (location, photos & your data)", category: "Policies", url: "", requiresAck: true,
+  body: [
+    "Who: Orion Soft Limited (RC 9535128) is the data controller. Questions or requests: orionsoftlimited@gmail.com.",
+    "What we collect: your HR and payroll details; clock-in/out times; your phone's GPS location and a live photo only at the moment you clock in or out, check in or out at a client, or answer a location check; device type and IP address at those moments; your work activity in the Staff Office.",
+    "Never: we do not track your location in the background, outside working hours, or when the Staff Office is closed.",
+    "Why (lawful basis): to run your employment contract and pay you correctly (payroll, PAYE, pension), to meet legal duties, and our legitimate interest in verifying field work and keeping staff safe.",
+    "Who sees it: you, your line manager, HR and the company owner. Payroll data is shared with tax authorities, your PFA and our bank only as the law requires. Service providers (hosting, email) process it for us under contract.",
+    "How long: location points and visit photos are deleted automatically after the retention period set by management (24 months by default); HR and payroll records are kept as long as the law requires.",
+    "Your rights: see and download your data (My Profile → Download my data), ask for corrections, object, or complain to the Nigeria Data Protection Commission (ndpc.gov.ng).",
+  ].join("\n\n"),
+};
+
 const PRESENCE = ["available", "meeting", "field", "focus", "break", "away", "leave", "offline"];
-const PRIVATE_FIELDS = ["passwordHash"];
+const PRIVATE_FIELDS = SECRET_FIELDS;
 
 function stripPrivate(e) {
   const rest = { ...e };
@@ -71,6 +87,7 @@ export default async function handler(req, res) {
         get(`orionsoft:office:acks:${me.id}`), listRecords("expenses"), listRecords("spotchecks"),
       ]);
       const cfg = { ...DEFAULT_OFFICE_CONFIG, ...(config || {}) };
+      if (!cfg.resources.some(r => r.id === PRIVACY_NOTICE.id)) cfg.resources = [...cfg.resources, PRIVACY_NOTICE];
       const canApprove = target => canApproveFor(me, target, employees, catalog);
       const byId = new Map(employees.map(e => [e.id, e]));
       const approvals = {

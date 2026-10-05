@@ -17,6 +17,8 @@ import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
 import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
 import { computeTotals as computeInvoiceTotals, amountInWords as invoiceAmountInWords } from "../../shared/invoicing.js";
+import { computeNigerianPayroll } from "../../shared/payrollNg.js";
+import TwoStepSetup from "../staff/TwoStepSetup.jsx";
 import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
@@ -78,14 +80,15 @@ async function fetchSession() {
   } catch { return undefined; }
 }
 
-async function serverLogin(email, password, remember = false) {
+async function serverLogin(email, password, remember = false, code = undefined) {
   const r = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, portal: "admin", remember }),
+    body: JSON.stringify({ email, password, portal: "admin", remember, code }),
   });
   const json = await r.json().catch(() => ({}));
-  if (!r.ok) return { ok: false, error: json.error || `Login failed (${r.status})` };
+  if (!r.ok) return { ok: false, error: json.error || `Login failed (${r.status})`, needsCode: !!json.needsCode };
+  if (json.needsCode) return { ok: false, needsCode: true };
   return { ok: true, user: json.user };
 }
 
@@ -510,18 +513,21 @@ function AdminLogin({ onLogin, notice }) {
   const [remember, setRemember] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setErr("");
 
-    const result = await serverLogin(email.trim(), pw, remember);
+    const result = await serverLogin(email.trim(), pw, remember, needsCode ? code : undefined);
     if (result.ok) {
       auditLog("login", "admin", `Successful login (${result.user.email})`);
       onLogin(result.user);
     } else {
-      setErr(result.error);
+      if (result.needsCode) setNeedsCode(true);
+      setErr(result.error || "");
     }
     setLoading(false);
   }
@@ -539,7 +545,14 @@ function AdminLogin({ onLogin, notice }) {
         </div>
 
         {notice && <div role="status" style={{ fontSize: 13, color: C.heading, background: "rgba(200,168,80,0.1)", border: `1px solid ${C.gold}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 18, lineHeight: 1.5 }}>{notice}</div>}
-        <div style={{ marginBottom: 16 }}>
+        {needsCode && (
+          <div style={{ marginBottom: 16 }}>
+            <Label>6-digit code from your authenticator app</Label>
+            <input autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value.toUpperCase().slice(0, 11))} placeholder="123456 or a recovery code"
+              style={{ width: "100%", background: C.surface, border: `1px solid ${err ? C.rose : C.border}`, color: C.text, borderRadius: 10, padding: "13px 16px", fontSize: 18, letterSpacing: "0.2em", fontFamily: font, outline: "none", boxSizing: "border-box" }} />
+          </div>
+        )}
+        <div style={{ marginBottom: 16, display: needsCode ? "none" : "block" }}>
           <Label>Email</Label>
           <input
             type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@orionsoftlimited.com"
@@ -549,7 +562,7 @@ function AdminLogin({ onLogin, notice }) {
             onBlur={e => e.target.style.borderColor = err ? C.rose : C.border}
           />
         </div>
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20, display: needsCode ? "none" : "block" }}>
           <Label>Password</Label>
           <input
             type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Enter admin password"
@@ -569,7 +582,7 @@ function AdminLogin({ onLogin, notice }) {
           fontSize: 15, fontWeight: 700, fontFamily: font, cursor: loading || !pw || !email ? "not-allowed" : "pointer",
           opacity: loading || !pw || !email ? 0.6 : 1, transition: "opacity 0.2s",
         }}>
-          {loading ? "Verifying…" : "Sign In →"}
+          {loading ? "Verifying…" : needsCode ? "Verify code →" : "Sign In →"}
         </button>
         <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 24, lineHeight: 1.6 }}>
           This portal is for authorised Orion Soft administrators only.<br />Unauthorised access attempts are logged.
@@ -2876,6 +2889,39 @@ function SettingsSection() {
 }
 
 // ─── My Account ──────────────────────────────────────────────────────────────
+// Backups: a copy of all data is emailed every night; take one any time.
+function BackupCard() {
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const load = () => fetch("/api/admin/backup?view=status").then(r => r.json()).then(setStatus).catch(() => {});
+  useEffect(() => { load(); }, []);
+  async function emailNow() {
+    setBusy(true); setMsg("");
+    try {
+      const r = await fetch("/api/admin/backup", { method: "POST" });
+      const j = await r.json();
+      setMsg(r.ok ? `Backup of ${j.total.toLocaleString()} records emailed to ${status?.to}.` : j.error);
+      load();
+    } finally { setBusy(false); }
+  }
+  const last = status?.last;
+  return (
+    <SectionCard style={{ marginBottom: 20 }}>
+      <SectionTitle>Backups</SectionTitle>
+      <p style={{ fontSize: 12.5, color: C.textMuted, margin: "6px 0 14px", lineHeight: 1.6 }}>
+        Every night after 2am a full copy of the data (staff, payroll, clients, invoices, content, settings) is emailed to <strong style={{ color: C.text }}>{status?.to || "the admin email"}</strong>. Photos, PDFs and passwords are left out.
+        {last && <> Last backup: <strong style={{ color: last.ok ? C.mint : C.rose }}>{new Date(last.at).toLocaleString("en-NG")} · {last.ok ? `${last.records} records` : "failed to send"}</strong>.</>}
+      </p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <a href="/api/admin/backup" style={{ textDecoration: "none" }}><Btn small variant="ghost">Download backup now</Btn></a>
+        <Btn small variant="ghost" onClick={emailNow} disabled={busy}>{busy ? "Sending…" : "Email a backup now"}</Btn>
+      </div>
+      {msg && <p style={{ fontSize: 13, color: C.text, marginTop: 10 }}>{msg}</p>}
+    </SectionCard>
+  );
+}
+
 function MyAccountSection({ session }) {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [msg, setMsg] = useState(""); const [err, setErr] = useState(""); const [saving, setSaving] = useState(false);
@@ -2940,6 +2986,9 @@ function MyAccountSection({ session }) {
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
         {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
       </SectionCard>
+
+      <div style={{ marginBottom: 20 }}><TwoStepSetup portal="admin" /></div>
+      {session.adminRole === "superadmin" && <BackupCard />}
 
       {session.adminRole === "superadmin" && (
         <SectionCard>
@@ -5054,8 +5103,9 @@ function PayrollSection({ session }) {
   const [banks, setBanks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ employeeId: "", period: "", baseSalary: "", currency: "NGN" });
+  const [form, setForm] = useState({ employeeId: "", period: "", baseSalary: "", currency: "NGN", statutory: true });
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
+  const [remit, setRemit] = useState(null);
 
   const [payingId, setPayingId] = useState(null);
   const [payForm, setPayForm] = useState({ bankCode: "", amount: "", verifiedName: "", pin: "" });
@@ -5090,11 +5140,11 @@ function PayrollSection({ session }) {
   async function create() {
     setErr(""); setMsg("");
     if (!form.employeeId || !form.period || !form.baseSalary) { setErr("Employee, period, and base salary are required."); return; }
-    const r = await fetch("/api/admin/payroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const r = await fetch("/api/admin/payroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, statutory: form.statutory ? {} : false }) });
     const json = await r.json();
     if (!r.ok) { setErr(json.error || "Failed to create payroll entry."); return; }
     auditLog("create_payroll", `${employeeName(form.employeeId)} — ${form.period}`);
-    setForm({ employeeId: "", period: "", baseSalary: "", currency: "NGN" });
+    setForm({ employeeId: "", period: "", baseSalary: "", currency: "NGN", statutory: true });
     setShowForm(false);
     setMsg("Draft payroll entry created.");
     setTimeout(() => setMsg(""), 3000);
@@ -5251,6 +5301,13 @@ function PayrollSection({ session }) {
               ["Employee", "Period", "Base Salary", "Commissions", "Net Pay", "Currency", "Status"],
               payroll.map(p => [employeeName(p.employeeId), p.period, p.baseSalary, (p.commissions || []).reduce((s, c) => s + Number(c.amount), 0), p.netAmount, p.currency, p.status]),
               "payroll")}>Export CSV</Btn>
+            <Btn small variant="ghost" onClick={async () => {
+              const period = prompt("Remittance schedule for which month? (YYYY-MM)", new Date().toISOString().slice(0, 7));
+              if (!period) return;
+              const r = await fetch(`/api/admin/payroll?view=remittance&period=${encodeURIComponent(period)}`);
+              const j = await r.json();
+              if (r.ok) setRemit(j); else alert(j.error || "Couldn't load the schedule");
+            }}>Remittance schedule</Btn>
             <Btn small onClick={() => setShowForm(s => !s)}>{showForm ? "Cancel" : "+ New Payroll Entry"}</Btn>
           </div>
         </div>
@@ -5267,7 +5324,25 @@ function PayrollSection({ session }) {
               <div><Label>Base salary</Label><Input type="number" value={form.baseSalary} onChange={e => setForm(f => ({ ...f, baseSalary: e.target.value }))} /></div>
               <div><Label>Currency</Label><Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}><option>NGN</option><option>USD</option></Select></div>
             </div>
-            <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 8px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below.</p>
+            {form.currency === "NGN" && (
+              <div style={{ marginBottom: 12 }}>
+                <Toggle value={form.statutory} onChange={v => setForm(f => ({ ...f, statutory: v }))} label="Deduct PAYE, pension and NHF automatically (Nigeria Tax Act 2025)" />
+                {form.statutory && Number(form.baseSalary) > 0 && (() => {
+                  const e = employeeOf(form.employeeId) || {};
+                  const calc = computeNigerianPayroll(Number(form.baseSalary), { pensionable: e.pensionableMonthly ?? undefined, basic: e.basicMonthly ?? undefined, annualRent: e.annualRent || 0, nhf: !!e.nhfOptIn, nhis: e.nhisMonthly || 0, pension: e.pensionExempt !== true });
+                  const n = v => `₦${Number(v).toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+                  const short = l => l.replace(/ \(.*\)/, "");
+                  return (
+                    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, marginTop: 10, fontSize: 13, color: C.text, lineHeight: 1.8 }}>
+                      {calc.deductions.map(d => <div key={d.kind} style={{ display: "flex", justifyContent: "space-between" }}><span>{d.label}</span><span>− {n(d.amount)}</span></div>)}
+                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 4, fontWeight: 800, color: C.heading }}><span>Net pay</span><span>{n(calc.net)}</span></div>
+                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>Effective tax rate {calc.effectiveTaxRate}% · rent relief {n(calc.rentRelief)}/yr · employer also pays {calc.employerCosts.map(c => `${short(c.label)} ${n(c.amount)}`).join(", ")}. Set rent, NHF and pay splits under Employees → Edit.</div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+            <p style={{ fontSize: 12, color: C.textMuted, margin: "0 0 8px" }}>Commissions can be added on top of this throughout the month via "+ Add Commission" on the draft entry below. Tax is recalculated when you do.</p>
             {form.currency !== "NGN" && (
               <p style={{ fontSize: 12, color: C.amber, margin: "0 0 14px" }}>Only NGN payroll can be paid automatically via bank transfer. A {form.currency} entry will need to be paid through your own channel and recorded with "Mark Paid."</p>
             )}
@@ -5277,6 +5352,28 @@ function PayrollSection({ session }) {
         {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
       </SectionCard>
+
+      {remit && (
+        <SectionCard style={{ marginBottom: 20, border: `1px solid ${C.gold}44` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <SectionTitle>Statutory remittances · {remit.period}</SectionTitle>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn small variant="ghost" onClick={() => downloadCSV(`remittance-${remit.period}`, ["Employee", "TIN", "PFA", "RSA PIN", "NHF no.", "Gross", "PAYE", "Pension (employee)", "Pension (employer)", "NHF", "NSITF", "ITF", "Status"], remit.rows.map(r => [r.fullName, r.taxId, r.pfa, r.rsaPin, r.nhfNumber, r.gross, r.paye, r.pensionEmployee, r.pensionEmployer, r.nhf, r.nsitf, r.itf, r.status]), "payroll")}>Download CSV</Btn>
+              <Btn small variant="ghost" onClick={() => setRemit(null)}>Close</Btn>
+            </div>
+          </div>
+          {remit.rows.length === 0 ? <p style={{ fontSize: 13, color: C.textMuted }}>No NGN payroll entries for this month.</p> : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 10 }}>
+              {[["PAYE → State IRS (by the 10th)", remit.totals.paye], ["Pension → PFAs (within 7 days)", remit.totals.pension], ["NHF → FMBN", remit.totals.nhf], ["NSITF", remit.totals.nsitf], ["ITF (1%, yearly)", remit.totals.itf]].map(([k, v]) => (
+                <div key={k} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>{k}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: C.heading }}>₦{Number(v).toLocaleString("en-NG", { maximumFractionDigits: 2 })}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       {payingEntry && (() => {
         const employee = employeeOf(payingEntry.employeeId);
@@ -5371,7 +5468,12 @@ function PayrollSection({ session }) {
                 const total = (p.commissions || []).reduce((s, c) => s + Number(c.amount), 0);
                 return (p.commissions || []).length > 0 ? `${p.currency} ${total.toLocaleString()} (${p.commissions.length})` : "—";
               } },
-              { key: "netAmount", label: "Total (Net Pay)", render: p => `${p.currency} ${Number(p.netAmount).toLocaleString()}` },
+              { key: "netAmount", label: "Total (Net Pay)", render: p => (
+                <div>
+                  <div>{p.currency} {Number(p.netAmount).toLocaleString()}</div>
+                  {(p.deductions || []).length > 0 && <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 2 }}>{p.deductions.map(d => `${d.label.replace(/ \(.*\)/, "")} ${Number(d.amount).toLocaleString()}`).join(" · ")}</div>}
+                </div>
+              ) },
               { key: "status", label: "Status", render: p => (
                 <div>
                   <Badge color={statusColor[p.status]}>{p.status === "processing" ? "paying…" : p.status}</Badge>

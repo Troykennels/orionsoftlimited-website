@@ -1,5 +1,5 @@
 import { getRecord, putRecord, listRecords } from "../_lib/records.js";
-import { requireStaff } from "../_lib/auth.js";
+import { requireStaff, withoutSecrets } from "../_lib/auth.js";
 import { cleanSocials, slugify, logActivity, notify } from "../_lib/office.js";
 import { getRoleCatalog, can } from "../_lib/roles.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
@@ -14,9 +14,7 @@ const SELF_EDITABLE = [
 ];
 
 function publicShape(e) {
-  const rest = { ...e };
-  delete rest.passwordHash;
-  return rest;
+  return withoutSecrets(e);
 }
 
 function validImage(d, max) {

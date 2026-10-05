@@ -34,6 +34,9 @@ export default function StaffLogin({ onLogin, notice }) {
   const [loading, setLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
   const googleBtn = useRef(null);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState("");
+  const googleCred = useRef(null); // Google sign-in waiting for the 2-step code
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +58,7 @@ export default function StaffLogin({ onLogin, notice }) {
             setLoading(true); setErr("");
             try {
               const r = await api("/api/auth/google", { method: "POST", body: { credential } });
+              if (r.needsCode) { googleCred.current = credential; setNeedsCode(true); return; }
               onLogin(r.user);
             } catch (e) {
               setErr(e.message);
@@ -76,7 +80,10 @@ export default function StaffLogin({ onLogin, notice }) {
     e.preventDefault();
     setLoading(true); setErr("");
     try {
-      const r = await api("/api/auth/login", { method: "POST", body: { email: email.trim(), password: pw, portal: "staff", remember } });
+      const r = googleCred.current
+        ? await api("/api/auth/google", { method: "POST", body: { credential: googleCred.current, code } })
+        : await api("/api/auth/login", { method: "POST", body: { email: email.trim(), password: pw, portal: "staff", remember, code: needsCode ? code : undefined } });
+      if (r.needsCode) { setNeedsCode(true); return; }
       onLogin(r.user);
     } catch (ex) { setErr(ex.message); } finally { setLoading(false); }
   }
@@ -104,11 +111,18 @@ export default function StaffLogin({ onLogin, notice }) {
           </div>
         )}
 
-        <div style={{ marginBottom: 14 }}>
+        {needsCode && (
+          <div style={{ marginBottom: 14 }}>
+            <label htmlFor="so-code" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: C.textMuted, marginBottom: 6 }}>6-digit code from your authenticator app</label>
+            <input id="so-code" autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value.toUpperCase().slice(0, 11))} placeholder="123456 or a recovery code" style={{ ...inputStyle, letterSpacing: "0.2em", fontSize: 18 }} />
+            <p style={{ fontSize: 12, color: C.textMuted, margin: "6px 0 0" }}>Two-step sign-in is on for your account. Lost your phone? Use one of your recovery codes, or ask HR to reset it.</p>
+          </div>
+        )}
+        <div style={{ marginBottom: 14, display: needsCode ? "none" : "block" }}>
           <label htmlFor="so-email" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: C.textMuted, marginBottom: 6 }}>Work email</label>
           <input id="so-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@orionsoftlimited.com" autoComplete="username" style={inputStyle} />
         </div>
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14, display: needsCode ? "none" : "block" }}>
           <label htmlFor="so-pw" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: C.textMuted, marginBottom: 6 }}>Password</label>
           <input id="so-pw" type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Enter your password" autoComplete="current-password" style={inputStyle} />
         </div>
@@ -117,12 +131,12 @@ export default function StaffLogin({ onLogin, notice }) {
           Keep me signed in on this device for 30 days
         </label>
         {err && <div role="alert" style={{ fontSize: 13, color: C.rose, marginBottom: 14, lineHeight: 1.5 }}>{err}</div>}
-        <button type="submit" disabled={loading || !pw || !email} style={{
+        <button type="submit" disabled={loading || (needsCode ? code.length < 6 : (!pw || !email))} style={{
           width: "100%", padding: 13, background: C.gold, color: "#060810", border: "none", borderRadius: 10,
           fontSize: 15, fontWeight: 800, fontFamily: font, cursor: loading || !pw || !email ? "not-allowed" : "pointer",
           opacity: loading || !pw || !email ? 0.6 : 1,
         }}>
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Signing in…" : needsCode ? "Verify and sign in" : "Sign in"}
         </button>
         <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 20, lineHeight: 1.6 }}>
           Your account is created by Orion Soft HR. Google sign-in works with your work email,

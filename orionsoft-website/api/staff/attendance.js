@@ -80,8 +80,14 @@ export default async function handler(req, res) {
       return res.json({ ok: true, locationConsentAt: fresh.locationConsentAt });
     }
 
-    const id = recId(me.id, today);
-    const rec = (await getRecord("attendance", id)) || { id, employeeId: me.id, date: today, clockIn: null, clockOut: null, minutes: 0, mode: "remote", standup: null, eod: "", events: [] };
+    // Sent later from a phone that was offline: use when it really happened
+    // (no more than 24 hours ago, never in the future), and say so.
+    const captured = Date.parse(b.capturedAt || "");
+    const offline = captured && captured < Date.now() - 60000 && captured > Date.now() - 24 * 3600000;
+    const at = offline ? new Date(captured).toISOString() : new Date().toISOString();
+    const day = offline ? toLagos(at).slice(0, 10) : today;
+    const id = recId(me.id, day);
+    const rec = (await getRecord("attendance", id)) || { id, employeeId: me.id, date: day, clockIn: null, clockOut: null, minutes: 0, mode: "remote", standup: null, eod: "", events: [] };
     rec.events = rec.events || [];
     const fresh = await getRecord("employees", me.id);
     const cfg = { ...DEFAULT_OFFICE_CONFIG, ...((await get(OFFICE_CONFIG_KEY)) || {}) };
@@ -104,7 +110,7 @@ export default async function handler(req, res) {
 
     if (b.action === "clock-in") {
       if (rec.clockIn && !rec.clockOut) return res.status(400).json({ error: "You're already clocked in" });
-      const now = new Date().toISOString();
+      const now = at;
       const first = !rec.clockIn;
       rec.clockIn = rec.clockIn || now;
       rec.clockOut = null;
@@ -116,7 +122,7 @@ export default async function handler(req, res) {
         rec.lateMinutes = lateMinutes(now, schedule);
         rec.schedule = { start: schedule.start, end: schedule.end };
       }
-      rec.events.push({ type: first ? "clock_in" : "resume", at: now, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId, mode: rec.mode });
+      rec.events.push({ type: first ? "clock_in" : "resume", at: now, offline: !!offline, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId, mode: rec.mode });
       fresh.presence = { status: rec.mode === "field" || rec.mode === "client_site" ? "field" : "available", note: "", at: now };
       if (first) {
         const mgr = managerChain(me, employees, catalog)[0];
@@ -131,13 +137,13 @@ export default async function handler(req, res) {
       }
     } else if (b.action === "clock-out") {
       if (!rec.clockIn || rec.clockOut) return res.status(400).json({ error: "You're not clocked in" });
-      rec.clockOut = new Date().toISOString();
+      rec.clockOut = at;
       rec.minutes = (rec.minutes || 0) + Math.round((Date.parse(rec.clockOut) - Date.parse(rec.resumedAt || rec.clockIn)) / 60000);
       rec.eod = String(b.eod || "").slice(0, 1500);
       rec.clockOutGeo = geo; rec.clockOutIp = meta.ip;
       rec.earlyMinutes = earlyMinutes(rec.clockOut, schedule);
       rec.overtimeMinutes = overtimeMinutes(rec.clockIn, rec.clockOut, schedule);
-      rec.events.push({ type: "clock_out", at: rec.clockOut, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId });
+      rec.events.push({ type: "clock_out", at: rec.clockOut, offline: !!offline, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId });
       fresh.presence = { status: "offline", note: "", at: new Date().toISOString() };
       const mgr = managerChain(me, employees, catalog)[0];
       const early = rec.earlyMinutes >= 30;
@@ -170,6 +176,7 @@ export default async function handler(req, res) {
     } else {
       return res.status(400).json({ error: "Unknown action" });
     }
+    if (offline) rec.offlineSync = true;
     await putRecord("attendance", id, rec);
     await putRecord("employees", fresh.id, fresh);
     return res.json({ ok: true, record: rec, presence: fresh.presence });

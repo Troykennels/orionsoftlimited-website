@@ -61,14 +61,14 @@ export function linkToUrl(link) {
   return `/staff/${module === "home" ? "" : module}${param ? `/${encodeURIComponent(param)}` : ""}`;
 }
 
-export async function sendPush(employeeId, { title, body = "", link = "", type = "" }) {
+export async function sendPush(employeeId, { title, body = "", link = "", type = "", quiet = false }) {
   const list = (await get(subsKey(employeeId))) || [];
   if (!list.length) return 0;
   await getVapid();
   // One alert per conversation/item, so a new meeting invite doesn't silently
   // replace yesterday's on the lock screen.
   const tag = `${type || "office"}:${link || ""}`.slice(0, 120);
-  const payload = JSON.stringify({ title, body: String(body).slice(0, 180), url: linkToUrl(link), tag, urgent: URGENT.has(type) });
+  const payload = JSON.stringify({ title, body: String(body).slice(0, 180), url: linkToUrl(link), tag, urgent: URGENT.has(type) && !quiet, silent: !!quiet });
   let sent = 0;
   const dead = [];
   await Promise.all(list.map(async s => {

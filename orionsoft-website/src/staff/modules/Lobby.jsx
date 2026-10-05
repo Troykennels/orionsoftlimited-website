@@ -11,6 +11,8 @@ import { getDeviceId, getLocation, techDetail } from "../geo.js";
 import { useConsent } from "./FieldVisits.jsx";
 import DeviceHelp from "../DeviceHelp.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
+import ChecklistCard from "../ChecklistCard.jsx";
+import { enqueue, isNetworkError } from "../offlineQueue.js";
 import { startLateLocation } from "../lateLocation.jsx";
 
 function greeting() {
@@ -63,7 +65,15 @@ function DayFlow({ onChanged }) {
         }
       }
       setLocFail(null);
-      await api("/api/staff/attendance", { method: "POST", body: { ...body, ...extra } });
+      try {
+        await api("/api/staff/attendance", { method: "POST", body: { ...body, ...extra } });
+      } catch (e) {
+        if (!isNetworkError(e)) throw e;
+        // No network: keep it on the phone with the real time; it's sent when the signal returns.
+        enqueue("/api/staff/attendance", { ...body, ...extra });
+        toast(`No connection. Saved on your phone at ${new Date().toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}; it will be sent automatically.`);
+        return true;
+      }
       toast(okMsg);
       await load(); onChanged();
       return true;
@@ -223,6 +233,7 @@ export default function Lobby() {
         </div>
       </section>
 
+      <ChecklistCard />
       {!phoneReady && <PhoneCheck compact onReady={() => { try { localStorage.setItem("so_phone_ready", "1"); } catch { /* ignore */ } setTimeout(() => setPhoneReady(true), 1500); }} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 20 }}>

@@ -2,10 +2,11 @@
 // day: live status, today's timeline, timesheet, client visits with evidence,
 // map and location checks. The same picture the admin sees, for your team.
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { MapPin, Eye, Clock, UserX, AlertTriangle, Briefcase, RefreshCw } from "lucide-react";
+import { MapPin, Eye, Clock, UserX, AlertTriangle, Briefcase, RefreshCw, Route } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api } from "../api.js";
-import { Avatar, Badge, Btn, SectionCard, SectionTitle, EmptyState, Grid, StatCard, Input, Tabs, toast } from "../components.jsx";
+import { Avatar, Badge, Btn, SectionCard, SectionTitle, EmptyState, Grid, StatCard, Input, Tabs, Modal, toast } from "../components.jsx";
+import VisitPlanCard from "../VisitPlanCard.jsx";
 import { useOffice } from "../office.js";
 import { VisitDetail, SpotDetail } from "../FieldEvidence.jsx";
 import { time, dt, mins, maps, LEVEL, CONF } from "../fieldFormat.js";
@@ -53,6 +54,7 @@ export default function TeamField() {
   const [open, setOpen] = useState({});
   const [openVisit, setOpenVisit] = useState(null);
   const [openSpot, setOpenSpot] = useState(null);
+  const [planFor, setPlanFor] = useState(null);
 
   const load = useCallback(() => api(`/api/staff/team?view=field&from=${range.from}&to=${range.to}`).then(setData).catch(e => toast(e.message, "err")), [range]);
   useEffect(() => { load(); const t = setInterval(load, 60_000); return () => clearInterval(t); }, [load]);
@@ -106,11 +108,13 @@ export default function TeamField() {
                   {p.openVisit && <div><strong style={{ color: C.heading }}>At {p.openVisit.organisation}</strong> since {time(p.openVisit.since)} · <span style={{ color: (LEVEL[p.openVisit.level] || LEVEL.review)[1] }}>trust {p.openVisit.trust}%</span></div>}
                   {a?.clockIn && <div>In {time(a.clockIn)}{a.clockOut ? ` · out ${time(a.clockOut)} · ${mins(a.minutes || 0)}` : ""} · {String(a.mode || "").replace("_", " ")} {a.lateMinutes > 0 && <Badge color={C.amber}>{mins(a.lateMinutes)} late</Badge>} {a.earlyMinutes >= 15 && <Badge color={C.amber}>left {mins(a.earlyMinutes)} early</Badge>}</div>}
                   {a?.standup && <div><strong style={{ color: C.heading }}>Today:</strong> {a.standup}</div>}
+                  {p.plan?.planned > 0 && <div><strong style={{ color: C.heading }}>Plan:</strong> {p.plan.visited} of {p.plan.planned} visited{p.plan.stops.some(st => st.status === "pending") ? ` · next: ${p.plan.stops.find(st => st.status === "pending").organisation}` : ""}</div>}
                   {p.lastSeen && <div style={{ color: C.textMuted }}>Last location {time(p.lastSeen.at)}: <a href={maps(p.lastSeen.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>open map</a></div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
                   <Btn small variant="ghost" onClick={() => setOpen(o => ({ ...o, [p.id]: !o[p.id] }))}>{open[p.id] ? "Hide" : "Show"} today's timeline ({p.timeline.length})</Btn>
                   {(p.status === "in" || p.status === "visit") && <Btn small variant="ghost" icon={MapPin} onClick={() => checkNow(p)}>Check location now</Btn>}
+                  <Btn small variant="ghost" icon={Route} onClick={() => setPlanFor(p)}>Visit plan</Btn>
                 </div>
                 {open[p.id] && <div style={{ marginTop: 8 }}><Timeline items={p.timeline} onVisit={setOpenVisit} onSpot={setOpenSpot} /></div>}
               </SectionCard>
@@ -131,7 +135,7 @@ export default function TeamField() {
                     <tr key={r.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                       <td style={td}>{r.date}</td>
                       <td style={{ ...td, color: C.heading, fontWeight: 700 }}>{r.employeeName}</td>
-                      <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}</td>
+                      <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}{r.offlineSync && <Badge color={C.blue}>sent later (offline)</Badge>}</td>
                       <td style={td}>{r.clockInGeo ? <a href={maps(r.clockInGeo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map ±{r.clockInGeo.accuracy}m</a> : <span style={{ color: C.rose }}>not shared</span>}</td>
                       <td style={td}>{r.clockOut ? time(r.clockOut) : <span style={{ color: C.mint }}>in</span>} {r.forgotClockOut && <Badge color={C.rose}>forgot</Badge>}{r.earlyMinutes >= 15 && <Badge color={C.amber}>{mins(r.earlyMinutes)} early</Badge>}</td>
                       <td style={td}>{((r.minutes || 0) / 60).toFixed(1)}h{r.overtimeMinutes >= 15 && <div style={{ fontSize: 12, color: C.blue }}>+{mins(r.overtimeMinutes)} overtime</div>}</td>
@@ -198,6 +202,7 @@ export default function TeamField() {
         </SectionCard>
       )}
 
+      {planFor && <Modal title={`${planFor.fullName}'s visit plan`} onClose={() => { setPlanFor(null); load(); }} width={720}><VisitPlanCard employeeId={planFor.id} name={planFor.fullName} bare /></Modal>}
       {openVisit && <VisitDetail id={openVisit} load={loadVisit} onClose={() => setOpenVisit(null)} />}
       {openSpot && <SpotDetail id={openSpot} load={loadSpot} onClose={() => setOpenSpot(null)} />}
     </div>

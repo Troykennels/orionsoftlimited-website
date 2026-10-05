@@ -14,7 +14,7 @@ self.addEventListener("push", event => {
     body: data.body || "",
     tag: data.tag || "office",
     renotify: true,
-    silent: false, // play the phone's notification sound
+    silent: !!data.silent, // quiet hours: no sound; otherwise the phone's notification sound
     requireInteraction: !!data.urgent,
     vibrate: data.urgent ? [400, 150, 400, 150, 400, 150, 400] : [200, 100, 200],
     timestamp: Date.now(),
