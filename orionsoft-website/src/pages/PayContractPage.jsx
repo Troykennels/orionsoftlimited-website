@@ -1,14 +1,19 @@
-// Client payment page for a signed contract: pick a milestone (or part of the
-// balance), then pay online or report a bank transfer.
+// Client payment page (/p/<code>, or the older /pay/contract/<id>?token=…).
+// One permanent link per payment plan or contract: it always shows what's due
+// next, the client's own account number to transfer into, every item with its
+// status, and their receipts. Pay online or by transfer.
 import { useEffect, useState } from "react";
 
 const NAVY = "#0A2540", GOLD = "#C8A850", GOLD_DK = "#8A6A1F", INK = "#0E1726", MUTED = "#5B6778", LINE = "#E2E8F0";
 const FONT = "'Instrument Sans', 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif";
-const contractId = decodeURIComponent(window.location.pathname.split("/").filter(Boolean)[2] || "");
+const parts = window.location.pathname.split("/").filter(Boolean);
+const code = parts[0] === "p" ? decodeURIComponent(parts[1] || "").toUpperCase() : "";
+const contractId = code ? "" : decodeURIComponent(parts[2] || "");
 const token = new URLSearchParams(window.location.search).get("token") || "";
+const auth = code ? `code=${encodeURIComponent(code)}` : `contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}`;
 const fmt = (n, c = "NGN") => `${c === "NGN" ? "₦" : `${c} `}${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const day = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "");
-const fileUrl = (key, download) => `/api/files/download?key=${encodeURIComponent(key)}&contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}${download ? "&download=1" : ""}`;
+const fileUrl = (key, download) => `/api/files/download?key=${encodeURIComponent(key)}&${auth}${download ? "&download=1" : ""}`;
 const STATUS = { paid: ["Paid", "#15803D", "#DCFCE7"], part_paid: ["Part-paid", "#B45309", "#FEF3C7"], overdue: ["Overdue", "#B91C1C", "#FEE2E2"], unpaid: ["Due", "#475569", "#F1F5F9"] };
 
 const input = { width: "100%", boxSizing: "border-box", border: `1px solid #CBD5E1`, borderRadius: 10, padding: "11px 12px", fontSize: 15, fontFamily: FONT, color: INK, background: "#fff" };
@@ -16,7 +21,7 @@ const button = (primary, disabled) => ({ background: disabled ? "#CBD5E1" : prim
 
 async function fetchPayPage() {
   try {
-    const r = await fetch(`/api/contracts/pay?contractId=${encodeURIComponent(contractId)}&token=${encodeURIComponent(token)}`);
+    const r = await fetch(`/api/contracts/pay?${auth}`);
     const j = await r.json();
     return r.ok ? { data: j } : { error: j.error || "This payment link isn't valid." };
   } catch { return { error: "Couldn't load the payment page. Check your connection and try again." }; }
@@ -44,7 +49,9 @@ export default function PayContractPage() {
 
   if (s.loading) return <Shell><p style={{ color: MUTED }}>Loading…</p></Shell>;
   if (s.error) return <Shell><h1 style={{ fontSize: 20, margin: "0 0 8px" }}>Payment link</h1><p style={{ color: MUTED, lineHeight: 1.6 }}>{s.error}</p></Shell>;
-  const { contract: c, summary: sum, payOnline, bankDetails, company } = s.d;
+  const { contract: c, summary: sum, payOnline, bankDetails, company, next, dva, link } = s.d;
+  const docWord = c.kind === "plan" ? "payment plan" : "contract";
+  const overdue = next?.payStatus === "overdue";
   const cur = c.currency;
   const milestone = sum.schedule.find(m => m.id === choice);
   const amount = choice === "other" ? Number(other) || 0 : choice === "balance" ? sum.balance : milestone ? milestone.balance : 0;
@@ -53,7 +60,7 @@ export default function PayContractPage() {
   async function post(body) {
     setErr(""); setMsg(""); setBusy(true);
     try {
-      const r = await fetch("/api/contracts/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId, token, amount, milestoneId: milestone ? milestone.id : null, ...body }) });
+      const r = await fetch("/api/contracts/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contractId, token, code, amount, milestoneId: milestone ? milestone.id : null, ...body }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Something went wrong");
       return j;
@@ -73,7 +80,30 @@ export default function PayContractPage() {
     <Shell>
       <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", color: GOLD_DK }}>PAYMENT · {c.number}</div>
       <h1 style={{ fontSize: 22, margin: "6px 0 4px", color: NAVY, lineHeight: 1.25 }}>{c.title}</h1>
-      <p style={{ color: MUTED, margin: 0 }}>For {c.organisation || c.clientName}{c.pdfKey && <> · <a href={fileUrl(c.pdfKey)} target="_blank" rel="noreferrer" style={{ color: NAVY, fontWeight: 700 }}>View contract</a></>}</p>
+      <p style={{ color: MUTED, margin: 0 }}>For {c.organisation || c.clientName}{c.pdfKey && <> · <a href={fileUrl(c.pdfKey)} target="_blank" rel="noreferrer" style={{ color: NAVY, fontWeight: 700 }}>View {docWord}</a></>}</p>
+
+      {next && (
+        <div style={{ marginTop: 16, padding: 16, borderRadius: 14, background: overdue ? "#FEF2F2" : "#FFF8E6", border: `1.5px solid ${overdue ? "#FCA5A5" : "#F1D48B"}` }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", color: overdue ? "#B91C1C" : GOLD_DK }}>{overdue ? "OVERDUE" : "NEXT PAYMENT"}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginTop: 4 }}>
+            <strong style={{ fontSize: 17, color: INK }}>{next.title}</strong>
+            <strong style={{ fontSize: 22, color: NAVY, fontVariantNumeric: "tabular-nums" }}>{fmt(next.balance, c.currency)}</strong>
+          </div>
+          <div style={{ fontSize: 14, color: MUTED, marginTop: 2 }}>{next.dueDate ? `Due ${day(next.dueDate)}` : next.trigger || "Due now"}</div>
+        </div>
+      )}
+
+      {dva && sum.balance > 0 && (
+        <div style={{ marginTop: 14, padding: 16, borderRadius: 14, background: NAVY, color: "#fff" }}>
+          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", color: GOLD }}>YOUR ACCOUNT NUMBER FOR THIS PLAN</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>{dva.accountNumber}</span>
+            <button type="button" onClick={() => copy(dva.accountNumber)} style={{ background: GOLD, color: NAVY, border: "none", borderRadius: 8, padding: "7px 12px", fontWeight: 800, cursor: "pointer", fontFamily: FONT }}>Copy</button>
+          </div>
+          <div style={{ fontSize: 14.5, marginTop: 2 }}>{dva.bankName} · {dva.accountName}</div>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", margin: "8px 0 0", lineHeight: 1.5 }}>Transfer from any bank app, whenever each payment is due. It's matched to your next item automatically and your receipt is emailed to you; no need to tell us.</p>
+        </div>
+      )}
 
       <div style={{ margin: "18px 0", padding: 16, borderRadius: 14, background: "#F8FAFC", border: `1px solid ${LINE}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 14 }}>
@@ -86,7 +116,7 @@ export default function PayContractPage() {
       </div>
 
       {sum.balance <= 0 ? (
-        <div role="status" style={{ background: "#DCFCE7", color: "#15803D", borderRadius: 12, padding: 16, fontWeight: 800 }}>This contract is fully paid. Thank you.</div>
+        <div role="status" style={{ background: "#DCFCE7", color: "#15803D", borderRadius: 12, padding: 16, fontWeight: 800 }}>This {docWord} is fully paid. Thank you.</div>
       ) : (
         <>
           <h2 style={{ fontSize: 16, margin: "0 0 10px", color: INK }}>What are you paying for?</h2>
@@ -153,6 +183,12 @@ export default function PayContractPage() {
         </>
       )}
       {err && <p role="alert" style={{ color: "#B91C1C", fontSize: 14, marginTop: 12 }}>{err}</p>}
+      {link && sum.balance > 0 && (
+        <div style={{ marginTop: 16, padding: 12, borderRadius: 12, background: "#F8FAFC", border: `1px solid ${LINE}`, fontSize: 13.5, color: MUTED, lineHeight: 1.5 }}>
+          Keep this page: the same link works for every payment until the {docWord} is complete.{" "}
+          <button type="button" onClick={() => copy(link)} style={{ border: "none", background: "none", color: NAVY, fontWeight: 800, cursor: "pointer", textDecoration: "underline", padding: 0, fontFamily: FONT }}>Copy link</button>
+        </div>
+      )}
       {msg && <p role="status" style={{ color: "#15803D", fontSize: 14, marginTop: 12 }}>{msg}</p>}
 
       {(sum.receipts.length > 0 || sum.pending.length > 0) && (

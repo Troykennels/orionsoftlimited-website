@@ -75,7 +75,27 @@ export async function nextReceiptNumber(contract) {
 export function payToken(contract) {
   return signSession({ sub: contract.id, role: "contract-pay", contractId: contract.id }, PAY_TOKEN_TTL_SECONDS);
 }
-export const payLink = contract => `${siteUrl()}/pay/contract/${contract.id}?token=${encodeURIComponent(payToken(contract))}`;
+
+// A short, permanent payment link (/p/K7Q2M9X4TD) the client can bookmark or
+// get on WhatsApp, and reopen for every payment until the plan is paid off.
+// 10 random characters from a 31-letter alphabet ≈ 49 bits: not guessable.
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export async function ensurePayCode(contract) {
+  if (contract.payCode) return contract.payCode;
+  const { randomBytes } = await import("node:crypto");
+  const { setLookup } = await import("./records.js");
+  const bytes = randomBytes(10);
+  contract.payCode = Array.from(bytes, b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
+  await setLookup("contracts", "paycode", contract.payCode, contract.id);
+  return contract.payCode;
+}
+export async function contractByPayCode(code) {
+  const { getByLookup } = await import("./records.js");
+  return /^[A-Z0-9]{8,16}$/.test(String(code || "")) ? getByLookup("contracts", "paycode", String(code)) : null;
+}
+export const payLink = contract => (contract.payCode
+  ? `${siteUrl()}/p/${contract.payCode}`
+  : `${siteUrl()}/pay/contract/${contract.id}?token=${encodeURIComponent(payToken(contract))}`);
 
 const longDate = d => (d ? new Date(`${String(d).slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "");
 export const money = (n, c = "NGN") => `${c} ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

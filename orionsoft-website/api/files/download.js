@@ -38,6 +38,19 @@ export default async function handler(req, res) {
     }
   }
 
+  // 4. The short payment-link code (/p/<code>): that contract's PDFs and receipts.
+  if (!authorized && req.query.code) {
+    const { contractByPayCode } = await import("../_lib/contracts.js");
+    const c = await contractByPayCode(String(req.query.code).toUpperCase());
+    if (c) {
+      if (key === `orionsoft:files:contract_${c.id}` || key === `orionsoft:files:contract_signed_${c.id}`) authorized = true;
+      else if (key.startsWith("orionsoft:files:receipt_")) {
+        const p = (await listRecords("payments")).find(x => x.receiptPdfKey === key);
+        if (p && p.contractId === c.id && p.status === "success") authorized = true;
+      }
+    }
+  }
+
   if (!authorized) return res.status(401).json({ error: "Unauthorized" });
 
   const base64 = await get(key);

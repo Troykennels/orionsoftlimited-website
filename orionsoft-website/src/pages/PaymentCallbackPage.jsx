@@ -13,7 +13,7 @@ export default function PaymentCallbackPage() {
   const [error, setError] = useState(hasReference ? "" : "Missing payment reference.");
   const [receipt, setReceipt] = useState("");
   const q = new URLSearchParams(window.location.search);
-  const backLink = q.get("contract") && q.get("token") ? `/pay/contract/${encodeURIComponent(q.get("contract"))}?token=${encodeURIComponent(q.get("token"))}` : "";
+  const backLink = q.get("code") ? `/p/${encodeURIComponent(q.get("code"))}` : q.get("contract") && q.get("token") ? `/pay/contract/${encodeURIComponent(q.get("contract"))}?token=${encodeURIComponent(q.get("token"))}` : "";
 
   useEffect(() => {
     const reference = new URLSearchParams(window.location.search).get("reference");

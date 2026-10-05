@@ -9,7 +9,7 @@ const path = window.location.pathname
 const isStaffPath = path === '/staff' || path.startsWith('/staff/')
 const isSignPath = path.startsWith('/sign/')
 const isPayCallbackPath = path === '/pay/callback'
-const isPayContractPath = path.startsWith('/pay/contract/')
+const isPayContractPath = path.startsWith('/pay/contract/') || path.startsWith('/p/')
 const isApplicantPath = path === '/applicant' || path.startsWith('/applicant/')
 const isVisitConfirmPath = path.startsWith('/confirm-visit/')
 const isIdCardPath = path === '/id-card'

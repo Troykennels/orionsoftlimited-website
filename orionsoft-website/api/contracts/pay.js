@@ -5,7 +5,8 @@
 import { getRecord, putRecord, listRecords, newId } from "../_lib/records.js";
 import { verifySession } from "../_lib/auth.js";
 import { getCompanySettings } from "../_lib/settings.js";
-import { normaliseContract, paymentSummary, money, siteUrl } from "../_lib/contracts.js";
+import { normaliseContract, paymentSummary, money, siteUrl, contractByPayCode, payLink } from "../_lib/contracts.js";
+import { ensureDedicatedAccount } from "../_lib/paystackDva.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
 import { requestMeta } from "../_lib/fieldIntel.js";
 
@@ -39,21 +40,32 @@ function checkAmount(summary, contract, { milestoneId, amount }) {
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Robots-Tag", "noindex");
+  // Either the short permanent link (/p/<code>) or the older signed link.
+  const code = String(req.query.code || req.body?.code || "").toUpperCase();
   const contractId = req.query.contractId || req.body?.contractId;
   const token = req.query.token || req.body?.token;
-  if (!contractId || !token || !tokenOk(token, contractId)) return res.status(401).json({ error: "This payment link is invalid or has expired. Ask us for a new one." });
-  const raw = await getRecord("contracts", contractId);
-  if (!raw) return res.status(404).json({ error: "Contract not found" });
+  let raw = null;
+  if (code) raw = await contractByPayCode(code);
+  else if (contractId && token && tokenOk(token, contractId)) raw = await getRecord("contracts", contractId);
+  if (!raw) return res.status(401).json({ error: "This payment link is invalid. Ask us for a new one." });
   const c = normaliseContract(raw);
-  if (!["signed", "active", "completed"].includes(c.status)) return res.status(400).json({ error: "This contract must be signed before payments can be made." });
+  if (c.status === "cancelled") return res.status(400).json({ error: "This document was cancelled, so there's nothing to pay. Contact us if you think that's wrong." });
+  // Payment plans need no signature; agreements can allow paying before signing.
+  const canPay = c.kind === "plan" || ["signed", "active", "completed"].includes(c.status) || (c.status !== "draft" && raw.payBeforeSigning);
+  if (!canPay) return res.status(400).json({ error: "This agreement must be signed before payments can be made.", signFirst: true });
   const payments = (await listRecords("payments")).filter(p => p.contractId === c.id);
   const summary = paymentSummary(c, payments);
   const company = await getCompanySettings();
 
   if (req.method === "GET") {
+    const dva = summary.balance > 0 ? await ensureDedicatedAccount(raw) : raw.dva || null;
+    const next = summary.schedule.find(m => m.balance > 0) || null;
     return res.json({
+      next: next ? { id: next.id, title: next.title, dueDate: next.dueDate || null, trigger: next.trigger || "", balance: next.balance, payStatus: next.payStatus } : null,
+      dva: dva ? { bankName: dva.bankName, accountNumber: dva.accountNumber, accountName: dva.accountName } : null,
+      link: payLink(raw),
       ok: true,
-      contract: { id: c.id, number: c.number, pdfKey: raw.signedPdfKey || raw.pdfKey || "", title: c.title, clientName: c.client.name, organisation: c.client.organisation, currency: c.currency, allowPartial: c.allowPartial, status: c.status },
+      contract: { id: c.id, number: c.number, kind: c.kind || "agreement", docLabel: c.docLabel || "", pdfKey: raw.signedPdfKey || raw.pdfKey || "", title: c.title, clientName: c.client.name, organisation: c.client.organisation, currency: c.currency, allowPartial: c.allowPartial, status: c.status },
       summary: { total: summary.total, paid: summary.paid, balance: summary.balance, schedule: summary.schedule.map(m => ({ id: m.id, title: m.title, description: m.description || "", dueDate: m.dueDate || null, trigger: m.trigger || "", amount: m.amount, paid: m.paid, balance: m.balance, payStatus: m.payStatus })), receipts: summary.receipts.map(r => ({ receiptNumber: r.receiptNumber, amount: r.amount, paidAt: r.paidAt, method: r.method, pdfKey: payments.find(p => p.id === r.id)?.receiptPdfKey || "" })), pending: summary.pending.map(p => ({ amount: p.amount, bankReference: p.bankReference, createdAt: p.createdAt })) },
       payOnline: !!process.env.PAYSTACK_SECRET_KEY,
       bankDetails: company.bankDetails || "",
@@ -76,7 +88,9 @@ export default async function handler(req, res) {
         method: "POST", headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           email: c.client.email, amount: Math.round(chk.amount * 100), currency: c.currency === "USD" ? "USD" : "NGN", reference,
-          callback_url: `${siteUrl()}/pay/callback?reference=${reference}&contract=${encodeURIComponent(c.id)}&token=${encodeURIComponent(token)}`,
+          callback_url: code ? `${siteUrl()}/pay/callback?reference=${reference}&code=${encodeURIComponent(code)}` : `${siteUrl()}/pay/callback?reference=${reference}&contract=${encodeURIComponent(c.id)}&token=${encodeURIComponent(token)}`,
+          // Card, bank transfer (Paystack shows an account number to pay into), USSD and bank.
+          channels: ["card", "bank_transfer", "ussd", "bank"],
           metadata: { contractId: c.id, contractNumber: c.number, milestoneId: b.milestoneId || "" },
         }),
       });

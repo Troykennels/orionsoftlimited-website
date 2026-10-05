@@ -113,7 +113,7 @@ async function drawSignatureCards(doc, cursor, fonts, contract, company, signato
   }
 }
 
-export async function renderContractPdfV2(rawContract, signatories = [], { template = {}, payments = [], payLinkUrl = "" } = {}) {
+export async function renderContractPdfV2(rawContract, signatories = [], { template = {}, payments = [], payLinkUrl = "", dva = null } = {}) {
   const c = normaliseContract(rawContract);
   const kind = c.kind || template.kind || (c.type === "offer_letter" || c.type === "onboarding_letter" ? "letter" : "agreement");
   const company = await getCompanySettings();
@@ -130,18 +130,89 @@ export async function renderContractPdfV2(rawContract, signatories = [], { templ
   cursor.page.drawText(label, { x: MARGIN, y: cursor.y, size: 8, font: bold, color: GOLD });
   cursor.y -= 22;
   for (const l of wrapPlain(c.title, bold, 17, W)) { cursor.page.drawText(l, { x: MARGIN, y: cursor.y, size: 17, font: bold, color: NAVY }); cursor.y -= 21; }
-  const numLine = `${kind === "certificate" ? "Certificate" : "Contract"} No. ${c.number}${c.effectiveDate ? `   ·   Effective ${longDate(c.effectiveDate)}` : ""}`;
+  const numLine = `${kind === "certificate" ? "Certificate" : kind === "plan" ? "Payment plan" : "Contract"} No. ${c.number}${c.effectiveDate ? `   ·   Effective ${longDate(c.effectiveDate)}` : ""}`;
   cursor.page.drawText(numLine, { x: MARGIN, y: cursor.y, size: 9, font, color: MUTED });
   cursor.y -= 22;
 
   const summary = paymentSummary(c, payments);
   let n = 1;
 
-  if (kind === "letter") {
+  // Fees, payment schedule and how to pay (agreements and payment plans).
+  const drawFees = heading => {
+    if (c.amount > 0) {
+      sectionHeading(cursor, fonts, n++, heading);
+      cursor.ensure(90);
+      const vt = cursor.y + 6;
+      cursor.page.drawRectangle({ x: MARGIN, y: vt - 44, width: W, height: 44, color: NAVY });
+      cursor.page.drawRectangle({ x: MARGIN, y: vt - 44, width: 5, height: 44, color: GOLD });
+      cursor.page.drawText(kind === "plan" ? "TOTAL TO PAY" : "AGREED CONTRACT VALUE", { x: MARGIN + 18, y: vt - 17, size: 7.5, font: bold, color: WHITE_DIM });
+      cursor.page.drawText(money(c.amount, c.currency), { x: MARGIN + 18, y: vt - 35, size: 15, font: bold, color: GOLD });
+      const vatNote = c.vatIncluded ? "VAT inclusive" : "Exclusive of VAT (7.5%) unless stated";
+      cursor.page.drawText(vatNote, { x: rightAlignedX(vatNote, font, 8.5, PAGE_W - MARGIN - 14), y: vt - 17, size: 8.5, font, color: WHITE_DIM });
+      cursor.y = vt - 44 - 14;
+      textBlock(cursor, fonts.italic, `In words: ${amountInWords(c.amount, c.currency)}`, 9, 13, MUTED);
+      cursor.y -= 6;
+      if (summary.schedule.length) {
+        // When each milestone is due sits under its name, so long triggers never collide with the amount.
+        const cols = [[MARGIN + 8, "#"], [MARGIN + 28, kind === "plan" ? "ITEM / DUE DATE" : "MILESTONE / WHEN DUE"], [null, "AMOUNT"], [null, "STATUS"]];
+        const amtR = MARGIN + W * 0.86, stR = PAGE_W - MARGIN - 8;
+        const header = () => {
+          cursor.ensure(80);
+          cursor.page.drawRectangle({ x: MARGIN, y: cursor.y - 20, width: W, height: 20, color: PANEL });
+          cols.forEach(([x, t], i) => { const tx = i === 2 ? rightAlignedX(t, bold, 7.5, amtR) : i === 3 ? rightAlignedX(t, bold, 7.5, stR) : x; cursor.page.drawText(t, { x: tx, y: cursor.y - 13, size: 7.5, font: bold, color: MUTED }); });
+          cursor.y -= 20;
+        };
+        header();
+        summary.schedule.forEach((m, i) => {
+          const textW = amtR - 110 - (MARGIN + 28);
+          const title = wrapPlain(m.title, bold, 9.5, textW);
+          const due = wrapPlain(m.dueDate ? `Due ${longDate(m.dueDate)}${m.trigger ? ` · ${m.trigger}` : ""}` : m.trigger || "On completion", font, 8.5, textW);
+          const desc = m.description ? wrapPlain(m.description, font, 8.5, textW) : [];
+          const rh = 10 + title.length * 12.5 + (due.length + desc.length) * 11 + 4;
+          const before = cursor.page; cursor.ensure(rh + 60); if (cursor.page !== before) header();
+          const t0 = cursor.y;
+          cursor.page.drawText(String(i + 1), { x: MARGIN + 8, y: t0 - 14, size: 9.5, font: bold, color: GOLD });
+          title.forEach((l, j) => cursor.page.drawText(l, { x: MARGIN + 28, y: t0 - 14 - j * 12.5, size: 9.5, font: bold, color: TEXT }));
+          [...due, ...desc].forEach((l, j) => cursor.page.drawText(l, { x: MARGIN + 28, y: t0 - 14 - title.length * 12.5 - j * 11 + 1, size: 8.5, font, color: MUTED }));
+          const amt = money(m.amount, c.currency);
+          cursor.page.drawText(amt, { x: rightAlignedX(amt, bold, 9.5, amtR), y: t0 - 14, size: 9.5, font: bold, color: TEXT });
+          const st = { paid: ["PAID", GREEN], part_paid: ["PART-PAID", AMBER], overdue: ["OVERDUE", RED], unpaid: ["DUE", MUTED] }[m.payStatus];
+          cursor.page.drawText(st[0], { x: rightAlignedX(st[0], bold, 7.5, stR), y: t0 - 14, size: 7.5, font: bold, color: st[1] });
+          cursor.page.drawLine({ start: { x: MARGIN, y: t0 - rh }, end: { x: PAGE_W - MARGIN, y: t0 - rh }, thickness: 0.5, color: HAIRLINE });
+          cursor.y = t0 - rh;
+        });
+        cursor.y -= 12;
+      }
+      if (summary.paid > 0) {
+        textBlock(cursor, bold, `Paid to date: ${money(summary.paid, c.currency)}   ·   Balance: ${money(summary.balance, c.currency)}`, 9.5, 14, NAVY);
+        cursor.y -= 4;
+      }
+      if (String(c.paymentTerms || "").trim()) { textBlock(cursor, font, c.paymentTerms, 9.5, 14); cursor.y -= 4; }
+      // How to pay
+      const how = [
+        payLinkUrl ? `Online: open your payment link at any time to pay the item that is due next, by card, bank transfer or USSD${c.allowPartial ? " (part-payments accepted)" : ""}: ${payLinkUrl}` : `Online: a secure payment link is sent to ${c.client.email || "the Client"}${kind === "agreement" ? " once this agreement is signed" : ""}${c.allowPartial ? "; part-payments are accepted" : ""}.`,
+        dva ? `Your own bank account for this plan: ${dva.bankName} ${dva.accountNumber} (${dva.accountName}). Transfers to it are matched and receipted automatically.` : null,
+        String(company.bankDetails || "").trim() ? `Bank transfer: ${String(company.bankDetails).replace(/\n/g, " · ")}` : `Bank transfer: details are provided with the payment link, or on request from ${company.email}.`,
+        `Always quote ${c.number} as the payment reference. An official receipt is issued for every payment.`,
+      ];
+      const hl = how.filter(Boolean).flatMap(t => wrapPlain(t, font, 9.5, W - 36));
+      const hh = 26 + hl.length * 13.5 + 6;
+      cursor.ensure(hh + 50);
+      const ht = cursor.y + 6;
+      cursor.page.drawRectangle({ x: MARGIN, y: ht - hh, width: W, height: hh, color: PANEL, borderColor: HAIRLINE, borderWidth: 0.8 });
+      cursor.page.drawRectangle({ x: MARGIN, y: ht - hh, width: 4, height: hh, color: GOLD });
+      cursor.page.drawText("HOW TO PAY", { x: MARGIN + 18, y: ht - 17, size: 7.5, font: bold, color: MUTED });
+      hl.forEach((l, i) => cursor.page.drawText(l, { x: MARGIN + 18, y: ht - 32 - i * 13.5, size: 9.5, font, color: TEXT }));
+      cursor.y = ht - hh - 14;
+    }
+  };
+
+  if (kind === "letter" || kind === "plan") {
     cursor.page.drawText(c.client.name, { x: MARGIN, y: cursor.y, size: 11, font: bold, color: TEXT }); cursor.y -= 14;
     for (const l of [c.client.organisation, c.client.address, c.client.email].filter(Boolean)) { cursor.page.drawText(l.slice(0, 90), { x: MARGIN, y: cursor.y, size: 9.5, font, color: MUTED }); cursor.y -= 13; }
     cursor.y -= 10;
     drawParagraphs(cursor, fonts, parseRichText(c.bodyFilled || ""), 10.5, 16, W, TEXT, 190);
+    if (kind === "plan") drawFees("Items and payment dates");
   } else {
     if (kind === "agreement") {
       // Opening statement
@@ -182,79 +253,15 @@ export async function renderContractPdfV2(rawContract, signatories = [], { templ
       textBlock(cursor, font, `This Agreement starts on ${longDate(c.effectiveDate) || "the date it is signed"} and ${c.endDate ? `ends on ${longDate(c.endDate)}` : "continues until the obligations under it are completed"}, unless ended earlier under its terms.`, 10, 15);
       cursor.y -= 6;
 
-      if (c.amount > 0) {
-        sectionHeading(cursor, fonts, n++, "Fees and payment");
-        cursor.ensure(90);
-        const vt = cursor.y + 6;
-        cursor.page.drawRectangle({ x: MARGIN, y: vt - 44, width: W, height: 44, color: NAVY });
-        cursor.page.drawRectangle({ x: MARGIN, y: vt - 44, width: 5, height: 44, color: GOLD });
-        cursor.page.drawText("AGREED CONTRACT VALUE", { x: MARGIN + 18, y: vt - 17, size: 7.5, font: bold, color: WHITE_DIM });
-        cursor.page.drawText(money(c.amount, c.currency), { x: MARGIN + 18, y: vt - 35, size: 15, font: bold, color: GOLD });
-        const vatNote = c.vatIncluded ? "VAT inclusive" : "Exclusive of VAT (7.5%) unless stated";
-        cursor.page.drawText(vatNote, { x: rightAlignedX(vatNote, font, 8.5, PAGE_W - MARGIN - 14), y: vt - 17, size: 8.5, font, color: WHITE_DIM });
-        cursor.y = vt - 44 - 14;
-        textBlock(cursor, fonts.italic, `In words: ${amountInWords(c.amount, c.currency)}`, 9, 13, MUTED);
-        cursor.y -= 6;
-        if (summary.schedule.length) {
-          // When each milestone is due sits under its name, so long triggers never collide with the amount.
-          const cols = [[MARGIN + 8, "#"], [MARGIN + 28, "MILESTONE / WHEN DUE"], [null, "AMOUNT"], [null, "STATUS"]];
-          const amtR = MARGIN + W * 0.86, stR = PAGE_W - MARGIN - 8;
-          const header = () => {
-            cursor.ensure(80);
-            cursor.page.drawRectangle({ x: MARGIN, y: cursor.y - 20, width: W, height: 20, color: PANEL });
-            cols.forEach(([x, t], i) => { const tx = i === 2 ? rightAlignedX(t, bold, 7.5, amtR) : i === 3 ? rightAlignedX(t, bold, 7.5, stR) : x; cursor.page.drawText(t, { x: tx, y: cursor.y - 13, size: 7.5, font: bold, color: MUTED }); });
-            cursor.y -= 20;
-          };
-          header();
-          summary.schedule.forEach((m, i) => {
-            const textW = amtR - 110 - (MARGIN + 28);
-            const title = wrapPlain(m.title, bold, 9.5, textW);
-            const due = wrapPlain(m.dueDate ? `Due ${longDate(m.dueDate)}${m.trigger ? ` · ${m.trigger}` : ""}` : m.trigger || "On completion", font, 8.5, textW);
-            const desc = m.description ? wrapPlain(m.description, font, 8.5, textW) : [];
-            const rh = 10 + title.length * 12.5 + (due.length + desc.length) * 11 + 4;
-            const before = cursor.page; cursor.ensure(rh + 60); if (cursor.page !== before) header();
-            const t0 = cursor.y;
-            cursor.page.drawText(String(i + 1), { x: MARGIN + 8, y: t0 - 14, size: 9.5, font: bold, color: GOLD });
-            title.forEach((l, j) => cursor.page.drawText(l, { x: MARGIN + 28, y: t0 - 14 - j * 12.5, size: 9.5, font: bold, color: TEXT }));
-            [...due, ...desc].forEach((l, j) => cursor.page.drawText(l, { x: MARGIN + 28, y: t0 - 14 - title.length * 12.5 - j * 11 + 1, size: 8.5, font, color: MUTED }));
-            const amt = money(m.amount, c.currency);
-            cursor.page.drawText(amt, { x: rightAlignedX(amt, bold, 9.5, amtR), y: t0 - 14, size: 9.5, font: bold, color: TEXT });
-            const st = { paid: ["PAID", GREEN], part_paid: ["PART-PAID", AMBER], overdue: ["OVERDUE", RED], unpaid: ["DUE", MUTED] }[m.payStatus];
-            cursor.page.drawText(st[0], { x: rightAlignedX(st[0], bold, 7.5, stR), y: t0 - 14, size: 7.5, font: bold, color: st[1] });
-            cursor.page.drawLine({ start: { x: MARGIN, y: t0 - rh }, end: { x: PAGE_W - MARGIN, y: t0 - rh }, thickness: 0.5, color: HAIRLINE });
-            cursor.y = t0 - rh;
-          });
-          cursor.y -= 12;
-        }
-        if (summary.paid > 0) {
-          textBlock(cursor, bold, `Paid to date: ${money(summary.paid, c.currency)}   ·   Balance: ${money(summary.balance, c.currency)}`, 9.5, 14, NAVY);
-          cursor.y -= 4;
-        }
-        if (String(c.paymentTerms || "").trim()) { textBlock(cursor, font, c.paymentTerms, 9.5, 14); cursor.y -= 4; }
-        // How to pay
-        const how = [
-          payLinkUrl ? `Online: pay any milestone or part of the balance securely through the payment link sent after signing${c.allowPartial ? " (part-payments accepted)" : ""}.` : `Online: a secure payment link is sent to ${c.client.email || "the Client"} once this agreement is signed${c.allowPartial ? "; part-payments are accepted" : ""}.`,
-          String(company.bankDetails || "").trim() ? `Bank transfer: ${String(company.bankDetails).replace(/\n/g, " · ")}` : `Bank transfer: details are provided with the payment link, or on request from ${company.email}.`,
-          `Always quote ${c.number} as the payment reference. An official receipt is issued for every payment.`,
-        ];
-        const hl = how.flatMap(t => wrapPlain(t, font, 9.5, W - 36));
-        const hh = 26 + hl.length * 13.5 + 6;
-        cursor.ensure(hh + 50);
-        const ht = cursor.y + 6;
-        cursor.page.drawRectangle({ x: MARGIN, y: ht - hh, width: W, height: hh, color: PANEL, borderColor: HAIRLINE, borderWidth: 0.8 });
-        cursor.page.drawRectangle({ x: MARGIN, y: ht - hh, width: 4, height: hh, color: GOLD });
-        cursor.page.drawText("HOW TO PAY", { x: MARGIN + 18, y: ht - 17, size: 7.5, font: bold, color: MUTED });
-        hl.forEach((l, i) => cursor.page.drawText(l, { x: MARGIN + 18, y: ht - 32 - i * 13.5, size: 9.5, font, color: TEXT }));
-        cursor.y = ht - hh - 14;
-      }
+      drawFees("Fees and payment");
       sectionHeading(cursor, fonts, n++, "Terms and conditions");
     }
     drawParagraphs(cursor, fonts, parseRichText(c.bodyFilled || ""), 10, 15, W, TEXT, 190);
   }
 
   cursor.y -= 10;
-  await drawSignatureCards(doc, cursor, fonts, c, company, signatories, kind);
-  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, `${kind === "certificate" ? "Certificate" : "Contract"} No. ${c.number}`, company));
+  if (kind !== "plan") await drawSignatureCards(doc, cursor, fonts, c, company, signatories, kind);
+  cursor.pages.forEach((p, i) => drawFooter(p, font, i + 1, cursor.pages.length, `${kind === "certificate" ? "Certificate" : kind === "plan" ? "Payment plan" : "Contract"} No. ${c.number}`, company));
   return doc.save();
 }
 

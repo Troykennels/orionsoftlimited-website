@@ -40,9 +40,13 @@ export async function recordSuccessfulPayment(paymentId, details = {}) {
   });
   await putRecord("payments", payment.id, payment);
 
-  if (raw.status === "signed") { raw.status = "active"; raw.updatedAt = new Date().toISOString(); await putRecord("contracts", raw.id, raw); }
+  if (raw.status === "signed" || (raw.kind === "plan" && ["draft", "sent"].includes(raw.status))) { raw.status = "active"; raw.updatedAt = new Date().toISOString(); await putRecord("contracts", raw.id, raw); }
 
   const all = (await listRecords("payments")).filter(p => p.contractId === contract.id);
+  // A payment plan paid in full is complete.
+  if (raw.kind === "plan" && raw.status === "active" && paymentSummary(contract, all).balance <= 0) {
+    raw.status = "completed"; raw.completedAt = new Date().toISOString(); await putRecord("contracts", raw.id, raw);
+  }
   try {
     const pdf = Buffer.from(await renderContractReceiptPdf(raw, payment, all));
     await set(receiptKey(payment.id), pdf.toString("base64"));

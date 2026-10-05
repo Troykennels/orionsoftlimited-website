@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
   Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette,
 } from "lucide-react";
-import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
+import { richTextToSafeHtml, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
 import { SHARE_TARGETS, copyText as copyToClipboard } from "../staff/api.js";
@@ -270,11 +270,11 @@ function Input({ value, onChange, placeholder = "", type = "text", style = {} })
   );
 }
 
-const Textarea = forwardRef(function Textarea({ value, onChange, placeholder = "", rows = 4, style = {} }, ref) {
+const Textarea = forwardRef(function Textarea({ value, onChange, onPaste, placeholder = "", rows = 4, style = {} }, ref) {
   return (
     <textarea
       ref={ref}
-      value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+      value={value} onChange={onChange} onPaste={onPaste} placeholder={placeholder} rows={rows}
       style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "10px 14px", fontSize: 14, fontFamily: font, outline: "none", resize: "vertical", boxSizing: "border-box", ...style }}
       onFocus={e => e.target.style.borderColor = C.gold}
       onBlur={e => e.target.style.borderColor = C.border}
@@ -1620,7 +1620,7 @@ function ChatSection() {
 // cards, blog posts, etc). Stacks to one column on narrow viewports.
 function SplitEditor({ left, right }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 1fr) minmax(280px, 1fr)", gap: 20, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 20, alignItems: "start" }}>
       <div>{left}</div>
       <div style={{ position: "sticky", top: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", marginBottom: 10 }}>LIVE PREVIEW</div>
@@ -4271,24 +4271,12 @@ function SignaturePad({ onChange }) {
 }
 
 // ─── Rich text + letterhead preview (shared by Templates & Contracts) ────────
+// Decoded by shared/richDoc.js: headings, alignment, lists, bold/italic/underline.
+// The HTML is built from escaped text and our own tags only, so it's safe.
 function RichText({ text }) {
-  const paragraphs = parseRichText(text);
-  if (paragraphs.length === 0) return <span style={{ color: "#999", fontStyle: "italic" }}>Start typing the letter body on the left…</span>;
-  return paragraphs.map((para, pi) => (
-    <p key={pi} style={{ margin: pi === 0 ? "0 0 12px" : "12px 0" }}>
-      {para.lines.map((runs, li) => (
-        <span key={li}>
-          {li > 0 && <br />}
-          {runs.map((run, ri) => {
-            let node = run.text;
-            if (run.bold) node = <strong key={ri}>{node}</strong>;
-            if (run.italic) node = <em key={ri}>{node}</em>;
-            return <span key={ri}>{node}</span>;
-          })}
-        </span>
-      ))}
-    </p>
-  ));
+  const html = richTextToSafeHtml(text);
+  if (!html) return <span style={{ color: "#999", fontStyle: "italic" }}>Start typing the letter body on the left…</span>;
+  return <div className="rich-doc" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 // Mirrors the real letterhead PDF (api/_lib/pdf.js) as closely as HTML/CSS
@@ -4443,7 +4431,7 @@ function TemplatesSection() {
         <SectionTitle>Document templates</SectionTitle>
         <p style={{ color: C.textMuted, fontSize: 13, marginTop: 6, lineHeight: 1.7 }}>
           Use <code>{"{{placeholder}}"}</code> tokens: they become fillable fields when composing a document, and <code>{"{{placeholder|default}}"}</code> supplies a default. Client, company, contract number, dates and value (<code>{"{{clientName}}"}</code>, <code>{"{{companyName}}"}</code>, <code>{"{{contractNumber}}"}</code>, <code>{"{{effectiveDate}}"}</code>, <code>{"{{contractValue}}"}</code>…) are filled in automatically. Parties, scope, deliverables, the payment schedule and signatures are added to agreements for you, so the body only needs the terms.
-          Basic formatting is supported and renders properly in the PDF and on the signing page: <code>{"<b>bold</b>"}</code>, <code>{"<i>italic</i>"}</code>, <code>{"<br>"}</code> for a line break, and <code>{"<p>...</p>"}</code> or <code>{"<ul><li>...</li></ul>"}</code> for paragraphs and bullet lists. Any other tags are stripped, not shown literally.
+          Formatting carries through to the PDF and the signing page: bold, italic, underline, headings, centred or right-aligned lines, bulleted and numbered lists, and horizontal lines. Paste from Word, Google Docs or any HTML and it is kept; anything unsafe is dropped, never shown as raw code.
         </p>
         {msg && <p style={{ color: C.mint, fontSize: 13, marginTop: 8 }}>{msg}</p>}
         {loading && <SkeletonRows count={5} />}
@@ -4455,12 +4443,8 @@ function TemplatesSection() {
                   <div>
                     <div style={{ marginBottom: 10 }}><Label>Name</Label><Input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></div>
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Label>Body (HTML)</Label>
-                        <Btn small variant="ghost" onClick={() => setDraft(d => ({ ...d, bodyMarkup: sanitizeToAllowedHtml(d.bodyMarkup) }))} title="Strips pasted CSS/markup (from Word, Google Docs, AI tools, etc.) down to clean formatted text">✨ Clean & Format</Btn>
-                      </div>
-                      <Textarea style={{ minHeight: 260, fontFamily: "monospace", fontSize: 12.5 }} value={draft.bodyMarkup} onChange={e => setDraft(d => ({ ...d, bodyMarkup: e.target.value }))} />
-                      <p style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6 }}>Pasted a full HTML page or document by mistake? Click <strong>Clean & Format</strong> — it strips out style/script blocks, tables, and stray markup, keeping <code>{"{{placeholders}}"}</code> and only clean text, bold, italics, and paragraphs.</p>
+                      <Label>Body</Label>
+                      <RichEditor value={draft.bodyMarkup} onChange={v => setDraft(d => ({ ...d, bodyMarkup: v }))} mono />
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <Btn small onClick={save}>Save</Btn>
@@ -4595,7 +4579,7 @@ const SCHEDULE_PRESETS = [
 const emptyContractForm = () => ({
   id: "", templateId: "", title: "", client: { name: "", organisation: "", email: "", phone: "", address: "" },
   effectiveDate: localToday(), endDate: "", scope: "", deliverables: "", currency: "NGN", amount: "", vatIncluded: false, allowPartial: true,
-  paymentTerms: "", schedule: [], fillData: {}, signatoryIds: [],
+  paymentTerms: "", schedule: [], fillData: {}, signatoryIds: [], customBody: "", payBeforeSigning: false,
 });
 const subHead = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", margin: "20px 0 10px" };
 const grid2 = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 };
@@ -4608,6 +4592,35 @@ async function contractApi(body, method = "PATCH") {
 }
 function copyText(t) {
   try { navigator.clipboard.writeText(t); return true; } catch { return false; }
+}
+
+// Shows the real PDF for the document being composed, refreshed a moment
+// after each change.
+function ContractLivePreview({ body }) {
+  const [url, setUrl] = useState("");
+  const [state, setState] = useState("idle");
+  useEffect(() => {
+    if (!body) return undefined;
+    let cancelled = false, made = "";
+    const t = setTimeout(async () => {
+      setState("loading");
+      try {
+        const r = await fetch("/api/admin/contracts", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Preview failed");
+        made = URL.createObjectURL(await r.blob());
+        if (!cancelled) { setUrl(old => { if (old) URL.revokeObjectURL(old); return made; }); setState("idle"); }
+      } catch { if (!cancelled) setState("error"); }
+    }, 900);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [body]);
+  if (!body) return <div style={{ border: `1px dashed ${C.border}`, borderRadius: 12, padding: 30, textAlign: "center", color: C.textMuted, fontSize: 13 }}>Choose a template to see the document here.</div>;
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: state === "error" ? C.rose : C.textMuted, marginBottom: 6 }}>{state === "loading" ? "Updating preview…" : state === "error" ? "Couldn't update the preview. Keep typing, it will retry." : "Exactly what the client receives."}</div>
+      {url ? <iframe title="Document preview" src={`${url}#toolbar=0&navpanes=0&view=FitH`} style={{ width: "100%", height: "min(80vh, 900px)", border: `1px solid ${C.border}`, borderRadius: 12, background: "#fff" }} />
+        : <div style={{ height: 300, border: `1px solid ${C.border}`, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted }}>Preparing preview…</div>}
+    </div>
+  );
 }
 
 function ContractsSection() {
@@ -4652,8 +4665,10 @@ function ContractsSection() {
   const template = form && templates.find(t => t.id === form.templateId);
   const kind = template?.kind || "agreement";
   const payable = !!template?.payable;
+  const isPlan = kind === "plan";
   const scheduleTotal = form ? ctrRound(form.schedule.reduce((s, r) => s + (Number(r.amount) || 0), 0)) : 0;
-  const value = form ? ctrRound(Number(form.amount) || 0) : 0;
+  // A payment plan's total is simply the sum of its items.
+  const value = form ? (isPlan ? scheduleTotal : ctrRound(Number(form.amount) || 0)) : 0;
   const scheduleOff = payable && value > 0 && form.schedule.length > 0 && Math.abs(scheduleTotal - value) > 0.009;
 
   function setF(patch) { setForm(f => ({ ...f, ...patch })); }
@@ -4682,7 +4697,7 @@ function ContractsSection() {
       effectiveDate: c.effectiveDate || localToday(), endDate: c.endDate || "", scope: c.scope || "", deliverables: (c.deliverables || []).join("\n"),
       currency: c.currency || "NGN", amount: c.amount ? String(c.amount) : "", vatIncluded: !!c.vatIncluded, allowPartial: c.allowPartial !== false,
       paymentTerms: c.paymentTerms || "", schedule: (c.schedule || []).map(m => ({ ...newRow(m.title, m.amount, m.trigger || ""), id: m.id, dueDate: m.dueDate || "" })),
-      fillData: { ...(c.fillData || {}) }, signatoryIds: c.signatoryIds || [],
+      fillData: { ...(c.fillData || {}) }, signatoryIds: c.signatoryIds || [], customBody: c.customBody || "", payBeforeSigning: !!c.payBeforeSigning,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -4691,10 +4706,14 @@ function ContractsSection() {
     if (!form.templateId) { setErr("Choose a template."); return; }
     if (!form.client.name.trim()) { setErr(`Enter the ${kind === "letter" ? "recipient's" : "client's"} name.`); return; }
     if (payable && value > 0 && form.schedule.length && scheduleOff) { setErr(`The payment schedule adds up to ${ctrMoney(scheduleTotal, form.currency)} but the contract value is ${ctrMoney(value, form.currency)}.`); return; }
-    if (form.signatoryIds.length === 0 && signatories.length > 0 && !confirm("No company signatory is selected, so the document will carry no Orion Soft signature. Continue anyway?")) return;
+    if (isPlan && !(scheduleTotal > 0)) { setErr("Add at least one item with an amount."); return; }
+    if (isPlan && form.schedule.some(r => !r.dueDate)) { setErr("Give every item a due date, so the client knows when to pay and gets reminders."); return; }
+    if (!isPlan && form.signatoryIds.length === 0 && signatories.length > 0 && !confirm("No company signatory is selected, so the document will carry no Orion Soft signature. Continue anyway?")) return;
+    const editedBody = form.customBody.trim() && form.customBody.trim() !== String(template?.bodyMarkup || "").trim() ? form.customBody : "";
     const body = {
       templateId: form.templateId, title: form.title.trim() || undefined, client: form.client,
       effectiveDate: form.effectiveDate, endDate: form.endDate, fillData: form.fillData, signatoryIds: form.signatoryIds,
+      customBody: editedBody, payBeforeSigning: kind === "agreement" && payable ? form.payBeforeSigning : false,
       ...(kind === "agreement" ? { scope: form.scope, deliverables: form.deliverables } : {}),
       ...(payable
         ? { currency: form.currency, amount: value, vatIncluded: form.vatIncluded, allowPartial: form.allowPartial, paymentTerms: form.paymentTerms, schedule: form.schedule.map(r => ({ id: r.id || undefined, title: r.title, amount: Number(r.amount) || 0, dueDate: r.dueDate || null, trigger: r.trigger })) }
@@ -4716,7 +4735,8 @@ function ContractsSection() {
     const j = await run(() => contractApi({ id: c.id, action: "send" }));
     if (!j) return;
     replace(j.contract); auditLog("send_contract", c.number);
-    if (j.emailSent) flash(c.kind === "certificate" ? `${c.number} issued and emailed.` : `${c.number} sent for signature to ${c.client.email}.`);
+    if (j.emailSent) flash(c.kind === "plan" ? `Payment plan ${c.number} emailed to ${c.client.email} with the payment link.` : c.kind === "certificate" ? `${c.number} issued and emailed.` : `${c.number} sent for signature to ${c.client.email}.`);
+    else if (c.kind === "plan") setErr("The email couldn't be sent. Copy the payment link below and send it to the client yourself (WhatsApp works).");
     else {
       if (j.signLink) setLinks(l => ({ ...l, [c.id]: j.signLink }));
       setErr(j.signLink ? "The email couldn't be sent. Copy the signing link below and send it to the client yourself." : "The email couldn't be sent. Download the PDF and send it yourself.");
@@ -4744,7 +4764,15 @@ function ContractsSection() {
   const FILTERS = [["all", "All"], ["draft", "Drafts"], ["sent", "Awaiting signature"], ["live", "Signed / active"], ["completed", "Completed"], ["cancelled", "Cancelled"]];
   const shown = contracts.filter(c => (filter === "all" || (filter === "live" ? ["signed", "active"].includes(c.status) : c.status === filter)))
     .filter(c => !q.trim() || `${c.number} ${c.title} ${c.client?.name} ${c.client?.organisation} ${c.client?.email}`.toLowerCase().includes(q.trim().toLowerCase()));
-  const groups = [["agreement", "Agreements"], ["letter", "Letters"], ["certificate", "Certificates"]];
+  const groups = [["plan", "Payment plans"], ["agreement", "Agreements"], ["letter", "Letters"], ["certificate", "Certificates"]];
+
+  // Live PDF preview of the document being composed (debounced).
+  const previewBody = form && template ? JSON.stringify({
+    action: "preview", templateId: form.templateId, title: form.title, client: form.client, effectiveDate: form.effectiveDate, endDate: form.endDate,
+    scope: form.scope, deliverables: form.deliverables, currency: form.currency, amount: value, vatIncluded: form.vatIncluded, allowPartial: form.allowPartial,
+    paymentTerms: form.paymentTerms, fillData: form.fillData, signatoryIds: form.signatoryIds, customBody: form.customBody,
+    schedule: payable ? form.schedule.filter(r => r.title || Number(r.amount)).map(r => ({ title: r.title || "Item", amount: Number(r.amount) || 0, dueDate: r.dueDate || null, trigger: r.trigger })) : [],
+  }) : "";
 
   return (
     <div>
@@ -4770,7 +4798,8 @@ function ContractsSection() {
         </div>
 
         {form && (
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, maxWidth: 860 }}>
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <SplitEditor right={<ContractLivePreview body={previewBody} />} left={<div>
             <div style={grid2}>
               <div>
                 <Label>Template</Label>
@@ -4792,7 +4821,7 @@ function ContractsSection() {
                 <div style={subHead}>{kind === "letter" ? "RECIPIENT" : kind === "certificate" ? "LICENSEE" : "CLIENT"}</div>
                 <div style={grid2}>
                   <div><Label>Full name *</Label><Input value={form.client.name} onChange={e => setClient({ name: e.target.value })} placeholder={kind === "letter" ? "e.g. Adaeze Okafor" : "Contact person's full name"} /></div>
-                  {kind !== "letter" && <div><Label>Organisation</Label><Input value={form.client.organisation} onChange={e => setClient({ organisation: e.target.value })} placeholder="e.g. Expert Hive Limited" /></div>}
+                  {kind !== "letter" && <div><Label>Organisation</Label><Input value={form.client.organisation} onChange={e => setClient({ organisation: e.target.value })} placeholder="e.g. Orion Soft Limited" /></div>}
                   <div><Label>Email {kind === "certificate" ? "" : "(for signing)"}</Label><Input type="email" value={form.client.email} onChange={e => setClient({ email: e.target.value })} placeholder="name@company.com" /></div>
                   <div><Label>Phone</Label><Input value={form.client.phone} onChange={e => setClient({ phone: e.target.value })} placeholder="+234…" /></div>
                 </div>
@@ -4818,32 +4847,39 @@ function ContractsSection() {
 
                 {payable && (
                   <>
-                    <div style={subHead}>FEES AND PAYMENT SCHEDULE</div>
+                    <div style={subHead}>{isPlan ? "ITEMS AND DUE DATES" : "FEES AND PAYMENT SCHEDULE"}</div>
+                    {isPlan && <p style={{ fontSize: 12.5, color: C.textMuted, margin: "0 0 10px", lineHeight: 1.6 }}>List each thing the client is paying for (e.g. Website, Hosting, Training) with its amount and due date. The client gets one payment link and their own account number; each time they open it, it shows what's due next. Reminders go out 3 days before each due date.</p>}
                     <div style={grid2}>
                       <div><Label>Currency</Label><Select value={form.currency} onChange={e => setF({ currency: e.target.value })}>{["NGN", "USD", "GBP", "EUR"].map(c => <option key={c}>{c}</option>)}</Select></div>
-                      <div><Label>Contract value</Label><Input type="number" value={form.amount} onChange={e => setF({ amount: e.target.value })} placeholder="0.00" /></div>
+                      {isPlan
+                        ? <div><Label>Total</Label><div style={{ padding: "11px 0", fontWeight: 800, color: C.heading }}>{ctrMoney(scheduleTotal, form.currency)}</div></div>
+                        : <div><Label>Contract value</Label><Input type="number" value={form.amount} onChange={e => setF({ amount: e.target.value })} placeholder="0.00" /></div>}
                     </div>
                     <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 12 }}>
-                      <Toggle value={form.vatIncluded} onChange={v => setF({ vatIncluded: v })} label="Value includes 7.5% VAT" />
+                      <Toggle value={form.vatIncluded} onChange={v => setF({ vatIncluded: v })} label="Amounts include 7.5% VAT" />
                       <Toggle value={form.allowPartial} onChange={v => setF({ allowPartial: v })} label="Allow part-payments" />
+                      {kind === "agreement" && <Toggle value={form.payBeforeSigning} onChange={v => setF({ payBeforeSigning: v })} label="Client can pay before signing" />}
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "16px 0 10px" }}>
-                      <span style={{ fontSize: 12.5, color: C.textMuted }}>Quick split:</span>
-                      {SCHEDULE_PRESETS.map(([label, parts]) => <Btn key={label} small variant="ghost" onClick={() => applyPreset(parts)}>{label}</Btn>)}
-                    </div>
+                    {!isPlan && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "16px 0 10px" }}>
+                        <span style={{ fontSize: 12.5, color: C.textMuted }}>Quick split:</span>
+                        {SCHEDULE_PRESETS.map(([label, parts]) => <Btn key={label} small variant="ghost" onClick={() => applyPreset(parts)}>{label}</Btn>)}
+                      </div>
+                    )}
+                    {isPlan && form.schedule.length === 0 && <div style={{ height: 12 }} />}
                     {form.schedule.map((r, i) => (
                       <div key={r.key} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr)) 34px", gap: 8, alignItems: "end", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>
-                        <div><Label>Milestone {i + 1}</Label><Input value={r.title} onChange={e => setRow(r.key, { title: e.target.value })} placeholder="e.g. Deposit" /></div>
+                        <div><Label>{isPlan ? `Item ${i + 1}` : `Milestone ${i + 1}`}</Label><Input value={r.title} onChange={e => setRow(r.key, { title: e.target.value })} placeholder={isPlan ? "e.g. Website development" : "e.g. Deposit"} /></div>
                         <div><Label>Amount</Label><Input type="number" value={r.amount} onChange={e => setRow(r.key, { amount: e.target.value })} placeholder="0.00" /></div>
-                        <div><Label>Due when</Label><Input value={r.trigger} onChange={e => setRow(r.key, { trigger: e.target.value })} placeholder="e.g. On signing" /></div>
-                        <div><Label>Due date (optional)</Label><Input type="date" value={r.dueDate} onChange={e => setRow(r.key, { dueDate: e.target.value })} /></div>
+                        {!isPlan && <div><Label>Due when</Label><Input value={r.trigger} onChange={e => setRow(r.key, { trigger: e.target.value })} placeholder="e.g. On signing" /></div>}
+                        <div><Label>{isPlan ? "Due date *" : "Due date (optional)"}</Label><Input type="date" value={r.dueDate} onChange={e => setRow(r.key, { dueDate: e.target.value })} /></div>
                         <button type="button" aria-label={`Remove milestone ${i + 1}`} onClick={() => setF({ schedule: form.schedule.filter(x => x.key !== r.key) })} style={{ height: 40, background: "none", border: `1px solid ${C.border}`, borderRadius: 8, color: C.rose, cursor: "pointer", fontSize: 16 }}>×</button>
                       </div>
                     ))}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                      <Btn small variant="ghost" onClick={() => setF({ schedule: [...form.schedule, newRow("", value > scheduleTotal ? (value - scheduleTotal).toFixed(2) : "")] })}>+ Add milestone</Btn>
-                      {form.schedule.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOff ? C.rose : C.mint }}>Schedule total {ctrMoney(scheduleTotal, form.currency)}{scheduleOff ? ` ≠ value ${ctrMoney(value, form.currency)}` : " ✓"}</span>}
-                      {form.schedule.length === 0 && value > 0 && <span style={{ fontSize: 12.5, color: C.textMuted }}>No schedule: the full value is due on signing.</span>}
+                      <Btn small variant="ghost" onClick={() => setF({ schedule: [...form.schedule, newRow("", !isPlan && value > scheduleTotal ? (value - scheduleTotal).toFixed(2) : "")] })}>{isPlan ? "+ Add item" : "+ Add milestone"}</Btn>
+                      {!isPlan && form.schedule.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOff ? C.rose : C.mint }}>Schedule total {ctrMoney(scheduleTotal, form.currency)}{scheduleOff ? ` ≠ value ${ctrMoney(value, form.currency)}` : " ✓"}</span>}
+                      {!isPlan && form.schedule.length === 0 && value > 0 && <span style={{ fontSize: 12.5, color: C.textMuted }}>No schedule: the full value is due on signing.</span>}
                     </div>
                     <div style={{ marginTop: 12 }}><Label>Extra payment terms (optional)</Label><Textarea rows={2} value={form.paymentTerms} onChange={e => setF({ paymentTerms: e.target.value })} placeholder="e.g. Hosting is billed separately at cost." /></div>
                   </>
@@ -4863,8 +4899,15 @@ function ContractsSection() {
                   </>
                 )}
 
-                <div style={subHead}>SIGNING FOR ORION SOFT</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ ...subHead, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <span>{kind === "agreement" ? "TERMS AND CONDITIONS" : "DOCUMENT TEXT"} (EDITABLE)</span>
+                  {form.customBody && form.customBody.trim() !== String(template.bodyMarkup || "").trim() && <Btn small variant="ghost" onClick={() => setF({ customBody: "" })}>Reset to template</Btn>}
+                </div>
+                <RichEditor value={form.customBody || template.bodyMarkup || ""} onChange={v => setF({ customBody: v })} minHeight={220} />
+                <p style={{ fontSize: 11.5, color: C.textMuted, margin: "4px 0 0" }}>Changes here apply to this document only. <code>{"{{clientName}}"}</code>-style fields are filled in automatically.</p>
+
+                {!isPlan && <div style={subHead}>SIGNING FOR ORION SOFT</div>}
+                {!isPlan && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {signatories.map(s => {
                     const on = form.signatoryIds.includes(s.id);
                     return (
@@ -4875,7 +4918,7 @@ function ContractsSection() {
                     );
                   })}
                   {signatories.length === 0 && <span style={{ color: C.amber, fontSize: 13 }}>No signatories yet. Add one under Signatories so documents carry a company signature.</span>}
-                </div>
+                </div>}
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 22 }}>
                   <Btn onClick={saveForm} disabled={busy}>{busy ? "Saving…" : form.id ? "Save changes" : "Create draft"}</Btn>
@@ -4883,6 +4926,7 @@ function ContractsSection() {
                 </div>
               </>
             )}
+            </div>} />
           </div>
         )}
         {err && <p role="alert" style={{ color: C.rose, fontSize: 13, marginTop: 12 }}>{err}</p>}
@@ -4933,7 +4977,8 @@ function ContractsSection() {
 function ContractDetail({ c, busy, signLink, onSend, onEdit, onDelete, onCancel, action, flash }) {
   const [rec, setRec] = useState(null); // record-payment form
   const [newWork, setNewWork] = useState("");
-  const signed = ["signed", "active", "completed"].includes(c.status);
+  // Payment plans have no signing step: once live they behave like a signed contract.
+  const signed = ["signed", "active", "completed"].includes(c.status) || (c.kind === "plan" && c.status !== "cancelled" && (c.paid > 0 || c.status !== "draft"));
   const pdf = download => `/api/admin/contracts?pdf=${encodeURIComponent(c.id)}${download ? "&download=1" : ""}`;
   const receipt = (p, download) => `/api/admin/contracts?receipt=${encodeURIComponent(p.id)}${download ? "&download=1" : ""}`;
   const transfers = (c.payments || []).filter(p => p.status === "awaiting_confirmation");
@@ -4963,15 +5008,36 @@ function ContractDetail({ c, busy, signLink, onSend, onEdit, onDelete, onCancel,
         {c.signedPdfKey && <a href={`/api/files/download?key=${encodeURIComponent(c.signedPdfKey)}`} target="_blank" rel="noreferrer" style={{ ...link, color: C.mint }}>Signed copy →</a>}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        {c.status === "draft" && <Btn small onClick={onSend} disabled={busy}>{c.kind === "certificate" ? "Issue & email" : "Send for signature"}</Btn>}
+        {c.status === "draft" && <Btn small onClick={onSend} disabled={busy}>{c.kind === "certificate" ? "Issue & email" : c.kind === "plan" ? "Email plan & payment link" : "Send for signature"}</Btn>}
         {c.status === "draft" && <Btn small variant="ghost" onClick={onEdit}>Edit draft</Btn>}
         {c.status === "draft" && <Btn small danger onClick={onDelete}>Delete draft</Btn>}
-        {c.payLink && c.balance > 0 && <Btn small onClick={() => action({ action: "send_payment_link" }, j => (j.emailSent ? `Payment link emailed to ${c.client.email}.` : "The email couldn't be sent. Use Copy payment link instead."))} disabled={busy}>Email payment link</Btn>}
-        {c.payLink && <Btn small variant="ghost" onClick={() => flash(copyText(c.payLink) ? "Payment link copied." : c.payLink)}>Copy payment link</Btn>}
+        {c.payReady && c.balance > 0 && c.status !== "draft" && <Btn small onClick={() => action({ action: "send_payment_link" }, j => (j.emailSent ? `Payment link emailed to ${c.client.email}.` : "The email couldn't be sent. Copy the link below and send it yourself."))} disabled={busy}>Email payment link</Btn>}
         {signed && c.status !== "completed" && c.balance > 0 && <Btn small variant="ghost" onClick={() => setRec(r => (r ? null : { amount: "", milestoneId: "", method: "bank_transfer", reference: "", paidAt: localToday() }))}>Record a payment</Btn>}
         {["signed", "active"].includes(c.status) && <Btn small variant="ghost" onClick={() => confirm(`Mark ${c.number} as completed?${c.balance > 0 ? ` ${ctrMoney(c.balance, c.currency)} is still unpaid.` : ""}`) && action({ action: "complete" }, `${c.number} marked completed.`)}>Mark completed</Btn>}
         {["draft", "sent"].includes(c.status) && <Btn small danger onClick={onCancel}>Cancel</Btn>}
       </div>
+      {c.amount > 0 && c.status !== "cancelled" && (
+        <div style={{ background: C.surface, border: `1px solid ${C.gold}55`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.gold, letterSpacing: "0.08em", marginBottom: 6 }}>PAYMENT LINK · ONE LINK FOR EVERY PAYMENT</div>
+          {c.payLink ? (
+            <>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <code style={{ flex: "1 1 260px", fontSize: 13.5, color: C.heading, wordBreak: "break-all", background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>{c.payLink}</code>
+                <Btn small onClick={() => flash(copyText(c.payLink) ? "Payment link copied. Paste it anywhere: email, WhatsApp, SMS." : c.payLink)}>Copy link</Btn>
+                <a href={`https://wa.me/${String(c.client?.phone || "").replace(/\D/g, "").replace(/^0/, "234")}?text=${encodeURIComponent(`Hello ${c.client?.name || ""}, here is your secure payment link for ${c.title} (${c.number}). Open it any time to see what's due next and pay: ${c.payLink}`)}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost">WhatsApp</Btn></a>
+                <a href={c.payLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost">Open</Btn></a>
+              </div>
+              <p style={{ fontSize: 12, color: C.textMuted, margin: "8px 0 0", lineHeight: 1.6 }}>
+                {c.payReady ? "The client can open this link any time: it always shows the next item due, their account number, and their receipts, until everything is paid." : c.kind === "agreement" ? "This link starts working once the client signs (or turn on 'Client can pay before signing' when editing the draft)." : "This link works now."}
+              </p>
+              {c.dva && <p style={{ fontSize: 13, color: C.text, margin: "8px 0 0" }}>Client's own account number: <strong style={{ color: C.heading, letterSpacing: "0.04em" }}>{c.dva.accountNumber}</strong> · {c.dva.bankName} · {c.dva.accountName} <button type="button" onClick={() => flash(copyText(c.dva.accountNumber) ? "Account number copied." : c.dva.accountNumber)} style={{ background: "none", border: "none", color: C.gold, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Copy</button></p>}
+              {!c.dva && c.dvaError && <p style={{ fontSize: 12, color: C.amber, margin: "8px 0 0", lineHeight: 1.6 }}>No dedicated account number yet: Paystack said "{c.dvaError}". Ask Paystack to enable Dedicated Virtual Accounts for your business. Until then clients pay by card, USSD or Paystack transfer on the payment page.</p>}
+            </>
+          ) : (
+            <Btn small onClick={() => action({ action: "get_payment_link" }, "Payment link created.")} disabled={busy}>Create payment link</Btn>
+          )}
+        </div>
+      )}
       {signLink && c.status === "sent" && (
         <div style={{ background: C.goldDim, border: `1px solid ${C.gold}44`, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5, color: C.text, wordBreak: "break-all" }}>
           Signing link: <a href={signLink} target="_blank" rel="noreferrer" style={{ color: C.gold }}>{signLink}</a>{" "}
@@ -6683,23 +6749,83 @@ function PurchaseOrdersSection() {
 }
 
 // ─── Letter Composer — free-form letterhead letters, no templates ───────────
-function wrapSelection(ref, before, after, value, setValue) {
-  const ta = ref.current;
-  if (!ta) { setValue(value + before + after); return; }
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const next = value.slice(0, s) + before + value.slice(s, e) + after + value.slice(e);
-  setValue(next);
-  requestAnimationFrame(() => { ta.focus(); ta.selectionStart = s + before.length; ta.selectionEnd = e + before.length; });
-}
+// Document body editor (letters, templates, contracts). Stores clean HTML
+// that shared/richDoc.js turns into the preview and the PDF. Pasting from
+// Word, Google Docs, an email or an AI tool keeps the formatting (bold,
+// headings, centred lines, lists) instead of flattening it to plain text.
+const RICH_TOOLS = [
+  ["bold", <b key="b">B</b>, "Bold"], ["italic", <i key="i">I</i>, "Italic"], ["underline", <u key="u">U</u>, "Underline"],
+  ["heading", "H", "Heading"], ["center", "≡ Centre", "Centre the line"], ["right", "Right", "Align the line right"],
+  ["ul", "• List", "Bulleted list (one item per line)"], ["ol", "1. List", "Numbered list (one item per line)"],
+  ["para", "¶", "New paragraph"], ["hr", "―", "Horizontal line"],
+];
 
-function bulletListify(ref, value, setValue) {
-  const ta = ref.current;
-  if (!ta) return;
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const selected = value.slice(s, e) || "List item";
-  const lis = selected.split("\n").filter(Boolean).map(l => `<li>${l}</li>`).join("");
-  const next = value.slice(0, s) + `<ul>${lis}</ul>` + value.slice(e);
-  setValue(next);
+function RichEditor({ value, onChange, placeholder, minHeight = 280, mono = false }) {
+  const ref = useRef(null);
+  const sel = () => {
+    const ta = ref.current;
+    return ta ? { s: ta.selectionStart, e: ta.selectionEnd } : { s: value.length, e: value.length };
+  };
+  const put = (next, caretStart, caretEnd) => {
+    onChange(next);
+    requestAnimationFrame(() => { const ta = ref.current; if (ta) { ta.focus(); ta.selectionStart = caretStart; ta.selectionEnd = caretEnd ?? caretStart; } });
+  };
+  const wrap = (before, after, fallback = "") => {
+    const { s: a1, e } = sel();
+    const inner = value.slice(a1, e) || fallback;
+    put(value.slice(0, a1) + before + inner + after + value.slice(e), a1 + before.length, a1 + before.length + inner.length);
+  };
+  // Block formats apply to whole lines of the selection.
+  const block = (open, close, fallback) => {
+    const { s: a1, e } = sel();
+    const start = value.lastIndexOf("\n", a1 - 1) + 1;
+    let end = value.indexOf("\n", e); if (end < 0) end = value.length;
+    const text = value.slice(start, end).trim() || fallback;
+    const out = `${open}${text.replace(/^<p[^>]*>|<\/p>$/g, "")}${close}`;
+    put(value.slice(0, start) + out + value.slice(end), start + out.length);
+  };
+  const list = ordered => {
+    const { s: a1, e } = sel();
+    const lines = (value.slice(a1, e) || "List item").split("\n").map(l => l.replace(/^\s*([-*•]|\d+[.)])\s+/, "").trim()).filter(Boolean);
+    const tag = ordered ? "ol" : "ul";
+    const out = `<${tag}>\n${lines.map(l => `<li>${l}</li>`).join("\n")}\n</${tag}>`;
+    put(value.slice(0, a1) + out + value.slice(e), a1 + out.length);
+  };
+  const onPaste = ev => {
+    const html = ev.clipboardData?.getData("text/html");
+    if (!html || !/<[a-z]/i.test(html)) return; // plain text pastes as usual
+    ev.preventDefault();
+    const clean = sanitizeToAllowedHtml(html);
+    const { s: a1, e } = sel();
+    put(value.slice(0, a1) + clean + value.slice(e), a1 + clean.length);
+  };
+  function apply(tool) {
+    switch (tool) {
+      case "bold": return wrap("<b>", "</b>", "bold text");
+      case "italic": return wrap("<i>", "</i>", "italic text");
+      case "underline": return wrap("<u>", "</u>", "underlined text");
+      case "heading": return block("<h2>", "</h2>", "Heading");
+      case "center": return block('<p style="text-align:center">', "</p>", "Centred text");
+      case "right": return block('<p style="text-align:right">', "</p>", "Right-aligned text");
+      case "ul": return list(false);
+      case "ol": return list(true);
+      case "para": return wrap("", "\n\n");
+      case "hr": return wrap("\n<hr>\n", "");
+      default: return undefined;
+    }
+  }
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap", alignItems: "center" }}>
+        {RICH_TOOLS.map(([id, label, title]) => <Btn key={id} small variant="ghost" title={title} onClick={() => apply(id)}>{label}</Btn>)}
+        <Btn small variant="ghost" onClick={() => onChange(sanitizeToAllowedHtml(value))} title="Turns any pasted HTML, Word or Markdown into clean, well-formatted text">✨ Clean & format</Btn>
+      </div>
+      <Textarea ref={ref} onPaste={onPaste} style={{ minHeight, fontSize: mono ? 12.5 : 13.5, fontFamily: mono ? "monospace" : undefined }} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      <p style={{ fontSize: 11.5, color: C.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>
+        Paste straight from Word, Google Docs, an email or an AI tool: bold, headings, centred lines and lists are kept. You can also type plain text: a blank line starts a new paragraph, and <code>**bold**</code>, <code># Heading</code>, <code>- item</code>, <code>1. item</code> and <code>{"->centred<-"}</code> work too.
+      </p>
+    </div>
+  );
 }
 
 function LettersSection() {
@@ -6710,7 +6836,6 @@ function LettersSection() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ subject: "", recipientName: "", recipientAddress: "", recipientEmail: "", signatoryId: "", bodyMarkup: "" });
   const [err, setErr] = useState(""); const [msg, setMsg] = useState("");
-  const bodyRef = useRef(null);
 
   async function load() {
     setLoading(true);
@@ -6802,15 +6927,7 @@ function LettersSection() {
                     </Select>
                   </div>
                   <Label>Letter body</Label>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<b>", "</b>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><b>B</b></Btn>
-                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "<i>", "</i>", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}><i>I</i></Btn>
-                    <Btn small variant="ghost" onClick={() => bulletListify(bodyRef, form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>• List</Btn>
-                    <Btn small variant="ghost" onClick={() => wrapSelection(bodyRef, "", "\n\n", form.bodyMarkup, v => setForm(f => ({ ...f, bodyMarkup: v })))}>¶ Paragraph</Btn>
-                    <Btn small variant="ghost" onClick={() => setForm(f => ({ ...f, bodyMarkup: sanitizeToAllowedHtml(f.bodyMarkup) }))} title="Strips pasted CSS/markup (from Word, Google Docs, AI tools, etc.) down to clean formatted text">✨ Clean & Format</Btn>
-                  </div>
-                  <Textarea ref={bodyRef} style={{ minHeight: 260, fontSize: 13.5 }} value={form.bodyMarkup} onChange={e => setForm(f => ({ ...f, bodyMarkup: e.target.value }))} placeholder="Dear Sir/Madam,&#10;&#10;Type the full letter here in your own words, or paste from Word/Google Docs/an AI tool and click “Clean & Format” to strip it down to plain, well-formatted text. Select text and use Bold/Italic above, or leave a blank line between paragraphs." />
-                  <p style={{ fontSize: 11.5, color: C.textMuted, marginTop: 6 }}>Pasted a full HTML page or document by mistake? Click <strong>Clean & Format</strong> — it strips out style/script blocks, tables, and stray markup, keeping only clean text, bold, italics, and paragraphs.</p>
+                  <RichEditor value={form.bodyMarkup} onChange={v => setForm(f => ({ ...f, bodyMarkup: v }))} placeholder={"Dear Sir/Madam,\n\nType the letter, or paste it from Word, Google Docs, an email or an AI tool. Formatting is kept."} />
                   <div style={{ marginTop: 14 }}><Btn onClick={save}>{editingId ? "Save changes" : "Save & generate letterhead PDF"}</Btn></div>
                   {err && <p style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
                 </div>

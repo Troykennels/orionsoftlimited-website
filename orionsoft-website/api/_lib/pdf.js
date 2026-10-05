@@ -4,7 +4,7 @@
 // header band, gold accent rule, formal letter conventions, real signature
 // lines, and a polished payslip layout — not just plain text on a page.
 import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
-import { parseRichText } from "./richtext.js";
+import { parseRichText, pdfSafe } from "./richtext.js";
 import { getCompanySettings } from "./settings.js";
 import { computeTotals, isOverdue, amountInWords, normaliseInvoice } from "./invoicing.js";
 
@@ -122,27 +122,32 @@ function fontFor(fonts, bold, italic) {
   return fonts.regular;
 }
 
-// Greedy word-wrap over styled runs (mixed bold/italic within a paragraph line).
+// Greedy word-wrap over styled runs (mixed bold/italic/underline in a line).
 function wrapRuns(runs, fonts, size, maxWidth) {
   const words = [];
+  // A space at the end of one run ("Dear ") and the start of the next
+  // ("Mr. Ade" in bold) still separates the two words.
+  let gapBefore = false;
   for (const run of runs) {
-    for (const word of run.text.split(/\s+/).filter(Boolean)) {
-      words.push({ word, bold: run.bold, italic: run.italic });
+    for (const part of pdfSafe(run.text).split(/(\s+)/)) {
+      if (!part) continue;
+      if (/^\s+$/.test(part)) { gapBefore = true; continue; }
+      words.push({ word: part, bold: run.bold, italic: run.italic, underline: run.underline, strike: run.strike, gap: gapBefore && words.length > 0 });
+      gapBefore = false;
     }
   }
   const spaceWidth = fonts.regular.widthOfTextAtSize(" ", size);
   const wrapped = [];
-  let current = [];
-  let currentWidth = 0;
+  let current = [], currentWidth = 0;
   for (const tok of words) {
     const w = fontFor(fonts, tok.bold, tok.italic).widthOfTextAtSize(tok.word, size);
-    const extra = current.length ? spaceWidth + w : w;
+    const extra = current.length && tok.gap ? spaceWidth + w : w;
     if (currentWidth + extra > maxWidth && current.length) {
       wrapped.push(current);
-      current = [tok];
+      current = [{ ...tok, gap: false }];
       currentWidth = w;
     } else {
-      current.push(tok);
+      current.push(current.length ? tok : { ...tok, gap: false });
       currentWidth += extra;
     }
   }
@@ -150,28 +155,67 @@ function wrapRuns(runs, fonts, size, maxWidth) {
   return wrapped;
 }
 
+function lineWidth(tokens, size, fonts) {
+  const spaceWidth = fonts.regular.widthOfTextAtSize(" ", size);
+  return tokens.reduce((w, t, i) => w + (i && t.gap ? spaceWidth : 0) + fontFor(fonts, t.bold, t.italic).widthOfTextAtSize(t.word, size), 0);
+}
+
 function drawWrappedLine(page, tokens, x, y, size, fonts, color) {
   let cx = x;
   const spaceWidth = fonts.regular.widthOfTextAtSize(" ", size);
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
+    if (i && tok.gap) {
+      // Underline/strike runs continue across the space between two words.
+      if (tokens[i - 1].underline && tok.underline) page.drawLine({ start: { x: cx, y: y - 1.6 }, end: { x: cx + spaceWidth, y: y - 1.6 }, thickness: 0.6, color });
+      cx += spaceWidth;
+    }
     const f = fontFor(fonts, tok.bold, tok.italic);
+    const w = f.widthOfTextAtSize(tok.word, size);
     page.drawText(tok.word, { x: cx, y, size, font: f, color });
-    cx += f.widthOfTextAtSize(tok.word, size) + (i < tokens.length - 1 ? spaceWidth : 0);
+    if (tok.underline) page.drawLine({ start: { x: cx, y: y - 1.6 }, end: { x: cx + w, y: y - 1.6 }, thickness: 0.6, color });
+    if (tok.strike) page.drawLine({ start: { x: cx, y: y + size * 0.3 }, end: { x: cx + w, y: y + size * 0.3 }, thickness: 0.6, color });
+    cx += w;
   }
 }
 
+// Draws decoded rich text (see shared/richDoc.js): headings, alignment,
+// bulleted/numbered lists, quotes and rules, wrapping onto new pages.
+const HEADING_SCALE = { 1: 1.5, 2: 1.3, 3: 1.15, 4: 1.05, 5: 1, 6: 0.95 };
 function drawParagraphs(cursor, fonts, paragraphs, size, lineHeight, maxWidth, color, minY) {
   for (const para of paragraphs) {
+    if (para.type === "hr") {
+      cursor.ensure(minY);
+      cursor.page.drawLine({ start: { x: MARGIN, y: cursor.y + lineHeight * 0.35 }, end: { x: MARGIN + maxWidth, y: cursor.y + lineHeight * 0.35 }, thickness: 0.7, color: rgb(0.78, 0.8, 0.85) });
+      cursor.y -= lineHeight * 0.8;
+      continue;
+    }
+    const heading = para.type === "h";
+    const pSize = heading ? size * (HEADING_SCALE[para.level] || 1) : size;
+    const pLine = heading ? lineHeight * (HEADING_SCALE[para.level] || 1) : lineHeight;
+    const depth = para.list ? para.list.depth : para.indent || 0;
+    const indent = (para.list || para.indent ? 16 + depth * 16 : 0) + (para.quote ? 14 : 0);
+    const x0 = MARGIN + indent, width = maxWidth - indent;
+    if (heading) cursor.y -= pLine * 0.25;
+    let first = true;
     for (const runs of para.lines) {
-      const wrapped = wrapRuns(runs, fonts, size, maxWidth);
-      for (const tokens of wrapped) {
+      const styled = heading ? runs.map(r => ({ ...r, bold: true })) : runs;
+      for (const tokens of wrapRuns(styled, fonts, pSize, width)) {
         cursor.ensure(minY);
-        drawWrappedLine(cursor.page, tokens, MARGIN, cursor.y, size, fonts, color);
-        cursor.y -= lineHeight;
+        const w = lineWidth(tokens, pSize, fonts);
+        const x = para.align === "center" ? x0 + Math.max(0, (width - w) / 2) : para.align === "right" ? x0 + Math.max(0, width - w) : x0;
+        if (first && para.list) {
+          const marker = para.list.ordered ? `${para.list.index}.` : "•";
+          const mw = fonts.regular.widthOfTextAtSize(marker, pSize);
+          cursor.page.drawText(marker, { x: x0 - mw - 5, y: cursor.y, size: pSize, font: fonts.regular, color });
+        }
+        if (para.quote) cursor.page.drawLine({ start: { x: MARGIN + 3, y: cursor.y - 3 }, end: { x: MARGIN + 3, y: cursor.y + pSize }, thickness: 2, color: rgb(0.78, 0.66, 0.31) });
+        drawWrappedLine(cursor.page, tokens, x, cursor.y, pSize, fonts, color);
+        cursor.y -= pLine;
+        first = false;
       }
     }
-    cursor.y -= lineHeight * 0.55; // paragraph spacing
+    cursor.y -= para.list ? lineHeight * 0.15 : lineHeight * 0.55; // list items sit closer together
   }
 }
 

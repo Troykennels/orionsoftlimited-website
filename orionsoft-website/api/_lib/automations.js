@@ -141,6 +141,37 @@ async function dailyJobs(today) {
   }
 }
 
+// Payment reminders for every item with a due date: 3 days before, on the
+// day, then 1, 7 and 14 days overdue. One email per contract per day, listing
+// what's due, with the same payment link (and their account number).
+async function paymentReminders(today) {
+  const [contracts, payments] = await Promise.all([listRecords("contracts"), listRecords("payments")]);
+  const { normaliseContract, paymentSummary, money, payLink, ensurePayCode } = await import("./contracts.js");
+  const { sendEmail, brandedShell } = await import("./mailer.js");
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  const days = d => Math.round((Date.parse(d) - Date.parse(today)) / 86400000);
+  const long = d => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  for (const raw of contracts) {
+    const c = normaliseContract(raw);
+    const live = c.kind === "plan" ? !["cancelled", "completed"].includes(c.status) : ["signed", "active"].includes(c.status) || (raw.payBeforeSigning && c.status === "sent");
+    if (!live || !(c.amount > 0) || !c.client.email || raw.remindersOff) continue;
+    const sum = paymentSummary(c, payments.filter(p => p.contractId === c.id));
+    const due = sum.schedule.filter(m => m.balance > 0 && m.dueDate && [3, 0, -1, -7, -14].includes(days(m.dueDate)));
+    if (!due.length) continue;
+    if (!raw.payCode) { await ensurePayCode(raw); await putRecord("contracts", raw.id, raw); }
+    const overdue = due.some(m => days(m.dueDate) < 0);
+    const rows = due.map(m => `<tr><td style="padding:6px 0;">${esc(m.title)}</td><td style="padding:6px 0;text-align:right;"><strong>${money(m.balance, c.currency)}</strong><br><span style="font-size:12px;color:${days(m.dueDate) < 0 ? "#B91C1C" : "#6B7A96"};">${days(m.dueDate) < 0 ? `was due ${long(m.dueDate)}` : days(m.dueDate) === 0 ? "due today" : `due ${long(m.dueDate)}`}</span></td></tr>`).join("");
+    const html = brandedShell(`
+      <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">${overdue ? "Payment overdue" : "Payment reminder"}</h2>
+      <p style="color:#3A4556;font-size:14px;line-height:1.7;">Dear ${esc(c.client.name)}, this is a friendly reminder about ${esc(c.title)} (${c.number}):</p>
+      <table role="presentation" style="background:#F4F6FA;border-radius:10px;padding:10px 16px;width:100%;font-size:14px;color:#3A4556;">${rows}</table>
+      ${raw.dva ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;">Transfer to your account for this plan: <strong>${esc(raw.dva.accountNumber)}</strong> · ${esc(raw.dva.bankName)} · ${esc(raw.dva.accountName)}. It's matched automatically.</p>` : ""}
+      <p style="margin:18px 0;"><a href="${payLink(raw)}" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Pay now</a></p>
+      <p style="color:#6B7A96;font-size:12.5px;line-height:1.6;">Balance on this ${c.kind === "plan" ? "plan" : "contract"}: ${money(sum.balance, c.currency)}. If you've already paid, thank you; please ignore this email.</p>`, { title: overdue ? "Payment overdue" : "Payment reminder" });
+    await sendEmail(c.client.email, `${overdue ? "Overdue" : "Reminder"}: ${due.map(m => m.title).join(", ")} (${c.number})`, html, { kind: "payment_reminder" });
+  }
+}
+
 async function planSummaries(today) {
   const [plans, visits, employees, { getRoleCatalog, fieldWatchers }, { comparePlan }] = await Promise.all([
     listRecords("visitplans"), listRecords("visits"), listRecords("employees"), import("./roles.js"), import("./visitPlans.js"),
@@ -297,6 +328,11 @@ export async function runAutomations() {
           await set("orionsoft:backup:last", { at: new Date().toISOString(), ok: r.ok, bytes: r.bytes, records: r.total });
         });
       } catch (err) { console.error("[backup]", err.message); }
+    }
+    // 09:00 Lagos: remind clients of payments due in 3 days, today, or overdue.
+    if (now.getUTCHours() >= 9) {
+      try { await once(`orionsoft:automation:payreminders:${today}`, () => paymentReminders(today)); }
+      catch (err) { console.error("[payreminders]", err.message); }
     }
     // 19:00 Lagos: planned client visits that didn't happen today.
     if (now.getUTCHours() >= 19) {

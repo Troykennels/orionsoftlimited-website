@@ -193,6 +193,17 @@ ${GOVERNING_LAW}
 <p>Welcome aboard!</p>`,
   },
 
+  // After a deal is agreed: the items the client is paying for, each with its
+  // amount and due date. No signature: the client gets one payment link that
+  // always shows what's due next, until everything is paid.
+  payment_plan: {
+    name: "Payment Plan (items & due dates)", kind: "plan", docLabel: "Payment Plan", payable: true, requiresScope: false,
+    bodyMarkup:
+`<p>Dear {{contactName}},</p>
+<p>Thank you for choosing {{companyName}}. As agreed, this payment plan lists each item you are paying for, its amount and its due date. The same secure payment link works for every payment: open it at any time to see what is due next, pay online or by bank transfer, and download your receipts.</p>
+<p>Unless stated otherwise, amounts exclude VAT (currently 7.5%). Please pay each item by its due date; we will send a reminder a few days before.</p>`,
+  },
+
   payslip_receipt: {
     name: "Payslip Receipt", kind: "letter", docLabel: "Payment Confirmation", payable: false, requiresScope: false,
     bodyMarkup:

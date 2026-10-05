@@ -52,6 +52,11 @@ export default async function handler(req, res) {
     const reference = event.data?.reference;
     const payments = await listRecords("payments");
     const payment = payments.find(p => p.reference === reference);
+    // A transfer into a client's own dedicated account (no checkout started it).
+    if (!payment && event.data?.channel === "dedicated_nuban") {
+      const { applyDedicatedTransfer } = await import("../_lib/paystackDva.js");
+      await applyDedicatedTransfer(event.data);
+    }
     if (payment && payment.status !== "success") {
       if (!paystackAmountMatches(payment, event.data)) {
         payment.status = "amount_mismatch"; payment.paystackAmount = event.data?.amount;

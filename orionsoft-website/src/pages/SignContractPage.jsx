@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { BRAND } from "../lib/brand.js";
-import { parseRichText } from "../lib/richtext.js";
+import { richTextToSafeHtml } from "../lib/richtext.js";
 
 // The recipient signs by drawing (mouse, finger or stylus) or by typing their
 // name. The canvas is sized to its on-screen width and the device pixel ratio,
@@ -97,27 +97,12 @@ function exportTrimmed(canvas) {
   return out.toDataURL("image/png");
 }
 
+// Decoded by shared/richDoc.js: headings, alignment, lists, bold/italic/underline.
+// The HTML is built from escaped text and our own tags only, so it's safe.
 function RichText({ text }) {
-  const paragraphs = parseRichText(text);
-  return (
-    <>
-      {paragraphs.map((para, pi) => (
-        <p key={pi} style={{ margin: pi === 0 ? "0 0 12px" : "12px 0" }}>
-          {para.lines.map((runs, li) => (
-            <span key={li}>
-              {li > 0 && <br />}
-              {runs.map((run, ri) => {
-                let node = run.text;
-                if (run.bold) node = <strong key={ri}>{node}</strong>;
-                if (run.italic) node = <em key={ri}>{node}</em>;
-                return <span key={ri}>{node}</span>;
-              })}
-            </span>
-          ))}
-        </p>
-      ))}
-    </>
-  );
+  const html = richTextToSafeHtml(text);
+  if (!html) return null;
+  return <div className="rich-doc" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 const C = {
