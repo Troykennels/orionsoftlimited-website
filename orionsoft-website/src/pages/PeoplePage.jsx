@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Trophy, MapPin, Mail, CalendarDays, Share2 } from "lucide-react";
 import { C, font, SOCIAL_META } from "../staff/theme.js";
 import "../staff/staff.css";
+import { SHARE_TARGETS } from "../staff/api.js";
 
 const initials = n => String(n || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
 const fmt = d => new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
@@ -114,11 +115,7 @@ export function PersonPage({ slug, setCurrentPage }) {
 
   const shareLink = `${window.location.origin}/api/public/share?person=${encodeURIComponent(p.slug)}`;
   const shareText = `${p.fullName}, ${p.title} at Orion Soft`;
-  const shares = [
-    ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareLink)}`],
-    ["X", `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`],
-    ["WhatsApp", `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareLink}`)}`],
-  ];
+  const shares = SHARE_TARGETS.map(t => [t.label, t.build(shareLink, shareText)]);
   const label = { win: "🏆 Win", progress: "📈 Progress", kudos: "🙌 Kudos", announcement: "📣 News", update: "Update", celebration: "🎉 Celebration" };
 
   return (

@@ -5,6 +5,7 @@ import ChatBot from "./components/ChatBot";
 import { readPublished, loadSiteContent, usePublishedList, contentLoaded } from "./lib/siteContent.js";
 import { DEFAULT_PRODUCTS_CATALOG } from "./lib/products.js";
 import { RichText, summary } from "./lib/RichText.jsx";
+import { SHARE_TARGETS } from "./staff/api.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
@@ -3484,12 +3485,7 @@ function BlogShare({ post }) {
   const pageUrl = `${base}/blog/${encodeURIComponent(post.slug || post.id)}`;
   const text = post.title || "";
   const [copied, setCopied] = useState(false);
-  const links = [
-    ["LinkedIn", `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`],
-    ["X", `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`],
-    ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`],
-    ["WhatsApp", `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`],
-  ];
+  const links = SHARE_TARGETS.map(t => [t.label, t.build(url, text)]);
   const btn = { background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer", textDecoration: "none" };
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 36 }}>

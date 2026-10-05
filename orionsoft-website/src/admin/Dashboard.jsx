@@ -11,6 +11,7 @@ import {
 import { parseRichText, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
+import { SHARE_TARGETS, copyText as copyToClipboard } from "../staff/api.js";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
@@ -1831,6 +1832,40 @@ function ServicesSection() {
 }
 
 // ─── Blog ────────────────────────────────────────────────────────────────────
+function BlogShareMenu({ post }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    const esc = e => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const slug = encodeURIComponent(post.slug || post.id);
+  const url = `${window.location.origin}/api/public/share?blog=${slug}`;
+  const pageUrl = `${window.location.origin}/blog/${slug}`;
+  const item = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: C.text, padding: "8px 14px", fontSize: 13, fontFamily: font, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap" };
+  return (
+    <span ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <Btn small variant="ghost" onClick={() => setOpen(o => !o)}>Share ▾</Btn>
+      {open && (
+        <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 20, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 0", minWidth: 170, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
+          {SHARE_TARGETS.map(t => (
+            <a key={t.id} role="menuitem" href={t.build(url, post.title || "")} target="_blank" rel="noopener noreferrer" style={item} onClick={() => setOpen(false)}>{t.label}</a>
+          ))}
+          <button type="button" role="menuitem" style={{ ...item, borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10 }}
+            onClick={async () => { if (await copyToClipboard(pageUrl)) { setCopied(true); setTimeout(() => { setCopied(false); setOpen(false); }, 1200); } }}>
+            {copied ? "Link copied ✓" : "Copy link"}
+          </button>
+        </div>
+      )}
+    </span>
+  );
+}
+
 function BlogSection() {
   return (
     <CrudSection
@@ -1845,9 +1880,7 @@ function BlogSection() {
         if (f.coverImage && !/^(https:\/\/|\/)/.test(f.coverImage)) return "The cover image must be an https:// link or a /assets/… path.";
         return { ...f, slug, date: f.date || new Date().toISOString().slice(0, 10) };
       }}
-      extraActions={p => p.published && (p.slug || p.id) ? (
-        <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${window.location.origin}/api/public/share?blog=${encodeURIComponent(p.slug || p.id)}`)}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost">Share</Btn></a>
-      ) : null}
+      extraActions={p => p.published && (p.slug || p.id) ? <BlogShareMenu post={p} /> : null}
       fields={[
         { key: "title", label: "Title", placeholder: "Post title" },
         { key: "slug", label: "Slug", placeholder: "url-friendly-slug (made from the title if left blank)" },
