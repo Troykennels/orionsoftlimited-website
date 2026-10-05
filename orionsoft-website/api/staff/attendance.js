@@ -5,21 +5,15 @@
 import { push, get, set, ltrim } from "../store.js";
 import { listRecords, getRecord, putRecord } from "../_lib/records.js";
 import { officeContext, notify, award, slugify } from "../_lib/office.js";
-import { managerChain, subordinates } from "../_lib/roles.js";
+import { managerChain, subordinates, fieldWatchers } from "../_lib/roles.js";
 import { lagosDate, toLagos } from "../_lib/automations.js";
 import { cleanGeo, requestMeta } from "../_lib/fieldIntel.js";
+import { scheduleFor, lateMinutes, earlyMinutes, overtimeMinutes } from "../_lib/workHours.js";
 import { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } from "./office.js";
 
 const MODES = ["remote", "field", "client_site", "hybrid"];
-
-// Minutes late against the company start time (+ grace), in Lagos time.
-export function lateMinutes(clockInIso, workStart = "09:00", grace = 15) {
-  const local = toLagos(clockInIso); // "YYYY-MM-DDTHH:mm"
-  const [h, m] = local.slice(11, 16).split(":").map(Number);
-  const [sh, sm] = String(workStart).split(":").map(Number);
-  const late = (h * 60 + m) - (sh * 60 + (sm || 0) + Number(grace || 0));
-  return late > 0 ? late : 0;
-}
+const MODE_LABEL = { remote: "remote", field: "field work", client_site: "a client site", hybrid: "hybrid" };
+const hm = min => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`);
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -91,6 +85,7 @@ export default async function handler(req, res) {
     rec.events = rec.events || [];
     const fresh = await getRecord("employees", me.id);
     const cfg = { ...DEFAULT_OFFICE_CONFIG, ...((await get(OFFICE_CONFIG_KEY)) || {}) };
+    const schedule = scheduleFor(fresh, cfg);
 
     // Location found after a no-signal clock-in (see lateLocation.jsx).
     if (b.action === "attach-geo") {
@@ -115,15 +110,24 @@ export default async function handler(req, res) {
       rec.clockOut = null;
       rec.mode = MODES.includes(b.mode) ? b.mode : "remote";
       rec.resumedAt = now;
+      rec.earlyMinutes = 0; // back at work: no longer "left early"
       if (first) {
         rec.clockInGeo = geo; rec.clockInIp = meta.ip; rec.clockInUa = meta.ua;
-        rec.lateMinutes = lateMinutes(now, cfg.workStart, cfg.graceMinutes);
+        rec.lateMinutes = lateMinutes(now, schedule);
+        rec.schedule = { start: schedule.start, end: schedule.end };
       }
       rec.events.push({ type: first ? "clock_in" : "resume", at: now, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId, mode: rec.mode });
       fresh.presence = { status: rec.mode === "field" || rec.mode === "client_site" ? "field" : "available", note: "", at: now };
-      if (first && rec.lateMinutes > 0) {
+      if (first) {
         const mgr = managerChain(me, employees, catalog)[0];
-        if (mgr && rec.lateMinutes >= 30) await notify([mgr.id], { type: "attendance", title: `${me.fullName} clocked in ${rec.lateMinutes >= 60 ? `${Math.floor(rec.lateMinutes / 60)}h ${rec.lateMinutes % 60}m` : `${rec.lateMinutes} min`} late`, body: toLagos(now).slice(11, 16), link: "team", actorId: me.id });
+        const late = rec.lateMinutes >= 30;
+        const watchers = cfg.alertClockIns ? fieldWatchers(me, employees, catalog) : late && mgr ? [mgr.id] : [];
+        await notify(watchers, {
+          type: "attendance",
+          title: late ? `${me.fullName} clocked in ${hm(rec.lateMinutes)} late` : `${me.fullName} clocked in (${MODE_LABEL[rec.mode]})`,
+          body: [toLagos(now).slice(11, 16), geo ? `GPS ±${Math.round(geo.accuracy || 0)}m` : "no GPS"].join(" · "),
+          link: "team:field", actorId: me.id,
+        });
       }
     } else if (b.action === "clock-out") {
       if (!rec.clockIn || rec.clockOut) return res.status(400).json({ error: "You're not clocked in" });
@@ -131,8 +135,19 @@ export default async function handler(req, res) {
       rec.minutes = (rec.minutes || 0) + Math.round((Date.parse(rec.clockOut) - Date.parse(rec.resumedAt || rec.clockIn)) / 60000);
       rec.eod = String(b.eod || "").slice(0, 1500);
       rec.clockOutGeo = geo; rec.clockOutIp = meta.ip;
+      rec.earlyMinutes = earlyMinutes(rec.clockOut, schedule);
+      rec.overtimeMinutes = overtimeMinutes(rec.clockIn, rec.clockOut, schedule);
       rec.events.push({ type: "clock_out", at: rec.clockOut, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId });
       fresh.presence = { status: "offline", note: "", at: new Date().toISOString() };
+      const mgr = managerChain(me, employees, catalog)[0];
+      const early = rec.earlyMinutes >= 30;
+      const watchers = cfg.alertClockIns ? fieldWatchers(me, employees, catalog) : early && mgr ? [mgr.id] : [];
+      await notify(watchers, {
+        type: "attendance",
+        title: early ? `${me.fullName} clocked out ${hm(rec.earlyMinutes)} early` : `${me.fullName} clocked out`,
+        body: [`${hm(rec.minutes)} worked`, rec.eod].filter(Boolean).join(" · "),
+        link: "team:field", actorId: me.id,
+      });
     } else if (b.action === "standup") {
       const standup = { yesterday: String(b.yesterday || "").slice(0, 1000), today: String(b.today || "").slice(0, 1000), blockers: String(b.blockers || "").slice(0, 600), at: new Date().toISOString() };
       if (!standup.today) return res.status(400).json({ error: "Say what you're working on today" });

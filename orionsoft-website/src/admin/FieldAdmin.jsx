@@ -5,9 +5,15 @@ import { MapPin, Download, Eye, Clock, UserX, Palmtree, AlertTriangle } from "lu
 import { C, font } from "../staff/theme.js";
 import { Btn, Badge, SectionCard, SectionTitle, Input, Select, Modal, Tabs, EmptyState, StatCard, Avatar, Progress, Grid, Toaster, toast } from "../staff/components.jsx";
 import { Scorecard, GRADE_COLOR } from "../staff/modules/Performance.jsx";
+import { VisitDetail as VisitEvidence, SpotDetail as SpotEvidence } from "../staff/FieldEvidence.jsx";
+import { time, dt, mins, maps, device, LEVEL, CONF } from "../staff/fieldFormat.js";
 import "../staff/staff.css";
 
 const FieldMap = lazy(() => import("./FieldMap.jsx"));
+const loadVisit = id => call(`/api/admin/field?view=visits&id=${encodeURIComponent(id)}`).then(j => j.visit);
+const loadSpot = id => call(`/api/admin/field?view=spotchecks&id=${encodeURIComponent(id)}`).then(j => j.spotcheck);
+const VisitDetail = props => <VisitEvidence load={loadVisit} {...props} />;
+const SpotDetail = props => <SpotEvidence load={loadSpot} {...props} />;
 
 async function call(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { "Content-Type": "application/json" }, body: opts.body ? JSON.stringify(opts.body) : undefined });
@@ -17,24 +23,12 @@ async function call(path, opts = {}) {
 }
 const lagosToday = () => new Date(Date.now() + 3600000).toISOString().slice(0, 10);
 const monthStart = () => `${lagosToday().slice(0, 8)}01`;
-const time = iso => (iso ? new Date(iso).toLocaleTimeString("en-NG", { timeZone: "Africa/Lagos", hour: "2-digit", minute: "2-digit" }) : "—");
-const dt = iso => (iso ? new Date(iso).toLocaleString("en-NG", { timeZone: "Africa/Lagos", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
-const mins = m => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`);
-const maps = g => (g ? `https://www.google.com/maps?q=${g.lat},${g.lng}` : null);
-const device = ua => {
-  if (!ua) return "—";
-  const os = /iPhone|iPad/.test(ua) ? "iPhone/iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "Mac" : "Other";
-  const br = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "";
-  return `${os}${br ? ` · ${br}` : ""}`;
-};
 function csv(name, headers, rows) {
   const s = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, "'")}"`).join(",")).join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([s], { type: "text/csv" }));
   a.download = `${name}-${lagosToday()}.csv`; a.click();
 }
-const LEVEL = { verified: ["Verified", C.mint], review: ["Review", C.amber], suspicious: ["Suspicious", C.rose] };
-const CONF = { pending: ["Awaiting client", C.textMuted], confirmed: ["Client confirmed", C.mint], disputed: ["Disputed", C.rose] };
 const th = { textAlign: "left", fontSize: 11.5, color: C.textMuted, padding: 8, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap", fontFamily: font };
 const td = { padding: 8, fontSize: 13, color: C.text, verticalAlign: "top" };
 
@@ -45,38 +39,6 @@ function RangePicker({ range, setRange }) {
       <span style={{ color: C.textMuted }}>to</span>
       <Input type="date" value={range.to} onChange={e => setRange(r => ({ ...r, to: e.target.value }))} style={{ width: 150 }} aria-label="To" />
     </div>
-  );
-}
-
-function VisitDetail({ id, onClose }) {
-  const [v, setV] = useState(null);
-  useEffect(() => { call(`/api/admin/field?view=visits&id=${encodeURIComponent(id)}`).then(j => setV(j.visit)).catch(e => toast(e.message, "err")); }, [id]);
-  if (!v) return <Modal title="Loading…" onClose={onClose}><EmptyState>Loading evidence…</EmptyState></Modal>;
-  const [ll, lc] = LEVEL[v.level] || LEVEL.review;
-  return (
-    <Modal title={`${v.organisation}`} onClose={onClose} width={760}>
-      <Grid min={300}>
-        <div>
-          {v.photoDataUrl ? <img src={v.photoDataUrl} alt="Visit photo evidence" style={{ width: "100%", borderRadius: 12 }} /> : <EmptyState>No photo taken</EmptyState>}
-          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 6 }}>Photo: {v.photoSource === "camera" ? "taken live with the camera" : v.photoSource === "upload" ? "uploaded from gallery" : "none"}</div>
-        </div>
-        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.8 }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}><Badge color={lc}>{v.trust}% · {ll}</Badge><Badge color={CONF[v.confirmation?.status]?.[1]}>{CONF[v.confirmation?.status]?.[0]}</Badge></div>
-          <div><strong style={{ color: C.heading }}>Purpose:</strong> {v.purpose || "—"}</div>
-          <div><strong style={{ color: C.heading }}>Contact:</strong> {[v.contactName, v.contactPhone, v.contactEmail].filter(Boolean).join(" · ") || "—"}</div>
-          <div><strong style={{ color: C.heading }}>Check-in:</strong> {dt(v.checkIn.at)} {v.checkIn.geo ? <a href={maps(v.checkIn.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map (±{v.checkIn.geo.accuracy}m)</a> : <span style={{ color: C.rose }}>no GPS: {v.checkIn.geoError}</span>}{v.checkIn.geoLateSec > 60 && <span style={{ color: C.amber }}> · found {Math.round(v.checkIn.geoLateSec / 60)} min later</span>}</div>
-          <div><strong style={{ color: C.heading }}>Check-out:</strong> {v.checkOut?.at ? `${dt(v.checkOut.at)} · ${v.durationMin} min` : "still checked in"} {v.checkOut?.geo && <a href={maps(v.checkOut.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map</a>}</div>
-          {v.distanceFromSite != null && <div><strong style={{ color: C.heading }}>Distance from confirmed site:</strong> {v.distanceFromSite >= 1000 ? `${(v.distanceFromSite / 1000).toFixed(1)}km` : `${v.distanceFromSite}m`}</div>}
-          <div><strong style={{ color: C.heading }}>Device / IP:</strong> {device(v.checkIn.ua)} · {v.checkIn.ip || "—"}</div>
-          {v.outcome && <div><strong style={{ color: C.heading }}>Outcome:</strong> {v.outcome}</div>}
-          {v.confirmation?.at && <div><strong style={{ color: C.heading }}>Client answer:</strong> {v.confirmation.status} by {v.confirmation.name || "unnamed"} {v.confirmation.rating ? `· ${"★".repeat(v.confirmation.rating)}` : ""} {v.confirmation.comment ? `· "${v.confirmation.comment}"` : ""} · {dt(v.confirmation.at)}</div>}
-          {v.confirmation?.geo && <div><strong style={{ color: C.heading }}>Client's location:</strong> <a href={maps(v.confirmation.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map (±{v.confirmation.geo.accuracy}m)</a></div>}
-        </div>
-      </Grid>
-      <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "14px 0 6px" }}>EVIDENCE CHECKS</div>
-      {(v.flags || []).length === 0 && <div style={{ fontSize: 13, color: C.mint }}>No problems detected.</div>}
-      {(v.flags || []).map(f => <div key={f.code} style={{ fontSize: 13, padding: "3px 0", color: f.penalty > 0 ? C.mint : f.severity === "high" ? C.rose : C.amber }}>{f.penalty > 0 ? "✓" : "•"} {f.label} <span style={{ color: C.textMuted }}>({f.penalty > 0 ? "+" : ""}{f.penalty})</span></div>)}
-    </Modal>
   );
 }
 
@@ -99,27 +61,6 @@ function GeoAttempt({ g }) {
         : <span style={{ color: C.rose }}>{KIND_LABEL[g.kind] || g.kind} · error {g.code || "–"}, site permission {g.perm || "?"}{g.message ? ` · "${g.message}"` : ""}</span>}
       {" · "}{deviceName(g.ua)}
     </div>
-  );
-}
-
-function SpotDetail({ id, onClose }) {
-  const [s, setS] = useState(null);
-  useEffect(() => { call(`/api/admin/field?view=spotchecks&id=${encodeURIComponent(id)}`).then(j => setS(j.spotcheck)).catch(e => toast(e.message, "err")); }, [id]);
-  if (!s) return <Modal title="Loading…" onClose={onClose}><EmptyState>Loading evidence…</EmptyState></Modal>;
-  const r = s.response;
-  return (
-    <Modal title={`Location check · ${s.employeeName}`} onClose={onClose} width={640}>
-      <div style={{ fontSize: 13, color: C.text, lineHeight: 1.8, marginBottom: 10 }}>
-        <div><strong style={{ color: C.heading }}>Sent:</strong> {dt(s.issuedAt)} · {s.reason} · due {time(s.dueAt)}</div>
-        <div><strong style={{ color: C.heading }}>Status:</strong> {s.status}{r?.at ? ` · answered at ${time(r.at)}` : ""}</div>
-        {r?.geo && <div><strong style={{ color: C.heading }}>Location:</strong> <a href={maps(r.geo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>open map (±{r.geo.accuracy}m)</a></div>}
-        {s.distanceFromLastVisit != null && <div><strong style={{ color: C.heading }}>Distance from checked-in visit ({s.lastVisitOrganisation}):</strong> {s.distanceFromLastVisit >= 1000 ? `${(s.distanceFromLastVisit / 1000).toFixed(1)}km` : `${s.distanceFromLastVisit}m`}</div>}
-        {r && <div><strong style={{ color: C.heading }}>Device:</strong> {device(r.ua)} · {r.ip}</div>}
-      </div>
-      {r?.photoDataUrl ? <img src={r.photoDataUrl} alt="Location check photo" style={{ width: "100%", borderRadius: 12 }} /> : <EmptyState>{r ? "Answered without a photo" : "No response yet"}</EmptyState>}
-      {r && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 6 }}>Photo: {r.photoSource === "camera" ? "taken live with the camera" : "uploaded from gallery"}</div>}
-      {(s.flags || []).map(f => <div key={f.code} style={{ fontSize: 13, color: C.rose, marginTop: 6 }}>• {f.label}</div>)}
-    </Modal>
   );
 }
 
@@ -245,8 +186,8 @@ export function AttendanceFieldSection() {
                     <td style={{ ...td, color: C.heading, fontWeight: 700 }}>{r.employeeName}</td>
                     <td style={td}>{time(r.clockIn)} {r.lateMinutes > 0 && <Badge color={C.amber}>{mins(r.lateMinutes)} late</Badge>}</td>
                     <td style={td}>{r.clockInGeo ? <><a href={maps(r.clockInGeo)} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map ±{r.clockInGeo.accuracy}m</a>{r.clockInGeoLateSec > 60 && <span style={{ color: C.amber, fontSize: 12 }}> · {Math.round(r.clockInGeoLateSec / 60)} min later</span>}</> : <span style={{ color: C.rose }}>not shared</span>}</td>
-                    <td style={td}>{r.clockOut ? time(r.clockOut) : <span style={{ color: C.mint }}>in</span>} {r.forgotClockOut && <Badge color={C.rose}>forgot</Badge>}</td>
-                    <td style={td}>{((r.minutes || 0) / 60).toFixed(1)}h</td>
+                    <td style={td}>{r.clockOut ? time(r.clockOut) : <span style={{ color: C.mint }}>in</span>} {r.forgotClockOut && <Badge color={C.rose}>forgot</Badge>}{r.earlyMinutes >= 15 && <Badge color={C.amber}>{mins(r.earlyMinutes)} early</Badge>}</td>
+                    <td style={td}>{((r.minutes || 0) / 60).toFixed(1)}h{r.overtimeMinutes >= 15 && <div style={{ fontSize: 12, color: C.blue }}>+{mins(r.overtimeMinutes)} overtime</div>}</td>
                     <td style={td}>{r.mode?.replace("_", " ")}</td>
                     <td style={{ ...td, fontSize: 12 }}>{device(r.clockInUa)}<div style={{ color: C.textMuted }}>{r.clockInIp}</div></td>
                     <td style={{ ...td, fontSize: 12 }}>{r.standup ? "standup ✓" : ""}{r.eod ? ` · EOD: ${r.eod.slice(0, 50)}` : ""}</td>

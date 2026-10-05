@@ -3,7 +3,7 @@
 // VAPID keys come from env (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY) or are
 // generated once and stored, so push works with zero setup.
 import webpush from "web-push";
-import { get, set } from "../store.js";
+import { get, set, mget } from "../store.js";
 
 const VAPID_KEY = "orionsoft:push:vapid";
 const subsKey = id => `orionsoft:push:subs:${id}`;
@@ -44,6 +44,16 @@ export async function subscriptionCount(employeeId) {
   return ((await get(subsKey(employeeId))) || []).length;
 }
 
+// { employeeId: number of phones/browsers with alerts on }
+export async function pushDeviceCounts(ids) {
+  const lists = await mget(ids.map(subsKey));
+  return Object.fromEntries(ids.map((id, i) => [id, Array.isArray(lists[i]) ? lists[i].length : 0]));
+}
+
+// Alerts that should ring loudly and stay on screen until tapped.
+const URGENT = new Set(["spotcheck", "meeting"]);
+const HIGH = new Set(["spotcheck", "meeting", "message", "mention", "field", "approval", "task", "blocker", "announcement"]);
+
 // Notification link ("feed:post_1", "visits", "messages:dm--a--b") -> office URL.
 export function linkToUrl(link) {
   if (!link) return "/staff";
@@ -55,12 +65,16 @@ export async function sendPush(employeeId, { title, body = "", link = "", type =
   const list = (await get(subsKey(employeeId))) || [];
   if (!list.length) return 0;
   await getVapid();
-  const payload = JSON.stringify({ title, body: String(body).slice(0, 180), url: linkToUrl(link), tag: type || "office", urgent: type === "spotcheck" });
+  // One alert per conversation/item, so a new meeting invite doesn't silently
+  // replace yesterday's on the lock screen.
+  const tag = `${type || "office"}:${link || ""}`.slice(0, 120);
+  const payload = JSON.stringify({ title, body: String(body).slice(0, 180), url: linkToUrl(link), tag, urgent: URGENT.has(type) });
   let sent = 0;
   const dead = [];
   await Promise.all(list.map(async s => {
     try {
-      await webpush.sendNotification(s, payload, { TTL: type === "spotcheck" ? 1200 : 86400, urgency: type === "spotcheck" ? "high" : "normal" });
+      // TTL: keep trying to deliver for 3 days if the phone is off.
+      await webpush.sendNotification(s, payload, { TTL: type === "spotcheck" ? 1200 : 259200, urgency: HIGH.has(type) ? "high" : "normal" });
       sent++;
     } catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) dead.push(s.endpoint); // unsubscribed / expired

@@ -9,6 +9,9 @@ import { getSites } from "../_lib/fieldIntel.js";
 import { loadPhoto } from "../_lib/photos.js";
 import { issueSpotCheck } from "../staff/visits.js";
 import { logAudit } from "../_lib/audit.js";
+import { get } from "../store.js";
+import { OFFICE_CONFIG_KEY } from "../staff/office.js";
+import { scheduleFor, isWorkDay } from "../_lib/workHours.js";
 
 const monthStart = today => `${today.slice(0, 8)}01`;
 
@@ -41,11 +44,10 @@ export default async function handler(req, res) {
         .sort((a, b) => b.date.localeCompare(a.date) || name(a.employeeId).localeCompare(name(b.employeeId)))
         .map(a => ({ ...a, employeeName: name(a.employeeId) }));
       // Who hasn't clocked in today (active staff, weekday).
-      const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
-      const leave = await listRecords("leave");
+      const [leave, cfg] = await Promise.all([listRecords("leave"), get(OFFICE_CONFIG_KEY)]);
       const onLeave = new Set(leave.filter(l => l.status === "approved" && l.startDate <= today && l.endDate >= today).map(l => l.employeeId));
-      const absentToday = weekday === 0 || weekday === 6 ? [] : employees
-        .filter(e => e.status === "active" && e.staffRole !== "owner" && !onLeave.has(e.id) && !attendance.some(a => a.employeeId === e.id && a.date === today && a.clockIn))
+      const absentToday = employees
+        .filter(e => e.status === "active" && e.staffRole !== "owner" && isWorkDay(scheduleFor(e, cfg || {}), today) && !onLeave.has(e.id) && !attendance.some(a => a.employeeId === e.id && a.date === today && a.clockIn))
         .map(e => ({ id: e.id, fullName: e.fullName }));
       const devices = employees.filter(e => e.status === "active" && e.staffRole !== "owner")
         .map(e => ({ id: e.id, fullName: e.fullName, check: e.deviceCheck || null, geo: (e.geoDiag || []).slice(0, 5) }));

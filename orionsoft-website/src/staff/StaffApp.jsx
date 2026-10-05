@@ -13,7 +13,9 @@ import PersonDrawer from "./modules/PersonDrawer.jsx";
 import ErrorBoundary from "./ErrorBoundary.jsx";
 import { InAppBanner } from "./DeviceHelp.jsx";
 import { LateLocationBanner } from "./lateLocation.jsx";
-import { registerServiceWorker, applyStaffManifest } from "./push.js";
+import { registerServiceWorker, applyStaffManifest, resyncPush } from "./push.js";
+import AlertsBanner from "./AlertsBanner.jsx";
+import { chime } from "./chime.js";
 import "./staff.css";
 
 const Lobby = lazy(() => import("./modules/Lobby.jsx"));
@@ -56,7 +58,7 @@ function buildNav(can, counts) {
     { group: "MY ROLE", items: [
       (can("pipeline") || can("pipeline.all")) && { id: "pipeline", label: "BD Pipeline", icon: TrendingUp },
       (can("liaison") || can("liaison.all")) && { id: "liaison", label: "Liaison Register", icon: Handshake },
-      (can("team.view") || can("hr.records") || can("org.approve")) && { id: "team", label: can("hr.records") ? "HR Desk" : "Team Desk", icon: Users },
+      (can("team.view") || can("hr.records") || can("org.approve") || counts.hasReports) && { id: "team", label: can("hr.records") ? "HR Desk" : "Team Desk", icon: Users },
       approver && { id: "approvals", label: "Approvals", icon: CheckCheck, badge: approvalsCount },
     ].filter(Boolean) },
     { group: "HR & ME", items: [
@@ -197,17 +199,32 @@ export default function StaffApp() {
     return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
   }, [session, loadOffice]);
 
-  // Unread messages badge.
+  // Unread messages + notifications badges, with a chime when either goes up.
+  const lastCounts = useRef(null);
+  const pollBadges = useCallback(async () => {
+    try {
+      const [m, n] = await Promise.all([api("/api/staff/messages"), api("/api/staff/office?view=notifications")]);
+      const msgs = m.unreadTotal || 0;
+      const unread = n.unread || 0;
+      setMsgUnread(msgs);
+      setNotifs({ items: n.items, unread });
+      const prev = lastCounts.current;
+      if (prev && (msgs > prev.msgs || unread > prev.unread)) chime();
+      lastCounts.current = { msgs, unread };
+    } catch { /* transient */ }
+  }, []);
   useEffect(() => {
     if (!session) return undefined;
-    async function poll() { try { const j = await api("/api/staff/messages"); setMsgUnread(j.unreadTotal || 0); } catch { /* transient */ } }
-    const first = setTimeout(poll, 500);
-    const t = setInterval(poll, 20_000);
-    return () => { clearTimeout(first); clearInterval(t); };
-  }, [session]);
+    const first = setTimeout(pollBadges, 500);
+    const t = setInterval(pollBadges, 20_000);
+    // A phone alert just arrived: refresh now instead of waiting for the poll.
+    const onSw = e => { if (e.data?.type === "so-push") pollBadges(); };
+    navigator.serviceWorker?.addEventListener("message", onSw);
+    return () => { clearTimeout(first); clearInterval(t); navigator.serviceWorker?.removeEventListener("message", onSw); };
+  }, [session, pollBadges]);
 
   // Installable app + phone notifications for the office.
-  useEffect(() => { applyStaffManifest(); registerServiceWorker(); }, []);
+  useEffect(() => { applyStaffManifest(); registerServiceWorker().then(() => resyncPush()); }, []);
 
   useEffect(() => {
     function onPop() { setRoute(parseRoute()); }
@@ -265,7 +282,7 @@ export default function StaffApp() {
   if (!session) return <StaffLogin notice={loginNotice} onLogin={u => { setLoginNotice(""); setSession(u); }} />;
   if (!ctx) return <div className="so-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: font }}>Opening the office…</div>;
 
-  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length };
+  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length, hasReports: (office.directReports || []).length > 0 };
   const nav = buildNav(ctx.can, counts);
   const allowed = new Set(nav.flatMap(g => g.items.map(i => i.id)));
   const mod = allowed.has(route.module) ? route.module : "home";
@@ -321,6 +338,7 @@ export default function StaffApp() {
             </header>
             <main className="so-content">
               <InAppBanner />
+              <AlertsBanner />
               <LateLocationBanner />
               {(office.pendingSpotChecks || []).length > 0 && mod !== "visits" && (
                 <button type="button" onClick={() => navigate("visits")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: C.amberDim, border: `1px solid ${C.amber}88`, color: C.heading, borderRadius: 12, padding: "12px 16px", marginBottom: 16, cursor: "pointer", fontFamily: font, fontSize: 14, fontWeight: 700, textAlign: "left" }}>

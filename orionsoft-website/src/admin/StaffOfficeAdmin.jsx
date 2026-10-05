@@ -52,6 +52,29 @@ function TempPassword({ info, onClose }) {
   );
 }
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+// Working days (tap to toggle) plus start and finish times.
+function WorkHoursFields({ value, onChange }) {
+  const days = value.days || [1, 2, 3, 4, 5];
+  const toggle = d => onChange({ ...value, days: days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort() });
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }} role="group" aria-label="Working days">
+        {WEEK_ORDER.map(d => {
+          const on = days.includes(d);
+          return <button key={d} type="button" aria-pressed={on} onClick={() => toggle(d)} style={{ minWidth: 48, padding: "8px 10px", borderRadius: 8, border: `1px solid ${on ? C.gold : C.border}`, background: on ? C.goldDim : "transparent", color: on ? C.heading : C.textMuted, fontWeight: 700, fontSize: 13, fontFamily: font, cursor: "pointer" }}>{DAY_NAMES[d]}</button>;
+        })}
+      </div>
+      <Grid min={160}>
+        <Field label="Starts at"><Input type="time" value={value.start || "09:00"} onChange={e => onChange({ ...value, start: e.target.value })} /></Field>
+        <Field label="Finishes at"><Input type="time" value={value.end || "17:00"} onChange={e => onChange({ ...value, end: e.target.value })} /></Field>
+      </Grid>
+    </div>
+  );
+}
+
 function EmployeeForm({ initial, roles, employees, onClose, onSaved }) {
   const creating = !initial;
   const [f, setF] = useState(() => initial ? {
@@ -61,6 +84,7 @@ function EmployeeForm({ initial, roles, employees, onClose, onSaved }) {
     leaveAllowance: initial.leaveAllowance ?? 20, extraPermissions: initial.extraPermissions || [], employmentType: initial.employmentType || "full_time",
     bankName: initial.bankName || "", bankAccountNumber: initial.bankAccountNumber || "", bankAccountName: initial.bankAccountName || "",
     publicProfile: !!initial.publicProfile,
+    workSchedule: initial.workSchedule || null,
   } : { fullName: "", email: "", title: "", department: "", phone: "", staffRole: "staff", managerId: "", salaryAmount: "", salaryCurrency: "NGN", startDate: new Date().toISOString().slice(0, 10) });
   const [perms, setPerms] = useState({});
   const [busy, setBusy] = useState(false);
@@ -109,6 +133,12 @@ function EmployeeForm({ initial, roles, employees, onClose, onSaved }) {
             <Field label="Start date"><Input type="date" value={f.startDate} onChange={set("startDate")} /></Field>
             <Field label="Annual leave (days)"><Input type="number" min="0" value={f.leaveAllowance} onChange={set("leaveAllowance")} /></Field>
           </Grid>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "6px 0 8px" }}>WORKING HOURS</div>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: C.text, marginBottom: 10 }}>
+            <input type="checkbox" checked={!f.workSchedule} onChange={e => setF(x => ({ ...x, workSchedule: e.target.checked ? null : { start: "09:00", end: "17:00", days: [1, 2, 3, 4, 5] } }))} />
+            Follow the company working hours (set in Staff Office → Settings)
+          </label>
+          {f.workSchedule && <div style={{ marginBottom: 12 }}><WorkHoursFields value={f.workSchedule} onChange={ws => setF(x => ({ ...x, workSchedule: ws }))} /></div>}
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", margin: "6px 0 8px" }}>EXTRA PERMISSIONS (ON TOP OF THE ROLE)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 6, marginBottom: 12 }}>
             {Object.entries(perms).map(([k, label]) => {
@@ -427,6 +457,41 @@ function RolesEditor({ data, reload }) {
 }
 const th = { textAlign: "left", fontSize: 11.5, color: C.textMuted, padding: 8, borderBottom: `1px solid ${C.border}`, fontFamily: font };
 
+// Who will actually get a phone alert, and a one-click email with set-up steps.
+function PhoneAlerts({ list }) {
+  const [busy, setBusy] = useState(false);
+  const off = list.filter(p => !p.devices);
+  async function nudge(employeeId) {
+    setBusy(true);
+    try {
+      const j = await call("/api/admin/office", { method: "POST", body: { action: "nudge-alerts", employeeId } });
+      toast(j.total ? `Set-up email sent to ${j.sent} of ${j.total}` : "Everyone already has alerts on");
+    } catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
+  }
+  return (
+    <SectionCard>
+      <SectionTitle sub="Phone alerts ring like WhatsApp even when the Staff Office is closed. Each person turns them on once, on their own phone."
+        action={off.length > 0 && <Btn small icon={Megaphone} disabled={busy} onClick={() => nudge()}>Email set-up steps to all {off.length}</Btn>}>
+        Phone alerts: {list.length - off.length} of {list.length} on
+      </SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 6 }}>
+        {list.map(p => (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 13 }}>
+            <span style={{ flex: 1, color: C.heading, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fullName}</span>
+            {p.devices ? <Badge color={C.mint}>on · {p.devices} device{p.devices === 1 ? "" : "s"}</Badge> : <>
+              <Badge color={C.rose}>off</Badge>
+              {p.email && <Btn small variant="ghost" disabled={busy} onClick={() => nudge(p.id)}>Remind</Btn>}
+            </>}
+          </div>
+        ))}
+      </div>
+      <p style={{ fontSize: 12.5, color: C.textMuted, margin: "10px 0 0", lineHeight: 1.6 }}>
+        You too: open the Staff Office as Owner on your phone and tap <strong>Turn on alerts</strong>, so check-ins and location checks reach you. iPhones must first add the Staff Office to the Home Screen (Share → Add to Home Screen).
+      </p>
+    </SectionCard>
+  );
+}
+
 function OfficeSettings({ data, reload }) {
   const [cfg, setCfg] = useState(data.config);
   async function save() {
@@ -445,17 +510,36 @@ function OfficeSettings({ data, reload }) {
         </Grid>
       </SectionCard>
       <SectionCard>
-        <SectionTitle sub="Used to measure lateness and to run field verification.">Working hours & field checks</SectionTitle>
-        <Grid min={200}>
-          <Field label="Work starts at"><Input type="time" value={cfg.workStart || "09:00"} onChange={e => setCfg(c => ({ ...c, workStart: e.target.value }))} /></Field>
+        <SectionTitle sub="Company default for everyone (Lagos time). To give one person different hours, open Employees → Edit → Working hours.">Working hours</SectionTitle>
+        <WorkHoursFields
+          value={{ start: cfg.workStart || "09:00", end: cfg.workEnd || "17:00", days: cfg.workDays || [1, 2, 3, 4, 5] }}
+          onChange={v => setCfg(c => ({ ...c, workStart: v.start, workEnd: v.end, workDays: v.days }))} />
+        <Grid min={200} style={{ marginTop: 10 }}>
           <Field label="Grace period (minutes before 'late')"><Input type="number" min="0" max="120" value={cfg.graceMinutes ?? 15} onChange={e => setCfg(c => ({ ...c, graceMinutes: e.target.value }))} /></Field>
           <Field label="Location check: minutes to respond (10–60)"><Input type="number" min="10" max="60" value={cfg.spotWindowMinutes ?? 20} onChange={e => setCfg(c => ({ ...c, spotWindowMinutes: e.target.value }))} /></Field>
         </Grid>
+        <p style={{ fontSize: 12.5, color: C.textMuted, lineHeight: 1.6, margin: "10px 0 0" }}>
+          These hours decide who is late or left early, who gets a "you haven't clocked in" reminder 45 minutes after the start plus grace period, and when location checks may be sent. Work outside them counts as overtime.
+        </p>
         <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: C.text, marginTop: 12 }}>
           <input type="checkbox" checked={cfg.spotChecks !== false} onChange={e => setCfg(c => ({ ...c, spotChecks: e.target.checked }))} />
-          Send one random location check each weekday to staff clocked in on field work
+          Send one random location check each working day to staff clocked in on field work
         </label>
       </SectionCard>
+      <SectionCard>
+        <SectionTitle sub="Line managers and the owner hear about these as they happen, on their phone or by email.">Live alerts</SectionTitle>
+        {[
+          ["alertFieldVisits", true, "Tell the line manager and owner every time someone checks in or out at a client, and answers or misses a location check"],
+          ["alertClockIns", false, "Also tell them every time someone clocks in or out (late arrivals and early departures of 30+ minutes are always reported)"],
+          ["emailFallback", true, "Email alerts (meetings, tasks, approvals, messages…) to anyone who hasn't turned on phone alerts"],
+        ].map(([k, def, label]) => (
+          <label key={k} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, color: C.text, marginBottom: 8 }}>
+            <input type="checkbox" checked={cfg[k] ?? def} onChange={e => setCfg(c => ({ ...c, [k]: e.target.checked }))} style={{ marginTop: 2 }} />
+            {label}
+          </label>
+        ))}
+      </SectionCard>
+      <PhoneAlerts list={data.phoneAlerts || []} />
       <SectionCard>
         <SectionTitle action={<Btn small icon={Plus} onClick={() => setCfg(c => ({ ...c, quickLinks: [...c.quickLinks, { label: "", url: "" }] }))}>Add link</Btn>}>Quick links</SectionTitle>
         {cfg.quickLinks.map((l, i) => (

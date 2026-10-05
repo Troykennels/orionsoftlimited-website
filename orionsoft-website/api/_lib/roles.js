@@ -178,6 +178,17 @@ export function approversFor(target, employees, catalog) {
   return [...ids];
 }
 
+// Who should hear, as it happens, what `target` is doing in the field: their
+// line manager (whatever their role) plus the company owner(s).
+export function fieldWatchers(target, employees, catalog) {
+  const ids = new Set();
+  const line = managerChain(target, employees, catalog)[0];
+  if (line && line.status === "active") ids.add(line.id);
+  for (const e of employees) if (e.status === "active" && e.staffRole === "owner") ids.add(e.id);
+  ids.delete(target.id);
+  return [...ids];
+}
+
 // ─── Weekly reports ──────────────────────────────────────────────────────────
 // A weekly report always reaches the person it is addressed to: the submitter's
 // line manager (even if their role has no approval permission) and whoever

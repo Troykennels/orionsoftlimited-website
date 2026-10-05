@@ -1,16 +1,21 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Users, Clock, Coffee, Palmtree, AlertTriangle, Cake } from "lucide-react";
 import { C, font, PRESENCE } from "../theme.js";
 import { api, fmtDate } from "../api.js";
 import { Avatar, Badge, SectionCard, EmptyState, PageHeader, Grid, StatCard, Progress, Input, Tabs, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
 
-export default function TeamDesk() {
+const TeamField = lazy(() => import("./TeamField.jsx"));
+
+export default function TeamDesk({ param }) {
   const { openPerson, person } = useOffice();
   const [data, setData] = useState(null);
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState("people");
+  const [tab, setTab] = useState(param === "field" ? "field" : "people");
   useEffect(() => { api("/api/staff/team").then(setData).catch(e => toast(e.message, "err")); }, []);
+  // Opened from a field alert while already on the desk: jump to the Field tab.
+  const [lastParam, setLastParam] = useState(param);
+  if (param !== lastParam) { setLastParam(param); if (param === "field") setTab("field"); }
   if (!data) return <EmptyState>Loading…</EmptyState>;
 
   const people = data.people.filter(p => !q || `${p.fullName} ${p.department} ${p.roleLabel}`.toLowerCase().includes(q.toLowerCase()));
@@ -26,7 +31,7 @@ export default function TeamDesk() {
         <StatCard label="On leave today" value={data.summary.onLeave} color={C.amber} icon={Palmtree} />
         <StatCard label="Overdue tasks" value={data.summary.overdueTasks} color={C.rose} icon={AlertTriangle} />
       </Grid>
-      <Tabs active={tab} onChange={setTab} tabs={[{ id: "people", label: "People" }, { id: "standups", label: "Today's standups", count: standups.length }, { id: "celebrations", label: "Birthdays & anniversaries", count: data.upcoming.length }, { id: "departments", label: "Departments" }]} />
+      <Tabs active={tab} onChange={setTab} tabs={[{ id: "people", label: "People" }, { id: "field", label: "Field & attendance" }, { id: "standups", label: "Today's standups", count: standups.length }, { id: "celebrations", label: "Birthdays & anniversaries", count: data.upcoming.length }, { id: "departments", label: "Departments" }]} />
 
       {tab === "people" && (
         <SectionCard>
@@ -73,6 +78,8 @@ export default function TeamDesk() {
           ))}
         </Grid>
       ))}
+
+      {tab === "field" && <Suspense fallback={<EmptyState>Loading…</EmptyState>}><TeamField /></Suspense>}
 
       {tab === "celebrations" && (
         <SectionCard>

@@ -157,12 +157,34 @@ export async function notify(userIds, { type, title, body = "", link = "", actor
       await push(notifKey(id), { id: newId("ntf"), type, title, body: String(body).slice(0, 240), link, actorId, at: new Date().toISOString() });
       await ltrim(notifKey(id), 200);
     } catch { /* notifications are best-effort */ }
-    // Also buzz their phone (if they turned on phone notifications).
+    // Also buzz their phone (if they turned on phone notifications)…
+    let pushed = 0;
     try {
       const { sendPush } = await import("./push.js");
-      await sendPush(id, { title, body, link, type });
+      pushed = await sendPush(id, { title, body, link, type });
     } catch { /* push is best-effort */ }
+    // …and when no phone is set up, email anything that needs action.
+    if (!pushed && EMAIL_FALLBACK.has(type)) {
+      try { await emailFallback(id, { type, title, body, link }); } catch { /* best-effort */ }
+    }
   }));
+}
+
+// Types worth an email when the person can't get a phone alert. Spot checks
+// and announcements are left out: they already send their own email.
+const EMAIL_FALLBACK = new Set(["meeting", "task", "approval", "leave", "field", "attendance", "blocker", "message", "mention", "role", "system", "reminder", "goal", "pipeline", "liaison"]);
+// Chatty types send at most one email per person per 30 minutes.
+const BATCHED = new Set(["message", "mention", "field", "attendance"]);
+
+async function emailFallback(id, { type, title, body, link }) {
+  const { OFFICE_CONFIG_KEY } = await import("../staff/office.js");
+  if ((await get(OFFICE_CONFIG_KEY))?.emailFallback === false) return;
+  const emp = await getRecord("employees", id);
+  if (!emp?.email || emp.status !== "active") return;
+  const key = BATCHED.has(type) ? `orionsoft:notif:mail:${id}:${type}` : `orionsoft:notif:mail:${id}:${type}:${link}:${title}`.slice(0, 200);
+  if (!(await claim(key, BATCHED.has(type) ? 1800 : 600))) return;
+  const [{ sendNotificationEmail }, { linkToUrl }] = await Promise.all([import("./emailTemplates.js"), import("./push.js")]);
+  await sendNotificationEmail(emp, { title, body, url: linkToUrl(link) });
 }
 
 export async function listNotifications(userId, limit = 60) {

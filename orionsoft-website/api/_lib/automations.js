@@ -3,7 +3,7 @@
 // so everything still happens on hosts without a long-running process.
 // Every job is idempotent: daily jobs are keyed by the Lagos calendar date,
 // per-item reminders set a flag on the record, so repeated runs are harmless.
-import { get, set } from "../store.js";
+import { get, set, claim } from "../store.js";
 import { listRecords, putRecord } from "./records.js";
 import { notify, systemPost, addAchievement } from "./office.js";
 import { migrateInlinePhotos } from "./photos.js";
@@ -129,10 +129,10 @@ async function spotChecks(now) {
   for (const s of spots.filter(x => x.status === "pending" && Date.parse(x.dueAt) < Date.now())) {
     s.status = "missed";
     await putRecord("spotchecks", s.id, s);
-    const [employees, { getRoleCatalog, managerChain }] = await Promise.all([listRecords("employees"), import("./roles.js")]);
+    const [employees, { getRoleCatalog, fieldWatchers }] = await Promise.all([listRecords("employees"), import("./roles.js")]);
     const emp = employees.find(e => e.id === s.employeeId);
-    const mgr = emp ? managerChain(emp, employees, await getRoleCatalog())[0] : null;
-    await notify([mgr?.id].filter(Boolean), { type: "field", title: `${emp?.fullName || "A staff member"} missed a location check`, body: "No response within the 20-minute window.", link: "team" });
+    const watchers = emp ? fieldWatchers(emp, employees, await getRoleCatalog()) : [];
+    await notify(watchers, { type: "field", title: `⚠ ${emp?.fullName || "A staff member"} missed a location check`, body: "No response before the deadline.", link: "team:field" });
   }
 
   if (!cfg.spotChecks || weekday === 0 || weekday === 6) return;
@@ -148,9 +148,34 @@ async function spotChecks(now) {
   await kset(planKey, plan);
   const [employees, attendance] = await Promise.all([listRecords("employees"), listRecords("attendance")]);
   const { issueSpotCheck } = await import("../staff/visits.js");
+  const { scheduleFor, isWorkingTime } = await import("./workHours.js");
   for (const a of attendance.filter(x => x.date === today && x.clockIn && !x.clockOut && ["field", "client_site", "hybrid"].includes(x.mode))) {
     const emp = employees.find(e => e.id === a.employeeId && e.status === "active");
-    if (emp && !spots.some(s => s.employeeId === emp.id && s.issuedAt.slice(0, 10) === new Date().toISOString().slice(0, 10))) await issueSpotCheck(emp);
+    if (emp && isWorkingTime(scheduleFor(emp, cfg)) && !spots.some(s => s.employeeId === emp.id && s.issuedAt.slice(0, 10) === new Date().toISOString().slice(0, 10))) await issueSpotCheck(emp);
+  }
+}
+
+// Not clocked in an hour after their start time (on a working day, not on
+// leave): nudge the person and tell their line manager, once per day.
+async function missingClockIns(now) {
+  const today = lagosDate(now);
+  const { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } = await import("../staff/office.js");
+  const { scheduleFor, isWorkDay } = await import("./workHours.js");
+  const { getRoleCatalog, managerChain } = await import("./roles.js");
+  const cfg = { ...DEFAULT_OFFICE_CONFIG, ...((await get(OFFICE_CONFIG_KEY)) || {}) };
+  const [employees, attendance, leave, catalog] = await Promise.all([listRecords("employees"), listRecords("attendance"), listRecords("leave"), getRoleCatalog()]);
+  const minuteNow = now.getUTCHours() * 60 + now.getUTCMinutes(); // `now` is already Lagos time
+  for (const e of employees.filter(x => x.status === "active" && x.staffRole !== "owner")) {
+    const s = scheduleFor(e, cfg);
+    const [h, m] = s.start.split(":").map(Number);
+    if (!isWorkDay(s, today) || minuteNow < h * 60 + m + s.grace + 45) continue;
+    if (attendance.some(a => a.employeeId === e.id && a.date === today && a.clockIn)) continue;
+    if (leave.some(l => l.employeeId === e.id && l.status === "approved" && l.startDate <= today && l.endDate >= today)) continue;
+    await once(`orionsoft:automation:noclockin:${today}:${e.id}`, async () => {
+      await notify([e.id], { type: "attendance", title: "You haven't clocked in today", body: `Your day started at ${s.start}. Clock in from the Staff Office home page.`, link: "home" });
+      const mgr = managerChain(e, employees, catalog)[0];
+      if (mgr) await notify([mgr.id], { type: "attendance", title: `${e.fullName} hasn't clocked in yet`, body: `Expected from ${s.start}.`, link: "team:field" });
+    });
   }
 }
 
@@ -193,6 +218,7 @@ export async function runAutomations() {
     if (now.getUTCHours() >= 7) await once(`orionsoft:automation:daily:${today}`, () => dailyJobs(today));
     await meetingReminders();
     await spotChecks(now);
+    try { if (await claim("orionsoft:automation:noclockin:tick", 900)) await missingClockIns(now); } catch (err) { console.error("[noclockin]", err.message); }
     await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); }

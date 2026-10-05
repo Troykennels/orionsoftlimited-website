@@ -4,7 +4,11 @@
 import { listRecords } from "../_lib/records.js";
 import { officeContext, officeCard, leaderboard } from "../_lib/office.js";
 import { subordinates } from "../_lib/roles.js";
-import { lagosDate } from "../_lib/automations.js";
+import { lagosDate, toLagos } from "../_lib/automations.js";
+import { getSites } from "../_lib/fieldIntel.js";
+import { scheduleFor, isWorkDay, describeSchedule } from "../_lib/workHours.js";
+import { get } from "../store.js";
+import { OFFICE_CONFIG_KEY } from "./office.js";
 
 function stripPrivate(e) { const r = { ...e }; delete r.passwordHash; return r; }
 
@@ -15,6 +19,66 @@ function workingDays(start, end) {
     if (d !== 0 && d !== 6) n++;
   }
   return n;
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const noPhoto = ({ photoDataUrl, ...v }) => ({ ...v, hasPhoto: !!photoDataUrl || !!v.hasPhoto, confirmation: { ...(v.confirmation || {}), token: undefined } });
+
+// What the team is doing in the field: the same data the admin's Attendance &
+// Field page shows, limited to the people this person may see.
+async function fieldView(scope, query, today, catalog) {
+  const from = DATE.test(query.from || "") ? query.from : today;
+  const to = DATE.test(query.to || "") ? query.to : today;
+  const ids = new Set(scope.map(e => e.id));
+  const name = id => scope.find(e => e.id === id)?.fullName || "Former staff";
+  const [attendance, visits, spots, leave, sites, cfg] = await Promise.all([
+    listRecords("attendance"), listRecords("visits"), listRecords("spotchecks"), listRecords("leave"), getSites(), get(OFFICE_CONFIG_KEY),
+  ]);
+  const onLeave = new Set(leave.filter(l => l.status === "approved" && l.startDate <= today && l.endDate >= today).map(l => l.employeeId));
+  const day = iso => toLagos(iso).slice(0, 10);
+  const inRange = d => d >= from && d <= to;
+  const rows = attendance.filter(a => ids.has(a.employeeId) && inRange(a.date))
+    .sort((a, b) => b.date.localeCompare(a.date) || name(a.employeeId).localeCompare(name(b.employeeId)))
+    .map(a => ({ ...a, employeeName: name(a.employeeId) }));
+  const visitList = visits.filter(v => ids.has(v.employeeId) && inRange(day(v.checkIn.at)))
+    .sort((a, b) => b.checkIn.at.localeCompare(a.checkIn.at)).map(v => ({ ...noPhoto(v), employeeName: name(v.employeeId) }));
+  const spotList = spots.filter(s => ids.has(s.employeeId) && inRange(day(s.issuedAt)))
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+    .map(s => ({ ...s, employeeName: name(s.employeeId), response: s.response ? { ...s.response, photoDataUrl: undefined } : null }));
+
+  // Right now: where each person is and what they last did today.
+  const now = scope.map(e => {
+    const schedule = scheduleFor(e, cfg || {});
+    const att = attendance.find(a => a.employeeId === e.id && a.date === today) || null;
+    const todays = visits.filter(v => v.employeeId === e.id && day(v.checkIn.at) === today).sort((a, b) => a.checkIn.at.localeCompare(b.checkIn.at));
+    const openVisit = todays.find(v => !v.checkOut?.at) || null;
+    const timeline = [
+      ...(att?.events || []).map(ev => ({ at: ev.at, kind: ev.type, geo: ev.geo || null, text: { clock_in: `Clocked in (${String(ev.mode || att.mode || "").replace("_", " ")})`, resume: "Resumed work", clock_out: "Clocked out", auto_close: "Day closed automatically" }[ev.type] || ev.type })),
+      ...todays.flatMap(v => [
+        { at: v.checkIn.at, kind: "visit_in", geo: v.checkIn.geo || null, visitId: v.id, text: `Checked in at ${v.organisation}${v.purpose ? ` · ${v.purpose}` : ""}`, trust: v.trust, level: v.level },
+        v.checkOut?.at && { at: v.checkOut.at, kind: "visit_out", geo: v.checkOut.geo || null, visitId: v.id, text: `Left ${v.organisation} after ${v.durationMin} min${v.outcome ? ` · ${v.outcome}` : ""}` },
+      ].filter(Boolean)),
+      ...spots.filter(s => s.employeeId === e.id && day(s.issuedAt) === today).flatMap(s => [
+        { at: s.issuedAt, kind: "spot_sent", spotId: s.id, text: `Location check sent (${s.reason})` },
+        s.response?.at && { at: s.response.at, kind: "spot_answer", geo: s.response.geo || null, spotId: s.id, text: s.flags?.length ? `Answered location check: ${s.flags.map(f => f.label).join(" · ")}` : "Answered location check ✓", flagged: !!s.flags?.length },
+        s.status === "missed" && { at: s.dueAt, kind: "spot_missed", spotId: s.id, text: "Missed the location check", flagged: true },
+      ].filter(Boolean)),
+    ].sort((a, b) => a.at.localeCompare(b.at));
+    const lastGeo = [...timeline].reverse().find(t => t.geo) || null;
+    const status = onLeave.has(e.id) ? "leave"
+      : openVisit ? "visit"
+      : att?.clockIn && !att.clockOut ? "in"
+      : att?.clockOut ? "out"
+      : isWorkDay(schedule, today) ? "not_in" : "day_off";
+    return {
+      ...officeCard(e, catalog), status, schedule: { ...schedule, label: describeSchedule(schedule) },
+      attendance: att ? { clockIn: att.clockIn, clockOut: att.clockOut, mode: att.mode, minutes: att.minutes, lateMinutes: att.lateMinutes || 0, earlyMinutes: att.earlyMinutes || 0, standup: att.standup?.today || "" } : null,
+      openVisit: openVisit ? { id: openVisit.id, organisation: openVisit.organisation, since: openVisit.checkIn.at, trust: openVisit.trust, level: openVisit.level } : null,
+      lastSeen: lastGeo ? { at: lastGeo.at, geo: lastGeo.geo, text: lastGeo.text } : null,
+      timeline,
+    };
+  });
+  return { ok: true, today, from, to, now, rows, visits: visitList, spotchecks: spotList, sites: Object.values(sites) };
 }
 
 export default async function handler(req, res) {
@@ -28,10 +92,12 @@ export default async function handler(req, res) {
   if (!ctx) return;
   const { me, employees, active, catalog } = ctx;
   const companyWide = ctx.can("hr.records") || ctx.can("org.approve");
-  if (!companyWide && !ctx.can("team.view")) return res.status(403).json({ error: "The team desk is for managers and HR" });
-
   const scope = companyWide ? active.filter(e => e.id !== me.id) : subordinates(me, employees, catalog).filter(e => e.status === "active");
+  // Anyone with people reporting to them gets the desk, whatever their role.
+  if (!companyWide && !ctx.can("team.view") && !scope.length) return res.status(403).json({ error: "The team desk is for managers and HR" });
   const today = lagosDate();
+
+  if (req.query.view === "field") return res.json(await fieldView(scope, req.query, today, catalog));
   const year = today.slice(0, 4);
   const [tasks, goals, leave, attendance, board] = await Promise.all([
     listRecords("tasks"), listRecords("goals"), listRecords("leave"), listRecords("attendance"), leaderboard("month"),

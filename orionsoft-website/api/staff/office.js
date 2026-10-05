@@ -16,7 +16,13 @@ export const DEFAULT_OFFICE_CONFIG = {
   managementWhatsapp: "2348169577059",
   // Attendance & field verification
   workStart: "09:00",
+  workEnd: "17:00",
+  workDays: [1, 2, 3, 4, 5],
   graceMinutes: 15,
+  // Who hears about field activity as it happens.
+  alertFieldVisits: true,
+  alertClockIns: false,
+  emailFallback: true,
   spotChecks: true,
   spotWindowMinutes: 20,
   whatsappGroupLink: "",

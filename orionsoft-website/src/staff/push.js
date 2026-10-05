@@ -51,6 +51,17 @@ export async function enablePush() {
   return true;
 }
 
+// On every visit, re-send an existing subscription so the server never loses
+// track of a phone that has alerts on (browsers rotate endpoints now and then).
+export async function resyncPush() {
+  try {
+    if (!pushSupported() || Notification.permission !== "granted") return;
+    const reg = await navigator.serviceWorker.getRegistration("/staff");
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub) await api("/api/staff/push", { method: "POST", body: { subscription: sub.toJSON() } });
+  } catch { /* best-effort */ }
+}
+
 export async function sendTestPush() {
   return api("/api/staff/push", { method: "POST", body: { action: "test" } });
 }

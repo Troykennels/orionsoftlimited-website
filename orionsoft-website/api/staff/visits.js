@@ -9,8 +9,10 @@ import { randomBytes } from "node:crypto";
 import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
 import { savePhoto, loadPhoto } from "../_lib/photos.js";
 import { officeContext, notify, award, logActivity } from "../_lib/office.js";
-import { managerChain, subordinates, canApproveFor } from "../_lib/roles.js";
-import { lagosDate } from "../_lib/automations.js";
+import { subordinates, canApproveFor, fieldWatchers } from "../_lib/roles.js";
+import { lagosDate, toLagos } from "../_lib/automations.js";
+import { get } from "../store.js";
+import { OFFICE_CONFIG_KEY } from "./office.js";
 import { cleanGeo, requestMeta, scoreVisit, getSites, normOrg, haversineMeters } from "../_lib/fieldIntel.js";
 import { sendVisitConfirmation, notifySpotCheck } from "../_lib/emailTemplates.js";
 
@@ -64,6 +66,13 @@ export default async function handler(req, res) {
       const v = await getRecord("visits", req.query.id);
       if (!v || !canSee(v.employeeId)) return res.status(404).json({ error: "Visit not found" });
       return res.json({ ok: true, visit: { ...v, photoDataUrl: v.photoDataUrl || (v.hasPhoto ? await loadPhoto(v.id) : ""), confirmation: { ...(v.confirmation || {}), token: v.employeeId === me.id ? v.confirmation?.token : undefined }, confirmUrl: v.employeeId === me.id && v.confirmation?.token ? confirmUrl(v.confirmation.token) : undefined } });
+    }
+    // One location check with its photo (managers' evidence view).
+    if (req.query.spot) {
+      const s = await getRecord("spotchecks", req.query.spot);
+      if (!s || !canSee(s.employeeId)) return res.status(404).json({ error: "Location check not found" });
+      const response = s.response ? { ...s.response, photoDataUrl: s.response.photoDataUrl || (s.response.hasPhoto ? await loadPhoto(s.id) : "") } : null;
+      return res.json({ ok: true, spotcheck: { ...s, response, employeeName: employees.find(e => e.id === s.employeeId)?.fullName || "" } });
     }
     const [visits, spots] = await Promise.all([listRecords("visits"), listRecords("spotchecks")]);
     const scope = req.query.scope === "team" ? (e => e !== me.id && canSee(e)) : (e => e === me.id);
@@ -119,9 +128,18 @@ export default async function handler(req, res) {
     if (visit.contactEmail) {
       try { await sendVisitConfirmation(visit, me, confirmUrl(visit.confirmation.token)); visit.confirmation.channel = "email"; await putRecord("visits", id, visit); } catch { /* best-effort */ }
     }
-    if (visit.level === "suspicious") {
-      const mgr = managerChain(me, employees, catalog)[0];
-      if (mgr) await notify([mgr.id], { type: "field", title: `⚠ Suspicious check-in: ${me.fullName} at ${organisation}`, body: visit.flags.filter(f => f.penalty < 0).map(f => f.label).join(" "), link: "team", actorId: me.id });
+    // Line manager + owner hear about every check-in (suspicious ones always).
+    const alertAll = (await get(OFFICE_CONFIG_KEY))?.alertFieldVisits !== false;
+    if (visit.level === "suspicious" || alertAll) {
+      const suspicious = visit.level === "suspicious";
+      await notify(fieldWatchers(me, employees, catalog), {
+        type: "field",
+        title: suspicious ? `⚠ Suspicious check-in: ${me.fullName} at ${organisation}` : `📍 ${me.fullName} checked in at ${organisation}`,
+        body: suspicious
+          ? visit.flags.filter(f => f.penalty < 0).map(f => f.label).join(" ")
+          : [toLagos(now).slice(11, 16), visit.purpose, visit.checkIn.geo ? `GPS ±${Math.round(visit.checkIn.geo.accuracy || 0)}m` : "no GPS", `trust ${visit.trust}%`].filter(Boolean).join(" · "),
+        link: "team:field", actorId: me.id,
+      });
     }
     return res.json({ ok: true, visit: stripPhoto(visit), confirmUrl: confirmUrl(visit.confirmation.token) });
   }
@@ -136,6 +154,14 @@ export default async function handler(req, res) {
     v.nextStep = String(b.nextStep || "").slice(0, 300);
     const scored = await rescoreVisit(v);
     await putRecord("visits", v.id, scored);
+    await logActivity(me.id, "visit", `Left ${v.organisation} after ${v.durationMin} min`);
+    if ((await get(OFFICE_CONFIG_KEY))?.alertFieldVisits !== false) {
+      const dur = v.durationMin >= 60 ? `${Math.floor(v.durationMin / 60)}h ${v.durationMin % 60}m` : `${v.durationMin} min`;
+      await notify(fieldWatchers(me, employees, catalog), {
+        type: "field", title: `🏁 ${me.fullName} left ${v.organisation} after ${dur}`,
+        body: [v.outcome, v.nextStep && `Next: ${v.nextStep}`].filter(Boolean).join(" · "), link: "team:field", actorId: me.id,
+      });
+    }
     return res.json({ ok: true, visit: stripPhoto(scored) });
   }
 
@@ -187,17 +213,16 @@ export default async function handler(req, res) {
       if (!lastVisit.checkOut?.at && s.distanceFromLastVisit > 700) s.flags.push({ code: "NOT_AT_VISIT", label: `${(s.distanceFromLastVisit / 1000).toFixed(1)}km from ${lastVisit.organisation}, where they are checked in` });
     }
     await putRecord("spotchecks", s.id, s);
-    if (s.flags.length) {
-      const mgr = managerChain(me, employees, catalog)[0];
-      if (mgr) await notify([mgr.id], { type: "field", title: `Location check flagged for ${me.fullName}`, body: s.flags.map(f => f.label).join(" · "), link: "team", actorId: me.id });
-    }
+    await notify(fieldWatchers(me, employees, catalog), s.flags.length
+      ? { type: "field", title: `⚠ Location check flagged for ${me.fullName}`, body: s.flags.map(f => f.label).join(" · "), link: "team:field", actorId: me.id }
+      : { type: "field", title: `✅ ${me.fullName} answered a location check`, body: s.lastVisitOrganisation ? `At ${s.lastVisitOrganisation}` : "", link: "team:field", actorId: me.id });
     return res.json({ ok: true, spotcheck: { ...s, response: { ...s.response, photoDataUrl: undefined } } });
   }
 
   // A manager asks someone in their reporting line to confirm location now.
   if (b.action === "spot-request") {
     const target = active.find(e => e.id === b.employeeId);
-    if (!target || !canApproveFor(me, target, employees, catalog)) return res.status(403).json({ error: "You can only request location checks for people in your reporting line" });
+    if (!target || !(canApproveFor(me, target, employees, catalog) || fieldWatchers(target, employees, catalog).includes(me.id))) return res.status(403).json({ error: "You can only request location checks for people in your reporting line" });
     const s = await issueSpotCheck(target, `Requested by ${me.fullName}`, me.id);
     return res.json({ ok: true, spotcheck: s });
   }

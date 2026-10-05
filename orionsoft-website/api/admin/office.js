@@ -9,6 +9,9 @@ import { getRoleCatalog, saveRole, deleteRole, PERMISSIONS, BUILTIN_ROLES } from
 import { notify, systemPost, cleanUrl, leaderboard, waNumber, cleanAudience, audienceIds, effectivePresence, loadSeen } from "../_lib/office.js";
 import { sendAnnouncementEmail } from "../_lib/emailTemplates.js";
 import { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } from "../staff/office.js";
+import { cleanTime, cleanDays } from "../_lib/workHours.js";
+import { pushDeviceCounts } from "../_lib/push.js";
+import { sendAlertsSetupEmail } from "../_lib/emailTemplates.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -30,7 +33,9 @@ export default async function handler(req, res) {
     const cfg = { ...DEFAULT_OFFICE_CONFIG, ...(config || {}) };
     const acks = await Promise.all(active.map(async e => ({ id: e.id, acks: (await get(`orionsoft:office:acks:${e.id}`)) || [] })));
     const seen = await loadSeen(active.map(e => e.id));
+    const devices = await pushDeviceCounts(active.map(e => e.id));
     return res.json({
+      phoneAlerts: active.map(e => ({ id: e.id, fullName: e.fullName, email: e.email || "", devices: devices[e.id] || 0 })),
       ok: true,
       roles: catalog, builtinRoleIds: BUILTIN_ROLES.map(r => r.id), permissions: PERMISSIONS,
       config: cfg,
@@ -75,8 +80,13 @@ export default async function handler(req, res) {
       const cfg = {
         welcome: String(c.welcome || "").slice(0, 600),
         managementWhatsapp: waNumber(c.managementWhatsapp),
-        workStart: /^\d{2}:\d{2}$/.test(String(c.workStart || "")) ? c.workStart : "09:00",
+        workStart: cleanTime(c.workStart, "09:00"),
+        workEnd: cleanTime(c.workEnd, "17:00"),
+        workDays: cleanDays(c.workDays),
         graceMinutes: Math.min(120, Math.max(0, parseInt(c.graceMinutes, 10) || 0)),
+        alertFieldVisits: c.alertFieldVisits !== false,
+        alertClockIns: !!c.alertClockIns,
+        emailFallback: c.emailFallback !== false,
         spotChecks: c.spotChecks !== false,
         spotWindowMinutes: Math.min(60, Math.max(10, parseInt(c.spotWindowMinutes, 10) || 20)),
         whatsappGroupLink: /^https:\/\/chat\.whatsapp\.com\//.test(String(c.whatsappGroupLink || "")) ? String(c.whatsappGroupLink).slice(0, 200) : "",
@@ -89,6 +99,17 @@ export default async function handler(req, res) {
       await set(OFFICE_CONFIG_KEY, cfg);
       await logAudit(session, "update_office_config", "staff office");
       return res.json({ ok: true, config: cfg });
+    }
+
+    // Email everyone whose phone isn't set up for alerts, with the steps.
+    if (b.action === "nudge-alerts") {
+      const employees = active.filter(e => e.email);
+      const devices = await pushDeviceCounts(employees.map(e => e.id));
+      const targets = employees.filter(e => !devices[e.id] && (!b.employeeId || e.id === b.employeeId));
+      let sent = 0;
+      for (const e of targets) { try { if (await sendAlertsSetupEmail(e)) sent++; } catch { /* keep going */ } }
+      await logAudit(session, "nudge_phone_alerts", "staff office", `${sent} of ${targets.length} emailed`);
+      return res.json({ ok: true, sent, total: targets.length });
     }
 
     if (b.action === "announce") {

@@ -6,6 +6,7 @@ import { getRoleCatalog, PERMISSIONS, managerChain, directReports } from "../_li
 import { ensureSlugs, systemPost, notify, listActivity, leaderboard, cleanSocials, effectivePresence, loadSeen } from "../_lib/office.js";
 import { logAudit } from "../_lib/audit.js";
 import { get } from "../store.js";
+import { cleanPersonalSchedule } from "../_lib/workHours.js";
 
 // Reject a reporting line that would loop back to the employee themselves.
 function createsCycle(employeeId, managerId, employees) {
@@ -195,6 +196,8 @@ export default async function handler(req, res) {
     if (updates.extraPermissions !== undefined) employee.extraPermissions = (updates.extraPermissions || []).filter(p => PERMISSIONS[p]);
     if (updates.socials !== undefined) employee.socials = cleanSocials(updates.socials);
     if (updates.publicProfile !== undefined) employee.publicProfile = !!updates.publicProfile;
+    // null = follow the company working hours.
+    if (updates.workSchedule !== undefined) employee.workSchedule = cleanPersonalSchedule(updates.workSchedule);
     const changed = Object.keys(before).filter(k => (before[k] || null) !== (employee[k] || null));
     if (changed.length) {
       await logAudit(session, "update_employee_access", `employee ${id}`, changed.map(k => `${k}: ${before[k] || "-"} -> ${employee[k] || "-"}`).join(", "));

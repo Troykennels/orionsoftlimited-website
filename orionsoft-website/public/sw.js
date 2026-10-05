@@ -8,12 +8,16 @@ self.addEventListener("push", event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = { title: event.data?.text() || "Orion Staff Office" }; }
   const title = data.title || "Orion Staff Office";
+  // An open office refreshes its bell straight away.
+  event.waitUntil(self.clients.matchAll({ type: "window" }).then(all => all.forEach(c => c.postMessage({ type: "so-push" }))));
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "",
     tag: data.tag || "office",
     renotify: true,
+    silent: false, // play the phone's notification sound
     requireInteraction: !!data.urgent,
-    vibrate: data.urgent ? [300, 120, 300, 120, 300] : [120],
+    vibrate: data.urgent ? [400, 150, 400, 150, 400, 150, 400] : [200, 100, 200],
+    timestamp: Date.now(),
     icon: "/staff-icon-192.png",
     badge: "/staff-badge-96.png",
     data: { url: data.url || "/staff" },

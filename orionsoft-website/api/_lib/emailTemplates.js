@@ -252,6 +252,32 @@ export async function notifySpotCheck(employee, spot) {
   return sendEmail(employee.email, `Location check: please respond by ${due}`, html, { kind: "spot_check" });
 }
 
+// ─── Staff Office alerts by email ───────────────────────────────────────────
+// Sent when someone has no phone set up for alerts, so a meeting invite or an
+// approval still reaches them without anyone chasing them on WhatsApp.
+export async function sendNotificationEmail(employee, { title, body, url }) {
+  const href = `${APP_BASE_URL}${url || "/staff"}`;
+  const html = brandedShell(`
+    <p style="color:#6B7A96;font-size:13px;margin:0 0 8px;">Hi ${esc(String(employee.fullName || "").split(" ")[0])},</p>
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">${esc(title)}</h2>
+    ${body ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#F4F6FA;border-radius:10px;padding:14px;">${esc(body)}</p>` : ""}
+    ${btn(href, "Open in the Staff Office →")}
+    <p style="color:#6B7A96;font-size:12px;line-height:1.6;margin-top:22px;">You got this by email because phone alerts aren't turned on for you yet. Open the Staff Office on your phone and tap <strong>Turn on alerts</strong> to get these instantly, with sound.</p>
+  `, { title: "Staff Office" });
+  return sendEmail(employee.email, title, html, { kind: "staff_notification" });
+}
+
+export async function sendAlertsSetupEmail(employee) {
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Turn on Staff Office alerts on your phone</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">Hi ${esc(String(employee.fullName || "").split(" ")[0])}, meetings, tasks, approvals and messages now ring your phone like any other app, even when the Staff Office is closed. It takes one minute:</p>
+    <p style="color:#3A4556;font-size:14px;line-height:1.8;"><strong>Android:</strong> open the link below in Google Chrome, sign in, tap <strong>Install app</strong> if offered, then tap <strong>Turn on alerts</strong> and choose <strong>Allow</strong>.<br>
+    <strong>iPhone:</strong> open the link in Safari, tap <strong>Share → Add to Home Screen</strong>, open the Staff Office from your Home Screen, then tap <strong>Turn on alerts</strong> and <strong>Allow</strong>.</p>
+    ${btn(`${APP_BASE_URL}/staff`, "Open the Staff Office →")}
+  `, { title: "Phone alerts" });
+  return sendEmail(employee.email, "Action needed: turn on Staff Office alerts", html, { kind: "alerts_setup" });
+}
+
 // ─── Staff Office announcements ─────────────────────────────────────────────
 export async function sendAnnouncementEmail(employee, text, from) {
   const html = brandedShell(`

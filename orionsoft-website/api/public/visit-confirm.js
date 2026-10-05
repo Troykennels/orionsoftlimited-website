@@ -77,10 +77,10 @@ export default async function handler(req, res) {
     if (scored.confirmation.rating >= 5) await addAchievement(visit.employeeId, `5★ client rating from ${visit.organisation}`, "client");
     await notify([visit.employeeId], { type: "field", title: `✅ ${visit.organisation} confirmed your visit`, body: scored.confirmation.comment, link: "visits" });
   } else if (answer === "yes" && sameNetwork) {
-    await notify([mgr?.id].filter(Boolean), { type: "field", title: `Check this: ${visit.organisation} confirmed ${staff?.fullName}'s visit from their usual clock-in connection`, link: "team" });
+    await notify([mgr?.id].filter(Boolean), { type: "field", title: `Check this: ${visit.organisation} confirmed ${staff?.fullName}'s visit from their usual clock-in connection`, link: "team:field" });
   } else {
     const why = selfConfirmed ? "was 'confirmed' from a Staff Office device" : "was DISPUTED by the client";
-    await notify([visit.employeeId, mgr?.id].filter(Boolean), { type: "field", title: `⚠ Visit to ${visit.organisation} ${why}`, body: scored.confirmation.comment, link: "team" });
+    await notify([visit.employeeId, mgr?.id].filter(Boolean), { type: "field", title: `⚠ Visit to ${visit.organisation} ${why}`, body: scored.confirmation.comment, link: "team:field" });
   }
   return res.json({ ok: true, visit: { ...summary, status: scored.confirmation.status } });
 }
