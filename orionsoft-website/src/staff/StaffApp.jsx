@@ -157,6 +157,7 @@ export default function StaffApp() {
   const [checking, setChecking] = useState(true);
   const [loginNotice, setLoginNotice] = useState("");
   const [office, setOffice] = useState(null);
+  const [loadErr, setLoadErr] = useState("");
   const [route, setRoute] = useState(parseRoute);
   const [navOpen, setNavOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -184,8 +185,10 @@ export default function StaffApp() {
       const j = await api("/api/staff/office");
       setOffice(j);
       setNotifs(j.notifications);
+      setLoadErr("");
     } catch (e) {
-      if (e.status === 401) { setSession(null); setOffice(null); }
+      if (e.status === 401 || e.status === 403) { setSession(null); setOffice(null); setLoginNotice(e.status === 403 ? e.message : ""); }
+      else setLoadErr(e.message || "Couldn't reach the office");
     }
   }, []);
 
@@ -290,7 +293,20 @@ export default function StaffApp() {
 
   if (checking) return <div className="so-root" />;
   if (!session) return <StaffLogin notice={loginNotice} onLogin={u => { setLoginNotice(""); setSession(u); }} />;
-  if (!ctx) return <div className="so-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: font }}>Opening the office…</div>;
+  if (!ctx) return (
+    <div className="so-root" style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", justifyContent: "center", color: C.textMuted, fontFamily: font, padding: 24, textAlign: "center" }}>
+      {loadErr ? (
+        <>
+          <div style={{ color: C.heading, fontWeight: 700 }}>The office didn't open</div>
+          <div style={{ fontSize: 13.5, maxWidth: 360 }}>{loadErr}. Check your connection and try again.</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => { setLoadErr(""); loadOffice(); }} style={{ background: C.gold, color: "#060810", border: "none", borderRadius: 9, padding: "10px 16px", fontWeight: 800, fontFamily: font, cursor: "pointer" }}>Try again</button>
+            <button type="button" onClick={logout} style={{ background: "none", color: C.text, border: `1px solid ${C.border}`, borderRadius: 9, padding: "10px 16px", fontFamily: font, cursor: "pointer" }}>Sign out</button>
+          </div>
+        </>
+      ) : "Opening the office…"}
+    </div>
+  );
 
   const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length, hasReports: (office.directReports || []).length > 0 };
   const nav = buildNav(ctx.can, counts);

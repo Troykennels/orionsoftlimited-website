@@ -46,6 +46,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
+    <script>
+      // On /staff, "Add to Home Screen" must install the Staff Office, not the
+      // website. iPhones read these tags as the page loads, before the app's
+      // own code runs, so they are switched here, straight away.
+      (function () {
+        if (!/^\/staff(\/|$)/.test(location.pathname)) return;
+        var set = function (sel, attr, val) { var el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+        set('link[rel="manifest"]', "href", "/staff.webmanifest");
+        set('link[rel="apple-touch-icon"]', "href", "/staff-icon-192.png");
+        set('meta[name="apple-mobile-web-app-title"]', "content", "Staff Office");
+        set('meta[name="theme-color"]', "content", "#0A2540");
+      })();
+    </script>
 
     <!-- ═══ Font preconnect (DNS warm-up) ═══ -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

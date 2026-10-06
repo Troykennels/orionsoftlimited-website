@@ -141,6 +141,7 @@ export default function StaffLogin({ onLogin, notice }) {
         <p style={{ fontSize: 12, color: C.textMuted, textAlign: "center", marginTop: 20, lineHeight: 1.6 }}>
           Your account is created by Orion Soft HR. Google sign-in works with your work email,
           or with any Google account you've linked from your profile.
+          <br />Owner: sign in with your admin email and password.
         </p>
       </form>
       </div>

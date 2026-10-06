@@ -375,8 +375,18 @@ export function EmployeesSection() {
     .sort((a, b) => (a.status === "active" ? 0 : 1) - (b.status === "active" ? 0 : 1) || (roles.find(r => r.id === a.staffRole)?.level || 9) - (roles.find(r => r.id === b.staffRole)?.level || 9));
 
   async function enterOffice() {
-    try { const j = await call("/api/admin/employees", { method: "POST", body: { action: "owner-office" } }); toast(j.created ? "Your owner account is ready" : "Opening the Staff Office"); window.open("/staff", "_blank", "noopener"); load(); }
-    catch (e) { toast(e.message, "err"); }
+    // Phones (iPhone Safari especially) block a new tab opened after waiting
+    // for the server, so the tab is opened right on the tap and pointed at the
+    // office once the owner account is ready. If it's still blocked, the
+    // office opens in this tab instead.
+    const tab = window.open("", "_blank");
+    try {
+      const j = await call("/api/admin/employees", { method: "POST", body: { action: "owner-office" } });
+      toast(j.created ? "Your owner account is ready" : "Opening the Staff Office");
+      if (tab && !tab.closed) tab.location.href = "/staff";
+      else window.location.href = "/staff";
+      load();
+    } catch (e) { if (tab) tab.close(); toast(e.message, "err"); }
   }
   async function resetPassword(e) {
     if (!confirm(`Reset ${e.fullName}'s password? Their current password stops working immediately.`)) return;
