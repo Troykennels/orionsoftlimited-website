@@ -14,6 +14,14 @@
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/staff/playbook"
     },
     {
+      "source": "/staff",
+      "destination": "/staff.html"
+    },
+    {
+      "source": "/staff/:path((?!playbook$).*)",
+      "destination": "/staff.html"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

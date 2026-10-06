@@ -20,7 +20,7 @@ const BASE = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
 export const SPOT_WINDOW_MIN = 20;
 
 function validPhoto(d) {
-  return !d || (typeof d === "string" && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(d) && d.length < 900_000);
+  return !d || (typeof d === "string" && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(d) && d.length < 4_000_000); // ~3 MB high-resolution photo
 }
 function stripPhoto(v) { const { photoDataUrl, ...rest } = v; return { ...rest, hasPhoto: !!photoDataUrl || !!v.hasPhoto, confirmation: { ...(v.confirmation || {}), token: undefined } }; }
 export const confirmUrl = token => `${BASE}/confirm-visit/${token}`;
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
   if (b.action === "check-in") {
     const organisation = String(b.organisation || "").trim().slice(0, 160);
     if (!organisation) return res.status(400).json({ error: "Which organisation are you visiting?" });
-    if (!validPhoto(b.photoDataUrl)) return res.status(400).json({ error: "Photo must be a JPEG/PNG under ~650KB" });
+    if (!validPhoto(b.photoDataUrl)) return res.status(400).json({ error: "Photo must be a JPEG/PNG under 3 MB" });
     const visits = await listRecords("visits");
     const open = visits.find(v => v.employeeId === me.id && !v.checkOut?.at);
     if (open) return res.status(400).json({ error: `You're still checked in at ${open.organisation}. Check out first.` });

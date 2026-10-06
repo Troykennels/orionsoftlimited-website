@@ -6,16 +6,32 @@ import { get, set, del } from "../store.js";
 import { listRecords, putRecord } from "./records.js";
 
 const key = id => `orionsoft:photo:${id}`;
+// High-resolution photos are a few MB; the database caps a single value at
+// about 1 MB on smaller plans, so big photos are stored in parts.
+const PART = 700_000;
+const partKey = (id, i) => `orionsoft:photo:${id}:part:${i}`;
 
 export async function savePhoto(id, dataUrl) {
-  if (dataUrl) await set(key(id), dataUrl);
+  if (!dataUrl) return;
+  if (dataUrl.length <= PART) { await set(key(id), dataUrl); return; }
+  const n = Math.ceil(dataUrl.length / PART);
+  for (let i = 0; i < n; i++) await set(partKey(id, i), dataUrl.slice(i * PART, (i + 1) * PART));
+  await set(key(id), { parts: n });
 }
 
 export async function loadPhoto(id) {
-  return (await get(key(id))) || "";
+  const v = await get(key(id));
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (!v.parts) return "";
+  const parts = [];
+  for (let i = 0; i < v.parts; i++) parts.push((await get(partKey(id, i))) || "");
+  return parts.join("");
 }
 
 export async function deletePhoto(id) {
+  const v = await get(key(id)).catch(() => null);
+  if (v && typeof v === "object" && v.parts) for (let i = 0; i < v.parts; i++) await del(partKey(id, i));
   await del(key(id));
 }
 

@@ -180,14 +180,36 @@ export function averageHash(canvas) {
 // Scale a frame down, burn in a date/time/location/name stamp, and return
 // { dataUrl, hash }. The hash is taken before the stamp so the stamp itself
 // can't make two identical photos look different.
+// High-quality downscale: halve in steps (each step averages pixels properly)
+// instead of one big jump, which is what makes photos look soft or jagged.
+function drawSharp(source, w0, h0, w, h) {
+  let cur = source, cw = w0, ch = h0;
+  while (cw / 2 >= w * 1.05) {
+    const step = document.createElement("canvas");
+    step.width = Math.round(cw / 2); step.height = Math.round(ch / 2);
+    const sctx = step.getContext("2d");
+    sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = "high";
+    sctx.drawImage(cur, 0, 0, step.width, step.height);
+    cur = step; cw = step.width; ch = step.height;
+  }
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(cur, 0, 0, w, h);
+  return c;
+}
+
+// Photos are kept sharp (up to 2560 px on the long side, ~92% JPEG) but under
+// ~2.8 MB so they upload quickly on mobile data.
+const MAX_SIDE = 2560, MAX_CHARS = 3_700_000;
+
 export function finishPhoto(source, { name = "", geo = null } = {}) {
   const w0 = source.videoWidth || source.naturalWidth || source.width;
   const h0 = source.videoHeight || source.naturalHeight || source.height;
-  const scale = Math.min(1, 1024 / Math.max(w0, h0));
-  const c = document.createElement("canvas");
-  c.width = Math.round(w0 * scale); c.height = Math.round(h0 * scale);
+  const scale = Math.min(1, MAX_SIDE / Math.max(w0, h0));
+  const c = drawSharp(source, w0, h0, Math.round(w0 * scale), Math.round(h0 * scale));
   const ctx = c.getContext("2d");
-  ctx.drawImage(source, 0, 0, c.width, c.height);
   const hash = averageHash(c);
   const when = new Date().toLocaleString("en-NG", { timeZone: "Africa/Lagos", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const lines = [`${when} WAT${name ? ` · ${name}` : ""}`, geo ? `GPS ${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)} (±${Math.round(geo.accuracy || 0)}m)` : "GPS not available", "Orion Soft · field visit"];
@@ -199,5 +221,10 @@ export function finishPhoto(source, { name = "", geo = null } = {}) {
   ctx.fillRect(0, c.height - boxH, c.width, boxH);
   ctx.fillStyle = "#fff";
   lines.forEach((l, i) => ctx.fillText(l, pad, c.height - boxH + pad + fs + i * lh));
-  return { dataUrl: c.toDataURL("image/jpeg", 0.72), hash };
+  let dataUrl = "";
+  for (const q of [0.92, 0.88, 0.84, 0.78, 0.7]) {
+    dataUrl = c.toDataURL("image/jpeg", q);
+    if (dataUrl.length <= MAX_CHARS) break;
+  }
+  return { dataUrl, hash, width: c.width, height: c.height };
 }
