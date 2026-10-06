@@ -10,6 +10,7 @@ const isStaffPath = path === '/staff' || path.startsWith('/staff/')
 const isSignPath = path.startsWith('/sign/')
 const isPayCallbackPath = path === '/pay/callback'
 const isPayContractPath = path.startsWith('/pay/contract/') || path.startsWith('/p/')
+const isQuotePath = path.startsWith('/q/')
 const isClientPath = path === '/client' || path.startsWith('/client/')
 const isApplicantPath = path === '/applicant' || path.startsWith('/applicant/')
 const isVisitConfirmPath = path.startsWith('/confirm-visit/')
@@ -35,6 +36,9 @@ async function start() {
   } else if (isStaffPath) {
     const StaffApp = React.lazy(() => import('./staff/StaffApp.jsx'))
     root = <React.Suspense fallback={null}><StaffApp /></React.Suspense>
+  } else if (isQuotePath) {
+    const QuotePage = React.lazy(() => import('./pages/QuotePage.jsx'))
+    root = <React.Suspense fallback={null}><QuotePage /></React.Suspense>
   } else if (isClientPath) {
     const ClientPortal = React.lazy(() => import('./pages/ClientPortal.jsx'))
     root = <React.Suspense fallback={null}><ClientPortal /></React.Suspense>

@@ -54,6 +54,8 @@ export default async function handler(req, res) {
     message: payload.challenge || payload.message || "",
   };
   await push("orionsoft:leads", lead);
+  // Automation: sales enquiries go straight into the pipeline, assigned and alerted.
+  try { const { leadToDeal } = await import("./_lib/leadToDeal.js"); await leadToDeal(lead); } catch (e) { console.error("[lead-to-deal]", e.message); }
 
   const rows = Object.entries(payload).map(([k, v]) => `<tr>
     <td style="padding:8px 10px;border:1px solid #E5E9F0;font-weight:700;background:#F8FAFC;vertical-align:top;">${escapeHtml(k)}</td>

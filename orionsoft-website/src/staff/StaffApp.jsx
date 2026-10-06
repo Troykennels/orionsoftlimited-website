@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import {
   Home, Newspaper, MessagesSquare, CalendarClock, ListChecks, Target, Share2, TrendingUp, Handshake,
   Users, CheckCheck, ClipboardList, Palmtree, Receipt, Wallet, Network, BookOpen, UserCircle, Bell,
-  Menu, LogOut, Search, Building2, MapPin, Gauge,
+  Menu, LogOut, Search, Building2, MapPin, Gauge, FileText,
 } from "lucide-react";
 import { C, font, PRESENCE } from "./theme.js";
 import { api, timeAgo } from "./api.js";
@@ -27,6 +27,7 @@ const Tasks = lazy(() => import("./modules/Tasks.jsx"));
 const Goals = lazy(() => import("./modules/Goals.jsx"));
 const Social = lazy(() => import("./modules/Social.jsx"));
 const Pipeline = lazy(() => import("./modules/Pipeline.jsx"));
+const Proposals = lazy(() => import("./modules/Proposals.jsx"));
 const Liaison = lazy(() => import("./modules/Liaison.jsx"));
 const TeamDesk = lazy(() => import("./modules/TeamDesk.jsx"));
 const Approvals = lazy(() => import("./modules/Approvals.jsx"));
@@ -58,6 +59,7 @@ function buildNav(can, counts) {
     ] },
     { group: "MY ROLE", items: [
       (can("pipeline") || can("pipeline.all")) && { id: "pipeline", label: "BD Pipeline", icon: TrendingUp },
+      (can("pipeline") || can("pipeline.all")) && { id: "proposals", label: "Proposals", icon: FileText },
       (can("liaison") || can("liaison.all")) && { id: "liaison", label: "Liaison Register", icon: Handshake },
       (can("team.view") || can("hr.records") || can("org.approve") || counts.hasReports) && { id: "team", label: can("hr.records") ? "HR Desk" : "Team Desk", icon: Users },
       approver && { id: "approvals", label: "Approvals", icon: CheckCheck, badge: approvalsCount },
@@ -314,7 +316,7 @@ export default function StaffApp() {
   const mod = allowed.has(route.module) ? route.module : "home";
   const me = office.me;
 
-  const MODULES = { visits: FieldVisits, performance: Performance, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
+  const MODULES = { visits: FieldVisits, performance: Performance, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, proposals: Proposals, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
   const Active = MODULES[mod];
 
   return (

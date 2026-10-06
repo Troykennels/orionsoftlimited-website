@@ -15,7 +15,7 @@ export async function leadsWithState() {
   const st = state || {};
   return leads
     .filter(l => l && !st[l.id]?.deleted)
-    .map(l => ({ ...l, ...(st[l.id] ? { status: st[l.id].status || l.status, read: !!st[l.id].read, updatedAt: st[l.id].updatedAt } : {}) }));
+    .map(l => ({ ...l, ...(st[l.id] ? { status: st[l.id].status || l.status, read: !!st[l.id].read, updatedAt: st[l.id].updatedAt, dealId: st[l.id].dealId || null, ownerId: st[l.id].ownerId || null } : {}) }));
 }
 
 export default async function handler(req, res) {

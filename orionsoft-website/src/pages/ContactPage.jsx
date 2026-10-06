@@ -658,6 +658,22 @@ export default function ContactPage({ setCurrentPage }) {
               <Sidebar activeTab={tab} />
             </Reveal>
           </div>
+
+          {/* Find us: map + directions, so people searching nearby can reach us */}
+          <Reveal delay={0.1}>
+            <div style={{ marginTop: 36, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, overflow: "hidden" }}>
+              <div style={{ padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <h2 style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 800, margin: 0 }}>Find us</h2>
+                  <p style={{ color: C.textMuted, fontFamily: font, fontSize: 13.5, margin: "4px 0 0" }}>Orion Soft Limited · Lagos Island, Lagos, Nigeria · <a href="tel:+2348169577059" style={{ color: C.blue }}>+234 816 957 7059</a> · Mon–Fri, 9am–5pm</p>
+                </div>
+                <a href="https://www.google.com/maps/dir/?api=1&destination=Orion+Soft+Limited+Lagos+Island+Lagos+Nigeria" target="_blank" rel="noopener noreferrer"
+                  style={{ padding: "10px 16px", borderRadius: 10, background: C.gold, color: "#05070A", fontFamily: font, fontSize: 13.5, fontWeight: 800, textDecoration: "none" }}>Get directions →</a>
+              </div>
+              <iframe title="Orion Soft Limited on Google Maps" src="https://www.google.com/maps?q=Lagos+Island,+Lagos,+Nigeria&z=14&output=embed"
+                loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ width: "100%", height: 320, border: 0, display: "block" }} />
+            </div>
+          </Reveal>
         </div>
       </section>
     </div>

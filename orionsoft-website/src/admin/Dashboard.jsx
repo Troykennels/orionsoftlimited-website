@@ -6,7 +6,7 @@ import {
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
-  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette,
+  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette, RefreshCw,
 } from "lucide-react";
 import { richTextToSafeHtml, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
@@ -406,6 +406,7 @@ const NAV_GROUPS = [
     items: [
       { id: "dashboard",    label: "Dashboard",        icon: LayoutDashboard },
       { id: "sales",        label: "Sales & Cash",     icon: Wallet },
+      { id: "renewals",     label: "Proposals & Renewals", icon: RefreshCw },
       { id: "analytics",    label: "Analytics",        icon: TrendingUp },
       { id: "live",         label: "Live Visitors",    icon: Radio },
       { id: "activities",   label: "Recent Activity",  icon: Bell },
@@ -1340,6 +1341,7 @@ function LeadsSection() {
                 </div>
                 <div style={{ fontSize: 12, color: C.textMuted, fontFamily: font }}>{lead.email}{lead.company ? ` · ${lead.company}` : ""}</div>
                 {(lead.product || lead.role || lead.interestedService) && <div style={{ fontSize: 12, color: C.text, fontFamily: font, marginTop: 3 }}>{lead.product || lead.role || lead.interestedService}</div>}
+                {lead.dealId && <div style={{ fontSize: 11.5, color: C.mint, fontFamily: font, marginTop: 3 }}>✓ In the sales pipeline, assigned automatically</div>}
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, alignItems: "center" }}>
                   <span style={{ background: `${STATUS_COLORS[lead.status] || C.textMuted}18`, color: STATUS_COLORS[lead.status] || C.textMuted, borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 700, fontFamily: font }}>
                     {lead.status}
@@ -2857,6 +2859,9 @@ function SettingsSection() {
               {[["linkedin", "LinkedIn URL"], ["instagram", "Instagram URL"], ["facebook", "Facebook URL"], ["twitter", "X (Twitter) URL"], ["tiktok", "TikTok URL"], ["youtube", "YouTube URL"], ["github", "GitHub URL"]].map(([k, l]) => (
                 <div key={k} style={{ marginBottom: 14 }}><Label>{l}</Label><Input {...f(k)} placeholder="https://..." /></div>
               ))}
+              <div style={{ marginBottom: 14 }}><Label>WhatsApp number (website chat button)</Label><Input {...f("whatsapp")} placeholder="Leave empty to use the phone number" /></div>
+              <div style={{ marginBottom: 14 }}><Label>Google review link</Label><Input {...f("googleReviewUrl")} placeholder="https://g.page/r/.../review" />
+                <p style={{ fontSize: 11.5, color: C.textMuted, margin: "4px 0 0" }}>From Google Business Profile → Ask for reviews. Clients who finish paying are emailed this link once, three days later.</p></div>
             </div>
           </SectionCard>
           <SectionCard>
@@ -7082,10 +7087,123 @@ function SalesSection() {
   );
 }
 
+// ─── Proposals & Renewals ────────────────────────────────────────────────────
+// Every proposal and where it stands, and recurring billing: each
+// subscription bills itself (a payment plan with invoice and pay link) a set
+// number of days before its renewal date.
+const PROP_STATUS = { draft: ["Draft", C.textMuted], sent: ["Sent", C.blue], viewed: ["Opened", C.amber], accepted: ["Accepted", C.mint], declined: ["Declined", C.rose], expired: ["Expired", C.rose] };
+const SUB_STATUS = { active: ["Active", C.mint], paused: ["Paused", C.amber], cancelled: ["Cancelled", C.rose] };
+const emptySub = () => ({ client: { name: "", organisation: "", email: "", phone: "" }, title: "", items: [{ name: "", amount: "" }], interval: "yearly", currency: "NGN", nextRenewal: "", leadDays: 14 });
+
+function RenewalsSection() {
+  const [d, setD] = useState(null);
+  const [form, setForm] = useState(null);
+  const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
+  const load = () => fetch("/api/admin/subscriptions").then(r => r.json()).then(setD).catch(() => setErr("Couldn't load"));
+  useEffect(() => { load(); }, []);
+  async function call(method, body, done) {
+    setErr("");
+    const r = await fetch("/api/admin/subscriptions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { setErr(j.error || "That didn't work"); return null; }
+    if (done) { setMsg(typeof done === "function" ? done(j) : done); setTimeout(() => setMsg(""), 5000); }
+    load(); return j;
+  }
+  async function saveSub() {
+    const body = { ...form, items: form.items.filter(i => i.name.trim()).map(i => ({ name: i.name, amount: Number(i.amount) || 0 })) };
+    const j = await call(form.id ? "PATCH" : "POST", body, form.id ? "Subscription updated." : "Subscription created. It will bill itself before each renewal.");
+    if (j) setForm(null);
+  }
+  if (!d) return <SectionCard><SkeletonRows count={5} /></SectionCard>;
+  const setC = (k, v) => setForm(f => ({ ...f, client: { ...f.client, [k]: v } }));
+  const total = form ? form.items.reduce((n, i) => n + (Number(i.amount) || 0), 0) : 0;
+  return (
+    <div>
+      <SectionCard style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <SectionTitle>Recurring billing</SectionTitle>
+          {!form && <Btn small onClick={() => setForm(emptySub())}>+ New subscription</Btn>}
+        </div>
+        <p style={{ fontSize: 12.5, color: C.textMuted, margin: "6px 0 14px", lineHeight: 1.6 }}>Hosting, licences, support plans… Each one bills itself before its renewal date: the client gets a payment plan with invoice, payment link, reminders and receipt. Recurring items on an accepted proposal are added here automatically.</p>
+        {form && (
+          <div style={{ background: C.surface, border: `1px solid ${C.gold}44`, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10, marginBottom: 10 }}>
+              <div><Label>Client name</Label><Input value={form.client.name} onChange={e => setC("name", e.target.value)} /></div>
+              <div><Label>Organisation</Label><Input value={form.client.organisation} onChange={e => setC("organisation", e.target.value)} /></div>
+              <div><Label>Email *</Label><Input type="email" value={form.client.email} onChange={e => setC("email", e.target.value)} /></div>
+              <div><Label>Phone</Label><Input value={form.client.phone} onChange={e => setC("phone", e.target.value)} /></div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 10 }}>
+              <div><Label>Name</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. CareCore hosting & support" /></div>
+              <div><Label>Every</Label><Select value={form.interval} onChange={e => setForm(f => ({ ...f, interval: e.target.value }))}><option value="monthly">Month</option><option value="quarterly">Quarter</option><option value="yearly">Year</option></Select></div>
+              <div><Label>Next renewal date *</Label><Input type="date" value={form.nextRenewal} onChange={e => setForm(f => ({ ...f, nextRenewal: e.target.value }))} /></div>
+              <div><Label>Bill this many days before</Label><Input type="number" min="0" max="60" value={form.leadDays} onChange={e => setForm(f => ({ ...f, leadDays: e.target.value }))} /></div>
+            </div>
+            {form.items.map((it, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,3fr) minmax(0,1fr) 34px", gap: 8, marginBottom: 6 }}>
+                <Input value={it.name} onChange={e => setForm(f => ({ ...f, items: f.items.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) }))} placeholder="Item, e.g. Cloud hosting (12 months)" />
+                <Input type="number" value={it.amount} onChange={e => setForm(f => ({ ...f, items: f.items.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)) }))} placeholder="Amount" />
+                <button type="button" aria-label="Remove" onClick={() => setForm(f => ({ ...f, items: f.items.filter((_, j) => j !== i) }))} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, color: C.rose, cursor: "pointer" }}>×</button>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+              <Btn small variant="ghost" onClick={() => setForm(f => ({ ...f, items: [...f.items, { name: "", amount: "" }] }))}>+ Add item</Btn>
+              <span style={{ fontSize: 13, color: C.heading, fontWeight: 700 }}>Total each time: ₦{total.toLocaleString()}</span>
+              <div style={{ flex: 1 }} />
+              <Btn small onClick={saveSub} disabled={!form.client.email || !form.nextRenewal || !(total > 0)}>{form.id ? "Save" : "Create subscription"}</Btn>
+              <Btn small variant="ghost" onClick={() => setForm(null)}>Cancel</Btn>
+            </div>
+          </div>
+        )}
+        {d.subscriptions.length === 0 && !form && <p style={{ color: C.textMuted, fontSize: 13 }}>No subscriptions yet.</p>}
+        {d.subscriptions.map(sub => {
+          const [label, color] = SUB_STATUS[sub.status] || SUB_STATUS.active;
+          return (
+            <div key={sub.id} style={{ padding: "12px 0", borderTop: `1px solid ${C.border}`, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{sub.client.organisation || sub.client.name} · {sub.title}</div>
+                <div style={{ fontSize: 12.5, color: C.textMuted }}>{sub.currency} {Number(sub.amount).toLocaleString()} every {sub.interval.replace("ly", "")} · next renewal {sub.nextRenewal}{sub.history?.[0] ? ` · last billed ${sub.history[0].contractNumber}` : ""}</div>
+              </div>
+              <Badge color={color}>{label}</Badge>
+              <Btn small variant="ghost" onClick={() => setForm({ ...sub, items: sub.items.map(i => ({ ...i })) })}>Edit</Btn>
+              {sub.status === "active" && <Btn small variant="ghost" onClick={() => confirm(`Bill the renewal due ${sub.nextRenewal} now?`) && call("PATCH", { id: sub.id, action: "bill_now" }, j => `Renewal billed: payment plan ${j.planNumber} emailed.`)}>Bill now</Btn>}
+              {sub.status === "active" && <Btn small variant="ghost" onClick={() => call("PATCH", { id: sub.id, action: "pause" }, "Paused. No renewals will be billed until you resume.")}>Pause</Btn>}
+              {sub.status === "paused" && <Btn small variant="ghost" onClick={() => call("PATCH", { id: sub.id, action: "resume" }, "Resumed.")}>Resume</Btn>}
+              {sub.status !== "cancelled" && <Btn small danger onClick={() => confirm("Cancel this subscription? It won't bill again.") && call("PATCH", { id: sub.id, action: "cancel" }, "Cancelled.")}>Cancel</Btn>}
+            </div>
+          );
+        })}
+        {err && <p role="alert" style={{ color: C.rose, fontSize: 13, marginTop: 10 }}>{err}</p>}
+        {msg && <p role="status" style={{ color: C.mint, fontSize: 13, marginTop: 10 }}>{msg}</p>}
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Proposals</SectionTitle>
+        <p style={{ fontSize: 12.5, color: C.textMuted, margin: "6px 0 14px" }}>Built and sent by the sales team in the Staff Office (Proposals). Accepted ones become payment plans automatically.</p>
+        {d.proposals.length === 0 && <p style={{ color: C.textMuted, fontSize: 13 }}>No proposals yet.</p>}
+        {d.proposals.map(pr => {
+          const [label, color] = PROP_STATUS[pr.status] || PROP_STATUS.draft;
+          return (
+            <div key={pr.id} style={{ padding: "10px 0", borderTop: `1px solid ${C.border}`, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13.5 }}>
+              <div style={{ flex: 1, minWidth: 240 }}>
+                <strong style={{ color: C.heading }}>{pr.number} · {pr.client?.organisation || pr.client?.name}</strong>
+                <div style={{ fontSize: 12.5, color: C.textMuted }}>{pr.title} · {pr.currency} {Number(pr.total).toLocaleString()}{pr.owner ? ` · ${pr.owner}` : ""}{pr.acceptedBy ? ` · accepted by ${pr.acceptedBy.name}` : pr.viewedAt ? " · opened by client" : ""}{pr.contractNumber ? ` · plan ${pr.contractNumber}` : ""}</div>
+              </div>
+              <Badge color={color}>{label}</Badge>
+              {pr.link && <a href={pr.link} target="_blank" rel="noreferrer" style={{ color: C.blue, fontSize: 13, fontWeight: 700 }}>Client view →</a>}
+            </div>
+          );
+        })}
+      </SectionCard>
+    </div>
+  );
+}
+
 function DashboardContent({ active, session, navigate }) {
   switch (active) {
     case "dashboard":     return <DashboardOverview navigate={navigate} editor={session?.adminRole === "editor"} />;
     case "sales":         return <SalesSection />;
+    case "renewals":      return <RenewalsSection />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;

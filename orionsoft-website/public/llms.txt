@@ -1,0 +1,37 @@
+# Orion Soft Limited
+
+> Orion Soft Limited is a Nigerian software company (CAC RC 9535128, Lagos Island, Lagos) that builds business management software for African organisations and custom websites, web apps and mobile apps. Its flagship product, CareCore, is a hospital management system running in Nigerian hospitals.
+
+- Website: https://www.orionsoftlimited.com
+- Email: orionsoftlimited@gmail.com
+- Phone / WhatsApp: +234 816 957 7059
+- Location: Lagos Island, Lagos, Nigeria (serves clients across Nigeria and Africa)
+- Book a demo: https://www.orionsoftlimited.com/consultation
+- Contact: https://www.orionsoftlimited.com/contact
+
+## Products
+
+- [CareCore](https://www.orionsoftlimited.com/carecore): Hospital management system (HMS) for hospitals, clinics, pharmacies and labs in Nigeria. 25+ modules: electronic health records, outpatient (OPD), inpatient and wards (IPD), pharmacy, laboratory (LIS), radiology, billing and NHIS/HMO claims, appointments, staff, and executive analytics. Live in Nigerian hospitals.
+- [SchoolCore](https://www.orionsoftlimited.com/schoolcore): School management software for primary and secondary schools and higher institutions: admissions, attendance, results in WAEC/NECO formats, fees, timetables, CBT exams, library, staff payroll and a parent portal.
+- [ComplianceCore](https://www.orionsoftlimited.com/compliancecore): Compliance and risk management for banks, health and public organisations: policies, risk register, audits, regulatory calendar (CBN, NDPA/NDPR, CAC, NAFDAC), incidents and training records.
+- [InventoryCore](https://www.orionsoftlimited.com/inventorycore): Inventory and supply chain software: multi-warehouse stock, purchase orders, reorder alerts, suppliers, barcode/QR scanning, batch and expiry tracking.
+- [FinanceCore](https://www.orionsoftlimited.com/financecore): Accounting software built for Nigeria: invoicing, payables/receivables, bank reconciliation, payroll with PAYE, pension and NHF, VAT and WHT, financial statements and budgets.
+- [HRCore](https://www.orionsoftlimited.com/hrcore): HR software: employee records, recruitment, onboarding, leave, attendance, payroll integration, performance reviews and training.
+- [ChurchCore](https://www.orionsoftlimited.com/churchcore): Church management software: members, attendance, cell groups and units, tithes and giving, events, SMS/email, volunteers and reports.
+- [FleetCore](https://www.orionsoftlimited.com/fleetcore): Fleet management: vehicles, drivers, trips, maintenance, fuel, documents and GPS.
+
+## Services
+
+- Custom software, web applications, dashboards and portals
+- Business and e-commerce websites
+- Mobile apps (Android and iOS)
+- Implementation, data migration, training and support
+
+## Useful pages
+
+- [All products](https://www.orionsoftlimited.com/products)
+- [Pricing](https://www.orionsoftlimited.com/pricing)
+- [Case studies](https://www.orionsoftlimited.com/case-studies)
+- [About Orion Soft](https://www.orionsoftlimited.com/about)
+- [Blog](https://www.orionsoftlimited.com/blog)
+- [Careers](https://www.orionsoftlimited.com/careers)

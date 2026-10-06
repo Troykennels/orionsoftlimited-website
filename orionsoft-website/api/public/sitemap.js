@@ -20,8 +20,9 @@ const PAGES = [
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const day = d => { const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toISOString().slice(0, 10) : ""; };
 
-export default async function handler(req, res) {
-  if (req.method !== "GET" && req.method !== "HEAD") return res.status(405).end();
+// Every public URL (path, change frequency, priority, last modified). Also
+// used to tell search engines about changes (IndexNow).
+export async function sitemapUrls() {
   let content = {}, employees = [];
   try { [content, employees] = await Promise.all([readAllContent().then(publicView), listRecords("employees")]); } catch { /* fixed pages still go out */ }
   const flags = content.orionsoft_features_v1 || {};
@@ -39,6 +40,12 @@ export default async function handler(req, res) {
   for (const e of employees) {
     if (e.status === "active" && e.publicProfile && e.slug) urls.push({ loc: `/people/${encodeURIComponent(e.slug)}`, freq: "monthly", pri: 0.4 });
   }
+  return urls;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== "GET" && req.method !== "HEAD") return res.status(405).end();
+  const urls = await sitemapUrls();
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u =>
     `  <url><loc>${esc(SITE + u.loc)}</loc>${u.mod ? `<lastmod>${u.mod}</lastmod>` : ""}<changefreq>${u.freq}</changefreq><priority>${u.pri.toFixed(1)}</priority></url>`).join("\n")}\n</urlset>\n`;
   res.setHeader("Content-Type", "application/xml; charset=utf-8");

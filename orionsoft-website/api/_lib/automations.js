@@ -353,11 +353,24 @@ export async function runAutomations() {
         });
       } catch (err) { console.error("[backup]", err.message); }
     }
+    // 08:00 Lagos: bill subscriptions whose renewal is coming up.
+    if (now.getUTCHours() >= 8) {
+      try { await once(`orionsoft:automation:renewals:${today}`, async () => { const { renewDue } = await import("./subscriptions.js"); await renewDue(today); }); }
+      catch (err) { console.error("[renewals]", err.message); }
+    }
     // 09:00 Lagos: remind clients of payments due in 3 days, today, or overdue.
     if (now.getUTCHours() >= 9) {
       try { await once(`orionsoft:automation:payreminders:${today}`, () => paymentReminders(today)); }
       catch (err) { console.error("[payreminders]", err.message); }
     }
+    // 10:00 Lagos: ask clients who have finished paying for a Google review.
+    if (now.getUTCHours() >= 10) {
+      try { await once(`orionsoft:automation:reviews:${today}`, async () => { const { reviewRequests } = await import("./visibility.js"); await reviewRequests(today); }); }
+      catch (err) { console.error("[reviews]", err.message); }
+    }
+    // Hourly: after a new release, submit the site to search engines (IndexNow).
+    try { if (await claim("orionsoft:automation:indexnow:tick", 3600)) { const { indexNowOnRelease } = await import("./visibility.js"); await indexNowOnRelease(); } }
+    catch (err) { console.error("[indexnow]", err.message); }
     // 19:00 Lagos: planned client visits that didn't happen today.
     if (now.getUTCHours() >= 19) {
       try { await once(`orionsoft:automation:plans:${today}`, () => planSummaries(today)); }

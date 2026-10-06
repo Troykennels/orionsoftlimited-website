@@ -225,6 +225,8 @@ export default async function handler(req, res) {
     )),
   };
   await push("orionsoft:leads", lead);
+  // Automation: sales enquiries go straight into the pipeline, assigned and alerted.
+  try { const { leadToDeal } = await import("./_lib/leadToDeal.js"); await leadToDeal(lead); } catch (e) { console.error("[lead-to-deal]", e.message); }
 
   // Build product-aware subject lines
   const productMeta = PRODUCT_INFO[body.product?.toLowerCase?.()];

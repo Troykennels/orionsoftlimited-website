@@ -4,20 +4,20 @@ Disallow: /admin
 Disallow: /admin/
 Disallow: /staff
 Disallow: /applicant
+Disallow: /client
 Disallow: /sign/
 Disallow: /pay/
+Disallow: /p/
+Disallow: /q/
 Disallow: /api/
 # Share links must stay readable so LinkedIn, X, Facebook and WhatsApp show previews.
 Allow: /api/public/share
 Disallow: /confirm-visit/
 Disallow: /id-card
 Disallow: /verify/
-Crawl-delay: 5
 
-User-agent: GPTBot
-Disallow: /
-
-User-agent: ChatGPT-User
-Disallow: /
+# AI search and assistants (ChatGPT, Claude, Perplexity, Gemini, Copilot) may
+# read the public site, so Orion Soft can be found and recommended there.
+# A plain-language summary for them is at /llms.txt.
 
 Sitemap: https://www.orionsoftlimited.com/sitemap.xml

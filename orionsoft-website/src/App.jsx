@@ -2639,6 +2639,22 @@ function CTABanner({ setCurrentPage }) {
 // ═══════════════════════════════════════
 // TAWK LIVE CHAT
 // ═══════════════════════════════════════
+// One tap to chat on WhatsApp from any page (bottom-left; the chat
+// assistants sit on the right). Uses the phone number from Site Settings.
+function WhatsAppFloat({ page }) {
+  const cms = useContext(CMSContext);
+  const raw = String(cms?.settings?.whatsapp || cms?.settings?.phone || COMPANY_PHONE || "").replace(/\D/g, "");
+  const intl = raw.startsWith("234") ? raw : `234${raw.replace(/^0/, "")}`;
+  if (intl.length < 12) return null;
+  const text = encodeURIComponent(`Hello Orion Soft, I found you on your website${page && page !== "home" ? ` (${page} page)` : ""}. I'd like to know more.`);
+  return (
+    <a href={`https://wa.me/${intl}?text=${text}`} target="_blank" rel="noopener noreferrer" aria-label="Chat with Orion Soft on WhatsApp"
+      style={{ position: "fixed", left: 18, bottom: 18, zIndex: 4900, width: 54, height: 54, borderRadius: "50%", background: "#25D366", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 26px rgba(0,0,0,0.35)" }}>
+      <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true" fill="#fff"><path d="M16.04 3C9.4 3 4.02 8.37 4.02 15c0 2.12.55 4.18 1.6 6L4 29l8.2-1.58A12 12 0 0 0 16.04 27C22.66 27 28 21.63 28 15S22.66 3 16.04 3zm0 21.8c-1.86 0-3.68-.5-5.26-1.44l-.38-.22-4.86.94.96-4.72-.25-.4A9.77 9.77 0 0 1 6.2 15c0-5.43 4.41-9.84 9.84-9.84 5.42 0 9.8 4.41 9.8 9.84 0 5.42-4.38 9.8-9.8 9.8zm5.4-7.35c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.04-.17-.3-.02-.46.13-.6.13-.13.3-.35.44-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.57-.48-.5-.67-.5h-.57c-.2 0-.52.08-.79.37-.27.3-1.04 1.01-1.04 2.47 0 1.45 1.06 2.86 1.21 3.06.15.2 2.09 3.19 5.06 4.47.71.31 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35z"/></svg>
+    </a>
+  );
+}
+
 function TawkLiveChat() {
   useEffect(() => {
     if (!HAS_TAWK_LIVE_CHAT || typeof window === "undefined") return;
@@ -5752,6 +5768,7 @@ export default function App() {
 
       {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
       {currentPage !== "admin" && <ChatBot setCurrentPage={navSetPage} />}
+      {currentPage !== "admin" && <WhatsAppFloat page={currentPage} />}
       {currentPage !== "admin" && flags.chat !== false && <TawkLiveChat />}
     </div>
   </CMSContext.Provider>

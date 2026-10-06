@@ -161,6 +161,9 @@ export async function queueNewBlogPosts() {
   const fresh = posts.filter(p => !sent.includes(keyOf(p)));
   if (!fresh.length) return 0;
   await set(SENT_POSTS_KEY, [...sent, ...fresh.map(keyOf)].slice(-1000));
+  // Share kit for staff + tell search engines, whatever the newsletter setting.
+  try { const { blogShareKits } = await import("./visibility.js"); await blogShareKits(fresh); }
+  catch (err) { console.error("[blog-sharekit]", err.message); }
   if (!settings.autoBlog) return 0;
   for (const p of fresh) {
     const url = `${siteUrl()}/blog/${encodeURIComponent(p.slug || p.id)}`;

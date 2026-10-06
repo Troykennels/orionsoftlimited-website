@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Phone, Mail, Send } from "lucide-react";
+import { Plus, Phone, Mail, Send, FileText } from "lucide-react";
 import { C } from "../theme.js";
 import { api, timeAgo, fmtDate, naira } from "../api.js";
 import { Avatar, Badge, Btn, Input, Textarea, Select, Modal, Field, EmptyState, PageHeader, Grid, StatCard, toast } from "../components.jsx";
@@ -34,7 +34,7 @@ function DealForm({ stages, onClose, onSaved }) {
 }
 
 function DealDetail({ deal: initial, stages, onClose, onChanged }) {
-  const { person, me } = useOffice();
+  const { person, me, navigate } = useOffice();
   const [d, setD] = useState(initial);
   const [note, setNote] = useState("");
   const [edit, setEdit] = useState({ value: initial.value, nextFollowUp: initial.nextFollowUp || "", nextAction: initial.nextAction || "", lostReason: initial.lostReason || "" });
@@ -68,7 +68,10 @@ function DealDetail({ deal: initial, stages, onClose, onChanged }) {
       </Grid>
       <Field label="Next action" style={{ marginBottom: 10 }}><Input value={edit.nextAction} onChange={e => setEdit(x => ({ ...x, nextAction: e.target.value }))} /></Field>
       {d.stage === "lost" && <Field label="Why was it lost?" style={{ marginBottom: 10 }}><Input value={edit.lostReason} onChange={e => setEdit(x => ({ ...x, lostReason: e.target.value }))} /></Field>}
-      <Btn small onClick={() => patch(edit, "Deal updated")}>Save details</Btn>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Btn small onClick={() => patch(edit, "Deal updated")}>Save details</Btn>
+        {!["won", "lost"].includes(d.stage) && <Btn small variant="ghost" icon={FileText} onClick={() => navigate("proposals", `deal-${d.id}`)}>Create proposal</Btn>}
+      </div>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: "18px 0 6px" }}>ACTIVITY</div>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
