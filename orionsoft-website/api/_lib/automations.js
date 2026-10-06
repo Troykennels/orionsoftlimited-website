@@ -141,6 +141,30 @@ async function dailyJobs(today) {
   }
 }
 
+// Vercel has sometimes skipped a push, leaving the website on old code while
+// this API (Railway) runs the new one. Compare the two; if the website is
+// behind 15+ minutes after this server started, trigger a redeploy through
+// VERCEL_DEPLOY_HOOK (when set) and email the admin. Once per commit.
+const SERVER_STARTED = Date.now();
+async function deployCheck() {
+  const mine = process.env.RAILWAY_GIT_COMMIT_SHA || "";
+  if (!mine || Date.now() - SERVER_STARTED < 15 * 60 * 1000) return;
+  const site = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
+  const r = await fetch(`${site}/version.json`, { cache: "no-store" }).catch(() => null);
+  const live = r && r.ok ? (await r.json().catch(() => ({}))).commit || "" : "";
+  if (!live || live === mine) return;
+  if (!(await claim(`orionsoft:deploycheck:${mine}`, 12 * 3600))) return;
+  let redeployed = false;
+  if (process.env.VERCEL_DEPLOY_HOOK) {
+    redeployed = !!(await fetch(process.env.VERCEL_DEPLOY_HOOK, { method: "POST" }).then(x => x.ok).catch(() => false));
+  }
+  const { sendEmail, brandedShell } = await import("./mailer.js");
+  await sendEmail(process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com", redeployed ? "Website redeploy started automatically" : "Action needed: the website didn't update", brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">${redeployed ? "The website missed an update, so a redeploy was started" : "The website missed an update"}</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">The server is running version <code>${mine.slice(0, 7)}</code> but the website is still on <code>${live.slice(0, 7)}</code>.</p>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">${redeployed ? "Vercel is rebuilding it now; it's usually live within 2 minutes. Nothing for you to do." : "Open Vercel → orionsoftlimited-website → Deployments, and click Redeploy on the latest one. To have this fixed automatically next time, create a Deploy Hook in Vercel (Settings → Git → Deploy Hooks) and add its URL on Railway as VERCEL_DEPLOY_HOOK."}</p>`, { title: "Deploy check" }), { kind: "deploy_check" });
+}
+
 // Payment reminders for every item with a due date: 3 days before, on the
 // day, then 1, 7 and 14 days overdue. One email per contract per day, listing
 // what's due, with the same payment link (and their account number).
@@ -339,6 +363,9 @@ export async function runAutomations() {
       try { await once(`orionsoft:automation:plans:${today}`, () => planSummaries(today)); }
       catch (err) { console.error("[plans]", err.message); }
     }
+    // Every 30 min: did the website (Vercel) deploy the same commit as this API?
+    try { if (await claim("orionsoft:automation:deploycheck:tick", 1800)) await deployCheck(); }
+    catch (err) { console.error("[deploycheck]", err.message); }
     // Data retention: monthly, strip old GPS points and photos.
     try {
       await once(`orionsoft:automation:retention:${today.slice(0, 7)}`, async () => {

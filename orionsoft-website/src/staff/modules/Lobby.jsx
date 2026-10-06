@@ -13,6 +13,7 @@ import DeviceHelp from "../DeviceHelp.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
 import ChecklistCard from "../ChecklistCard.jsx";
 import { enqueue, isNetworkError } from "../offlineQueue.js";
+import { quietPosition, placeHere } from "../arrival.js";
 import { startLateLocation } from "../lateLocation.jsx";
 
 function greeting() {
@@ -38,6 +39,19 @@ function DayFlow({ onChanged }) {
 
   const load = useCallback(() => api("/api/staff/attendance").then(setAtt).catch(() => {}), []);
   useEffect(() => { load(); }, [load]);
+
+  // Arrived at an office? Offer a one-tap clock-in (only checks location if
+  // it's already allowed, so this never pops up a permission prompt).
+  const { office: officeData } = useOffice();
+  const [arrival, setArrival] = useState(null);
+  const notIn = !!att && !(att.todayRecord?.clockIn && !att.todayRecord?.clockOut);
+  useEffect(() => {
+    const offices = officeData?.config?.offices || [];
+    if (!notIn || !offices.length) return undefined;
+    let cancelled = false;
+    quietPosition().then(pos => { if (!cancelled) setArrival(placeHere(offices, pos)); });
+    return () => { cancelled = true; };
+  }, [notIn, officeData]);
   const { ensure, modal } = useConsent();
   const [locMsg, setLocMsg] = useState("");
   const [locAcc, setLocAcc] = useState(null);
@@ -107,8 +121,15 @@ function DayFlow({ onChanged }) {
       {att && !clockedIn && (
         <>
           <div style={{ color: "#fff", fontSize: 14, marginBottom: 10 }}>{rec?.clockOut ? `Signed off after ${Math.floor(mins / 60)}h ${mins % 60}m. Great work today!` : "Ready to start? Clock in to let the team know you're at your desk."}</div>
+          {arrival && (
+            <button type="button" disabled={busy} onClick={() => act({ action: "clock-in", mode: "office" }, `Clocked in at ${arrival.name}. Have a great day!`).then(ok => ok && !rec?.standup && setStandupOpen(true))}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: C.mint, color: "#04130C", border: "none", borderRadius: 10, padding: "11px 14px", fontWeight: 800, fontSize: 14, fontFamily: font, cursor: "pointer", marginBottom: 10, textAlign: "left" }}>
+              📍 You're at {arrival.name}. Tap to clock in
+            </button>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Select value={mode} onChange={e => setMode(e.target.value)} style={{ width: "auto", padding: "8px 10px", fontSize: 13 }} aria-label="Work mode">
+              <option value="office">At the office</option>
               <option value="remote">Working remotely</option>
               <option value="field">On field visits</option>
               <option value="client_site">At a client site</option>

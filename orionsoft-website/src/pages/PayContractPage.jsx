@@ -34,6 +34,8 @@ export default function PayContractPage() {
   const [mode, setMode] = useState(""); // "" | "bank"
   const [bank, setBank] = useState({ bankReference: "", payerName: "", transferDate: new Date().toISOString().slice(0, 10) });
   const [busy, setBusy] = useState(false);
+  const [xfer, setXfer] = useState(null); // Paystack-generated account for this payment
+  const [checking, setChecking] = useState(false);
   const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
 
   function apply(res) {
@@ -70,6 +72,22 @@ export default function PayContractPage() {
     const j = await post({ action: "paystack" });
     if (j?.authorizationUrl) window.location.href = j.authorizationUrl;
   }
+  async function getTransferAccount() {
+    const j = await post({ action: "transfer_account" });
+    if (j?.account) setXfer({ ...j.account, reference: j.reference, amount: j.amount });
+  }
+  async function checkTransfer() {
+    if (!xfer) return;
+    setChecking(true); setErr(""); setMsg("");
+    try {
+      const r = await fetch(`/api/payments/verify?reference=${encodeURIComponent(xfer.reference)}`);
+      const j = await r.json();
+      if (j.status === "success") { setMsg(`Payment received, thank you. Receipt ${j.payment?.receiptNumber || ""} has been emailed to you.`); setXfer(null); setMode(""); load(); }
+      else setMsg("Not received yet. Transfers usually show within a few minutes; we'll also confirm it automatically and email your receipt.");
+    } catch { setErr("Couldn't check just now. Your receipt will be emailed once the transfer arrives."); }
+    finally { setChecking(false); }
+  }
+
   async function reportTransfer() {
     const j = await post({ action: "bank_notice", ...bank });
     if (j) { setMsg(j.message); setMode(""); load(); }
@@ -164,8 +182,32 @@ export default function PayContractPage() {
             <button type="button" disabled={!(amount > 0)} onClick={() => setMode(m => (m === "bank" ? "" : "bank"))} style={button(!payOnline, !(amount > 0))}>{payOnline ? "Pay by bank transfer instead" : `Pay ${amount > 0 ? fmt(amount, cur) : ""} by bank transfer`}</button>
           </div>
 
-          {mode === "bank" && (
+          {mode === "bank" && payOnline && cur === "NGN" && (
+            <div style={{ marginTop: 14, padding: 16, borderRadius: 14, background: NAVY, color: "#fff" }}>
+              {!xfer ? (
+                <>
+                  <div style={{ fontSize: 14.5, fontWeight: 800 }}>Pay {fmt(amount, cur)} by bank transfer</div>
+                  <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.8)", margin: "6px 0 12px", lineHeight: 1.5 }}>Get an account number for this payment, then transfer from any bank app. It's confirmed automatically and your receipt is emailed.</p>
+                  <button type="button" disabled={busy || !(amount > 0)} onClick={getTransferAccount} style={{ ...button(false, busy), background: GOLD, color: NAVY, border: "none", width: "100%" }}>{busy ? "Getting account number…" : "Get account number"}</button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", color: GOLD }}>TRANSFER EXACTLY {fmt(xfer.amount, cur)} TO</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
+                    <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>{xfer.accountNumber}</span>
+                    <button type="button" onClick={() => copy(xfer.accountNumber)} style={{ background: GOLD, color: NAVY, border: "none", borderRadius: 8, padding: "7px 12px", fontWeight: 800, cursor: "pointer", fontFamily: FONT }}>Copy</button>
+                  </div>
+                  <div style={{ fontSize: 14.5, marginTop: 2 }}>{xfer.bankName} · {xfer.accountName}</div>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", margin: "8px 0 12px", lineHeight: 1.5 }}>This account is for this payment only and expires at {new Date(xfer.expiresAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}. Send the exact amount in one transfer.</p>
+                  <button type="button" disabled={checking} onClick={checkTransfer} style={{ ...button(false, checking), background: "#fff", color: NAVY, border: "none", width: "100%" }}>{checking ? "Checking…" : "I've sent it, check now"}</button>
+                </>
+              )}
+            </div>
+          )}
+
+          {mode === "bank" && (!payOnline || cur !== "NGN" || bankDetails) && (
             <div style={{ marginTop: 14, padding: 16, borderRadius: 14, border: `1px solid ${LINE}`, background: "#F8FAFC", display: "grid", gap: 12 }}>
+              {payOnline && cur === "NGN" && <div style={{ fontSize: 13, color: MUTED }}>Or pay into our company account and tell us:</div>}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", color: GOLD_DK, marginBottom: 6 }}>PAY TO</div>
                 {bankDetails

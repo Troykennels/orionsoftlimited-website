@@ -405,6 +405,7 @@ const NAV_GROUPS = [
     label: "OVERVIEW",
     items: [
       { id: "dashboard",    label: "Dashboard",        icon: LayoutDashboard },
+      { id: "sales",        label: "Sales & Cash",     icon: Wallet },
       { id: "analytics",    label: "Analytics",        icon: TrendingUp },
       { id: "live",         label: "Live Visitors",    icon: Radio },
       { id: "activities",   label: "Recent Activity",  icon: Bell },
@@ -6620,7 +6621,7 @@ function InvoicesSection() {
             <div key={inv.id} style={{ padding: "14px 0", borderBottom: `1px solid ${C.border}` }}>
               <button type="button" onClick={() => setExpanded(x => x === inv.id ? null : inv.id)} aria-expanded={expanded === inv.id} style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", flexWrap: "wrap", fontFamily: font }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{inv.invoiceNumber} · {inv.clientName}</div>
+                  <div style={{ fontWeight: 700, color: C.heading, fontSize: 14 }}>{inv.invoiceNumber} · {inv.clientName}{inv.source?.contractNumber && <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 700, color: C.gold, background: C.goldDim, borderRadius: 6, padding: "2px 7px" }}>from {inv.source.contractNumber}</span>}</div>
                   <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Issued {invDay(inv.issueDate)} · Due {inv.dueDate ? invDay(inv.dueDate) : "on receipt"}</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -6976,9 +6977,115 @@ function LettersSection() {
 }
 
 // ─── Section router ──────────────────────────────────────────────────────────
+// ─── Sales & Cash ────────────────────────────────────────────────────────────
+// Money collected, what's due and overdue, the pipeline, and who is selling.
+const naira0 = n => `₦${Math.round(Number(n || 0)).toLocaleString("en-NG")}`;
+const monthLabel = m => new Date(`${m}-15T12:00:00`).toLocaleDateString("en-GB", { month: "short" });
+
+function CashChart({ data }) {
+  const [hover, setHover] = useState(null);
+  const max = Math.max(1, ...data.map(d => d.amount));
+  return (
+    <div>
+      <div role="img" aria-label="Cash collected per month, last 12 months" style={{ position: "relative", display: "grid", gridTemplateColumns: `repeat(${data.length}, 1fr)`, gap: 6, alignItems: "end", height: 190, padding: "0 2px", borderBottom: `1px solid ${C.border}` }}>
+        {data.map((d, i) => (
+          <div key={d.month} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} tabIndex={0}
+            aria-label={`${monthLabel(d.month)}: ${naira0(d.amount)}`} style={{ height: "100%", display: "flex", alignItems: "flex-end", cursor: "default", outline: "none" }}>
+            <div style={{ width: "100%", height: `${Math.max(d.amount ? 2 : 0, (d.amount / max) * 100)}%`, background: hover === i ? C.goldLight || C.gold : C.gold, borderRadius: "4px 4px 0 0", opacity: hover === null || hover === i ? 1 : 0.55, transition: "opacity 0.15s" }} />
+          </div>
+        ))}
+        {hover !== null && (
+          <div style={{ position: "absolute", left: `calc(${((hover + 0.5) / data.length) * 100}% )`, top: -6, transform: "translate(-50%, -100%)", background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12.5, color: C.heading, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: "0 8px 20px rgba(0,0,0,0.3)" }}>
+            <strong>{naira0(data[hover].amount)}</strong> <span style={{ color: C.textMuted }}>· {new Date(`${data[hover].month}-15T12:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.length}, 1fr)`, gap: 6, marginTop: 6 }}>
+        {data.map(d => <div key={d.month} style={{ textAlign: "center", fontSize: 11, color: C.textMuted }}>{monthLabel(d.month)}</div>)}
+      </div>
+    </div>
+  );
+}
+
+function SalesSection() {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    fetch("/api/admin/sales").then(r => r.json().then(j => (r.ok ? setD(j) : setErr(j.error || "Couldn't load")))).catch(() => setErr("Couldn't load the numbers"));
+  }, []);
+  if (err) return <SectionCard><p style={{ color: C.rose }}>{err}</p></SectionCard>;
+  if (!d) return <SectionCard><SkeletonRows count={6} /></SectionCard>;
+  const pct = d.dueThisMonth ? Math.round((d.collectedOfDue / d.dueThisMonth) * 100) : null;
+  const maxStage = Math.max(1, ...d.pipeline.map(p => p.value));
+  const row = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${C.border}`, fontSize: 13.5, flexWrap: "wrap" };
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, marginBottom: 20 }}>
+        <StatCard label="Collected this month" value={naira0(d.collectedThisMonth)} color={C.mint} icon="💰" />
+        <StatCard label="Due this month" value={naira0(d.dueThisMonth)} color={C.blue} icon="📅" sub={pct === null ? "Nothing scheduled" : `${pct}% already paid`} />
+        <StatCard label="Outstanding" value={naira0(d.outstanding)} color={C.gold} icon="💼" sub="All unpaid plans & invoices" />
+        <StatCard label="Overdue" value={naira0(d.overdueTotal)} color={d.overdueTotal ? C.rose : C.mint} icon="⏰" sub={`${d.overdue.length} item${d.overdue.length === 1 ? "" : "s"}`} />
+        <StatCard label="Won this month" value={naira0(d.wonThisMonth.value)} color={C.purple} icon="🏆" sub={`${d.wonThisMonth.count} deal${d.wonThisMonth.count === 1 ? "" : "s"}`} />
+      </div>
+
+      <SectionCard style={{ marginBottom: 20 }}>
+        <SectionTitle>Cash collected, last 12 months</SectionTitle>
+        <div style={{ marginTop: 14 }}><CashChart data={d.cashByMonth} /></div>
+      </SectionCard>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 20 }}>
+        <SectionCard>
+          <SectionTitle>Overdue: chase these</SectionTitle>
+          {d.overdue.length === 0 && <p style={{ color: C.mint, fontSize: 13.5 }}>Nothing overdue.</p>}
+          {d.overdue.slice(0, 15).map((o, i) => (
+            <div key={i} style={row}>
+              <span style={{ minWidth: 0 }}><strong style={{ color: C.heading }}>{o.client}</strong><span style={{ color: C.textMuted }}> · {o.item} · {o.number}</span></span>
+              <span style={{ display: "flex", gap: 8, alignItems: "center" }}><strong style={{ color: C.heading }}>{naira0(o.amount)}</strong><Badge color={o.days > 14 ? C.rose : C.amber}>{o.days} day{o.days === 1 ? "" : "s"}</Badge></span>
+            </div>
+          ))}
+          <p style={{ fontSize: 12, color: C.textMuted, margin: "8px 0 0" }}>Clients get automatic reminders 1, 7 and 14 days after a due date.</p>
+        </SectionCard>
+
+        <SectionCard>
+          <SectionTitle>Pipeline: {naira0(d.pipelineValue)} open · {naira0(d.weighted)} likely</SectionTitle>
+          {d.pipeline.map(p => (
+            <div key={p.stage} style={{ padding: "7px 0", borderTop: `1px solid ${C.border}`, fontSize: 13.5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><span style={{ color: C.text }}>{p.label} <span style={{ color: C.textMuted }}>({p.count})</span></span><strong style={{ color: C.heading }}>{naira0(p.value)}</strong></div>
+              <div style={{ height: 6, background: C.border, borderRadius: 4, marginTop: 5 }}><div style={{ width: `${(p.value / maxStage) * 100}%`, height: "100%", background: p.stage === "lost" ? C.textMuted : C.gold, borderRadius: 4 }} /></div>
+            </div>
+          ))}
+        </SectionCard>
+
+        <SectionCard>
+          <SectionTitle>Salespeople this month</SectionTitle>
+          {d.sales.length === 0 && <p style={{ color: C.textMuted, fontSize: 13.5 }}>No visits or wins yet this month.</p>}
+          {d.sales.map(p => (
+            <div key={p.id} style={row}>
+              <strong style={{ color: C.heading }}>{p.name}</strong>
+              <span style={{ color: C.text }}>{p.visits} visit{p.visits === 1 ? "" : "s"} ({p.confirmed} client-confirmed) · {p.clients} client{p.clients === 1 ? "" : "s"} · won {p.won} ({naira0(p.wonValue)})</span>
+            </div>
+          ))}
+        </SectionCard>
+
+        <SectionCard>
+          <SectionTitle>Top clients by money paid</SectionTitle>
+          {d.topClients.length === 0 && <p style={{ color: C.textMuted, fontSize: 13.5 }}>No payments yet.</p>}
+          {d.topClients.map(c => (
+            <div key={c.name} style={row}>
+              <strong style={{ color: C.heading }}>{c.name}</strong>
+              <span style={{ color: C.text }}>paid {naira0(c.paid)}{c.balance > 0 ? <span style={{ color: C.amber }}> · owes {naira0(c.balance)}</span> : ""}</span>
+            </div>
+          ))}
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
 function DashboardContent({ active, session, navigate }) {
   switch (active) {
     case "dashboard":     return <DashboardOverview navigate={navigate} editor={session?.adminRole === "editor"} />;
+    case "sales":         return <SalesSection />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;

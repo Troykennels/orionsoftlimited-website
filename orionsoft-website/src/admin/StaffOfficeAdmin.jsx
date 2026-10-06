@@ -651,6 +651,26 @@ function OfficeSettings({ data, reload }) {
           During quiet hours (e.g. 21:00 to 07:00) alerts still arrive but don't ring; location checks always ring. Old GPS points and visit photos are deleted automatically each month after the retention period (Nigeria Data Protection Act); times and outcomes are kept.
         </p>
       </SectionCard>
+      <SectionCard>
+        <SectionTitle sub="When someone opens the Staff Office at one of these places, it offers a one-tap 'clock in'. Clocking in 'at the office' from somewhere else is flagged to their manager.">Office locations</SectionTitle>
+        {(cfg.offices || []).map((o, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,2fr) minmax(0,1.4fr) 110px auto", gap: 6, marginBottom: 6, alignItems: "center" }}>
+            <Input value={o.name} onChange={e => setCfg(c => ({ ...c, offices: c.offices.map((x, j) => j === i ? { ...x, name: e.target.value } : x) }))} placeholder="e.g. Lagos Island office" aria-label="Office name" />
+            <span style={{ fontSize: 12.5, color: C.textMuted }}>{Number(o.lat).toFixed(5)}, {Number(o.lng).toFixed(5)} · <a href={`https://www.google.com/maps?q=${o.lat},${o.lng}`} target="_blank" rel="noreferrer" style={{ color: C.blue }}>map</a></span>
+            <Input type="number" min="50" max="2000" value={o.radius} onChange={e => setCfg(c => ({ ...c, offices: c.offices.map((x, j) => j === i ? { ...x, radius: e.target.value } : x) }))} aria-label="Radius in metres" title="Radius in metres" />
+            <Btn small danger icon={Trash2} onClick={() => setCfg(c => ({ ...c, offices: c.offices.filter((_, j) => j !== i) }))} />
+          </div>
+        ))}
+        <Btn small variant="ghost" icon={Plus} onClick={() => {
+          if (!navigator.geolocation) { toast("This browser can't share its location", "err"); return; }
+          toast("Getting your location…");
+          navigator.geolocation.getCurrentPosition(
+            p => setCfg(c => ({ ...c, offices: [...(c.offices || []), { name: "Office", lat: p.coords.latitude, lng: p.coords.longitude, radius: Math.max(100, Math.round(Math.min(p.coords.accuracy, 300))) }] })),
+            () => toast("Couldn't get your location. Allow location for this site and try again.", "err"),
+            { enableHighAccuracy: true, timeout: 20000 });
+        }}>Add office here (use my current location)</Btn>
+        <p style={{ fontSize: 12, color: C.textMuted, margin: "8px 0 0" }}>Stand inside the office when you add it. Radius is in metres (150 suits most buildings). Remember to save.</p>
+      </SectionCard>
       <PhoneAlerts list={data.phoneAlerts || []} channels={data.channels || {}} />
       <SectionCard>
         <SectionTitle action={<Btn small icon={Plus} onClick={() => setCfg(c => ({ ...c, quickLinks: [...c.quickLinks, { label: "", url: "" }] }))}>Add link</Btn>}>Quick links</SectionTitle>

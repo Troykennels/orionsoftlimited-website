@@ -118,5 +118,8 @@ export function autoFill(contract, company) {
 export async function saveContract(c) {
   c.updatedAt = new Date().toISOString();
   await putRecord("contracts", c.id, c);
+  // Keep the per-item invoices in step (created once the plan is live / signed).
+  try { const { syncContractInvoices } = await import("./planInvoices.js"); await syncContractInvoices(c); }
+  catch (e) { console.error("[plan-invoices]", e.message); }
   return c;
 }

@@ -90,7 +90,11 @@ export default async function handler(req, res) {
 
   const b = req.body || {};
   const meta = requestMeta(req);
-  const now = new Date().toISOString();
+  // A check-in made with no signal arrives later: keep when it really happened
+  // (up to 24 hours back, never in the future) and mark it as sent from offline.
+  const captured = Date.parse(b.capturedAt || "");
+  const offline = b.action === "check-in" && captured && captured < Date.now() - 60000 && captured > Date.now() - 24 * 3600000;
+  const now = offline ? new Date(captured).toISOString() : new Date().toISOString();
 
   if (b.action === "check-in") {
     const organisation = String(b.organisation || "").trim().slice(0, 160);
@@ -111,7 +115,7 @@ export default async function handler(req, res) {
       photoSource: b.photoSource === "camera" ? "camera" : b.photoDataUrl ? "upload" : null,
       notes: String(b.notes || "").slice(0, 1500), outcome: "", nextStep: "",
       confirmation: { token: randomBytes(18).toString("base64url"), status: "pending", requestedAt: now },
-      createdAt: now,
+      createdAt: now, offlineSync: !!offline,
     };
     await savePhoto(id, b.photoDataUrl);
     visit = await rescoreVisit(visit);

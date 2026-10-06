@@ -10,6 +10,7 @@ import {
 } from "../_lib/office.js";
 import { PERMISSIONS, managerChain, directReports, subordinates, canApproveFor, canReviewReport } from "../_lib/roles.js";
 import { runAutomations, lagosDate, toLagos } from "../_lib/automations.js";
+import { getSites } from "../_lib/fieldIntel.js";
 
 export const OFFICE_CONFIG_KEY = "orionsoft:office:config";
 export const DEFAULT_OFFICE_CONFIG = {
@@ -25,6 +26,7 @@ export const DEFAULT_OFFICE_CONFIG = {
   alertClockIns: false,
   emailFallback: true,
   retentionMonths: 24, // location points & visit photos are deleted after this
+  offices: [],          // [{ name, lat, lng, radius }] for arrival detection
   spotChecks: true,
   spotWindowMinutes: 20,
   whatsappGroupLink: "",
@@ -114,6 +116,8 @@ export default async function handler(req, res) {
         todaysMeetings: meetings.filter(m => toLagos(m.startsAt).slice(0, 10) === today && m.status !== "cancelled"
           && (m.hostId === me.id || (m.attendeeIds || []).includes(me.id))).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
         approvals, reviewsReports,
+        // Client locations learned from confirmed visits (to suggest the client on check-in).
+        knownSites: Object.values(await getSites()).slice(0, 400).map(x => ({ name: x.name, lat: x.lat, lng: x.lng })),
         pendingSpotChecks: spots.filter(s => s.employeeId === me.id && s.status === "pending" && Date.parse(s.dueAt) > Date.now()).map(s => ({ id: s.id, dueAt: s.dueAt })),
         today,
       });

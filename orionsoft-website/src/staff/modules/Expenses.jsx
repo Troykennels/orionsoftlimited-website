@@ -30,7 +30,24 @@ export default function Expenses() {
       const dataUrl = file.type === "application/pdf" ? await readFile(file) : await resizeImageToDataUrl(file, 1600, 0.8);
       if (dataUrl.length > 2_000_000) throw new Error("That file is too large. Keep receipts under 1.5MB.");
       setF(x => ({ ...x, receiptDataUrl: dataUrl, receiptName: file.name }));
+      if (dataUrl.startsWith("data:image/")) readReceipt(dataUrl);
     } catch (ex) { toast(ex.message, "err"); }
+  }
+  // Photo of a receipt: fill in what it says (only fields still empty), for the person to check.
+  const [reading, setReading] = useState("");
+  async function readReceipt(dataUrl) {
+    setReading("Reading the receipt…");
+    try {
+      const { receipt: r } = await api("/api/staff/ai", { method: "POST", body: { action: "read-receipt", imageDataUrl: dataUrl } });
+      setF(x => ({
+        ...x,
+        amount: x.amount || (r.amount ? String(r.amount) : ""),
+        expenseDate: r.date || x.expenseDate,
+        category: r.category && r.category !== "Other" ? r.category : x.category,
+        description: x.description || [r.vendor, r.description].filter(Boolean).join(": "),
+      }));
+      setReading(r.amount ? `Filled in from the receipt${r.vendor ? ` (${r.vendor})` : ""}. Please check the amount and date.` : "Couldn't read the total; please fill it in.");
+    } catch { setReading(""); }
   }
   async function submit() {
     setBusy(true);
@@ -74,9 +91,10 @@ export default function Expenses() {
           <Field label="Date spent" style={{ marginBottom: 10 }}><Input type="date" value={f.expenseDate} onChange={e => setF(x => ({ ...x, expenseDate: e.target.value }))} /></Field>
           <Field label="What was it for?" style={{ marginBottom: 10 }}><Textarea value={f.description} onChange={e => setF(x => ({ ...x, description: e.target.value }))} style={{ minHeight: 60 }} placeholder="e.g. Uber to Lagos General for the CareCore demo" /></Field>
           <label style={{ display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${C.borderStrong}`, borderRadius: 10, padding: 12, cursor: "pointer", color: C.text, fontSize: 13, marginBottom: 12 }}>
-            <Upload size={16} /> {f.receiptName || "Attach receipt (photo or PDF)"}
+            <Upload size={16} /> {f.receiptName || "Attach receipt: snap a photo and the details fill themselves in"}
             <input type="file" accept="image/*,application/pdf" hidden onChange={onReceipt} />
           </label>
+          {reading && <div style={{ fontSize: 12.5, color: C.mint, margin: "-4px 0 12px" }}>{reading}</div>}
           <Btn onClick={submit} disabled={busy || !(Number(f.amount) > 0)}>Submit claim</Btn>
         </SectionCard>
       </div>

@@ -223,6 +223,12 @@ export default async function handler(req, res) {
       return res.json({ ok: true, invoice: out });
     }
 
+    // Invoices created from a payment plan follow the plan: payments are
+    // recorded there (Contracts), so they're never counted twice.
+    if (invoice.source?.contractId && ["record_payment", "mark_paid", "delete_payment", "void", "cancel"].includes(b.action)) {
+      return res.status(400).json({ error: `This invoice follows ${invoice.source.contractNumber || "a payment plan"}. Record payments or cancel it under Contracts, and this invoice updates itself.` });
+    }
+
     if (b.action === "record_payment" || b.action === "mark_paid") {
       if (["draft", "void"].includes(invoice.status)) return res.status(400).json({ error: `Send the invoice before recording payments${invoice.status === "void" ? " (this one is void)" : ""}.` });
       if (invoice.status === "paid") return res.status(400).json({ error: "This invoice is already fully paid" });

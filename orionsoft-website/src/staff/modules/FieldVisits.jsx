@@ -7,6 +7,8 @@ import { getDeviceId, getLocation, mapsLink } from "../geo.js";
 import LocationStep from "../LocationStep.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
 import VisitPlanCard from "../VisitPlanCard.jsx";
+import { placeHere } from "../arrival.js";
+import { enqueue, isNetworkError } from "../offlineQueue.js";
 import CameraCapture from "../CameraCapture.jsx";
 import { useOffice } from "../office.js";
 import { startLateLocation } from "../lateLocation.jsx";
@@ -49,7 +51,7 @@ export function useConsent() {
 }
 
 function CheckInFlow({ onClose, onDone }) {
-  const { me, can } = useOffice();
+  const { me, can, office } = useOffice();
   const [loc, setLoc] = useState(null); // { geo } | { error, kind } once resolved
   const [photo, setPhoto] = useState(null);
   const [orgs, setOrgs] = useState([]);
@@ -70,6 +72,15 @@ function CheckInFlow({ onClose, onDone }) {
     })();
   }, [can, me.id]);
 
+  // At a client site we've confirmed before? Suggest it as the organisation.
+  const [nearSite, setNearSite] = useState(null);
+  function gotLocation(next) {
+    setLoc(next);
+    const here = next?.geo ? placeHere(office.knownSites, next.geo, 300) : null;
+    setNearSite(here);
+    if (here) setF(x => (x.organisation ? x : { ...x, organisation: here.name }));
+  }
+
   function pickOrg(ref) {
     const o = orgs.find(x => x.ref === ref);
     setF(x => ({ ...x, ref, organisation: o ? o.name : x.organisation, contactName: o?.contactName || x.contactName, contactPhone: o?.contactPhone || x.contactPhone, contactEmail: o?.contactEmail || x.contactEmail }));
@@ -77,16 +88,27 @@ function CheckInFlow({ onClose, onDone }) {
 
   async function submit() {
     setBusy(true);
+    const [kind, id] = f.ref.split(":");
+    const body = {
+      action: "check-in", organisation: f.organisation, purpose: f.purpose, notes: f.notes,
+      contactName: f.contactName, contactPhone: f.contactPhone, contactEmail: f.contactEmail,
+      dealId: kind === "deal" ? id : null, stakeholderId: kind === "stk" ? id : null,
+      geo: loc?.geo || null, geoError: loc?.error || null,
+      photoDataUrl: photo?.dataUrl || "", photoHash: photo?.hash || "", photoSource: photo?.source || null,
+      deviceId: getDeviceId(),
+    };
     try {
-      const [kind, id] = f.ref.split(":");
-      const j = await api("/api/staff/visits", { method: "POST", body: {
-        action: "check-in", organisation: f.organisation, purpose: f.purpose, notes: f.notes,
-        contactName: f.contactName, contactPhone: f.contactPhone, contactEmail: f.contactEmail,
-        dealId: kind === "deal" ? id : null, stakeholderId: kind === "stk" ? id : null,
-        geo: loc?.geo || null, geoError: loc?.error || null,
-        photoDataUrl: photo?.dataUrl || "", photoHash: photo?.hash || "", photoSource: photo?.source || null,
-        deviceId: getDeviceId(),
-      } });
+      let j;
+      try { j = await api("/api/staff/visits", { method: "POST", body }); }
+      catch (e) {
+        if (!isNetworkError(e)) throw e;
+        // No signal at the client: keep the check-in (time, GPS, photo) on the
+        // phone and send it as soon as there's a connection.
+        await enqueue("/api/staff/visits", body);
+        toast(`No connection. Check-in at ${f.organisation} saved on your phone at ${new Date().toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}; it will be sent automatically.`);
+        onDone(); onClose();
+        return;
+      }
       setDone(j);
       // No location at check-in: keep looking for a few minutes and attach it.
       if (!loc?.geo && j.visit?.id) startLateLocation({ kind: "visit", id: j.visit.id, label: `check-in at ${f.organisation}` });
@@ -118,7 +140,8 @@ function CheckInFlow({ onClose, onDone }) {
       <div style={{ display: "grid", gap: 14 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>1 · LOCATION</div>
-          <LocationStep onChange={setLoc} where="visit check-in" skipLabel="Continue: location added when the phone finds it" />
+          <LocationStep onChange={gotLocation} where="visit check-in" skipLabel="Continue: location added when the phone finds it" />
+          {nearSite && <div style={{ fontSize: 13, color: C.mint, marginTop: 6 }}>📍 You look to be at <strong>{nearSite.name}</strong> ({nearSite.distance} m away). Filled in below; change it if that's wrong.</div>}
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: "0.06em", marginBottom: 6 }}>2 · PHOTO AT THE SITE (signboard, reception or meeting)</div>

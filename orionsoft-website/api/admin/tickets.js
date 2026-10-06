@@ -4,7 +4,7 @@ import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/
 import { requireAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 
-const CATEGORIES = ["IT", "HR", "Facilities", "Finance", "Other"];
+const CATEGORIES = ["Client support", "IT", "HR", "Facilities", "Finance", "Other"];
 const PRIORITIES = ["low", "medium", "high", "urgent"];
 const STATUSES = ["open", "in_progress", "resolved", "closed"];
 
@@ -56,9 +56,20 @@ export default async function handler(req, res) {
       const { text } = req.body;
       if (!text) return res.status(400).json({ error: "Comment text is required" });
       ticket.comments = ticket.comments || [];
-      ticket.comments.push({ id: newId("cmt"), author: session.name || session.email || "Admin", text, at: new Date().toISOString() });
+      ticket.comments.push({ id: newId("cmt"), author: session.name || session.email || "Admin", text, at: new Date().toISOString(), internal: !!req.body.internal });
       ticket.updatedAt = new Date().toISOString();
       await putRecord("tickets", id, ticket);
+      // A client's ticket: email them the reply (internal notes stay internal).
+      if (ticket.clientEmail && !req.body.internal) {
+        try {
+          const { sendEmail, brandedShell } = await import("../_lib/mailer.js");
+          const { siteUrl } = await import("../_lib/contracts.js");
+          const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+          await sendEmail(ticket.clientEmail, `Re: ${ticket.subject}`, brandedShell(`<h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Reply from Orion Soft support</h2>
+            <p style="color:#3A4556;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#F4F6FA;border-radius:10px;padding:14px;">${esc(text)}</p>
+            <p style="margin:18px 0;"><a href="${siteUrl()}/client" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Reply in your client portal</a></p>`, { title: "Support" }), { kind: "client_ticket_reply" });
+        } catch { /* best-effort */ }
+      }
       return res.json({ ok: true, ticket });
     }
 

@@ -103,6 +103,38 @@ export default async function handler(req, res) {
     }
   }
 
+  // Paystack generates a bank account number for this exact payment (Pay with
+  // Transfer). The client transfers to it from any bank app; Paystack's
+  // webhook confirms it and the receipt goes out automatically. No approval
+  // needed from Paystack, unlike a permanent dedicated account.
+  if (b.action === "transfer_account") {
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) return res.status(503).json({ error: "Transfers through Paystack aren't available right now." });
+    if (c.currency !== "NGN") return res.status(400).json({ error: "Bank transfer accounts are for Naira payments only. Pay online instead." });
+    const id = newId("pmt"), reference = `orionsoft_${id}`;
+    const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    try {
+      const r = await fetch("https://api.paystack.co/charge", {
+        method: "POST", headers: { Authorization: `Bearer ${secretKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: c.client.email || `${c.number.toLowerCase()}@clients.orionsoftlimited.com`, amount: Math.round(chk.amount * 100), reference,
+          bank_transfer: { account_expires_at: expires },
+          metadata: { contractId: c.id, contractNumber: c.number, milestoneId: b.milestoneId || "" },
+        }),
+      });
+      const j = await r.json();
+      const d = j.data || {};
+      if (!r.ok || !j.status || !d.account_number) return res.status(502).json({ error: j.message || d.message || "Paystack couldn't create a transfer account just now. Try again, or pay online." });
+      await putRecord("payments", id, { id, contractId: c.id, reference, amount: chk.amount, currency: "NGN", milestoneId: b.milestoneId || null, method: "bank_transfer", via: "paystack_transfer", status: "initialized", createdAt: new Date().toISOString() });
+      return res.json({
+        ok: true, reference, amount: chk.amount,
+        account: { accountNumber: d.account_number, accountName: d.account_name || "Paystack", bankName: d.bank?.name || "", expiresAt: d.account_expires_at || expires },
+      });
+    } catch {
+      return res.status(502).json({ error: "Couldn't reach Paystack. Try again, or pay online." });
+    }
+  }
+
   // "I've paid by bank transfer": recorded for the admin to confirm.
   if (b.action === "bank_notice") {
     if (summary.pending.length >= 5) return res.status(429).json({ error: "You already have transfers waiting for confirmation. We'll confirm them shortly." });

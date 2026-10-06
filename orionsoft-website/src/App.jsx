@@ -3148,6 +3148,7 @@ function Footer({ setCurrentPage }) {
               { l: "Knowledge Base", a: "/docs", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
               { l: "API Reference", a: "/api-docs", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "/faq", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
+              { l: "Client Portal", a: "/client" },
               { l: "Support Centre", a: "/support", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
               { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent("orion-open-chat")); } },
               { l: "Resources", a: "/resources", onClick: (e) => { e.preventDefault(); setCurrentPage("resources"); } },

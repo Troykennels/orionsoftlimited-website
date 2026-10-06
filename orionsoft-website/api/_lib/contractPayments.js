@@ -6,7 +6,7 @@ import { getRecord, putRecord, listRecords } from "./records.js";
 import { set, get, claim } from "../store.js";
 import { sendEmail, brandedShell } from "./mailer.js";
 import { getCompanySettings } from "./settings.js";
-import { normaliseContract, paymentSummary, nextReceiptNumber, money, payLink } from "./contracts.js";
+import { normaliseContract, paymentSummary, nextReceiptNumber, money, payLink, siteUrl } from "./contracts.js";
 import { renderContractReceiptPdf } from "./contractPdf.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
@@ -56,6 +56,8 @@ export async function recordSuccessfulPayment(paymentId, details = {}) {
   } catch (err) {
     console.error("[receipt]", err.message);
   }
+  try { const { syncContractInvoicesById } = await import("./planInvoices.js"); await syncContractInvoicesById(raw.id); }
+  catch (err) { console.error("[plan-invoices]", err.message); }
   return payment;
 }
 
@@ -74,6 +76,7 @@ async function emailReceipt(raw, payment, all, pdf) {
       <tr><td style="padding:4px 0;">Balance</td><td style="padding:4px 0;text-align:right;"><strong>${money(sum.balance, c.currency)}</strong></td></tr>
     </table>
     ${sum.balance > 0 ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;">You can pay the next milestone or any part of the balance here:</p><p><a href="${payLink(raw)}" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Open payment page</a></p>` : `<p style="color:#15803D;font-size:14px;font-weight:700;">This contract is now fully paid.</p>`}
+    <p style="color:#6B7A96;font-size:12.5px;line-height:1.6;">All your plans, invoices and receipts are also in your <a href="${siteUrl()}/client" style="color:#0A2540;">client portal</a>.</p>
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">Kind regards,<br>${esc(company.companyName)}</p>`, { title: `Receipt ${payment.receiptNumber}` });
   await sendEmail(c.client.email, `Receipt ${payment.receiptNumber}: ${c.title}`, html, {
     kind: "contract_receipt", attachments: [{ filename: `${payment.receiptNumber}.pdf`, content: pdf }],

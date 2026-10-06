@@ -7,7 +7,7 @@
 import { listRecords, getRecord } from "../_lib/records.js";
 import { officeContext } from "../_lib/office.js";
 import { toLagos, lagosDate } from "../_lib/automations.js";
-import { aiComplete, aiReady } from "../_lib/ai.js";
+import { aiComplete, aiReady, aiReadImage } from "../_lib/ai.js";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const STYLE = "Write in plain, professional British English for a Nigerian company. No em dashes. Don't invent facts, names or numbers that aren't in the data.";
@@ -95,6 +95,27 @@ export default async function handler(req, res) {
       return { text: String(a.text || "").slice(0, 300), assigneeId: owner?.id || m.hostId, dueDate: DATE.test(a.dueDate || "") ? a.dueDate : "" };
     }).filter(a => a.text);
     return res.json({ ok: true, minutes: String(out.minutes || "").slice(0, 8000), actionItems: items });
+  }
+
+  // Expense receipt photo → amount, date, vendor, category (the person checks it).
+  if (b.action === "read-receipt") {
+    if (!aiReady()) return res.status(503).json({ error: "Receipt reading isn't switched on yet." });
+    const categories = ["Travel", "Meals & Entertainment", "Office Supplies", "Software & Subscriptions", "Client Costs", "Other"];
+    const out = await aiReadImage(
+      `Read this receipt (likely Nigerian). Return JSON only: {"amount": total paid as a number with no currency symbol, "currency": "NGN" or the currency shown, "date": "YYYY-MM-DD" or "", "vendor": shop or company name, "category": one of ${JSON.stringify(categories)}, "description": a short description of what was bought (under 80 characters)}. Use the grand total, not a subtotal. If something isn't visible, use "" or 0.`,
+      String(b.imageDataUrl || ""));
+    if (!out) return res.status(502).json({ error: "Couldn't read that receipt. Fill in the details yourself." });
+    const amount = Number(String(out.amount ?? "").replace(/[^\d.]/g, "")) || 0;
+    return res.json({
+      ok: true,
+      receipt: {
+        amount, currency: String(out.currency || "NGN").slice(0, 3).toUpperCase(),
+        date: DATE.test(out.date || "") && out.date <= lagosDate() ? out.date : "",
+        vendor: String(out.vendor || "").slice(0, 80),
+        category: categories.includes(out.category) ? out.category : "Other",
+        description: String(out.description || "").slice(0, 120),
+      },
+    });
   }
 
   return res.status(400).json({ error: "Unknown action" });

@@ -89,6 +89,7 @@ export default async function handler(req, res) {
     contract.updatedAt = new Date().toISOString();
 
     await putRecord("contracts", contract.id, contract);
+    try { const { syncContractInvoices } = await import("../_lib/planInvoices.js"); await syncContractInvoices(contract); } catch (e) { console.error("[plan-invoices]", e.message); }
 
     try { await notifyContractSigned(contract); } catch { /* best-effort */ }
     // Payable contracts: the client gets their payment link straight away.

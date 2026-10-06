@@ -7,12 +7,26 @@ import { listRecords, getRecord, putRecord } from "../_lib/records.js";
 import { officeContext, notify, award, slugify } from "../_lib/office.js";
 import { managerChain, subordinates, fieldWatchers } from "../_lib/roles.js";
 import { lagosDate, toLagos } from "../_lib/automations.js";
-import { cleanGeo, requestMeta } from "../_lib/fieldIntel.js";
+import { cleanGeo, requestMeta, haversineMeters } from "../_lib/fieldIntel.js";
 import { scheduleFor, lateMinutes, earlyMinutes, overtimeMinutes } from "../_lib/workHours.js";
 import { OFFICE_CONFIG_KEY, DEFAULT_OFFICE_CONFIG } from "./office.js";
 
-const MODES = ["remote", "field", "client_site", "hybrid"];
-const MODE_LABEL = { remote: "remote", field: "field work", client_site: "a client site", hybrid: "hybrid" };
+const MODES = ["office", "remote", "field", "client_site", "hybrid"];
+const MODE_LABEL = { office: "at the office", remote: "remote", field: "field work", client_site: "a client site", hybrid: "hybrid" };
+
+// Nearest office location (Staff Office settings) to a GPS fix.
+function nearestOffice(cfg, geo) {
+  if (!geo) return null;
+  let best = null;
+  for (const o of cfg.offices || []) {
+    const d = haversineMeters(o, geo);
+    if (d != null && (!best || d < best.distance)) best = { name: o.name, distance: d, radius: o.radius || 150 };
+  }
+  if (!best) return null;
+  // Allow for the phone's own GPS uncertainty (capped so a bad fix can't pass).
+  best.inside = best.distance <= best.radius + Math.min(Number(geo.accuracy) || 0, 150);
+  return best;
+}
 const hm = min => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min} min`);
 
 export default async function handler(req, res) {
@@ -121,12 +135,18 @@ export default async function handler(req, res) {
         rec.clockInGeo = geo; rec.clockInIp = meta.ip; rec.clockInUa = meta.ua;
         rec.lateMinutes = lateMinutes(now, schedule);
         rec.schedule = { start: schedule.start, end: schedule.end };
+        rec.place = nearestOffice(cfg, geo);
+        // Said "at the office" but the phone is somewhere else: flag it.
+        if (rec.mode === "office" && geo && rec.place && !rec.place.inside) rec.outsideOffice = true;
       }
       rec.events.push({ type: first ? "clock_in" : "resume", at: now, offline: !!offline, geo, ip: meta.ip, ua: meta.ua, deviceId: meta.deviceId, mode: rec.mode });
       fresh.presence = { status: rec.mode === "field" || rec.mode === "client_site" ? "field" : "available", note: "", at: now };
       if (first) {
         const mgr = managerChain(me, employees, catalog)[0];
         const late = rec.lateMinutes >= 30;
+        if (rec.outsideOffice && mgr) {
+          await notify([mgr.id], { type: "attendance", title: `${me.fullName} clocked in "at the office" from ${(rec.place.distance / 1000).toFixed(1)} km away`, body: `Nearest office: ${rec.place.name}`, link: "team:field", actorId: me.id });
+        }
         const watchers = cfg.alertClockIns ? fieldWatchers(me, employees, catalog) : late && mgr ? [mgr.id] : [];
         await notify(watchers, {
           type: "attendance",

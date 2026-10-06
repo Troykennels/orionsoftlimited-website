@@ -144,6 +144,7 @@ async function emailClient(c, subject, heading, bodyHtml, attachments) {
     <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">${heading}</h2>
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">Dear ${esc(c.client.name)},</p>
     ${bodyHtml}
+    <p style="color:#6B7A96;font-size:12.5px;line-height:1.6;">All your plans, invoices and receipts are also in your <a href="${siteUrl()}/client" style="color:#0A2540;">client portal</a>.</p>
     <p style="color:#3A4556;font-size:14px;line-height:1.7;">Kind regards,<br>${esc(company.companyName)}</p>`, { title: heading }), { kind: "contract", attachments });
 }
 const btn = (href, label) => `<p style="margin:18px 0;"><a href="${href}" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">${label}</a></p>`;

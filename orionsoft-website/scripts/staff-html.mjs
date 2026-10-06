@@ -17,3 +17,10 @@ swap(/<meta name="apple-mobile-web-app-title" content="[^"]*"\s*\/?>/, '<meta na
 html = html.replace(/<title>[^<]*<\/title>/, "<title>Orion Staff Office</title>");
 writeFileSync(new URL("../dist/staff.html", import.meta.url), html);
 console.log("staff-html: dist/staff.html written");
+
+// Which commit this website build came from. The API server compares it with
+// its own commit to catch a push that Vercel never deployed (see automations).
+writeFileSync(new URL("../dist/version.json", import.meta.url), JSON.stringify({
+  commit: process.env.VERCEL_GIT_COMMIT_SHA || "", builtAt: new Date().toISOString(),
+}) + "\n");
+console.log("staff-html: dist/version.json written");

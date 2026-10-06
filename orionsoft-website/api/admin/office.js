@@ -95,6 +95,8 @@ export default async function handler(req, res) {
         dailyDigest: c.dailyDigest !== false,
         retentionMonths: Math.min(120, Math.max(3, parseInt(c.retentionMonths, 10) || 24)),
         quietStart: cleanTime(c.quietStart, ""), quietEnd: cleanTime(c.quietEnd, ""),
+        offices: (Array.isArray(c.offices) ? c.offices : []).filter(o => o && Number.isFinite(Number(o.lat)) && Number.isFinite(Number(o.lng))).slice(0, 20)
+          .map(o => ({ name: String(o.name || "Office").slice(0, 80), lat: Number(o.lat), lng: Number(o.lng), radius: Math.min(2000, Math.max(50, parseInt(o.radius, 10) || 150)) })),
         spotChecks: c.spotChecks !== false,
         spotWindowMinutes: Math.min(60, Math.max(10, parseInt(c.spotWindowMinutes, 10) || 20)),
         whatsappGroupLink: /^https:\/\/chat\.whatsapp\.com\//.test(String(c.whatsappGroupLink || "")) ? String(c.whatsappGroupLink).slice(0, 200) : "",
