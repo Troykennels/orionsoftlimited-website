@@ -7,15 +7,9 @@ self.addEventListener("activate", event => event.waitUntil(self.clients.claim())
 self.addEventListener("push", event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = { title: event.data?.text() || "Orion Staff Office" }; }
-  const title = data.title || "Orion Staff Office";
-  // An open office refreshes its bell straight away.
-  event.waitUntil(self.clients.matchAll({ type: "window" }).then(all => all.forEach(c => c.postMessage({ type: "so-push" }))));
-  // Number on the home-screen icon, like WhatsApp (iPhone and Android apps).
-  if (self.navigator.setAppBadge) {
-    const n = Number(data.badge);
-    event.waitUntil((Number.isFinite(n) && n > 0 ? self.navigator.setAppBadge(n) : data.badge === 0 ? self.navigator.clearAppBadge() : self.navigator.setAppBadge()).catch(() => {}));
-  }
-  event.waitUntil(self.registration.showNotification(title, {
+  // Showing the alert comes first and nothing else can stop it: a push that
+  // shows nothing makes iPhones cancel the subscription.
+  const show = self.registration.showNotification(data.title || "Orion Staff Office", {
     body: data.body || "",
     tag: data.tag || "office",
     renotify: true,
@@ -26,7 +20,17 @@ self.addEventListener("push", event => {
     icon: "/staff-icon-192.png",
     badge: "/staff-badge-96.png",
     data: { url: data.url || "/staff" },
-  }));
+  }).catch(() => self.registration.showNotification(data.title || "Orion Staff Office", { body: data.body || "", data: { url: data.url || "/staff" } }));
+  const extras = (async () => {
+    // An open office refreshes its bell straight away.
+    try { (await self.clients.matchAll({ type: "window" })).forEach(c => c.postMessage({ type: "so-push" })); } catch { /* ignore */ }
+    // Number on the home-screen icon, like WhatsApp.
+    try {
+      const n = Number(data.badge);
+      if (self.navigator.setAppBadge) await (n > 0 ? self.navigator.setAppBadge(n) : data.badge === 0 ? self.navigator.clearAppBadge() : self.navigator.setAppBadge());
+    } catch { /* ignore */ }
+  })();
+  event.waitUntil(Promise.all([show, extras]));
 });
 
 self.addEventListener("notificationclick", event => {

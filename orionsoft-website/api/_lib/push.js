@@ -77,7 +77,11 @@ export async function sendPush(employeeId, { title, body = "", link = "", type =
       await webpush.sendNotification(s, payload, { TTL: type === "spotcheck" ? 1200 : 259200, urgency: HIGH.has(type) ? "high" : "normal" });
       sent++;
     } catch (e) {
-      if (e.statusCode === 404 || e.statusCode === 410) dead.push(s.endpoint); // unsubscribed / expired
+      // 404/410: unsubscribed or expired. 400/401/403: made with another key or
+      // rejected for good. Drop it so email/WhatsApp take over, and the app
+      // subscribes again the next time it's opened.
+      if ([400, 401, 403, 404, 410].includes(e.statusCode)) dead.push(s.endpoint);
+      console.error(`[push] ${employeeId} ${e.statusCode || ""} ${String(e.body || e.message).slice(0, 160)}`);
     }
   }));
   if (dead.length) await set(subsKey(employeeId), list.filter(s => !dead.includes(s.endpoint)));

@@ -28,6 +28,15 @@ function channelsFor(me, employees, custom) {
   return [...BUILTIN, ...visibleDept, ...customVisible];
 }
 
+// Who can see a channel (and so gets its alerts). Mirrors channelsFor().
+function channelMembers(channel, active, custom) {
+  if (!channel) return [];
+  if (channel.department) return active.filter(e => e.department === channel.department || ["owner", "md", "coo"].includes(e.staffRole));
+  const c = custom.find(x => x.id === channel.id);
+  if (c?.private) return active.filter(e => (c.memberIds || []).includes(e.id));
+  return active;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -118,9 +127,16 @@ export default async function handler(req, res) {
       }
       await notify([partnerId], { type: "message", title: `New message from ${me.fullName}`, body: text, link: `messages:${id}`, actorId: me.id });
     } else {
+      // Everyone in the channel gets the alert (phone + sound), like a group
+      // chat; people @mentioned get a "mentioned you" alert instead.
       const mentions = mentionedIds(text, active);
       const channel = channels.find(c => c.id === id);
-      await notify(mentions, { type: "mention", title: `${me.fullName} mentioned you in #${channel?.name || id}`, body: text, link: `messages:${id}`, actorId: me.id });
+      const name = channel?.name || id;
+      const members = channelMembers(channel, active, custom).filter(e => !mentions.includes(e.id)).map(e => e.id);
+      await Promise.all([
+        notify(mentions, { type: "mention", title: `${me.fullName} mentioned you in #${name}`, body: text, link: `messages:${id}`, actorId: me.id }),
+        notify(members, { type: "message", title: `${me.fullName} in #${name}`, body: text, link: `messages:${id}`, actorId: me.id }),
+      ]);
     }
     return res.json({ ok: true, message: msg });
   }

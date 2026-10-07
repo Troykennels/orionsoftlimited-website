@@ -236,7 +236,16 @@ export default function StaffApp() {
   }, [notifs]);
 
   // Installable app + phone notifications for the office.
-  useEffect(() => { applyStaffManifest(); registerServiceWorker().then(() => resyncPush()); }, []);
+  useEffect(() => { applyStaffManifest(); registerServiceWorker(); }, []);
+  // Check phone alerts are still connected after sign-in and each time the
+  // app comes back on screen, and repair them if the phone dropped them.
+  useEffect(() => {
+    if (!session) return undefined;
+    resyncPush();
+    const onVisible = () => { if (document.visibilityState === "visible") resyncPush(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [session]);
 
   // Send anything saved while offline as soon as we're signed in and online.
   useEffect(() => {

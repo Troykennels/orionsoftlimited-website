@@ -56,9 +56,18 @@ export async function enablePush() {
 export async function resyncPush() {
   try {
     if (!pushSupported() || Notification.permission !== "granted") return;
-    const reg = await navigator.serviceWorker.getRegistration("/staff");
-    const sub = await reg?.pushManager.getSubscription();
-    if (sub) await api("/api/staff/push", { method: "POST", body: { subscription: sub.toJSON() } });
+    const reg = (await navigator.serviceWorker.getRegistration("/staff")) || (await registerServiceWorker());
+    if (!reg) return;
+    const { publicKey } = await api("/api/staff/push");
+    const want = b64ToBytes(publicKey);
+    let sub = await reg.pushManager.getSubscription();
+    // Made with a different server key: it can never receive alerts. Replace it.
+    const have = sub?.options?.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+    if (sub && have && (have.length !== want.length || have.some((b, i) => b !== want[i]))) { await sub.unsubscribe().catch(() => {}); sub = null; }
+    // The phone dropped it (iPhones do this): alerts are still allowed, so
+    // quietly subscribe again instead of going silent.
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+    await api("/api/staff/push", { method: "POST", body: { subscription: sub.toJSON() } });
   } catch { /* best-effort */ }
 }
 
