@@ -10,6 +10,11 @@ self.addEventListener("push", event => {
   const title = data.title || "Orion Staff Office";
   // An open office refreshes its bell straight away.
   event.waitUntil(self.clients.matchAll({ type: "window" }).then(all => all.forEach(c => c.postMessage({ type: "so-push" }))));
+  // Number on the home-screen icon, like WhatsApp (iPhone and Android apps).
+  if (self.navigator.setAppBadge) {
+    const n = Number(data.badge);
+    event.waitUntil((Number.isFinite(n) && n > 0 ? self.navigator.setAppBadge(n) : data.badge === 0 ? self.navigator.clearAppBadge() : self.navigator.setAppBadge()).catch(() => {}));
+  }
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "",
     tag: data.tag || "office",

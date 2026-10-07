@@ -229,6 +229,12 @@ export default function StaffApp() {
     return () => { clearTimeout(first); clearInterval(t); navigator.serviceWorker?.removeEventListener("message", onSw); };
   }, [session, pollBadges]);
 
+  // Keep the number on the home-screen icon in step with the bell.
+  useEffect(() => {
+    if (!notifs || !("setAppBadge" in navigator)) return;
+    (notifs.unread > 0 ? navigator.setAppBadge(notifs.unread) : navigator.clearAppBadge()).catch(() => {});
+  }, [notifs]);
+
   // Installable app + phone notifications for the office.
   useEffect(() => { applyStaffManifest(); registerServiceWorker().then(() => resyncPush()); }, []);
 
@@ -265,6 +271,7 @@ export default function StaffApp() {
   async function logout() {
     try { await api("/api/auth/logout?portal=staff", { method: "POST" }); } catch { /* ignore */ }
     try { (await loadGoogleIdentity())?.accounts?.id?.disableAutoSelect(); } catch { /* ignore */ }
+    navigator.clearAppBadge?.().catch(() => {});
     setSession(null); setOffice(null);
   }
 

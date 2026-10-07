@@ -173,7 +173,9 @@ export async function notify(userIds, { type, title, body = "", link = "", actor
     let pushed = 0;
     try {
       const { sendPush } = await import("./push.js");
-      pushed = await sendPush(id, { title, body, link, type, quiet });
+      // The unread count goes with it, for the number on the app icon.
+      const badge = await listNotifications(id, 200).then(n => n.unread).catch(() => null);
+      pushed = await sendPush(id, { title, body, link, type, quiet, badge });
     } catch { /* push is best-effort */ }
     // …and when no phone is set up, email anything that needs action.
     if (!pushed && EMAIL_FALLBACK.has(type)) {
