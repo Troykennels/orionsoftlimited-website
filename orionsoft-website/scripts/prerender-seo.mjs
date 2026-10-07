@@ -94,7 +94,7 @@ function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], imag
   const ld = [crumbs, ...jsonLd].map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, "\\u003c")}</script>`).join("\n    ");
   // Visitors never see the text version flash before the app loads: it's for
   // crawlers and link previews, which read the HTML without running scripts.
-  html = html.replace("</head>", `    ${ld}\n    <script>document.documentElement.classList.add("js")</script><style>.js #seo-fallback{display:none}</style>\n  </head>`);
+  html = html.replace("</head>", `    ${ld}\n    <script>(function(d){d.classList.add("js");if(!/^\\/(q|p|pay|sign|client|applicant|id-card|verify|confirm-visit)(\\/|$)/.test(location.pathname))d.classList.add("dark-boot")})(document.documentElement)</script><style>.js #seo-fallback{display:none}.dark-boot,.dark-boot body{background:#060810}.js #root:has(> #seo-fallback)::before{content:"";position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid rgba(200,168,80,.25);border-top-color:#C8A850;border-radius:50%;animation:ossb .8s linear infinite}@keyframes ossb{to{transform:rotate(360deg)}}</style>\n  </head>`);
   // Readable content for crawlers and link previews; React replaces it on load.
   const content = `<div id="root"><main id="seo-fallback" style="max-width:880px;margin:0 auto;padding:110px 20px 60px;font-family:system-ui,sans-serif;color:#C8D0E0;background:#060810;line-height:1.6">
 <h1 style="color:#F2F6FF">${esc(h1)}</h1><p>${esc(desc)}</p>
