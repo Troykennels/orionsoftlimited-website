@@ -32,7 +32,7 @@ function Conversation({ convo, onBack, onSent }) {
   useEffect(() => {
     lastAt.current = "";
     const first = setTimeout(() => load(false), 0);
-    const t = setInterval(() => load(true), 5000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 5000);
     return () => { clearTimeout(first); clearInterval(t); };
   }, [load]);
   useEffect(() => { bottom.current?.scrollIntoView({ block: "end" }); }, [messages.length]);
@@ -112,7 +112,7 @@ export default function Messages({ param }) {
   const [ch, setCh] = useState({ name: "", topic: "", private: false, memberIds: [] });
 
   const load = useCallback(() => api("/api/staff/messages").then(setData).catch(e => toast(e.message, "err")), []);
-  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(() => { if (!document.hidden) load(); }, 15000); return () => clearInterval(t); }, [load]);
 
   const active = param ? (data.channels.find(c => c.id === param) || data.dms.find(d => d.id === param) || (param.startsWith("dm--") ? { id: param, partnerId: param.slice(4).split("--").find(x => x !== me.id) } : null)) : null;
 

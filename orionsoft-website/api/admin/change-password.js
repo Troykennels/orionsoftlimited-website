@@ -1,4 +1,5 @@
 import { getRecord, putRecord } from "../_lib/records.js";
+import { storeError } from "../store.js";
 import { requireAuth, hashPassword, verifyPassword } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
   if (newPassword.length < 10) return res.status(400).json({ error: "New password must be at least 10 characters" });
 
   const admin = await getRecord("admins", session.sub);
+  if (!admin && storeError()) return res.status(503).json({ error: "The database isn't answering right now. Try again shortly." });
   if (!admin) return res.status(404).json({ error: "Admin account not found" });
 
   const ok = await verifyPassword(currentPassword, admin.passwordHash);

@@ -1,6 +1,7 @@
 import { getByLookup, getRecord, putRecord } from "../_lib/records.js";
 import { checkSecondFactor } from "../_lib/totp.js";
 import { logAudit } from "../_lib/audit.js";
+import { storeError } from "../store.js";
 import { verifyPassword, signSession, setSessionCookie, clearSessionCookie, getSessionFromRequest, REMEMBER_TTL_SECONDS, ADMIN_REMEMBER_TTL_SECONDS, ADMIN_COOKIE } from "../_lib/auth.js";
 
 // Only FAILED attempts count, keyed by IP + email. A whole office behind one
@@ -46,6 +47,8 @@ export default async function handler(req, res) {
 
   const entity = portal === "admin" ? "admins" : "employees";
   const user = await getByLookup(entity, "email", email);
+  // The database not answering is not a wrong password: say so, and don't count it.
+  if (!user && storeError()) return res.status(503).json({ error: "We can't reach our database right now, so nobody can sign in. Your account is safe; please try again shortly." });
   if (!user || user.status !== "active") {
     recordFail(key);
     return res.status(401).json({ error: "Invalid email or password" });

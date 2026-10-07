@@ -252,7 +252,7 @@ export default function ApplicantPortal() {
   // Updates from the recruiting team appear without refreshing.
   useEffect(() => {
     if (!state.data) return undefined;
-    const t = setInterval(load, 30000);
+    const t = setInterval(() => { if (!document.hidden) load(); }, 30000);
     return () => clearInterval(t);
   }, [state.data, load]);
 

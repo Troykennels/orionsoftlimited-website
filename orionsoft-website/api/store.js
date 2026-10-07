@@ -14,16 +14,50 @@ const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TO
 
 const mem = new Map(); // dev-only fallback store: key -> string | string[] (list) | Map (hash)
 
-async function u(method, path, body) {
+// The database's last error (e.g. Upstash "max requests limit exceeded"),
+// so health checks and sign-in can say the database is down instead of
+// treating every lookup as "not found".
+let lastError = null; // { message, at }
+let alertedAt = 0;
+export function storeError() { return lastError && Date.now() - lastError.at < 120000 ? lastError : null; }
+function failed(message) {
+  lastError = { message: String(message).slice(0, 200), at: Date.now() };
+  console.error("[store]", lastError.message);
+  // Tell the owner by email, at most every 3 hours (the email itself must not
+  // depend on the database).
+  if (Date.now() - alertedAt < 3 * 3600000) return;
+  alertedAt = Date.now();
+  import("./_lib/mailer.js").then(({ sendEmail, brandedShell }) => sendEmail(process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com", "URGENT: the website database is not responding",
+    brandedShell(`<h2 style="color:#B91C1C;font-size:18px;margin:0 0 12px;">The database stopped answering</h2>
+      <p style="color:#3A4556;font-size:14px;line-height:1.7;">Nobody can sign in to the admin, Staff Office or client portal until it's back. Your data is not deleted.</p>
+      <p style="color:#3A4556;font-size:14px;line-height:1.7;">Error from Upstash: <code>${lastError.message.replace(/[<>&]/g, "")}</code></p>
+      <p style="color:#3A4556;font-size:14px;line-height:1.7;">If it says the request limit was reached: open console.upstash.com → your Redis database → upgrade the plan (Pay as you go). It starts working again at once.</p>`, { title: "Database down" }), { kind: "system_alert" })).catch(() => {});
+}
+
+// A failed database call throws (StoreUnavailable) instead of looking like
+// "no data": otherwise a read that failed could be saved back over real data,
+// and sign-in says "wrong password". Counters and locks pass soft=true and
+// just get null.
+export class StoreUnavailable extends Error {
+  constructor(message) { super(`Database unavailable: ${message}`); this.name = "StoreUnavailable"; }
+}
+async function u(method, path, body, soft = false) {
   if (!BASE || !TOKEN) return null;
+  const fail = m => { failed(m); if (soft) return null; throw new StoreUnavailable(m); };
   try {
     const r = await fetch(`${BASE}${path}`, {
       method,
       headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(10000),
     });
-    return await r.json();
-  } catch { return null; }
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || j.error) return fail(j?.error || `HTTP ${r.status}`);
+    return j;
+  } catch (e) {
+    if (e instanceof StoreUnavailable) throw e;
+    return fail(e.message || "network error");
+  }
 }
 
 // Push JSON item to front of a Redis list (lpush = newest first).
@@ -63,14 +97,14 @@ export async function incr(key) {
     mem.set(key, String(next));
     return next;
   }
-  const res = await u("GET", `/incr/${key}`);
+  const res = await u("GET", `/incr/${key}`, undefined, true);
   return res?.result ?? 0;
 }
 
 // Get a counter value
 export async function getCount(key) {
   if (!BASE || !TOKEN) return parseInt(mem.get(key), 10) || 0;
-  const res = await u("GET", `/get/${key}`);
+  const res = await u("GET", `/get/${key}`, undefined, true);
   return parseInt(res?.result ?? "0", 10) || 0;
 }
 
@@ -82,7 +116,7 @@ export async function hincr(key, field) {
     mem.set(key, hash);
     return hash[field];
   }
-  const res = await u("GET", `/hincrby/${key}/${field}/1`);
+  const res = await u("GET", `/hincrby/${key}/${field}/1`, undefined, true);
   return res?.result ?? 0;
 }
 
@@ -94,14 +128,14 @@ export async function hincrby(key, field, n) {
     mem.set(key, hash);
     return hash[field];
   }
-  const res = await u("GET", `/hincrby/${key}/${encodeURIComponent(field)}/${Math.trunc(n)}`);
+  const res = await u("GET", `/hincrby/${key}/${encodeURIComponent(field)}/${Math.trunc(n)}`, undefined, true);
   return res?.result ?? 0;
 }
 
 // Get all hash fields+values
 export async function hgetall(key) {
   if (!BASE || !TOKEN) return { ...(mem.get(key) || {}) };
-  const res = await u("GET", `/hgetall/${key}`);
+  const res = await u("GET", `/hgetall/${key}`, undefined, true);
   if (!res?.result) return {};
   const obj = {};
   const arr = res.result;
@@ -189,7 +223,7 @@ export async function claim(key, ttlSeconds = 60) {
     mem.set(key, { until: Date.now() + ttlSeconds * 1000 });
     return true;
   }
-  const res = await u("POST", "", ["SET", key, "1", "NX", "EX", String(Math.max(1, Math.trunc(ttlSeconds)))]);
+  const res = await u("POST", "", ["SET", key, "1", "NX", "EX", String(Math.max(1, Math.trunc(ttlSeconds)))], true);
   return res?.result === "OK";
 }
 
@@ -201,8 +235,8 @@ export async function incrTtl(key, ttlSeconds) {
     cur.n++; mem.set(key, cur);
     return cur.n;
   }
-  const res = await u("POST", "", ["INCR", key]);
-  if (res?.result === 1) await u("POST", "", ["EXPIRE", key, String(Math.trunc(ttlSeconds))]);
+  const res = await u("POST", "", ["INCR", key], true);
+  if (res?.result === 1) await u("POST", "", ["EXPIRE", key, String(Math.trunc(ttlSeconds))], true);
   return res?.result ?? 0;
 }
 

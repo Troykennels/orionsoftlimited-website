@@ -625,7 +625,7 @@ function useAnalytics() {
 
   useEffect(() => {
     loadData();
-    const t1 = setInterval(() => loadData(true), ANALYTICS_TTL);
+    const t1 = setInterval(() => { if (!document.hidden) loadData(true); }, ANALYTICS_TTL);
     const t2 = setInterval(() => setCountdown(n => n <= 1 ? 60 : n - 1), 1000);
     return () => { clearInterval(t1); clearInterval(t2); };
   }, [loadData]);
@@ -653,7 +653,7 @@ function useAttention(enabled = true) {
   }
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 30000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -1444,7 +1444,7 @@ function NewsletterSection() {
     try { const r = await fetch("/api/admin/newsletter"); const j = await r.json(); if (r.ok) setData(j); else setMsg(j.error || "Couldn't load subscribers"); }
     catch { setMsg("Couldn't load subscribers"); }
   }, []);
-  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(() => { if (!document.hidden) load(); }, 30000); return () => clearInterval(t); }, [load]);
 
   async function call(method, body, url = "/api/admin/newsletter") {
     const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
@@ -2280,7 +2280,7 @@ function ApplicantsSection() {
   }
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -3184,7 +3184,7 @@ function AuditSection() {
   }
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -4093,7 +4093,7 @@ function WeeklyReportsSection() {
 
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -4165,7 +4165,7 @@ function LeaveRequestsSection() {
 
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -4656,7 +4656,7 @@ function ContractsSection() {
   useEffect(() => {
     load();
     // Picks up signings, online payments and reported transfers without a reload.
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -5202,7 +5202,7 @@ function PayrollSection({ session }) {
   }
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 
@@ -5598,7 +5598,7 @@ function EmailLogSection() {
   }
   useEffect(() => {
     load();
-    const t = setInterval(() => load(true), 15000);
+    const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
     return () => clearInterval(t);
   }, []);
 

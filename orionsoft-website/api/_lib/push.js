@@ -3,7 +3,7 @@
 // VAPID keys come from env (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY) or are
 // generated once and stored, so push works with zero setup.
 import webpush from "web-push";
-import { get, set, mget } from "../store.js";
+import { get, set, mget, storeError } from "../store.js";
 
 const VAPID_KEY = "orionsoft:push:vapid";
 const subsKey = id => `orionsoft:push:subs:${id}`;
@@ -15,6 +15,9 @@ export async function getVapid() {
     vapid = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
   } else {
     vapid = await get(VAPID_KEY);
+    // Database not answering: never invent new keys (every phone would stop
+    // getting alerts once it's back). Try again next time.
+    if (!vapid?.publicKey && storeError()) { vapid = null; throw new Error("Database unavailable"); }
     if (!vapid?.publicKey) {
       vapid = webpush.generateVAPIDKeys();
       await set(VAPID_KEY, vapid);
@@ -77,10 +80,9 @@ export async function sendPush(employeeId, { title, body = "", link = "", type =
       await webpush.sendNotification(s, payload, { TTL: type === "spotcheck" ? 1200 : 259200, urgency: HIGH.has(type) ? "high" : "normal" });
       sent++;
     } catch (e) {
-      // 404/410: unsubscribed or expired. 400/401/403: made with another key or
-      // rejected for good. Drop it so email/WhatsApp take over, and the app
-      // subscribes again the next time it's opened.
-      if ([400, 401, 403, 404, 410].includes(e.statusCode)) dead.push(s.endpoint);
+      // 404/410: unsubscribed or expired. Others (e.g. 403, a key mismatch)
+      // are only logged; the app repairs its own subscription when it opens.
+      if ([404, 410].includes(e.statusCode)) dead.push(s.endpoint);
       console.error(`[push] ${employeeId} ${e.statusCode || ""} ${String(e.body || e.message).slice(0, 160)}`);
     }
   }));

@@ -10,7 +10,7 @@ export default function Payslips() {
     const load = () => api("/api/staff/payslips").then(setData).catch(e => toast(e.message, "err"));
     load();
     // Commissions added during the month show up without a refresh.
-    const t = setInterval(load, 30_000);
+    const t = setInterval(() => { if (!document.hidden) load(); }, 30_000);
     return () => clearInterval(t);
   }, []);
   if (!data) return <EmptyState>Loading…</EmptyState>;

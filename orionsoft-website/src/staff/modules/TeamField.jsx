@@ -57,7 +57,7 @@ export default function TeamField() {
   const [planFor, setPlanFor] = useState(null);
 
   const load = useCallback(() => api(`/api/staff/team?view=field&from=${range.from}&to=${range.to}`).then(setData).catch(e => toast(e.message, "err")), [range]);
-  useEffect(() => { load(); const t = setInterval(load, 60_000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { load(); const t = setInterval(() => { if (!document.hidden) load(); }, 60_000); return () => clearInterval(t); }, [load]);
 
   async function checkNow(p) {
     if (!confirm(`Ask ${p.fullName} to confirm their location now with a live photo?`)) return;

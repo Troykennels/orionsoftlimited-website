@@ -72,12 +72,20 @@ async function mountApiRoutes() {
   // stack trace), and the details stay in the server log.
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
+    if (err?.name === "StoreUnavailable") {
+      if (!res.headersSent) res.status(503).json({ error: "We can't reach our database right now. Nothing is lost; please try again in a few minutes." });
+      return;
+    }
     const status = err?.type === "entity.too.large" ? 413 : err?.type === "entity.parse.failed" ? 400 : 500;
     if (status === 500) console.error(`[api] ${req.method} ${req.path}:`, err?.stack || err);
     if (res.headersSent) return;
     res.status(status).json({ error: status === 413 ? "That upload is too large." : status === 400 ? "Invalid request body." : "Something went wrong on our side. Please try again." });
   });
 }
+
+// A background job that fails (e.g. while the database is down) is logged,
+// never allowed to crash the whole API.
+process.on("unhandledRejection", err => console.error("[unhandled]", err?.message || err));
 
 async function start() {
   await mountApiRoutes();

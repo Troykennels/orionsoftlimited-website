@@ -15,9 +15,14 @@ export function lagosDate(d = lagosNow()) { return d.toISOString().slice(0, 10);
 // A stored UTC timestamp expressed as Lagos wall-clock "YYYY-MM-DDTHH:mm".
 export function toLagos(iso) { const t = Date.parse(iso); return t ? new Date(t + LAGOS_OFFSET_MS).toISOString().slice(0, 16) : ""; }
 
+// Jobs already done are remembered in memory too, so the 5-minute tick doesn't
+// re-read every "done today?" flag from the database 288 times a day.
+const doneKeys = new Set();
 async function once(key, fn) {
-  if (await get(key)) return false;
+  if (doneKeys.has(key)) return false;
+  if (await get(key)) { doneKeys.add(key); return false; }
   await set(key, new Date().toISOString());
+  doneKeys.add(key);
   await fn();
   return true;
 }
@@ -391,7 +396,7 @@ export async function runAutomations() {
     } catch (err) { console.error("[retention]", err.message); }
     await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
     // Newsletter: email new blog posts to subscribers and send queued batches.
-    try { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); }
+    try { if (await claim("orionsoft:automation:newsletter:tick", 900)) { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); } }
     catch (err) { console.error("[newsletter]", err.message); }
   } catch (err) {
     console.error("[automations]", err.message);

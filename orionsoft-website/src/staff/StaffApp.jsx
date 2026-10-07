@@ -199,7 +199,9 @@ export default function StaffApp() {
     // Also the presence heartbeat: the server counts you online while this
     // keeps checking in (and again the moment you come back to the tab).
     const first = setTimeout(loadOffice, 0);
-    const t = setInterval(loadOffice, 60_000);
+    // Only while the app is on screen: a phone in a pocket shouldn't keep
+    // using up the database's request allowance.
+    const t = setInterval(() => { if (!document.hidden) loadOffice(); }, 60_000);
     const onVisible = () => { if (document.visibilityState === "visible") loadOffice(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", onVisible); };
@@ -222,11 +224,13 @@ export default function StaffApp() {
   useEffect(() => {
     if (!session) return undefined;
     const first = setTimeout(pollBadges, 500);
-    const t = setInterval(pollBadges, 20_000);
+    const t = setInterval(() => { if (!document.hidden) pollBadges(); }, 30_000);
+    const onVisible = () => { if (!document.hidden) pollBadges(); };
+    document.addEventListener("visibilitychange", onVisible);
     // A phone alert just arrived: refresh now instead of waiting for the poll.
     const onSw = e => { if (e.data?.type === "so-push") pollBadges(); };
     navigator.serviceWorker?.addEventListener("message", onSw);
-    return () => { clearTimeout(first); clearInterval(t); navigator.serviceWorker?.removeEventListener("message", onSw); };
+    return () => { clearTimeout(first); clearInterval(t); document.removeEventListener("visibilitychange", onVisible); navigator.serviceWorker?.removeEventListener("message", onSw); };
   }, [session, pollBadges]);
 
   // Keep the number on the home-screen icon in step with the bell.
