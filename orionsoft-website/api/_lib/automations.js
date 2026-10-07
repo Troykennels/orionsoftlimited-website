@@ -349,7 +349,10 @@ export async function runAutomations() {
     await spotChecks(now);
     try { if (await claim("orionsoft:automation:noclockin:tick", 900)) await missingClockIns(now); } catch (err) { console.error("[noclockin]", err.message); }
     // Nightly backup by email (after 02:00 Lagos), once a day.
-    if (now.getUTCHours() >= 2) {
+    // Off unless AUTO_BACKUP=on (the owner turned it off on 2026-10-07; it
+    // reads the whole database every night). Backups can still be downloaded
+    // any time from the admin.
+    if (process.env.AUTO_BACKUP === "on" && now.getUTCHours() >= 2) {
       try {
         await once(`orionsoft:automation:backup:${today}`, async () => {
           const { emailBackup } = await import("./backup.js");

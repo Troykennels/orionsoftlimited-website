@@ -88,6 +88,9 @@ async function mountApiRoutes() {
 process.on("unhandledRejection", err => console.error("[unhandled]", err?.message || err));
 
 async function start() {
+  // One-time move from Upstash to Railway Redis (only when switched on).
+  try { const { migrateOnStart } = await import("./api/_lib/migrateUpstash.js"); await migrateOnStart(); }
+  catch (err) { console.error("[migrate]", err.message); }
   await mountApiRoutes();
   const port = process.env.PORT || 3000;
   app.listen(port, () => console.log(`Orion Soft API server listening on port ${port}`));
