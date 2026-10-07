@@ -92,9 +92,11 @@ function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], imag
   if (image) html = html.replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`);
   const crumbs = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` }, ...(path === "/" ? [] : [{ "@type": "ListItem", position: 2, name: h1, item: url }])] };
   const ld = [crumbs, ...jsonLd].map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, "\\u003c")}</script>`).join("\n    ");
-  html = html.replace("</head>", `    ${ld}\n  </head>`);
+  // Visitors never see the text version flash before the app loads: it's for
+  // crawlers and link previews, which read the HTML without running scripts.
+  html = html.replace("</head>", `    ${ld}\n    <script>document.documentElement.classList.add("js")</script><style>.js #seo-fallback{display:none}</style>\n  </head>`);
   // Readable content for crawlers and link previews; React replaces it on load.
-  const content = `<div id="root"><main style="max-width:880px;margin:0 auto;padding:110px 20px 60px;font-family:system-ui,sans-serif;color:#C8D0E0;background:#060810;line-height:1.6">
+  const content = `<div id="root"><main id="seo-fallback" style="max-width:880px;margin:0 auto;padding:110px 20px 60px;font-family:system-ui,sans-serif;color:#C8D0E0;background:#060810;line-height:1.6">
 <h1 style="color:#F2F6FF">${esc(h1)}</h1><p>${esc(desc)}</p>
 ${body.map(b => `<p>${esc(b)}</p>`).join("")}
 ${points.length ? `<ul>${points.map(p => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
