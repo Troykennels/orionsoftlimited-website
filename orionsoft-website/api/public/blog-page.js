@@ -27,7 +27,9 @@ export function renderPost(base, post) {
   const title = /orion soft/i.test(post.title) ? post.title : `${post.title} | Orion Soft`;
   const plain = String(post.content || "").replace(/<[^>]+>/g, " ").replace(/[#*_>`-]+/g, " ").replace(/\s+/g, " ").trim();
   const desc = String(post.excerpt || plain).slice(0, 160);
-  const image = /^https:\/\//.test(post.coverImage || "") ? post.coverImage : /^\//.test(post.coverImage || "") ? `${BASE}${post.coverImage}` : "";
+  const cover = /^https:\/\//.test(post.coverImage || "") ? post.coverImage : /^\//.test(post.coverImage || "") ? `${BASE}${post.coverImage}` : "";
+  // No cover picture: a branded image with the post's title (api/public/og.js).
+  const image = cover || `${BASE}/api/public/og?blog=${encodeURIComponent(slug)}`;
   let html = base;
   html = tag(html, /<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
   html = tag(html, /<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(desc)}" />`);
@@ -38,12 +40,11 @@ export function renderPost(base, post) {
   html = tag(html, /<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${esc(desc)}" />`);
   html = tag(html, /<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${esc(title)}" />`);
   html = tag(html, /<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${esc(desc)}" />`);
-  if (image) {
-    html = tag(html, /<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`);
-    html = tag(html, /<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(image)}" />`);
-    // The size tags describe the default picture, not this one.
-    html = html.replace(/\s*<meta property="og:image:(width|height|alt)" content="[^"]*"\s*\/?>/g, "");
-  }
+  html = tag(html, /<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`);
+  html = tag(html, /<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(image)}" />`);
+  html = html.replace(/<meta (property="og:image:alt"|name="twitter:image:alt") content="[^"]*"\s*\/?>/g, (_, attr) => `<meta ${attr} content="${esc(title)}" />`);
+  // The size tags describe a 1200×630 picture; a cover picture may differ.
+  if (cover) html = html.replace(/\s*<meta property="og:image:(width|height)" content="[^"]*"\s*\/?>/g, "");
   // The readable text version (crawlers; hidden once the app starts).
   html = html.replace(/<main id="seo-fallback"([^>]*)>[\s\S]*?<\/main>/, (_, attrs) =>
     `<main id="seo-fallback"${attrs}><h1 style="color:#F2F6FF">${esc(post.title)}</h1><p>${esc(desc)}</p>${plain ? `<p>${esc(plain.slice(0, 2500))}</p>` : ""}<p><a href="/blog" style="color:#C8A850">More from the Orion Soft blog</a></p></main>`);

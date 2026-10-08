@@ -12,6 +12,7 @@ Disallow: /q/
 Disallow: /api/
 # Share links must stay readable so LinkedIn, X, Facebook and WhatsApp show previews.
 Allow: /api/public/share
+Allow: /api/public/og
 Disallow: /confirm-visit/
 Disallow: /id-card
 Disallow: /verify/

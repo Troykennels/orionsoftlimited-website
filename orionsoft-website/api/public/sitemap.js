@@ -8,7 +8,7 @@ import { listRecords } from "../_lib/records.js";
 const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
-  ["/", "weekly", 1.0], ["/products", "weekly", 0.9],
+  ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/press", "monthly", 0.5],
   ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/pricing", "monthly", 0.8],
   ["/about", "monthly", 0.7], ["/why", "monthly", 0.7], ["/process", "monthly", 0.6], ["/work", "monthly", 0.7],
   ["/case-studies", "monthly", 0.7], ["/clients", "monthly", 0.6], ["/testimonials", "monthly", 0.6], ["/success-stories", "monthly", 0.6],

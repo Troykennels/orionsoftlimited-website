@@ -5,6 +5,7 @@
 // LinkedIn/WhatsApp/AI assistants (which don't run JavaScript) only ever saw
 // the homepage. React replaces the fallback content as soon as it loads.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -89,7 +90,11 @@ function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], imag
     .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${esc(desc)}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${esc(fullTitle)}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${esc(desc)}" />`);
-  if (image) html = html.replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`);
+  if (image) {
+    html = html.replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`)
+      .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(image)}" />`)
+      .replace(/<meta (property="og:image:alt"|name="twitter:image:alt") content="[^"]*"\s*\/?>/g, (_, attr) => `<meta ${attr} content="${esc(fullTitle)}" />`);
+  }
   const crumbs = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` }, ...(path === "/" ? [] : [{ "@type": "ListItem", position: 2, name: h1, item: url }])] };
   const ld = [crumbs, ...jsonLd].map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, "\\u003c")}</script>`).join("\n    ");
   // Visitors never see the text version flash before the app loads: it's for
@@ -124,6 +129,28 @@ for (const [id, p] of Object.entries(PRODUCTS)) {
   }); count++;
 }
 
+// Free tools: pages people search for, share and link to.
+page("/paye-calculator", {
+  title: "PAYE Calculator Nigeria 2026: Take-Home Pay Under the New Tax Act",
+  desc: "Free Nigeria PAYE and salary calculator for 2026. See your tax, take-home pay and how the Nigeria Tax Act 2025 compares with the old law. Includes rent relief, pension and NHF.",
+  h1: "Nigeria PAYE & Take-Home Pay Calculator 2026",
+  image: `${SITE}/api/public/og?page=paye-calculator`,
+  body: ["Enter your gross monthly or annual salary to see your PAYE income tax, pension, NHF and take-home pay under the Nigeria Tax Act 2025, in force from 1 January 2026, and how much more or less you keep than under the old Personal Income Tax Act.", ...PAYE_FAQS.map(([q, a]) => `${q} ${a}`)],
+  points: ["First ₦800,000 of chargeable income a year: 0%", "Next ₦2,200,000: 15%", "Next ₦9,000,000: 18%", "Next ₦13,000,000: 21%", "Next ₦25,000,000: 23%", "Above ₦50,000,000: 25%", "Rent relief: 20% of annual rent, up to ₦500,000"],
+  jsonLd: [
+    { "@context": "https://schema.org", "@type": "WebApplication", name: "Nigeria PAYE & Take-Home Pay Calculator 2026", url: `${SITE}/paye-calculator`, applicationCategory: "FinanceApplication", operatingSystem: "Any", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "NGN" }, publisher: ORG, inLanguage: "en-NG" },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: PAYE_FAQS.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+  ],
+}); count++;
+
+page("/press", {
+  title: "Press & Media Kit | Orion Soft Limited",
+  desc: "Press and media kit for Orion Soft Limited, the Lagos software company behind CareCore hospital software: company description, fact sheet, logos, latest news and press contact.",
+  h1: "Orion Soft press & media kit",
+  body: ["Orion Soft Limited is a Nigerian software company (CAC RC 9535128) based in Lagos that builds business management software for African organisations, alongside custom websites, web apps and mobile apps. Its products include CareCore, a hospital management system running in Nigerian hospitals.", "Press desk: orionsoftlimited@gmail.com, +234 816 957 7059."],
+  image: `${SITE}/api/public/og?page=press`,
+}); count++;
+
 // Blog posts and FAQs from the live site's content (skipped if unreachable).
 try {
   const r = await fetch(`${SITE}/api/content?only=orionsoft_blog_v1,orionsoft_faqs_v1`, { signal: AbortSignal.timeout(10000) });
@@ -134,7 +161,9 @@ try {
     const plain = String(post.content || "").replace(/<[^>]+>/g, " ").replace(/[#*_>`-]+/g, " ").replace(/\s+/g, " ").trim();
     const desc = String(post.excerpt || plain).slice(0, 160);
     page(`/blog/${slug}`, {
-      title: post.title, desc, h1: post.title, body: plain ? [plain.slice(0, 2500)] : [], image: /^https:\/\//.test(post.coverImage || "") ? post.coverImage : undefined,
+      title: post.title, desc, h1: post.title, body: plain ? [plain.slice(0, 2500)] : [],
+      // Its own cover picture, or a branded image with its title (api/public/og.js).
+      image: /^https:\/\//.test(post.coverImage || "") ? post.coverImage : `${SITE}/api/public/og?blog=${encodeURIComponent(slug)}`,
       jsonLd: [{ "@context": "https://schema.org", "@type": "BlogPosting", headline: post.title, description: desc, datePublished: post.date || post.createdAt, dateModified: post.updatedAt || post.date, author: { "@type": "Organization", name: post.author || "Orion Soft" }, publisher: ORG, mainEntityOfPage: `${SITE}/blog/${slug}`, ...(post.coverImage ? { image: post.coverImage } : {}) }],
     }); count++;
   }

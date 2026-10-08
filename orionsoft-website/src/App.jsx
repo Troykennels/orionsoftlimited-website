@@ -33,6 +33,8 @@ const DocsPage          = lazy(() => import("./pages/TrustPages").then(m => ({ d
 const ApiDocsPage       = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ApiDocsPage })));
 const ReferralPage      = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.ReferralPage })));
 const InvestorsPage     = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.InvestorsPage })));
+const PayeCalculatorPage = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PayeCalculatorPage })));
+const PressPage         = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PressPage })));
 
 // Why Orion Soft — mission, vision, values, stats, partners
 const WhyPageFull = lazy(() => import("./pages/WhyPage"));
@@ -3164,6 +3166,8 @@ function Footer({ setCurrentPage }) {
               { l: "Knowledge Base", a: "/docs", onClick: (e) => { e.preventDefault(); setCurrentPage("docs"); } },
               { l: "API Reference", a: "/api-docs", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "/faq", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
+              { l: "PAYE Calculator 2026", a: "/paye-calculator", onClick: (e) => { e.preventDefault(); setCurrentPage("paye-calculator"); } },
+              { l: "Press & Media", a: "/press", onClick: (e) => { e.preventDefault(); setCurrentPage("press"); } },
               { l: "Client Portal", a: "/client" },
               { l: "Support Centre", a: "/support", onClick: (e) => { e.preventDefault(); setCurrentPage("support"); } },
               { l: "Live Chat", a: "#", onClick: (e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent("orion-open-chat")); } },
@@ -5397,7 +5401,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5550,14 +5554,18 @@ export default function App() {
   const maintenance = flags.maintenance_mode === true && currentPage !== "admin";
   const isKnownPage = !pageOff && (KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage));
 
+  // ?embed=1 on a tool page: just the tool, for other websites to embed.
+  const embed = currentPage === "paye-calculator" && new URLSearchParams(window.location.search).has("embed");
+  const chrome = currentPage !== "admin" && !embed;
+
   return (
   <CMSContext.Provider value={cms}>
     <div style={{ background: C.bg, minHeight: "100vh" }}>
       {/* Global styles are in src/App.css */}
 
-      {currentPage !== "admin" && flags.announcements !== false && <AnnouncementBar />}
-      {currentPage !== "admin" && <a className="skip-link" href="#main-content">Skip to main content</a>}
-      {currentPage !== "admin" && <Nav currentPage={currentPage} setCurrentPage={navSetPage} />}
+      {chrome && flags.announcements !== false && <AnnouncementBar />}
+      {chrome && <a className="skip-link" href="#main-content">Skip to main content</a>}
+      {chrome && <Nav currentPage={currentPage} setCurrentPage={navSetPage} />}
 
       <main id="main-content" tabIndex={-1}>
         {maintenance && (
@@ -5750,6 +5758,12 @@ export default function App() {
         {currentPage === "referral" && (
           <Suspense fallback={<PageLoader />}><ReferralPage setCurrentPage={navSetPage} /></Suspense>
         )}
+        {currentPage === "paye-calculator" && (
+          <Suspense fallback={<PageLoader />}><PayeCalculatorPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "press" && (
+          <Suspense fallback={<PageLoader />}><PressPage setCurrentPage={navSetPage} /></Suspense>
+        )}
         {currentPage === "investors" && (
           <Suspense fallback={<PageLoader />}><InvestorsPage setCurrentPage={navSetPage} /></Suspense>
         )}
@@ -5770,10 +5784,10 @@ export default function App() {
         )}
       </main>
 
-      {currentPage !== "admin" && <Footer setCurrentPage={navSetPage} />}
-      {currentPage !== "admin" && <ChatBot setCurrentPage={navSetPage} />}
-      {currentPage !== "admin" && <WhatsAppFloat page={currentPage} />}
-      {currentPage !== "admin" && flags.chat !== false && <TawkLiveChat />}
+      {chrome && <Footer setCurrentPage={navSetPage} />}
+      {chrome && <ChatBot setCurrentPage={navSetPage} />}
+      {chrome && <WhatsAppFloat page={currentPage} />}
+      {chrome && flags.chat !== false && <TawkLiveChat />}
     </div>
   </CMSContext.Provider>
   );

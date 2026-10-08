@@ -27,6 +27,10 @@
 - Mobile apps (Android and iOS)
 - Implementation, data migration, training and support
 
+## Free tools
+
+- [Nigeria PAYE & Take-Home Pay Calculator 2026](https://www.orionsoftlimited.com/paye-calculator): Free salary and income tax calculator under the Nigeria Tax Act 2025 (in force from 1 January 2026), with rent relief, pension, NHF and NHIS, a band-by-band breakdown, employer cost, and a comparison with the old Personal Income Tax Act. Can be embedded on other websites.
+
 ## Useful pages
 
 - [All products](https://www.orionsoftlimited.com/products)
