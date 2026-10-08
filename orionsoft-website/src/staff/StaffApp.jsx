@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } fro
 import {
   Home, Newspaper, MessagesSquare, CalendarClock, ListChecks, Target, Share2, TrendingUp, Handshake,
   Users, CheckCheck, ClipboardList, Palmtree, Receipt, Wallet, Network, BookOpen, UserCircle, Bell,
-  Menu, LogOut, Search, Building2, MapPin, Gauge, FileText,
+  Menu, LogOut, Search, Building2, MapPin, Gauge, FileText, FileWarning,
 } from "lucide-react";
 import { C, font, PRESENCE } from "./theme.js";
 import { api, timeAgo } from "./api.js";
@@ -40,11 +40,13 @@ const Payslips = lazy(() => import("./modules/Payslips.jsx"));
 const Profile = lazy(() => import("./modules/Profile.jsx"));
 const FieldVisits = lazy(() => import("./modules/FieldVisits.jsx"));
 const Performance = lazy(() => import("./modules/Performance.jsx"));
+const Queries = lazy(() => import("./modules/Queries.jsx"));
 
 // Navigation, filtered by what the signed-in person's role allows.
 function buildNav(can, counts) {
   const approver = can("team.approve") || can("org.approve") || can("finance.approve") || counts.reviewsReports;
   const approvalsCount = (counts.approvals?.leave || 0) + (counts.approvals?.reports || 0) + (counts.approvals?.expenses || 0);
+  const managesPeople = can("team.view") || can("hr.records") || can("org.approve") || counts.hasReports;
   return [
     { group: "WORKSPACE", items: [
       { id: "home", label: "Lobby", icon: Home },
@@ -61,15 +63,16 @@ function buildNav(can, counts) {
       (can("pipeline") || can("pipeline.all")) && { id: "pipeline", label: "BD Pipeline", icon: TrendingUp },
       (can("pipeline") || can("pipeline.all")) && { id: "proposals", label: "Proposals", icon: FileText },
       (can("liaison") || can("liaison.all")) && { id: "liaison", label: "Liaison Register", icon: Handshake },
-      (can("team.view") || can("hr.records") || can("org.approve") || counts.hasReports) && { id: "team", label: can("hr.records") ? "HR Desk" : "Team Desk", icon: Users },
+      managesPeople && { id: "team", label: can("hr.records") ? "HR Desk" : "Team Desk", icon: Users },
       approver && { id: "approvals", label: "Approvals", icon: CheckCheck, badge: approvalsCount },
     ].filter(Boolean) },
     { group: "HR & ME", items: [
       { id: "reports", label: "Weekly Reports", icon: ClipboardList },
       { id: "leave", label: "Leave", icon: Palmtree },
+      (managesPeople || counts.queries?.mine > 0) && { id: "queries", label: "Queries", icon: FileWarning, badge: (counts.queries?.toAnswer || 0) + (counts.queries?.toDecide || 0) },
       { id: "expenses", label: "Expense Claims", icon: Receipt },
       { id: "payslips", label: "Payslips", icon: Wallet },
-    ] },
+    ].filter(Boolean) },
     { group: "COMPANY", items: [
       { id: "people", label: "People & Org Chart", icon: Network },
       { id: "handbook", label: "Handbook & Links", icon: BookOpen },
@@ -330,13 +333,13 @@ export default function StaffApp() {
     </div>
   );
 
-  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length, hasReports: (office.directReports || []).length > 0 };
+  const counts = { messages: msgUnread, tasks: office.myOpenTasks, meetingsToday: office.todaysMeetings.length, approvals: office.approvals, reviewsReports: !!office.reviewsReports, spotChecks: (office.pendingSpotChecks || []).length, hasReports: (office.directReports || []).length > 0, queries: office.queries };
   const nav = buildNav(ctx.can, counts);
   const allowed = new Set(nav.flatMap(g => g.items.map(i => i.id)));
   const mod = allowed.has(route.module) ? route.module : "home";
   const me = office.me;
 
-  const MODULES = { visits: FieldVisits, performance: Performance, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, proposals: Proposals, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
+  const MODULES = { visits: FieldVisits, performance: Performance, queries: Queries, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, proposals: Proposals, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
   const Active = MODULES[mod];
 
   return (

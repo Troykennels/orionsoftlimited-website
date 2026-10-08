@@ -398,6 +398,9 @@ export async function runAutomations() {
       });
     } catch (err) { console.error("[retention]", err.message); }
     await once(`orionsoft:automation:autoclose:${today}`, () => forgottenClockOuts(today));
+    // Hourly: remind staff whose response to a query is overdue (once per query).
+    try { if (await claim("orionsoft:automation:queries:tick", 3600)) { const { overdueQueryReminders } = await import("./queries.js"); await overdueQueryReminders(today); } }
+    catch (err) { console.error("[queries]", err.message); }
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { if (await claim("orionsoft:automation:newsletter:tick", 900)) { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); } }
     catch (err) { console.error("[newsletter]", err.message); }

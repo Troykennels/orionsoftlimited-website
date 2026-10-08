@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Gauge, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Gauge, MapPin, AlertTriangle, CheckCircle2, FileWarning } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, naira } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, Input, Textarea, Modal, EmptyState, PageHeader, Tabs, Grid, Progress, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
+import { StaffIssueQuery } from "./Queries.jsx";
+import { queryFromCard } from "../queries.js";
 
 export const GRADE_COLOR = { A: C.mint, B: C.blue, C: C.amber, D: C.rose, E: C.rose };
 const PART_LABEL = { attendance: "Attendance & punctuality", field: "Verified field work", output: "Tasks & goals", reporting: "Reporting honesty", sales: "Sales activity", engagement: "Engagement" };
@@ -148,6 +150,8 @@ export default function Performance() {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(null);
   const [toAck, setToAck] = useState(0);
+  const [querying, setQuerying] = useState(null);
+  const closeQuery = useCallback(() => setQuerying(null), []);
   const manager = can("team.view") || can("org.approve") || can("hr.records");
 
   const load = useCallback(() => api(`/api/staff/performance?scope=team&from=${range.from}&to=${range.to}`).then(setData).catch(e => toast(e.message, "err")), [range]);
@@ -181,10 +185,12 @@ export default function Performance() {
               {c.integrity !== "clean" && <Badge color={c.integrity === "concern" ? C.rose : C.amber}>{c.flags.length} flag{c.flags.length === 1 ? "" : "s"}</Badge>}
               <Btn small variant="ghost" onClick={() => setOpen(c)}>Details</Btn>
               {c.isField && <Btn small variant="ghost" icon={MapPin} onClick={() => spot(c)}>Location check</Btn>}
+              <Btn small variant="ghost" icon={FileWarning} onClick={() => setQuerying(queryFromCard(c, range))} title="Issue a formal query">Query</Btn>
             </div>
           ))}
         </SectionCard>
       )}
+      {querying && <StaffIssueQuery preset={querying} onClose={closeQuery} />}
       {open && <Modal title="Scorecard" onClose={() => setOpen(null)} width={760}><Scorecard card={open} weights={data.weights} /></Modal>}
     </div>
   );

@@ -6,7 +6,7 @@ import {
   UserCog, ClipboardList, Palmtree, Wallet, File, PenTool, FileSignature,
   Mail, Activity, ShieldCheck, ClipboardCheck, Image, Database, LogOut,
   ChevronLeft, ChevronRight, UserPlus, Download, KeyRound, MessageCircle, Menu,
-  Kanban, Receipt, Award, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette, RefreshCw,
+  Kanban, Receipt, Award, FileWarning, Boxes, LifeBuoy, CreditCard, ShoppingCart, ScrollText, Plus, MapPin, Gauge, Palette, RefreshCw,
 } from "lucide-react";
 import { richTextToSafeHtml, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
@@ -20,6 +20,7 @@ import { computeTotals as computeInvoiceTotals, amountInWords as invoiceAmountIn
 import { computeNigerianPayroll } from "../../shared/payrollNg.js";
 import TwoStepSetup from "../staff/TwoStepSetup.jsx";
 import { AttendanceFieldSection, PerformanceSection } from "./FieldAdmin.jsx";
+import { QueriesSection } from "./QueriesAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
@@ -458,6 +459,7 @@ const NAV_GROUPS = [
       { id: "weekly-reports",label: "Weekly Reports",   icon: ClipboardList },
       { id: "leave-requests",label: "Leave Requests",   icon: Palmtree },
       { id: "appraisals",    label: "Performance Reviews", icon: Award },
+      { id: "queries",       label: "Staff Queries",    icon: FileWarning },
       { id: "payroll",       label: "Payroll",          icon: Wallet },
     ],
   },
@@ -7246,6 +7248,7 @@ function DashboardContent({ active, session, navigate }) {
     case "purchase-orders":return <PurchaseOrdersSection />;
     case "email-log":      return <EmailLogSection />;
     case "appraisals":     return <AppraisalsSection />;
+    case "queries":        return <QueriesSection />;
     case "tasks":          return <TasksSection />;
     case "expenses":       return <ExpensesSection />;
     case "assets":         return <AssetsSection />;

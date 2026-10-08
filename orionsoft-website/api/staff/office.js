@@ -11,6 +11,7 @@ import {
 import { PERMISSIONS, managerChain, directReports, subordinates, canApproveFor, canReviewReport } from "../_lib/roles.js";
 import { runAutomations, lagosDate, toLagos } from "../_lib/automations.js";
 import { getSites } from "../_lib/fieldIntel.js";
+import { canManage } from "../_lib/queries.js";
 
 export const OFFICE_CONFIG_KEY = "orionsoft:office:config";
 export const DEFAULT_OFFICE_CONFIG = {
@@ -83,10 +84,10 @@ export default async function handler(req, res) {
       runAutomations().catch(() => {}); // lazy trigger; idempotent
       await ensureSlugs(employees);
       const today = lagosDate();
-      const [config, notif, board, tasks, meetings, leave, reports, acks, expenses, spots] = await Promise.all([
+      const [config, notif, board, tasks, meetings, leave, reports, acks, expenses, spots, queries] = await Promise.all([
         get(OFFICE_CONFIG_KEY), listNotifications(me.id, 30), leaderboard("month"),
         listRecords("tasks"), listRecords("meetings"), listRecords("leave"), listRecords("reports"),
-        get(`orionsoft:office:acks:${me.id}`), listRecords("expenses"), listRecords("spotchecks"),
+        get(`orionsoft:office:acks:${me.id}`), listRecords("expenses"), listRecords("spotchecks"), listRecords("queries"),
       ]);
       const cfg = { ...DEFAULT_OFFICE_CONFIG, ...(config || {}) };
       if (!cfg.resources.some(r => r.id === PRIVACY_NOTICE.id)) cfg.resources = [...cfg.resources, PRIVACY_NOTICE];
@@ -116,6 +117,12 @@ export default async function handler(req, res) {
         todaysMeetings: meetings.filter(m => toLagos(m.startsAt).slice(0, 10) === today && m.status !== "cancelled"
           && (m.hostId === me.id || (m.attendeeIds || []).includes(me.id))).sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
         approvals, reviewsReports,
+        // Staff queries: ones I must answer, and answers waiting for my decision.
+        queries: {
+          mine: queries.filter(q => q.employeeId === me.id).length,
+          toAnswer: queries.filter(q => q.employeeId === me.id && q.status === "open").length,
+          toDecide: queries.filter(q => q.status === "responded" && q.employeeId !== me.id && canManage(me, q, employees, catalog)).length,
+        },
         // Client locations learned from confirmed visits (to suggest the client on check-in).
         knownSites: Object.values(await getSites()).slice(0, 400).map(x => ({ name: x.name, lat: x.lat, lng: x.lng })),
         pendingSpotChecks: spots.filter(s => s.employeeId === me.id && s.status === "pending" && Date.parse(s.dueAt) > Date.now()).map(s => ({ id: s.id, dueAt: s.dueAt })),

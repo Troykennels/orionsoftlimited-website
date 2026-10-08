@@ -1,10 +1,12 @@
 // Admin: Attendance & Field (timesheets with GPS/device, visits with photo
 // evidence and trust, live map, location checks) and Performance scorecards.
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { MapPin, Download, Eye, Clock, UserX, Palmtree, AlertTriangle } from "lucide-react";
+import { MapPin, Download, Eye, Clock, UserX, Palmtree, AlertTriangle, FileWarning } from "lucide-react";
 import { C, font } from "../staff/theme.js";
 import { Btn, Badge, SectionCard, SectionTitle, Input, Select, Modal, Tabs, EmptyState, StatCard, Avatar, Progress, Grid, Toaster, toast } from "../staff/components.jsx";
 import { Scorecard, GRADE_COLOR } from "../staff/modules/Performance.jsx";
+import { queryFromCard } from "../staff/queries.js";
+import { AdminIssueQuery } from "./QueriesAdmin.jsx";
 import { VisitDetail as VisitEvidence, SpotDetail as SpotEvidence } from "../staff/FieldEvidence.jsx";
 import { time, dt, mins, maps, device, LEVEL, CONF } from "../staff/fieldFormat.js";
 import "../staff/staff.css";
@@ -283,6 +285,7 @@ export function PerformanceSection() {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [querying, setQuerying] = useState(null);
   useEffect(() => { call(`/api/admin/field?view=performance&from=${range.from}&to=${range.to}`).then(setData).catch(e => toast(e.message, "err")); }, [range]);
   if (!data) return <div><Toaster /><EmptyState>Calculating scorecards…</EmptyState></div>;
   const list = data.scorecards.filter(c => filter === "all" || (filter === "concern" ? c.integrity === "concern" : filter === "field" ? c.isField : c.integrity !== "clean"));
@@ -319,9 +322,11 @@ export function PerformanceSection() {
             <Badge color={GRADE_COLOR[c.grade]}>{c.overall} · {c.grade}</Badge>
             {c.integrity !== "clean" && <Badge color={c.integrity === "concern" ? C.rose : C.amber}>{c.flags.length} flag{c.flags.length === 1 ? "" : "s"}</Badge>}
             <Btn small variant="ghost" icon={Eye} onClick={() => setOpen(c)}>Scorecard</Btn>
+            <Btn small variant="ghost" icon={FileWarning} onClick={() => setQuerying(queryFromCard(c, range))} title="Issue a formal query">Query</Btn>
           </div>
         ))}
       </SectionCard>
+      {querying && <AdminIssueQuery preset={querying} onClose={() => setQuerying(null)} />}
       {open && <Modal title="Scorecard" onClose={() => setOpen(null)} width={780}><Scorecard card={open} weights={data.weights} /></Modal>}
     </div>
   );

@@ -10,7 +10,7 @@ import { CONTENT_KEYS } from "./content.js";
 
 export const ENTITIES = [
   "admins", "applicants", "appraisals", "assets", "attendance", "channels", "checklists", "contracts", "deals", "employees",
-  "expenses", "goals", "invoices", "leave", "letters", "liaisons", "meetings", "payments", "payroll", "posts", "proposals", "purchaseOrders", "subscriptions",
+  "expenses", "goals", "invoices", "leave", "letters", "liaisons", "meetings", "payments", "payroll", "posts", "proposals", "purchaseOrders", "queries", "subscriptions",
   "reports", "sharekits", "signatories", "socialposts", "spotchecks", "tasks", "templates", "tickets", "visitplans", "visits",
 ];
 const VALUE_KEYS = [
