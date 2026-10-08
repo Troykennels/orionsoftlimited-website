@@ -58,7 +58,10 @@ export function shareUrl(slug, postId) {
 export const SHARE_TARGETS = [
   { id: "linkedin", label: "LinkedIn", build: (url) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
   { id: "x", label: "X (Twitter)", build: (url, text) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text.slice(0, 240))}` },
-  { id: "facebook", label: "Facebook", build: (url) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+  // Facebook's share pop-up gets stuck on "Posting" when posting as a Page (a
+  // Facebook fault, any link). The link is copied too so the person can paste
+  // it into a normal post instead.
+  { id: "facebook", label: "Facebook", copyLink: true, build: (url) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
   // Instagram has no share-a-link page: the caption and link are copied and
   // Instagram opens (on phones, the share sheet lists the Instagram app). Use openShare().
   { id: "instagram", label: "Instagram", copy: true, build: () => "https://www.instagram.com/" },
@@ -71,18 +74,32 @@ export async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
+// Posting to the company's Facebook Page: skips Facebook's share pop-up,
+// which hangs for Pages. The text and link are copied and Facebook opens;
+// pasted into "What's on your mind?", the link posts with its preview.
+export const FACEBOOK_PAGE_TARGET = { id: "facebook_page", label: "Facebook Page", copy: true, noSheet: true, build: () => "https://www.facebook.com/" };
+
+const SHARE_NOTES = {
+  facebook: "Link copied too. If Facebook gets stuck on “Posting” (it does when posting as a Page), close it and paste the link into a new post instead.",
+  facebook_page: "Copied. On your Facebook Page, click “What’s on your mind?”, paste, wait for the link preview to appear, then click Post.",
+};
+
 // Opens a share target. Call it straight from the click, before any await:
 // phones (iPhones especially) block windows opened after waiting on anything.
-// For copy-style targets (Instagram) the caption and link also go on the
-// clipboard. Resolves to a message to show the person, or "".
+// Copy-style targets (Instagram, Facebook Page) put the caption and/or link on
+// the clipboard; Facebook copies the link as a fallback. Resolves to a message
+// to show the person, or "".
 export function openShare(target, url, text = "") {
-  if (!target.copy) { window.open(target.build(url, text), "_blank", "noopener,noreferrer"); return Promise.resolve(""); }
-  const copying = copyText(`${text ? `${text}\n\n` : ""}${url}`); // started while this page still has focus
-  const note = ok => ok ? `Caption & link copied. Paste them into your ${target.label} post or story.` : `Opening ${target.label}. Copy the link to paste into your post.`;
-  if (navigator.share && window.matchMedia?.("(pointer: coarse)").matches) {
+  const open = () => window.open(target.build(url, text), "_blank", "noopener,noreferrer");
+  if (!target.copy && !target.copyLink) { open(); return Promise.resolve(""); }
+  // Started while this page still has focus (the new tab takes it away).
+  const copying = copyText(target.copy && text ? `${text}\n\n${url}` : url);
+  const note = ok => !ok ? (target.copyLink ? "" : `Opening ${target.label}. Copy the link to paste into your post.`)
+    : SHARE_NOTES[target.id] || `Caption & link copied. Paste them into your ${target.label} post or story.`;
+  if (target.copy && !target.noSheet && navigator.share && window.matchMedia?.("(pointer: coarse)").matches) {
     return navigator.share({ text, url }).then(() => "", e => e?.name === "AbortError" ? "" : copying.then(note));
   }
-  window.open(target.build(url, text), "_blank", "noopener,noreferrer");
+  open();
   return copying.then(note);
 }
 

@@ -3510,7 +3510,7 @@ function BlogShare({ post }) {
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 36 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: C.textMuted, fontFamily: font, marginRight: 4 }}>Share this post</span>
       {links.map(([label, href, t]) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={btn}
-        onClick={t.copy ? e => { e.preventDefault(); openShare(t, url, text).then(m => { setNote(m); if (m) setTimeout(() => setNote(""), 6000); }); } : undefined}>{label}</a>)}
+        onClick={e => { e.preventDefault(); openShare(t, url, text).then(m => { setNote(m); if (m) setTimeout(() => setNote(n => n === m ? "" : n), 20000); }); }}>{label}</a>)}
       <button type="button" style={btn} onClick={() => { navigator.clipboard?.writeText(pageUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {}); }}>{copied ? "Link copied ✓" : "Copy link"}</button>
       {note && <span role="status" style={{ flexBasis: "100%", fontSize: 13, color: C.textMuted, fontFamily: font }}>{note}</span>}
     </div>

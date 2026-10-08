@@ -129,7 +129,7 @@ export default function Profile() {
   async function shareProfile(target) {
     const url = shareUrl(me.slug);
     const text = `Meet me at Orion Soft: ${me.title}${me.headline ? `, ${me.headline}` : ""}.`;
-    if (target) { const note = await openShare(target, url, text); if (note) toast(note); }
+    if (target) { const note = await openShare(target, url, text); if (note) toast(note, "ok", { ms: note.length > 40 ? 20000 : 0 }); }
     else { await copyText(profileUrl(me.slug)); toast("Profile link copied"); }
   }
 

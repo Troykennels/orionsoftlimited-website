@@ -11,7 +11,7 @@ import {
 import { richTextToSafeHtml, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
-import { SHARE_TARGETS, copyText as copyToClipboard, openShare } from "../staff/api.js";
+import { SHARE_TARGETS, FACEBOOK_PAGE_TARGET, copyText as copyToClipboard, openShare } from "../staff/api.js";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
@@ -1853,7 +1853,13 @@ function ServicesSection() {
 function BlogShareMenu({ post }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState("");
   const ref = useRef(null);
+  useEffect(() => {
+    if (!note) return undefined;
+    const t = setTimeout(() => setNote(""), 20000);
+    return () => clearTimeout(t);
+  }, [note]);
   useEffect(() => {
     if (!open) return undefined;
     const close = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
@@ -1872,14 +1878,24 @@ function BlogShareMenu({ post }) {
       <Btn small variant="ghost" onClick={() => setOpen(o => !o)}>Share ▾</Btn>
       {open && (
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 20, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 0", minWidth: 170, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
-          {SHARE_TARGETS.map(t => (
-            <a key={t.id} role="menuitem" href={t.build(url, post.title || "")} target="_blank" rel="noopener noreferrer" style={item}
-              onClick={e => { setOpen(false); if (t.copy) { e.preventDefault(); openShare(t, url, post.title || "").then(m => { if (m) alert(m); }); } }}>{t.label}</a>
+          {[FACEBOOK_PAGE_TARGET, ...SHARE_TARGETS].map(t => (
+            <a key={t.id} role="menuitem" href={t.build(url, post.title || "")} target="_blank" rel="noopener noreferrer"
+              style={t.id === "facebook_page" ? { ...item, borderBottom: `1px solid ${C.border}`, marginBottom: 4, paddingBottom: 10 } : item}
+              title={t.id === "facebook_page" ? "Post on the company Page: copies the link and opens Facebook (Facebook's share pop-up hangs for Pages)" : undefined}
+              onClick={e => { e.preventDefault(); setOpen(false); openShare(t, url, post.title || "").then(setNote); }}>
+              {t.label}{t.id === "facebook_page" && <span style={{ display: "block", fontSize: 11, color: C.textMuted, whiteSpace: "normal" }}>Copy link &amp; open Facebook</span>}
+            </a>
           ))}
           <button type="button" role="menuitem" style={{ ...item, borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10 }}
             onClick={async () => { if (await copyToClipboard(pageUrl)) { setCopied(true); setTimeout(() => { setCopied(false); setOpen(false); }, 1200); } }}>
             {copied ? "Link copied ✓" : "Copy link"}
           </button>
+        </div>
+      )}
+      {note && !open && (
+        <div role="status" style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 20, width: 300, background: C.card, border: `1px solid ${C.gold}66`, borderRadius: 10, padding: "10px 30px 10px 12px", fontSize: 12.5, lineHeight: 1.5, color: C.text, fontFamily: font, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
+          {note}
+          <button type="button" aria-label="Dismiss" onClick={() => setNote("")} style={{ position: "absolute", top: 6, right: 8, background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
         </div>
       )}
     </span>

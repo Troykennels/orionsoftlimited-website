@@ -218,8 +218,10 @@ export function RichText({ text, directory, onMention, style = {} }) {
 }
 
 // Lightweight global toasts: toast("Saved") from anywhere.
-export function toast(message, kind = "ok") {
-  window.dispatchEvent(new CustomEvent("so-toast", { detail: { message, kind, id: Math.random() } }));
+// `ms` keeps a message up longer (e.g. instructions the person reads after
+// coming back from another tab); long messages get a close button.
+export function toast(message, kind = "ok", { ms } = {}) {
+  window.dispatchEvent(new CustomEvent("so-toast", { detail: { message, kind, id: Math.random(), ms: ms || 3500 } }));
 }
 
 export function Toaster() {
@@ -228,15 +230,18 @@ export function Toaster() {
     function on(e) {
       const t = e.detail;
       setItems(list => [...list, t]);
-      setTimeout(() => setItems(list => list.filter(x => x.id !== t.id)), 3500);
+      setTimeout(() => setItems(list => list.filter(x => x.id !== t.id)), t.ms || 3500);
     }
     window.addEventListener("so-toast", on);
     return () => window.removeEventListener("so-toast", on);
   }, []);
   return (
-    <div aria-live="polite" style={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000, display: "flex", flexDirection: "column", gap: 8, maxWidth: "calc(100vw - 40px)" }}>
+    <div aria-live="polite" style={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000, display: "flex", flexDirection: "column", gap: 8, maxWidth: "min(420px, calc(100vw - 40px))" }}>
       {items.map(t => (
-        <div key={t.id} style={{ background: t.kind === "err" ? "#3A1520" : "#0E2A22", border: `1px solid ${t.kind === "err" ? C.rose : C.mint}55`, color: C.heading, padding: "11px 16px", borderRadius: 10, fontSize: 13.5, fontFamily: font, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>{t.message}</div>
+        <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: t.kind === "err" ? "#3A1520" : "#0E2A22", border: `1px solid ${t.kind === "err" ? C.rose : C.mint}55`, color: C.heading, padding: "11px 16px", borderRadius: 10, fontSize: 13.5, lineHeight: 1.5, fontFamily: font, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
+          <span style={{ flex: 1 }}>{t.message}</span>
+          {t.ms > 6000 && <button type="button" aria-label="Dismiss" onClick={() => setItems(list => list.filter(x => x.id !== t.id))} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>}
+        </div>
       ))}
     </div>
   );

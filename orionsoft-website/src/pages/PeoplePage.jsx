@@ -86,6 +86,7 @@ export function PeoplePage({ setCurrentPage }) {
 export function PersonPage({ slug, setCurrentPage }) {
   const [data, setData] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [shareNote, setShareNote] = useState("");
   const focusPost = new URLSearchParams(window.location.search).get("post");
 
   useEffect(() => {
@@ -177,8 +178,9 @@ export function PersonPage({ slug, setCurrentPage }) {
             )}
             <Card title="Share this profile">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {shares.map(([n, href, t]) => <a key={n} href={href} target="_blank" rel="noreferrer noopener" onClick={t.copy ? e => { e.preventDefault(); openShare(t, shareLink, shareText).then(m => { if (m) alert(m); }); } : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.surface, border: `1px solid ${C.border}`, color: C.heading, borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}><Share2 size={13} /> {n}</a>)}
+                {shares.map(([n, href, t]) => <a key={n} href={href} target="_blank" rel="noreferrer noopener" onClick={e => { e.preventDefault(); openShare(t, shareLink, shareText).then(m => { setShareNote(m); if (m) setTimeout(() => setShareNote(n => n === m ? "" : n), 20000); }); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.surface, border: `1px solid ${C.border}`, color: C.heading, borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}><Share2 size={13} /> {n}</a>)}
               </div>
+              {shareNote && <p role="status" style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "10px 0 0" }}>{shareNote}</p>}
             </Card>
             <Card title="Work with Orion Soft">
               <p style={{ fontSize: 14, color: C.text, lineHeight: 1.6, marginTop: 0 }}>Talk to our team about hospital, school, finance, HR or compliance software.</p>

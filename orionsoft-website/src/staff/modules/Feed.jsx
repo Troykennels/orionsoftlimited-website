@@ -207,7 +207,7 @@ function ShareMenu({ post, onClose, onShared }) {
     try {
       const j = await api("/api/staff/feed", { method: "POST", body: { action: "share", id: post.id, platform: target?.id || "copy" } });
       onShared(j.post);
-      const note = await opened; if (note) toast(note);
+      const note = await opened; if (note) toast(note, "ok", { ms: note.length > 40 ? 20000 : 0 });
       onClose();
     } catch (e) { toast(e.message, "err"); }
   }

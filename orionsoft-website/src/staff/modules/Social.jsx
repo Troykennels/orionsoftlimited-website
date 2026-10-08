@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Rocket, ExternalLink, Copy, TrendingUp, Megaphone, Trash2 } from "lucide-react";
 import { C, font, SOCIAL_META } from "../theme.js";
-import { api, timeAgo, fmtDate, SHARE_TARGETS, copyText, openShare } from "../api.js";
+import { api, timeAgo, fmtDate, SHARE_TARGETS, FACEBOOK_PAGE_TARGET, copyText, openShare } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Modal, Field, EmptyState, PageHeader, Tabs, Grid, toast } from "../components.jsx";
 import { resizeImageToDataUrl } from "../imageUtils.js";
 import { useOffice } from "../office.js";
@@ -106,7 +106,7 @@ export default function Social({ param }) {
       : copyText(`${text}\n${url}`).then(ok => ok ? "Caption & link copied. Paste into TikTok or anywhere." : "");
     try {
       await api("/api/staff/social", { method: "POST", body: { action: "kit-share", id: kit.id, platform: target?.id || "copy" } });
-      const note = await opened; if (note) toast(note);
+      const note = await opened; if (note) toast(note, "ok", { ms: note.length > 40 ? 20000 : 0 });
       load(); reload();
     } catch (e) { toast(e.message, "err"); }
   }
@@ -158,6 +158,7 @@ export default function Social({ param }) {
                 <div style={{ fontSize: 11.5, color: C.textMuted, marginBottom: 10 }}>By {k.createdBy} · {timeAgo(k.createdAt)} · shared {k.totalShares}×</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {SHARE_TARGETS.slice(0, 5).map(t => <Btn key={t.id} small variant="ghost" onClick={() => shareKit(k, t)}>{t.label}</Btn>)}
+                  {can("sharekits") && <Btn small variant="ghost" title="Post on the company Facebook Page: copies the link and opens Facebook" onClick={() => shareKit(k, FACEBOOK_PAGE_TARGET)}>Facebook Page</Btn>}
                   <Btn small variant="blue" icon={Copy} onClick={() => shareKit(k, null)}>Copy</Btn>
                   {(k.createdById === me.id || can("moderate")) && <Btn small danger icon={Trash2} onClick={async () => { if (confirm("Delete this share kit?")) { await api(`/api/staff/social?type=kit&id=${k.id}`, { method: "DELETE" }).catch(e => toast(e.message, "err")); load(); } }} />}
                 </div>
