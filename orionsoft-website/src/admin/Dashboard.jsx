@@ -11,7 +11,7 @@ import {
 import { richTextToSafeHtml, sanitizeToAllowedHtml } from "../lib/richtext.js";
 import CandidatePortalPanel from "./CandidatePortalPanel.jsx";
 import ErrorBoundary from "../staff/ErrorBoundary.jsx";
-import { SHARE_TARGETS, copyText as copyToClipboard } from "../staff/api.js";
+import { SHARE_TARGETS, copyText as copyToClipboard, openShare } from "../staff/api.js";
 import { EmployeesSection, StaffOfficeSection } from "./StaffOfficeAdmin.jsx";
 import SignatureExtractor from "./SignatureExtractor.jsx";
 import ThemeSection from "./ThemeSection.jsx";
@@ -1872,7 +1872,8 @@ function BlogShareMenu({ post }) {
       {open && (
         <div role="menu" style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 20, background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 0", minWidth: 170, boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}>
           {SHARE_TARGETS.map(t => (
-            <a key={t.id} role="menuitem" href={t.build(url, post.title || "")} target="_blank" rel="noopener noreferrer" style={item} onClick={() => setOpen(false)}>{t.label}</a>
+            <a key={t.id} role="menuitem" href={t.build(url, post.title || "")} target="_blank" rel="noopener noreferrer" style={item}
+              onClick={e => { setOpen(false); if (t.copy) { e.preventDefault(); openShare(t, url, post.title || "").then(m => { if (m) alert(m); }); } }}>{t.label}</a>
           ))}
           <button type="button" role="menuitem" style={{ ...item, borderTop: `1px solid ${C.border}`, marginTop: 4, paddingTop: 10 }}
             onClick={async () => { if (await copyToClipboard(pageUrl)) { setCopied(true); setTimeout(() => { setCopied(false); setOpen(false); }, 1200); } }}>

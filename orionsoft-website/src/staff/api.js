@@ -59,6 +59,9 @@ export const SHARE_TARGETS = [
   { id: "linkedin", label: "LinkedIn", build: (url) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
   { id: "x", label: "X (Twitter)", build: (url, text) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text.slice(0, 240))}` },
   { id: "facebook", label: "Facebook", build: (url) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+  // Instagram has no share-a-link page: the caption and link are copied and
+  // Instagram opens (on phones, the share sheet lists the Instagram app). Use openShare().
+  { id: "instagram", label: "Instagram", copy: true, build: () => "https://www.instagram.com/" },
   { id: "whatsapp", label: "WhatsApp", build: (url, text) => `https://wa.me/?text=${encodeURIComponent(`${text.slice(0, 500)}\n${url}`)}` },
   { id: "telegram", label: "Telegram", build: (url, text) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text.slice(0, 500))}` },
   { id: "email", label: "Email", build: (url, text) => `mailto:?subject=${encodeURIComponent("From the Orion Soft team")}&body=${encodeURIComponent(`${text}\n\n${url}`)}` },
@@ -66,6 +69,18 @@ export const SHARE_TARGETS = [
 
 export async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+
+// Opens a share target. For copy-style targets (Instagram) the caption and
+// link go on the clipboard first; returns a message to show the person, or "".
+export async function openShare(target, url, text = "") {
+  if (!target.copy) { window.open(target.build(url, text), "_blank", "noopener,noreferrer"); return ""; }
+  const copied = await copyText(`${text ? `${text}\n\n` : ""}${url}`);
+  if (navigator.share && window.matchMedia?.("(pointer: coarse)").matches) {
+    try { await navigator.share({ text, url }); return ""; } catch (e) { if (e?.name === "AbortError") return ""; }
+  }
+  window.open(target.build(url, text), "_blank", "noopener,noreferrer");
+  return copied ? `Caption & link copied. Paste them into your ${target.label} post or story.` : `Opening ${target.label}. Copy the link to paste into your post.`;
 }
 
 // Renders @mentions and links inside plain text safely (no HTML injection).

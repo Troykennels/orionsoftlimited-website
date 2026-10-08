@@ -3,7 +3,7 @@ import {
   Image as ImageIcon, Link2, Globe, Lock, MessageCircle, Repeat2, Share2, Pin, Trash2, Pencil, Heart, X as XIcon, Send,
 } from "lucide-react";
 import { C, font } from "../theme.js";
-import { api, timeAgo, shareUrl, SHARE_TARGETS, copyText } from "../api.js";
+import { api, timeAgo, shareUrl, SHARE_TARGETS, copyText, openShare } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, Textarea, Input, Select, EmptyState, Modal, RichText, Tabs, PageHeader, toast } from "../components.jsx";
 import { resizeImageToDataUrl } from "../imageUtils.js";
 import { useOffice } from "../office.js";
@@ -203,7 +203,7 @@ function ShareMenu({ post, onClose, onShared }) {
     try {
       const j = await api("/api/staff/feed", { method: "POST", body: { action: "share", id: post.id, platform: target?.id || "copy" } });
       onShared(j.post);
-      if (target) window.open(target.build(url, post.text || ""), "_blank", "noopener,noreferrer");
+      if (target) { const note = await openShare(target, url, post.text || ""); if (note) toast(note); }
       else { await copyText(url); toast("Link copied"); }
       onClose();
     } catch (e) { toast(e.message, "err"); }

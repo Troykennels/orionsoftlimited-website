@@ -5,7 +5,7 @@ import ChatBot from "./components/ChatBot";
 import { readPublished, loadSiteContent, usePublishedList, contentLoaded } from "./lib/siteContent.js";
 import { DEFAULT_PRODUCTS_CATALOG } from "./lib/products.js";
 import { RichText, summary } from "./lib/RichText.jsx";
-import { SHARE_TARGETS } from "./staff/api.js";
+import { SHARE_TARGETS, openShare } from "./staff/api.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
@@ -3502,13 +3502,16 @@ function BlogShare({ post }) {
   const pageUrl = `${base}/blog/${encodeURIComponent(post.slug || post.id)}`;
   const text = post.title || "";
   const [copied, setCopied] = useState(false);
-  const links = SHARE_TARGETS.map(t => [t.label, t.build(url, text)]);
+  const [note, setNote] = useState("");
+  const links = SHARE_TARGETS.map(t => [t.label, t.build(url, text), t]);
   const btn = { background: C.card, border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: font, cursor: "pointer", textDecoration: "none" };
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 36 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: C.textMuted, fontFamily: font, marginRight: 4 }}>Share this post</span>
-      {links.map(([label, href]) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={btn}>{label}</a>)}
+      {links.map(([label, href, t]) => <a key={label} href={href} target="_blank" rel="noopener noreferrer" style={btn}
+        onClick={t.copy ? e => { e.preventDefault(); openShare(t, url, text).then(m => { setNote(m); if (m) setTimeout(() => setNote(""), 6000); }); } : undefined}>{label}</a>)}
       <button type="button" style={btn} onClick={() => { navigator.clipboard?.writeText(pageUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {}); }}>{copied ? "Link copied ✓" : "Copy link"}</button>
+      {note && <span role="status" style={{ flexBasis: "100%", fontSize: 13, color: C.textMuted, fontFamily: font }}>{note}</span>}
     </div>
   );
 }

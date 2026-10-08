@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, Globe, ExternalLink, Copy, ShieldCheck, Lock, IdCard } from "lucide-react";
 import { C, SOCIAL_META } from "../theme.js";
-import { api, profileUrl, shareUrl, SHARE_TARGETS, copyText, fmtDate } from "../api.js";
+import { api, profileUrl, shareUrl, SHARE_TARGETS, copyText, openShare, fmtDate } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, Input, Textarea, Select, Field, Grid, PageHeader, toast } from "../components.jsx";
 import { resizeImageToDataUrl } from "../imageUtils.js";
 import { loadGoogleIdentity, getGoogleClientId } from "../StaffLogin.jsx";
@@ -129,7 +129,7 @@ export default function Profile() {
   async function shareProfile(target) {
     const url = shareUrl(me.slug);
     const text = `Meet me at Orion Soft: ${me.title}${me.headline ? `, ${me.headline}` : ""}.`;
-    if (target) window.open(target.build(url, text), "_blank", "noopener,noreferrer");
+    if (target) { const note = await openShare(target, url, text); if (note) toast(note); }
     else { await copyText(profileUrl(me.slug)); toast("Profile link copied"); }
   }
 
@@ -160,7 +160,7 @@ export default function Profile() {
           {me.publicProfile && me.slug && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingTop: 14 }}>
               <a href={profileUrl(me.slug)} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost" icon={ExternalLink}>View public page</Btn></a>
-              {SHARE_TARGETS.slice(0, 4).map(t => <Btn key={t.id} small variant="ghost" onClick={() => shareProfile(t)}>{t.label}</Btn>)}
+              {SHARE_TARGETS.slice(0, 5).map(t => <Btn key={t.id} small variant="ghost" onClick={() => shareProfile(t)}>{t.label}</Btn>)}
               <Btn small variant="blue" icon={Copy} onClick={() => shareProfile(null)}>Copy link</Btn>
             </div>
           )}

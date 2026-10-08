@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Trophy, MapPin, Mail, CalendarDays, Share2 } from "lucide-react";
 import { C, font, SOCIAL_META } from "../staff/theme.js";
 import "../staff/staff.css";
-import { SHARE_TARGETS } from "../staff/api.js";
+import { SHARE_TARGETS, openShare } from "../staff/api.js";
 
 const initials = n => String(n || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
 const fmt = d => new Date(d).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
@@ -115,7 +115,7 @@ export function PersonPage({ slug, setCurrentPage }) {
 
   const shareLink = `${window.location.origin}/api/public/share?person=${encodeURIComponent(p.slug)}`;
   const shareText = `${p.fullName}, ${p.title} at Orion Soft`;
-  const shares = SHARE_TARGETS.map(t => [t.label, t.build(shareLink, shareText)]);
+  const shares = SHARE_TARGETS.map(t => [t.label, t.build(shareLink, shareText), t]);
   const label = { win: "🏆 Win", progress: "📈 Progress", kudos: "🙌 Kudos", announcement: "📣 News", update: "Update", celebration: "🎉 Celebration" };
 
   return (
@@ -177,7 +177,7 @@ export function PersonPage({ slug, setCurrentPage }) {
             )}
             <Card title="Share this profile">
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {shares.map(([n, href]) => <a key={n} href={href} target="_blank" rel="noreferrer noopener" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.surface, border: `1px solid ${C.border}`, color: C.heading, borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}><Share2 size={13} /> {n}</a>)}
+                {shares.map(([n, href, t]) => <a key={n} href={href} target="_blank" rel="noreferrer noopener" onClick={t.copy ? e => { e.preventDefault(); openShare(t, shareLink, shareText).then(m => { if (m) alert(m); }); } : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.surface, border: `1px solid ${C.border}`, color: C.heading, borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, textDecoration: "none" }}><Share2 size={13} /> {n}</a>)}
               </div>
             </Card>
             <Card title="Work with Orion Soft">
