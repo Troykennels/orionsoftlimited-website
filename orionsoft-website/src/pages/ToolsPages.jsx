@@ -269,7 +269,8 @@ const STORY_IDEAS = [
 ];
 
 export function PressPage({ setCurrentPage }) {
-  const posts = usePublishedList("orionsoft_blog_v1").filter(p => p && p.title && p.published !== false)
+  // Empty (null) until the site's content has loaded.
+  const posts = (usePublishedList("orionsoft_blog_v1") || []).filter(p => p && p.title && p.published !== false)
     .sort((a, b) => String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || ""))).slice(0, 6);
   const [copied, setCopied] = useState(false);
   useEffect(() => { document.title = "Press & Media Kit | Orion Soft Limited"; }, []);
