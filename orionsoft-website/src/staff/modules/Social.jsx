@@ -100,16 +100,19 @@ export default function Social({ param }) {
   async function shareKit(kit, target) {
     const text = `${kit.caption}${kit.hashtags ? `\n\n${kit.hashtags}` : ""}`;
     const url = kit.link || "https://orionsoftlimited.com";
+    // Open the network first, in the click itself: phones block windows opened
+    // after waiting on the server. The share is recorded straight after.
+    const opened = target ? openShare(target, url, text)
+      : copyText(`${text}\n${url}`).then(ok => ok ? "Caption & link copied. Paste into TikTok or anywhere." : "");
     try {
       await api("/api/staff/social", { method: "POST", body: { action: "kit-share", id: kit.id, platform: target?.id || "copy" } });
-      if (target) { const note = await openShare(target, url, text); if (note) toast(note); }
-      else { await copyText(`${text}\n${url}`); toast("Caption & link copied. Paste into TikTok or anywhere."); }
+      const note = await opened; if (note) toast(note);
       load(); reload();
     } catch (e) { toast(e.message, "err"); }
   }
   async function engaged(p) {
-    try { await api("/api/staff/social", { method: "POST", body: { action: "engaged", id: p.id } }); } catch { /* still open it */ }
-    if (p.url) window.open(p.url, "_blank", "noopener,noreferrer");
+    if (p.url) window.open(p.url, "_blank", "noopener,noreferrer"); // before any await, or phones block it
+    try { await api("/api/staff/social", { method: "POST", body: { action: "engaged", id: p.id } }); } catch { /* it's open anyway */ }
     load();
   }
   async function saveFollowers() {

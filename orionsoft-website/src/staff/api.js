@@ -71,16 +71,19 @@ export async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-// Opens a share target. For copy-style targets (Instagram) the caption and
-// link go on the clipboard first; returns a message to show the person, or "".
-export async function openShare(target, url, text = "") {
-  if (!target.copy) { window.open(target.build(url, text), "_blank", "noopener,noreferrer"); return ""; }
-  const copied = await copyText(`${text ? `${text}\n\n` : ""}${url}`);
+// Opens a share target. Call it straight from the click, before any await:
+// phones (iPhones especially) block windows opened after waiting on anything.
+// For copy-style targets (Instagram) the caption and link also go on the
+// clipboard. Resolves to a message to show the person, or "".
+export function openShare(target, url, text = "") {
+  if (!target.copy) { window.open(target.build(url, text), "_blank", "noopener,noreferrer"); return Promise.resolve(""); }
+  const copying = copyText(`${text ? `${text}\n\n` : ""}${url}`); // started while this page still has focus
+  const note = ok => ok ? `Caption & link copied. Paste them into your ${target.label} post or story.` : `Opening ${target.label}. Copy the link to paste into your post.`;
   if (navigator.share && window.matchMedia?.("(pointer: coarse)").matches) {
-    try { await navigator.share({ text, url }); return ""; } catch (e) { if (e?.name === "AbortError") return ""; }
+    return navigator.share({ text, url }).then(() => "", e => e?.name === "AbortError" ? "" : copying.then(note));
   }
   window.open(target.build(url, text), "_blank", "noopener,noreferrer");
-  return copied ? `Caption & link copied. Paste them into your ${target.label} post or story.` : `Opening ${target.label}. Copy the link to paste into your post.`;
+  return copying.then(note);
 }
 
 // Renders @mentions and links inside plain text safely (no HTML injection).

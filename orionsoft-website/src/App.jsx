@@ -3498,8 +3498,9 @@ function NewsletterSignup({ variant = "band", source = "website" }) {
 
 function BlogShare({ post }) {
   const base = window.location.origin;
-  const url = `${base}/api/public/share?blog=${encodeURIComponent(post.slug || post.id)}`;
-  const pageUrl = `${base}/blog/${encodeURIComponent(post.slug || post.id)}`;
+  // The post's own address: it carries the post's preview tags (no redirects).
+  const url = `${base}/blog/${encodeURIComponent(post.slug || post.id)}`;
+  const pageUrl = url;
   const text = post.title || "";
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState("");

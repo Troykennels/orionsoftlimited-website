@@ -22,6 +22,10 @@
       "destination": "/staff.html"
     },
     {
+      "source": "/blog/:slug",
+      "destination": "https://orionsoftlimited-website-production.up.railway.app/api/public/blog-page?slug=:slug"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

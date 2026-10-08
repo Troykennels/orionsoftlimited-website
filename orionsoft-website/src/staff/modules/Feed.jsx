@@ -200,11 +200,14 @@ function ShareMenu({ post, onClose, onShared }) {
   const canShare = post.visibility === "public" || mine;
   const url = shareUrl(slug, post.id);
   async function go(target) {
+    // Open the network first, in the click itself: phones block windows opened
+    // after waiting on the server. The share is recorded (and the post made
+    // public) straight after, well before the network fetches the preview.
+    const opened = target ? openShare(target, url, post.text || "") : copyText(url).then(ok => ok ? "Link copied" : "");
     try {
       const j = await api("/api/staff/feed", { method: "POST", body: { action: "share", id: post.id, platform: target?.id || "copy" } });
       onShared(j.post);
-      if (target) { const note = await openShare(target, url, post.text || ""); if (note) toast(note); }
-      else { await copyText(url); toast("Link copied"); }
+      const note = await opened; if (note) toast(note);
       onClose();
     } catch (e) { toast(e.message, "err"); }
   }

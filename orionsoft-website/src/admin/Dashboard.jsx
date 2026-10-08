@@ -1863,8 +1863,9 @@ function BlogShareMenu({ post }) {
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", esc); };
   }, [open]);
   const slug = encodeURIComponent(post.slug || post.id);
-  const url = `${window.location.origin}/api/public/share?blog=${slug}`;
-  const pageUrl = `${window.location.origin}/blog/${slug}`;
+  // The post's own address: it carries the post's preview tags (no redirects).
+  const url = `${window.location.origin}/blog/${slug}`;
+  const pageUrl = url;
   const item = { display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: C.text, padding: "8px 14px", fontSize: 13, fontFamily: font, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap" };
   return (
     <span ref={ref} style={{ position: "relative", display: "inline-block" }}>

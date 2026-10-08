@@ -87,7 +87,7 @@ export async function blogShareKits(posts) {
     await putRecord("sharekits", id, {
       id, title: `Blog: ${String(p.title).slice(0, 110)}`,
       caption: `${p.title}\n\n${String(p.excerpt || "").slice(0, 400) || "New on the Orion Soft blog."}\n\nRead it here 👇`.slice(0, 2000),
-      link: `${site}/api/public/share?blog=${slug}`, hashtags: tags, imageDataUrl: "", shares: {}, platformShares: {},
+      link: `${site.replace("://orionsoftlimited.com", "://www.orionsoftlimited.com")}/blog/${slug}`, hashtags: tags, imageDataUrl: "", shares: {}, platformShares: {},
       createdBy: "Automatic (new blog post)", createdById: "system", createdAt: new Date().toISOString(), archived: false,
     });
     if (active.length) await notify(active.map(e => e.id), { type: "sharekit", title: "New blog post: please share it 📣", body: p.title, link: "social" });
