@@ -70,7 +70,7 @@ const PAGES = {
   "/events": ["Events | Orion Soft", "Webinars, demos and events from Orion Soft.", "Events"],
   "/faq": ["FAQ | Orion Soft Software", "Answers to common questions about Orion Soft software, pricing, implementation, data and support.", "Frequently asked questions"],
   "/docs": ["Documentation | Orion Soft", "Product documentation and guides.", "Documentation"],
-  "/contact": ["Contact Orion Soft | Lagos Island, Lagos · 0816 957 7059", "Contact Orion Soft Limited: call or WhatsApp 0816 957 7059, email orionsoftlimited@gmail.com, or visit us on Lagos Island, Lagos. Book a free demo.", "Contact us"],
+  "/contact": ["Contact Orion Soft | Ajah, Lagos · 0816 957 7059", "Contact Orion Soft Limited: call or WhatsApp 0816 957 7059, email orionsoftlimited@gmail.com, or visit us at Urban Prime 2, Abraham Adesanya, Ajah, Lagos. Book a free demo.", "Contact us"],
   "/consultation": ["Book a Free Demo or Consultation | Orion Soft", "Book a free demo of CareCore, SchoolCore, FinanceCore and more, or a consultation for custom software, websites and apps.", "Book a free demo"],
   "/privacy": ["Privacy Policy | Orion Soft", "How Orion Soft Limited collects, uses and protects personal data.", "Privacy policy"],
   "/terms": ["Terms of Service | Orion Soft", "Terms of service for Orion Soft Limited websites and software.", "Terms of service"],
@@ -105,7 +105,7 @@ function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], imag
 <h1 style="color:#F2F6FF">${esc(h1)}</h1><p>${esc(desc)}</p>
 ${body.map(b => `<p>${esc(b)}</p>`).join("")}
 ${points.length ? `<ul>${points.map(p => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
-<p>Orion Soft Limited · Lagos Island, Lagos, Nigeria · <a href="tel:+2348169577059" style="color:#C8A850">0816 957 7059</a> · <a href="mailto:orionsoftlimited@gmail.com" style="color:#C8A850">orionsoftlimited@gmail.com</a> · <a href="https://wa.me/2348169577059" style="color:#C8A850">WhatsApp</a></p>
+<p>Orion Soft Limited · Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria · <a href="tel:+2348169577059" style="color:#C8A850">0816 957 7059</a> · <a href="mailto:orionsoftlimited@gmail.com" style="color:#C8A850">orionsoftlimited@gmail.com</a> · <a href="https://wa.me/2348169577059" style="color:#C8A850">WhatsApp</a></p>
 <nav>${LINKS.map(([h, l]) => `<a href="${h}" style="color:#C8A850;margin-right:12px">${esc(l)}</a>`).join("")}</nav>
 </main></div>`;
   html = html.replace(/<div id="root"><\/div>/, content);

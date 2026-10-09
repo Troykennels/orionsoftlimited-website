@@ -5,7 +5,7 @@ import { get, set } from "../store.js";
 
 const KEY = "orionsoft:settings:company";
 
-export const DEFAULT_ADDRESS = "Lagos Island, Lagos, Nigeria";
+export const DEFAULT_ADDRESS = "Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria";
 
 export const DEFAULT_COMPANY_SETTINGS = {
   companyName: "Orion Soft Limited",

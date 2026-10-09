@@ -254,7 +254,7 @@ const BOILERPLATE = "Orion Soft Limited is a Nigerian software company (CAC RC 9
 
 const PRESS_FACTS = [
   ["Company", "Orion Soft Limited"], ["Registration", "CAC RC 9535128"], ["Incorporated", "2022"],
-  ["Headquarters", "Lagos Island, Lagos, Nigeria"], ["Serves", "Nigeria and the rest of Africa"],
+  ["Headquarters", "Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria"], ["Serves", "Nigeria, the rest of Africa and international clients"],
   ["What we make", "Business management software (hospital, school, accounting & payroll, HR, inventory, compliance, church, fleet) and custom web and mobile software"],
   ["Flagship", "CareCore hospital management system, live in Nigerian hospitals"],
   ["Website", "www.orionsoftlimited.com"],
@@ -341,7 +341,7 @@ export function PressPage({ setCurrentPage }) {
         <div style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div style={{ color: C.heading, fontWeight: 800, fontSize: 18 }}>Press desk</div>
-            <div style={{ color: C.text, fontSize: 14.5, marginTop: 4 }}>orionsoftlimited@gmail.com · +234 816 957 7059 (calls &amp; WhatsApp) · Lagos Island, Lagos</div>
+            <div style={{ color: C.text, fontSize: 14.5, marginTop: 4 }}>orionsoftlimited@gmail.com · +234 816 957 7059 (calls &amp; WhatsApp) · Urban Prime 2, Abraham Adesanya, Ajah, Lagos</div>
           </div>
           <button type="button" onClick={() => setCurrentPage("about")} style={btn}>About the company</button>
         </div>

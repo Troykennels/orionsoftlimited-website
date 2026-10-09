@@ -2822,7 +2822,7 @@ function MenusSection() {
 const DEFAULT_SETTINGS = {
   companyName: "Orion Soft Limited", tagline: "Software that Works as Hard as You Do.",
   email: "orionsoftlimited@gmail.com", phone: "08169577059", rc: "9535128",
-  address: "Lagos Island, Lagos, Nigeria", linkedin: "", twitter: "", github: "",
+  address: "Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria", linkedin: "", twitter: "", github: "",
   website: "www.orionsoftlimited.com", taxId: "", bankDetails: "", invoiceTemplate: "classic",
   invoiceTerms: "Payment is due by the date shown above. Please use the invoice number as your payment reference.",
   ctaHeadline: "Build something exceptional.", ctaSubtext: "Ready to get started?",
@@ -4311,7 +4311,7 @@ function RichText({ text }) {
 // wordmark on the left and the registered company block right-aligned, a
 // gold rule + left spine, formal letter body, a two-column signature block,
 // and the same confidential footer.
-const DEFAULT_COMPANY_SETTINGS = { companyName: "Orion Soft Limited", rc: "9535128", email: "orionsoftlimited@gmail.com", phone: "08169577059", address: "Lagos Island, Lagos, Nigeria" };
+const DEFAULT_COMPANY_SETTINGS = { companyName: "Orion Soft Limited", rc: "9535128", email: "orionsoftlimited@gmail.com", phone: "08169577059", address: "Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria" };
 function letterCompanyLines(company) {
   return [company.companyName, `RC ${company.rc} · ${company.address}`, `${company.email} · ${company.phone}`];
 }
