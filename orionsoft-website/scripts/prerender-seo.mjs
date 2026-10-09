@@ -6,6 +6,7 @@
 // the homepage. React replaces the fallback content as soon as it loads.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
+import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -140,6 +141,19 @@ page("/paye-calculator", {
   jsonLd: [
     { "@context": "https://schema.org", "@type": "WebApplication", name: "Nigeria PAYE & Take-Home Pay Calculator 2026", url: `${SITE}/paye-calculator`, applicationCategory: "FinanceApplication", operatingSystem: "Any", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "NGN" }, publisher: ORG, inLanguage: "en-NG" },
     { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: PAYE_FAQS.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+  ],
+}); count++;
+
+page("/international", {
+  title: "Software Development Company in Nigeria for International Clients",
+  desc: "Hire Orion Soft, a Lagos software development company, for web apps, mobile apps, SaaS, healthcare and education software. UTC+1 working hours, fixed-price quotes in USD, GBP or EUR, NDA on request.",
+  h1: "Your software team in Lagos, working on your time",
+  body: ["Orion Soft builds web apps, mobile apps and business software for companies and organisations worldwide: experienced engineers, fixed-price quotes, weekly demos, and software already running in Nigerian hospitals and schools.", ...INTERNATIONAL_FAQS.map(([q, a]) => `${q} ${a}`)],
+  points: ["Web applications & SaaS", "Mobile apps (Android and iOS)", "Healthcare software", "Education software", "Websites & e-commerce", "Support & maintenance", "Fixed-price projects, dedicated developers or teams, support retainers"],
+  image: `${SITE}/api/public/og?page=international`,
+  jsonLd: [
+    { "@context": "https://schema.org", "@type": "Service", name: "Custom software development for international clients", serviceType: "Software development", provider: ORG, areaServed: "Worldwide", availableLanguage: "English", url: `${SITE}/international` },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: INTERNATIONAL_FAQS.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
   ],
 }); count++;
 

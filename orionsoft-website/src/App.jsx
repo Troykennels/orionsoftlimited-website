@@ -35,6 +35,7 @@ const ReferralPage      = lazy(() => import("./pages/TrustPages").then(m => ({ d
 const InvestorsPage     = lazy(() => import("./pages/TrustPages").then(m => ({ default: m.InvestorsPage })));
 const PayeCalculatorPage = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PayeCalculatorPage })));
 const PressPage         = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PressPage })));
+const InternationalPage = lazy(() => import("./pages/InternationalPage"));
 
 // Why Orion Soft — mission, vision, values, stats, partners
 const WhyPageFull = lazy(() => import("./pages/WhyPage"));
@@ -3158,6 +3159,7 @@ function Footer({ setCurrentPage }) {
             { title: "Solutions", links: [
               { l: "Industries", a: "/industries", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
               { l: "Solutions", a: "/solutions", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
+              { l: "International Clients", a: "/international", onClick: (e) => { e.preventDefault(); setCurrentPage("international"); } },
               { l: "Partners", a: "/partners", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
               { l: "Referral Programme", a: "/referral", onClick: (e) => { e.preventDefault(); setCurrentPage("referral"); } },
               { l: "Book Consultation", a: "/consultation", onClick: (e) => { e.preventDefault(); setCurrentPage("consultation"); } },
@@ -5401,7 +5403,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5760,6 +5762,9 @@ export default function App() {
         )}
         {currentPage === "paye-calculator" && (
           <Suspense fallback={<PageLoader />}><PayeCalculatorPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "international" && (
+          <Suspense fallback={<PageLoader />}><InternationalPage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "press" && (
           <Suspense fallback={<PageLoader />}><PressPage setCurrentPage={navSetPage} /></Suspense>

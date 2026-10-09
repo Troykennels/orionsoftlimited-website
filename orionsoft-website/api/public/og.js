@@ -7,6 +7,7 @@ import { ogPng } from "../_lib/ogImage.js";
 const PAGES = {
   "paye-calculator": { title: "Nigeria PAYE & Take-Home Pay Calculator 2026", label: "Free tool" },
   press: { title: "Orion Soft Limited: press and media kit", label: "Press" },
+  international: { title: "Your software team in Lagos, working on your time", label: "Work with us" },
 };
 
 export default async function handler(req, res) {
