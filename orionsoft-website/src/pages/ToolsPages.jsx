@@ -4,9 +4,11 @@
 //                     People search for it, share their results and link to
 //                     it. ?embed=1 gives a compact version other sites embed.
 //   /press            Press & media kit.
+//   /developers       Free PAYE API docs and the embeddable calculator, so
+//                     developers and sites worldwide build on (and credit) us.
 import { useEffect, useMemo, useState } from "react";
 import { BRAND } from "../lib/brand.js";
-import { computeNigerianPayroll, PAYE_BANDS } from "../../shared/payrollNg.js";
+import { payeSummary } from "../../shared/payrollNg.js";
 import { SHARE_TARGETS, openShare } from "../staff/api.js";
 import { PAYE_FAQS as FAQS } from "../lib/payeFaqs.js";
 import { usePublishedList } from "../lib/siteContent.js";
@@ -23,30 +25,6 @@ const SITE = "https://www.orionsoftlimited.com";
 const naira = n => `₦${Math.round(Number(n) || 0).toLocaleString("en-NG")}`;
 const digits = s => Number(String(s).replace(/[^\d.]/g, "")) || 0;
 const fmtInput = n => (n ? Math.round(n).toLocaleString("en-NG") : "");
-
-// The old Personal Income Tax Act (to 31 Dec 2025), for the comparison:
-// consolidated relief of the higher of ₦200,000 or 1% of gross, plus 20% of
-// gross; pension/NHF/NHIS deductible; minimum tax of 1% of gross; minimum-wage
-// earners exempt.
-const OLD_BANDS = [[300_000, 0.07], [300_000, 0.11], [500_000, 0.15], [500_000, 0.19], [1_600_000, 0.21], [Infinity, 0.24]];
-function bandTax(taxable, bands) {
-  let left = Math.max(0, taxable), tax = 0;
-  const rows = [];
-  for (const [width, rate] of bands) {
-    const slice = Math.min(left, width);
-    rows.push({ width, rate, slice, tax: slice * rate });
-    tax += slice * rate;
-    left -= slice;
-  }
-  return { tax, rows };
-}
-function oldLawMonthlyPaye(grossMonthly, reliefsMonthly) {
-  const annual = grossMonthly * 12;
-  if (grossMonthly <= 70_000) return 0;
-  const cra = Math.max(200_000, annual * 0.01) + annual * 0.2;
-  const taxable = Math.max(0, annual - cra - reliefsMonthly * 12);
-  return Math.max(bandTax(taxable, OLD_BANDS).tax, annual * 0.01) / 12;
-}
 
 
 function Toggle({ checked, onChange, label, hint }) {
@@ -92,12 +70,8 @@ export function PayeCalculatorPage({ setCurrentPage }) {
   }, [embed]);
 
   const monthly = f.period === "annual" ? f.salary / 12 : f.salary;
-  const r = useMemo(() => computeNigerianPayroll(monthly, { annualRent: f.rent, pension: f.pension, nhf: f.nhf, nhis: f.nhis }), [monthly, f.rent, f.pension, f.nhf, f.nhis]);
-  const payeNow = r.deductions.find(d => d.kind === "paye")?.amount || 0;
-  const reliefsMonthly = r.deductions.filter(d => d.kind !== "paye").reduce((s, d) => s + d.amount, 0);
-  const payeOld = useMemo(() => oldLawMonthlyPaye(monthly, reliefsMonthly), [monthly, reliefsMonthly]);
-  const saving = payeOld - payeNow;
-  const bands = useMemo(() => bandTax(r.chargeableAnnual, PAYE_BANDS).rows.filter(b => b.slice > 0), [r.chargeableAnnual]);
+  const r = useMemo(() => payeSummary(monthly, { annualRent: f.rent, pension: f.pension, nhf: f.nhf, nhis: f.nhis }), [monthly, f.rent, f.pension, f.nhf, f.nhis]);
+  const payeNow = r.paye.monthly, payeOld = r.comparison.oldLawMonthly, saving = r.comparison.monthlySaving, bands = r.bands;
 
   // Shareable link: no salary unless the person chooses to include it.
   const linkParams = new URLSearchParams();
@@ -234,7 +208,7 @@ export function PayeCalculatorPage({ setCurrentPage }) {
 
         <div style={{ ...card, marginTop: 18 }}>
           <h2 style={h2}>Add this calculator to your website</h2>
-          <p style={{ color: C.text, fontSize: 14, lineHeight: 1.6, marginTop: 0 }}>Free for blogs, HR sites, news sites and schools. Paste this code where you want it to appear.</p>
+          <p style={{ color: C.text, fontSize: 14, lineHeight: 1.6, marginTop: 0 }}>Free for blogs, HR sites, news sites and schools. Paste this code where you want it to appear. Developers can also use our <a href="/developers" onClick={e => { e.preventDefault(); setCurrentPage("developers"); }} style={{ color: C.gold, fontWeight: 700 }}>free PAYE API</a>.</p>
           <pre style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, color: C.text, fontSize: 12.5, whiteSpace: "pre-wrap", wordBreak: "break-all", margin: "0 0 10px" }}>{embedCode}</pre>
           <button type="button" onClick={() => copy(embedCode, "embed")} style={{ background: C.surface, color: C.heading, border: `1px solid ${C.borderStrong}`, borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>{copied === "embed" ? "Copied ✓" : "Copy code"}</button>
         </div>
@@ -344,6 +318,96 @@ export function PressPage({ setCurrentPage }) {
             <div style={{ color: C.text, fontSize: 14.5, marginTop: 4 }}>orionsoftlimited@gmail.com · +234 816 957 7059 (calls &amp; WhatsApp) · Urban Prime 2, Abraham Adesanya, Ajah, Lagos</div>
           </div>
           <button type="button" onClick={() => setCurrentPage("about")} style={btn}>About the company</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ─── /developers: free PAYE API & embed ─────────────────────────────────────
+const API_PARAMS = [
+  ["salary", "required", "Gross pay in naira. Monthly unless period=annual."],
+  ["period", "monthly", "monthly or annual"],
+  ["rent", "0", "Rent paid per year, for rent relief (20%, up to ₦500,000)"],
+  ["pension", "1", "0 to leave out the employee's 8% pension"],
+  ["nhf", "0", "1 if the employee contributes 2.5% to the National Housing Fund"],
+  ["nhis", "0", "Monthly health insurance (NHIS) contribution"],
+  ["pensionable", "salary", "Monthly basic + housing + transport, if pension is on part of pay"],
+  ["basic", "pensionable", "Monthly basic salary, for NHF"],
+];
+
+export function DevelopersPage({ setCurrentPage }) {
+  const [sample, setSample] = useState("");
+  const [copied, setCopied] = useState("");
+  useEffect(() => { document.title = "Free Nigeria PAYE API for Developers | Orion Soft"; }, []);
+  useEffect(() => {
+    fetch("/api/public/paye?salary=500000&rent=1200000").then(r => (r.ok ? r.json() : Promise.reject())).then(j => setSample(JSON.stringify(j, null, 2)))
+      .catch(() => setSample("Couldn't load the live example just now. Open the request link above in your browser to see it."));
+  }, []);
+  const endpoint = `${SITE}/api/public/paye?salary=500000&rent=1200000`;
+  const curl = `curl "${endpoint}"`;
+  const js = `const res = await fetch("${endpoint}");\nconst tax = await res.json();\nconsole.log(tax.monthly.takeHome, tax.monthly.paye);`;
+  const embed = `<iframe src="${SITE}/paye-calculator?embed=1" title="Nigeria PAYE calculator 2026" style="width:100%;max-width:720px;height:760px;border:0;border-radius:16px" loading="lazy"></iframe>\n<p style="font-size:12px">PAYE calculator by <a href="${SITE}/paye-calculator">Orion Soft</a></p>`;
+  const copy = (t, k) => navigator.clipboard?.writeText(t).then(() => { setCopied(k); setTimeout(() => setCopied(""), 2000); }).catch(() => {});
+  const card = { background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "clamp(18px,3vw,28px)" };
+  const h2 = { fontSize: "clamp(20px,2.6vw,26px)", fontWeight: 800, color: C.heading, fontFamily: font, margin: "0 0 12px", letterSpacing: "-0.02em" };
+  const pre = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, color: C.text, fontSize: 12.5, whiteSpace: "pre-wrap", wordBreak: "break-all", margin: "0 0 10px", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", lineHeight: 1.55 };
+  const btn = { background: C.surface, color: C.heading, border: `1px solid ${C.borderStrong}`, borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" };
+  const p = { color: C.text, fontSize: 14.5, lineHeight: 1.7, margin: "0 0 12px" };
+  return (
+    <div style={{ background: C.bg, fontFamily: font }}>
+      <section style={{ padding: "140px clamp(16px,5vw,60px) 30px", textAlign: "center", background: `radial-gradient(ellipse 60% 45% at 50% 0%, ${C.gold}14, transparent)` }}>
+        <span style={{ fontSize: 11.5, fontWeight: 800, color: C.gold, letterSpacing: "0.14em" }}>FOR DEVELOPERS · FREE · NO API KEY</span>
+        <h1 style={{ fontSize: "clamp(30px,5vw,52px)", fontWeight: 800, color: C.heading, letterSpacing: "-0.03em", margin: "14px auto", lineHeight: 1.1, maxWidth: 900 }}>Nigeria PAYE API</h1>
+        <p style={{ fontSize: "clamp(15px,2vw,18px)", color: C.text, lineHeight: 1.7, margin: "0 auto", maxWidth: 700 }}>Calculate Nigerian income tax, pension, NHF and take-home pay under the Nigeria Tax Act 2025 with one request. Free for HR, payroll, fintech and finance apps, websites and spreadsheets.</p>
+      </section>
+
+      <section style={{ maxWidth: 1000, margin: "0 auto", padding: "10px clamp(16px,4vw,32px) 60px", display: "grid", gap: 18 }}>
+        <div style={card}>
+          <h2 style={h2}>Quick start</h2>
+          <p style={p}>Send a GET request with the gross salary. You get back the PAYE, every deduction, take-home pay, the tax band breakdown, the employer's cost and the difference from the old law, as JSON.</p>
+          <pre style={pre}>{curl}</pre>
+          <button type="button" style={btn} onClick={() => copy(curl, "curl")}>{copied === "curl" ? "Copied ✓" : "Copy"}</button>
+          <div style={{ height: 14 }} />
+          <pre style={pre}>{js}</pre>
+          <button type="button" style={btn} onClick={() => copy(js, "js")}>{copied === "js" ? "Copied ✓" : "Copy"}</button>
+        </div>
+
+        <div style={card}>
+          <h2 style={h2}>Parameters</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 520 }}>
+              <thead><tr>{["Name", "Default", "Meaning"].map(h => <th key={h} style={{ textAlign: "left", color: C.textMuted, padding: "8px 6px", borderBottom: `1px solid ${C.borderStrong}` }}>{h}</th>)}</tr></thead>
+              <tbody>{API_PARAMS.map(([n, d, m]) => (
+                <tr key={n}><td style={{ padding: "8px 6px", color: C.gold, fontFamily: "ui-monospace, Consolas, monospace", borderBottom: `1px solid ${C.border}` }}>{n}</td>
+                  <td style={{ padding: "8px 6px", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>{d}</td>
+                  <td style={{ padding: "8px 6px", color: C.text, borderBottom: `1px solid ${C.border}` }}>{m}</td></tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p style={{ ...p, marginTop: 14, marginBottom: 0 }}>Amounts are in naira. Requests are limited to 60 a minute per IP address; responses can be cached for an hour. Works from browsers (CORS enabled), servers and spreadsheets.</p>
+        </div>
+
+        <div style={card}>
+          <h2 style={h2}>Example response</h2>
+          <p style={p}>A ₦500,000 monthly salary paying ₦1.2m rent a year, straight from the live API:</p>
+          <pre style={{ ...pre, maxHeight: 420, overflow: "auto" }}>{sample || "Loading…"}</pre>
+        </div>
+
+        <div style={card}>
+          <h2 style={h2}>No code? Embed the calculator</h2>
+          <p style={p}>Paste this into any website, blog post or HR portal to show the full calculator.</p>
+          <pre style={pre}>{embed}</pre>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" style={btn} onClick={() => copy(embed, "embed")}>{copied === "embed" ? "Copied ✓" : "Copy code"}</button>
+            <button type="button" style={btn} onClick={() => setCurrentPage("paye-calculator")}>See the calculator</button>
+          </div>
+        </div>
+
+        <div style={card}>
+          <h2 style={h2}>Fair use</h2>
+          <p style={p}>The API and embed are free, including for commercial products. We ask one thing: where you show results, credit <strong style={{ color: C.heading }}>Orion Soft</strong> with a link to <a href={`${SITE}/paye-calculator`} style={{ color: C.gold }}>orionsoftlimited.com/paye-calculator</a>. Results are estimates for salaried employees based on the published rates, not tax advice.</p>
+          <p style={{ ...p, marginBottom: 0 }}>Need full payroll for a whole company (payslips, pension and PAYE schedules, approvals)? That's our HR &amp; payroll software. <button type="button" onClick={() => setCurrentPage("consultation")} style={{ background: "none", border: "none", color: C.gold, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: font, fontSize: 14.5 }}>Book a demo →</button></p>
         </div>
       </section>
     </div>

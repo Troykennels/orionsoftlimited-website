@@ -157,6 +157,15 @@ page("/international", {
   ],
 }); count++;
 
+page("/developers", {
+  title: "Free Nigeria PAYE API for Developers (Nigeria Tax Act 2025)",
+  desc: "Free JSON API to calculate Nigerian PAYE, pension, NHF and take-home pay under the Nigeria Tax Act 2025, with band breakdown and old-law comparison. No API key. Plus an embeddable calculator.",
+  h1: "Nigeria PAYE API",
+  body: ["Send a GET request to https://www.orionsoftlimited.com/api/public/paye?salary=500000 with the gross monthly salary in naira and get PAYE, deductions, take-home pay, tax bands, employer cost and the difference from the old Personal Income Tax Act as JSON. Optional parameters: period, rent, pension, nhf, nhis, pensionable, basic. Free, no API key, CORS enabled, 60 requests a minute."],
+  image: `${SITE}/api/public/og?page=developers`,
+  jsonLd: [{ "@context": "https://schema.org", "@type": "WebAPI", name: "Nigeria PAYE API", description: "Calculate Nigerian PAYE and take-home pay under the Nigeria Tax Act 2025.", documentation: `${SITE}/developers`, url: `${SITE}/api/public/paye`, provider: ORG, isAccessibleForFree: true }],
+}); count++;
+
 page("/press", {
   title: "Press & Media Kit | Orion Soft Limited",
   desc: "Press and media kit for Orion Soft Limited, the Lagos software company behind CareCore hospital software: company description, fact sheet, logos, latest news and press contact.",
