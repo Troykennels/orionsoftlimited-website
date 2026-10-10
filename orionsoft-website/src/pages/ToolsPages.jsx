@@ -385,7 +385,7 @@ export function DevelopersPage({ setCurrentPage }) {
               ))}</tbody>
             </table>
           </div>
-          <p style={{ ...p, marginTop: 14, marginBottom: 0 }}>Amounts are in naira. Requests are limited to 60 a minute per IP address; responses can be cached for an hour. Works from browsers (CORS enabled), servers and spreadsheets. Machine-readable spec: <a href="/openapi.json" style={{ color: C.gold, fontWeight: 700 }}>openapi.json</a> (import it into Postman, Insomnia or code generators).</p>
+          <p style={{ ...p, marginTop: 14, marginBottom: 0 }}>Amounts are in naira. Requests are limited to 60 a minute per IP address; responses can be cached for an hour. Works from browsers (CORS enabled), servers and spreadsheets. Machine-readable spec: <a href="/openapi.json" style={{ color: C.gold, fontWeight: 700 }}>openapi.json</a> (import it into Postman, Insomnia or code generators), or open it ready to run in our <a href="https://www.postman.com/orionsoftlimited-7998261/orion-soft-public-apis" target="_blank" rel="noopener noreferrer" style={{ color: C.gold, fontWeight: 700 }}>public Postman workspace</a>.</p>
         </div>
 
         <div style={card}>
