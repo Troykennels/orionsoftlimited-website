@@ -5,7 +5,9 @@
 import { readAllContent, publicView } from "../_lib/content.js";
 import { listRecords } from "../_lib/records.js";
 
-const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
+// Always the www address: the bare domain redirects there, and Search Console
+// ignores sitemap entries on a different host from the property.
+const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "").replace("://orionsoftlimited.com", "://www.orionsoftlimited.com");
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
   ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/press", "monthly", 0.5],

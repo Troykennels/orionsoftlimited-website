@@ -8,7 +8,9 @@ import { notify } from "./office.js";
 
 // The matching key file is public/<key>.txt, which proves we own the site.
 export const INDEXNOW_KEY = "a6da13b55322b6a6d6913201910ce936";
-const SITE = () => (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "");
+// The www address (the bare domain redirects there), so search engines are
+// told about the same URLs they index.
+const SITE = () => (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "").replace("://orionsoftlimited.com", "://www.orionsoftlimited.com");
 const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
 
 export async function indexNow(paths) {
