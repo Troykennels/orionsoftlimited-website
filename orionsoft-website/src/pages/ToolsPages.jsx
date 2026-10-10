@@ -395,6 +395,17 @@ export function DevelopersPage({ setCurrentPage }) {
         </div>
 
         <div style={card}>
+          <h2 style={h2}>Open-source library</h2>
+          <p style={p}>Prefer to calculate in your own code? The same tax engine is open source (MIT) as <strong style={{ color: C.heading }}>nigeria-paye</strong>, with TypeScript types and no dependencies.</p>
+          <pre style={pre}>{"npm install nigeria-paye"}</pre>
+          <pre style={pre}>{"import { payeSummary } from \"nigeria-paye\";\n\nconst pay = payeSummary(500000, { annualRent: 1200000 });\nconsole.log(pay.net, pay.paye.monthly);"}</pre>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <a href="https://github.com/orionsoftlimited/nigeria-paye" target="_blank" rel="noopener noreferrer" style={{ ...btn, textDecoration: "none" }}>View on GitHub</a>
+            <a href="https://www.npmjs.com/package/nigeria-paye" target="_blank" rel="noopener noreferrer" style={{ ...btn, textDecoration: "none" }}>View on npm</a>
+          </div>
+        </div>
+
+        <div style={card}>
           <h2 style={h2}>No code? Embed the calculator</h2>
           <p style={p}>Paste this into any website, blog post or HR portal to show the full calculator.</p>
           <pre style={pre}>{embed}</pre>
