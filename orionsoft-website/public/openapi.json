@@ -1,0 +1,96 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nigeria PAYE API",
+    "version": "1.0.0",
+    "description": "Free API to calculate Nigerian PAYE income tax, pension, NHF and take-home pay under the Nigeria Tax Act 2025 (in force from 1 January 2026), with a band-by-band breakdown, employer cost and a comparison with the old Personal Income Tax Act. No API key; CORS enabled; up to 60 requests a minute per IP. Results are estimates for salaried employees, not tax advice. Please credit Orion Soft with a link to https://www.orionsoftlimited.com/paye-calculator where results are shown.",
+    "contact": { "name": "Orion Soft Limited", "url": "https://www.orionsoftlimited.com/developers", "email": "orionsoftlimited@gmail.com" },
+    "license": { "name": "Free to use with attribution", "url": "https://www.orionsoftlimited.com/developers" }
+  },
+  "externalDocs": { "description": "Documentation and examples", "url": "https://www.orionsoftlimited.com/developers" },
+  "servers": [{ "url": "https://www.orionsoftlimited.com" }],
+  "security": [],
+  "tags": [{ "name": "Tax", "description": "Nigerian income tax calculations" }],
+  "paths": {
+    "/api/public/paye": {
+      "get": {
+        "operationId": "calculatePaye",
+        "summary": "Calculate PAYE and take-home pay",
+        "tags": ["Tax"],
+        "parameters": [
+          { "name": "salary", "in": "query", "required": true, "description": "Gross pay in naira. Monthly unless period=annual.", "schema": { "type": "number", "minimum": 0 }, "example": 500000 },
+          { "name": "period", "in": "query", "description": "Whether salary is monthly or annual.", "schema": { "type": "string", "enum": ["monthly", "annual"], "default": "monthly" } },
+          { "name": "rent", "in": "query", "description": "Rent paid per year, for rent relief (20%, up to ₦500,000).", "schema": { "type": "number", "minimum": 0, "default": 0 }, "example": 1200000 },
+          { "name": "pension", "in": "query", "description": "1 to include the employee's 8% pension (default), 0 to leave it out.", "schema": { "type": "integer", "enum": [0, 1], "default": 1 } },
+          { "name": "nhf", "in": "query", "description": "1 if the employee contributes 2.5% of basic salary to the National Housing Fund.", "schema": { "type": "integer", "enum": [0, 1], "default": 0 } },
+          { "name": "nhis", "in": "query", "description": "Monthly health insurance (NHIS) contribution.", "schema": { "type": "number", "minimum": 0, "default": 0 } },
+          { "name": "pensionable", "in": "query", "description": "Monthly basic + housing + transport, if pension is on part of pay. Defaults to the monthly salary.", "schema": { "type": "number", "minimum": 0 } },
+          { "name": "basic", "in": "query", "description": "Monthly basic salary, for NHF. Defaults to pensionable.", "schema": { "type": "number", "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "PAYE, deductions, take-home pay, tax bands, employer cost and old-law comparison (amounts in NGN).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PayeResult" }
+              }
+            }
+          },
+          "400": { "description": "Missing or invalid input.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "429": { "description": "More than 60 requests a minute from this IP. Retry after 60 seconds.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LineItem": {
+        "type": "object",
+        "properties": { "label": { "type": "string" }, "amount": { "type": "number" }, "kind": { "type": "string" } }
+      },
+      "PayeResult": {
+        "type": "object",
+        "properties": {
+          "law": { "type": "string" },
+          "currency": { "type": "string", "example": "NGN" },
+          "input": { "type": "object" },
+          "monthly": {
+            "type": "object",
+            "properties": {
+              "gross": { "type": "number" }, "paye": { "type": "number" },
+              "deductions": { "type": "array", "items": { "$ref": "#/components/schemas/LineItem" } },
+              "totalDeductions": { "type": "number" }, "takeHome": { "type": "number" }
+            }
+          },
+          "annual": {
+            "type": "object",
+            "properties": {
+              "gross": { "type": "number" }, "paye": { "type": "number" }, "takeHome": { "type": "number" },
+              "chargeableIncome": { "type": "number" }, "rentRelief": { "type": "number" }
+            }
+          },
+          "effectiveTaxRate": { "type": "number", "description": "PAYE as a percentage of gross pay." },
+          "bands": {
+            "type": "array",
+            "items": { "type": "object", "properties": { "band": { "type": "string" }, "rate": { "type": "number" }, "income": { "type": "number" }, "tax": { "type": "number" } } }
+          },
+          "comparedWithOldLaw": {
+            "type": "object",
+            "properties": { "oldLawMonthly": { "type": "number" }, "newLawMonthly": { "type": "number" }, "monthlySaving": { "type": "number" }, "annualSaving": { "type": "number" } }
+          },
+          "employer": {
+            "type": "object",
+            "properties": { "costs": { "type": "array", "items": { "$ref": "#/components/schemas/LineItem" } }, "totalMonthlyCost": { "type": "number" } }
+          },
+          "rates": {
+            "type": "array",
+            "items": { "type": "object", "properties": { "width": { "type": "number", "nullable": true }, "rate": { "type": "number" } } }
+          },
+          "disclaimer": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      },
+      "Error": { "type": "object", "properties": { "error": { "type": "string" } } }
+    }
+  }
+}
