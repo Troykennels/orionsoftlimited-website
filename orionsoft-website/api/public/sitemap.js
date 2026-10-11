@@ -4,13 +4,14 @@
 // Products and pages switched off in the admin are left out.
 import { readAllContent, publicView } from "../_lib/content.js";
 import { listRecords } from "../_lib/records.js";
+import { DEMO_VIDEO } from "../../shared/demoVideo.js";
 
 // Always the www address: the bare domain redirects there, and Search Console
 // ignores sitemap entries on a different host from the property.
 const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "").replace("://orionsoftlimited.com", "://www.orionsoftlimited.com");
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
-  ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/press", "monthly", 0.5],
+  ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/demo", "monthly", 0.8], ["/press", "monthly", 0.5],
   ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/pricing", "monthly", 0.8],
   ["/about", "monthly", 0.7], ["/why", "monthly", 0.7], ["/process", "monthly", 0.6], ["/work", "monthly", 0.7],
   ["/case-studies", "monthly", 0.7], ["/clients", "monthly", 0.6], ["/testimonials", "monthly", 0.6], ["/success-stories", "monthly", 0.6],
@@ -48,8 +49,11 @@ export async function sitemapUrls() {
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") return res.status(405).end();
   const urls = await sitemapUrls();
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u =>
-    `  <url><loc>${esc(SITE + u.loc)}</loc>${u.mod ? `<lastmod>${u.mod}</lastmod>` : ""}<changefreq>${u.freq}</changefreq><priority>${u.pri.toFixed(1)}</priority></url>`).join("\n")}\n</urlset>\n`;
+  // The product tour page also lists its video, which is how Search Console
+  // counts "discovered videos".
+  const video = loc => loc !== "/demo" ? "" : `<video:video><video:thumbnail_loc>${esc(SITE + DEMO_VIDEO.thumbnail)}</video:thumbnail_loc><video:title>${esc(DEMO_VIDEO.title)}</video:title><video:description>${esc(DEMO_VIDEO.description)}</video:description><video:content_loc>${esc(SITE + DEMO_VIDEO.src)}</video:content_loc><video:duration>${DEMO_VIDEO.seconds}</video:duration><video:publication_date>${DEMO_VIDEO.uploadDate}</video:publication_date><video:family_friendly>yes</video:family_friendly></video:video>`;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.map(u =>
+    `  <url><loc>${esc(SITE + u.loc)}</loc>${u.mod ? `<lastmod>${u.mod}</lastmod>` : ""}<changefreq>${u.freq}</changefreq><priority>${u.pri.toFixed(1)}</priority>${video(u.loc)}</url>`).join("\n")}\n</urlset>\n`;
   res.setHeader("Content-Type", "application/xml; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600");
   return res.status(200).send(xml);

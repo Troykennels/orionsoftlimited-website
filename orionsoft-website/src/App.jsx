@@ -36,6 +36,7 @@ const InvestorsPage     = lazy(() => import("./pages/TrustPages").then(m => ({ d
 const PayeCalculatorPage = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PayeCalculatorPage })));
 const PressPage         = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PressPage })));
 const InternationalPage = lazy(() => import("./pages/InternationalPage"));
+const DemoPage = lazy(() => import("./pages/DemoPage"));
 const DevelopersPage    = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.DevelopersPage })));
 const KenyaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.KenyaPayePage })));
 const GhanaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.GhanaPayePage })));
@@ -3155,6 +3156,7 @@ function Footer({ setCurrentPage }) {
               { l: "Our Clients", a: "/clients", onClick: (e) => { e.preventDefault(); setCurrentPage("clients"); } },
               { l: "Testimonials", a: "/testimonials", onClick: (e) => { e.preventDefault(); setCurrentPage("testimonials"); } },
               { l: "Success Stories", a: "/success-stories", onClick: (e) => { e.preventDefault(); setCurrentPage("success-stories"); } },
+              { l: "Product Tour Video", a: "/demo", onClick: (e) => { e.preventDefault(); setCurrentPage("demo"); } },
               { l: "Case Studies", a: "/case-studies", onClick: (e) => { e.preventDefault(); setCurrentPage("case-studies"); } },
               { l: "Certifications", a: "/certifications", onClick: (e) => { e.preventDefault(); setCurrentPage("certifications"); } },
               { l: "Security & Compliance", a: "/security", onClick: (e) => { e.preventDefault(); setCurrentPage("security"); } },
@@ -5409,7 +5411,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5777,6 +5779,9 @@ export default function App() {
         )}
         {currentPage === "developers" && (
           <Suspense fallback={<PageLoader />}><DevelopersPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "demo" && (
+          <Suspense fallback={<PageLoader />}><DemoPage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "international" && (
           <Suspense fallback={<PageLoader />}><InternationalPage setCurrentPage={navSetPage} /></Suspense>

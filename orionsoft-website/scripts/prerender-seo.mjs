@@ -8,6 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
 import { KENYA_FAQS, GHANA_FAQS } from "../src/lib/africaPayeFaqs.js";
+import { DEMO_VIDEO } from "../shared/demoVideo.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -185,6 +186,18 @@ page("/developers", {
   body: ["Send a GET request to https://www.orionsoftlimited.com/api/public/paye?salary=500000 with the gross monthly salary in naira and get PAYE, deductions, take-home pay, tax bands, employer cost and the difference from the old Personal Income Tax Act as JSON. Optional parameters: period, rent, pension, nhf, nhis, pensionable, basic. Free, no API key, CORS enabled, 60 requests a minute."],
   image: `${SITE}/api/public/og?page=developers`,
   jsonLd: [{ "@context": "https://schema.org", "@type": "WebAPI", name: "Nigeria PAYE API", description: "Calculate Nigerian PAYE and take-home pay under the Nigeria Tax Act 2025.", documentation: `${SITE}/developers`, url: `${SITE}/api/public/paye`, provider: ORG, isAccessibleForFree: true }],
+}); count++;
+
+// The product tour as a watch page, so the video can appear in Google's video
+// results (on the homepage it only opens in a pop-up).
+page("/demo", {
+  title: "CareCore HMS Demo Video: Hospital Management System Product Tour",
+  desc: DEMO_VIDEO.description,
+  h1: DEMO_VIDEO.title,
+  image: `${SITE}${DEMO_VIDEO.thumbnail}`,
+  body: [`Watch the video: ${SITE}${DEMO_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: ["Dashboard", "Patient registration and records", "Consultation", "Pharmacy", "Laboratory", "Billing and HMO schemes", "Nursing", "Management reports"],
+  jsonLd: [{ "@context": "https://schema.org", "@type": "VideoObject", name: DEMO_VIDEO.title, description: DEMO_VIDEO.description, thumbnailUrl: [`${SITE}${DEMO_VIDEO.thumbnail}`], uploadDate: `${DEMO_VIDEO.uploadDate}T12:00:00+01:00`, duration: DEMO_VIDEO.duration, contentUrl: `${SITE}${DEMO_VIDEO.src}`, inLanguage: "en", publisher: ORG }],
 }); count++;
 
 page("/press", {
