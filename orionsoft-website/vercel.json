@@ -106,7 +106,7 @@
       ]
     },
     {
-      "source": "/((?!paye-calculator).*)",
+      "source": "/((?!(?:kenya-|ghana-)?paye-calculator).*)",
       "headers": [
         {
           "key": "X-Frame-Options",

@@ -34,6 +34,8 @@
 ## Free tools
 
 - [Nigeria PAYE & Take-Home Pay Calculator 2026](https://www.orionsoftlimited.com/paye-calculator): Free salary and income tax calculator under the Nigeria Tax Act 2025 (in force from 1 January 2026), with rent relief, pension, NHF and NHIS, a band-by-band breakdown, employer cost, and a comparison with the old Personal Income Tax Act. Can be embedded on other websites.
+- [Kenya PAYE & Net Pay Calculator 2026](https://www.orionsoftlimited.com/kenya-paye-calculator): Free Kenya salary calculator: PAYE bands, personal relief KES 2,400, NSSF (6% up to KES 108,000 from February 2026), SHIF 2.75% and Housing Levy 1.5% deducted before tax (Tax Laws (Amendment) Act 2024). Embeddable.
+- [Ghana PAYE & Net Salary Calculator 2026](https://www.orionsoftlimited.com/ghana-paye-calculator): Free Ghana salary calculator using GRA resident rates effective 1 September 2026, SSNIT 5.5% of basic and provident fund relief. Embeddable.
 - [Nigeria PAYE API](https://www.orionsoftlimited.com/developers): Free JSON API, no key needed: GET https://www.orionsoftlimited.com/api/public/paye?salary=500000 returns PAYE, deductions, take-home pay, tax bands, employer cost and the old-law comparison. Parameters: salary (required), period, rent, pension, nhf, nhis, pensionable, basic. OpenAPI spec: https://www.orionsoftlimited.com/openapi.json
 - [nigeria-paye on npm](https://www.npmjs.com/package/nigeria-paye) / [GitHub](https://github.com/orionsoftlimited/nigeria-paye): Open-source (MIT) JavaScript/TypeScript library by Orion Soft with the same Nigeria Tax Act 2025 PAYE engine. `npm install nigeria-paye`.
 

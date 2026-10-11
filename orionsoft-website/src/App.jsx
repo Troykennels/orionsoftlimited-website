@@ -37,6 +37,8 @@ const PayeCalculatorPage = lazy(() => import("./pages/ToolsPages").then(m => ({ 
 const PressPage         = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PressPage })));
 const InternationalPage = lazy(() => import("./pages/InternationalPage"));
 const DevelopersPage    = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.DevelopersPage })));
+const KenyaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.KenyaPayePage })));
+const GhanaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.GhanaPayePage })));
 
 // Why Orion Soft — mission, vision, values, stats, partners
 const WhyPageFull = lazy(() => import("./pages/WhyPage"));
@@ -3170,6 +3172,8 @@ function Footer({ setCurrentPage }) {
               { l: "API Reference", a: "/api-docs", onClick: (e) => { e.preventDefault(); setCurrentPage("api-docs"); } },
               { l: "FAQ", a: "/faq", onClick: (e) => { e.preventDefault(); setCurrentPage("faq"); } },
               { l: "PAYE Calculator 2026", a: "/paye-calculator", onClick: (e) => { e.preventDefault(); setCurrentPage("paye-calculator"); } },
+              { l: "Kenya PAYE Calculator", a: "/kenya-paye-calculator", onClick: (e) => { e.preventDefault(); setCurrentPage("kenya-paye-calculator"); } },
+              { l: "Ghana PAYE Calculator", a: "/ghana-paye-calculator", onClick: (e) => { e.preventDefault(); setCurrentPage("ghana-paye-calculator"); } },
               { l: "Developers: PAYE API", a: "/developers", onClick: (e) => { e.preventDefault(); setCurrentPage("developers"); } },
               { l: "Press & Media", a: "/press", onClick: (e) => { e.preventDefault(); setCurrentPage("press"); } },
               { l: "Client Portal", a: "/client" },
@@ -5405,7 +5409,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5559,7 +5563,7 @@ export default function App() {
   const isKnownPage = !pageOff && (KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage));
 
   // ?embed=1 on a tool page: just the tool, for other websites to embed.
-  const embed = currentPage === "paye-calculator" && new URLSearchParams(window.location.search).has("embed");
+  const embed = ["paye-calculator", "kenya-paye-calculator", "ghana-paye-calculator"].includes(currentPage) && new URLSearchParams(window.location.search).has("embed");
   const chrome = currentPage !== "admin" && !embed;
 
   return (
@@ -5764,6 +5768,12 @@ export default function App() {
         )}
         {currentPage === "paye-calculator" && (
           <Suspense fallback={<PageLoader />}><PayeCalculatorPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "kenya-paye-calculator" && (
+          <Suspense fallback={<PageLoader />}><KenyaPayePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "ghana-paye-calculator" && (
+          <Suspense fallback={<PageLoader />}><GhanaPayePage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "developers" && (
           <Suspense fallback={<PageLoader />}><DevelopersPage setCurrentPage={navSetPage} /></Suspense>

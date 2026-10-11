@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
+import { KENYA_FAQS, GHANA_FAQS } from "../src/lib/africaPayeFaqs.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -143,6 +144,26 @@ page("/paye-calculator", {
     { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: PAYE_FAQS.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
   ],
 }); count++;
+
+for (const [path, faqs, title, desc, h1, country, points] of [
+  ["/kenya-paye-calculator", KENYA_FAQS, "Kenya PAYE Calculator 2026: Net Pay After NSSF, SHIF & Housing Levy",
+    "Free Kenya PAYE and net salary calculator for 2026. NSSF from February 2026, SHIF 2.75% and Housing Levy 1.5% deducted before tax under the Tax Laws (Amendment) Act 2024, personal relief KES 2,400.",
+    "Kenya PAYE & Net Pay Calculator 2026", "KE",
+    ["First KES 24,000 a month: 10%", "Next KES 8,333: 25%", "Next KES 467,667: 30%", "Next KES 300,000: 32.5%", "Above KES 800,000: 35%", "Personal relief: KES 2,400 a month", "NSSF 6% up to KES 108,000 (max KES 6,480)"]],
+  ["/ghana-paye-calculator", GHANA_FAQS, "Ghana PAYE Calculator 2026: Net Salary After SSNIT & Income Tax",
+    "Free Ghana PAYE and net salary calculator using the GRA rates effective 1 September 2026, with SSNIT 5.5%, provident fund relief and a band-by-band breakdown.",
+    "Ghana PAYE & Net Salary Calculator 2026", "GH",
+    ["First GH₵588 a month: 0%", "Next GH₵80: 5%", "Next GH₵100: 10%", "Next GH₵2,900: 17.5%", "Next GH₵16,000: 25%", "Next GH₵30,332: 30%", "Above GH₵50,000: 35%", "SSNIT 5.5% of basic salary deducted before tax"]],
+]) {
+  page(path, {
+    title, desc, h1, points, image: `${SITE}/api/public/og?page=${path.slice(1)}`,
+    body: [desc, ...faqs.map(([q, a]) => `${q} ${a}`)],
+    jsonLd: [
+      { "@context": "https://schema.org", "@type": "WebApplication", name: h1, url: `${SITE}${path}`, applicationCategory: "FinanceApplication", operatingSystem: "Any", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0" }, publisher: ORG, inLanguage: `en-${country}`, areaServed: country },
+      { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+    ],
+  }); count++;
+}
 
 page("/international", {
   title: "Software Development Company in Nigeria for International Clients",

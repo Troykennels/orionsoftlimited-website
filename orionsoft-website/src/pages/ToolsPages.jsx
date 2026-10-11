@@ -213,6 +213,13 @@ export function PayeCalculatorPage({ setCurrentPage }) {
           <button type="button" onClick={() => copy(embedCode, "embed")} style={{ background: C.surface, color: C.heading, border: `1px solid ${C.borderStrong}`, borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: font, cursor: "pointer" }}>{copied === "embed" ? "Copied ✓" : "Copy code"}</button>
         </div>
 
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 18, color: C.textMuted, fontSize: 13.5 }}>
+          <span>Also free:</span>
+          {[["Kenya PAYE calculator", "kenya-paye-calculator"], ["Ghana PAYE calculator", "ghana-paye-calculator"]].map(([l, p]) => (
+            <a key={p} href={`/${p}`} onClick={e => { e.preventDefault(); setCurrentPage(p); }} style={{ background: C.surface, color: C.heading, border: `1px solid ${C.borderStrong}`, borderRadius: 10, padding: "7px 12px", fontSize: 13.5, fontWeight: 700, textDecoration: "none" }}>{l}</a>
+          ))}
+        </div>
+
         <p style={{ color: C.textMuted, fontSize: 12.5, lineHeight: 1.6, margin: "18px 4px 0" }}>Estimates for salaried employees based on the Nigeria Tax Act 2025 (from 1 January 2026), the Personal Income Tax Act as amended (old-law comparison) and the Pension Reform Act 2014. Not tax advice; your actual PAYE may differ with other income, allowances or reliefs.</p>
       </section>
     </div>
@@ -326,14 +333,16 @@ export function PressPage({ setCurrentPage }) {
 
 // ─── /developers: free PAYE API & embed ─────────────────────────────────────
 const API_PARAMS = [
-  ["salary", "required", "Gross pay in naira. Monthly unless period=annual."],
+  ["salary", "required", "Gross pay in the country's currency. Monthly unless period=annual."],
+  ["country", "ng", "ng (Nigeria), ke (Kenya: NSSF, SHIF, Housing Levy) or gh (Ghana: SSNIT)"],
   ["period", "monthly", "monthly or annual"],
   ["rent", "0", "Rent paid per year, for rent relief (20%, up to ₦500,000)"],
   ["pension", "1", "0 to leave out the employee's 8% pension"],
   ["nhf", "0", "1 if the employee contributes 2.5% to the National Housing Fund"],
   ["nhis", "0", "Monthly health insurance (NHIS) contribution"],
   ["pensionable", "salary", "Monthly basic + housing + transport, if pension is on part of pay"],
-  ["basic", "pensionable", "Monthly basic salary, for NHF"],
+  ["basic", "pensionable", "Monthly basic salary: NHF (Nigeria) or SSNIT (Ghana)"],
+  ["provident", "0", "Ghana only: provident fund % of basic (up to 16.5)"],
 ];
 
 export function DevelopersPage({ setCurrentPage }) {

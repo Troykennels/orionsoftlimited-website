@@ -6,6 +6,8 @@ import { ogPng } from "../_lib/ogImage.js";
 
 const PAGES = {
   "paye-calculator": { title: "Nigeria PAYE & Take-Home Pay Calculator 2026", label: "Free tool" },
+  "kenya-paye-calculator": { title: "Kenya PAYE & Net Pay Calculator 2026", label: "Free tool · Kenya" },
+  "ghana-paye-calculator": { title: "Ghana PAYE & Net Salary Calculator 2026", label: "Free tool · Ghana" },
   press: { title: "Orion Soft Limited: press and media kit", label: "Press" },
   developers: { title: "Free Nigeria PAYE API for developers", label: "Developers" },
   international: { title: "Your software team in Lagos, working on your time", label: "Work with us" },
