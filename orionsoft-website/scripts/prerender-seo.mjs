@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
 import { KENYA_FAQS, GHANA_FAQS } from "../src/lib/africaPayeFaqs.js";
-import { DEMO_VIDEO, STAFFCORE_VIDEO } from "../shared/demoVideo.js";
+import { DEMO_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO } from "../shared/demoVideo.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -210,6 +210,19 @@ page("/staffcore-demo", {
   body: [`Watch the video: ${SITE}${STAFFCORE_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
   points: ["Clock in on the phone", "Location recorded only at clock-in and client visits", "Tasks", "Leave requests", "Team Desk and approvals for managers", "Office feed and staff queries"],
   jsonLd: [{ "@context": "https://schema.org", "@type": "VideoObject", name: STAFFCORE_VIDEO.title, description: STAFFCORE_VIDEO.description, thumbnailUrl: [`${SITE}${STAFFCORE_VIDEO.thumbnail}`], uploadDate: `${STAFFCORE_VIDEO.uploadDate}T15:00:00+01:00`, duration: STAFFCORE_VIDEO.duration, contentUrl: `${SITE}${STAFFCORE_VIDEO.src}`, inLanguage: "en", publisher: ORG }],
+}); count++;
+
+page("/schoolcore-demo", {
+  title: "SchoolCore Demo Videos: School Management Software Tour (Fees, Report Cards, Gate Safety)",
+  desc: SCHOOLCORE_VIDEO.description,
+  h1: SCHOOLCORE_VIDEO.title,
+  image: `${SITE}${SCHOOLCORE_VIDEO.thumbnail}`,
+  body: [`Watch the overview: ${SITE}${SCHOOLCORE_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: SCHOOLCORE_VIDEO.parts.map(p => `Part ${p.n}: ${p.title} (${p.about}, ${p.length})`),
+  jsonLd: [
+    { "@context": "https://schema.org", "@type": "VideoObject", name: SCHOOLCORE_VIDEO.title, description: SCHOOLCORE_VIDEO.description, thumbnailUrl: [`${SITE}${SCHOOLCORE_VIDEO.thumbnail}`], uploadDate: `${SCHOOLCORE_VIDEO.uploadDate}T15:00:00+01:00`, duration: SCHOOLCORE_VIDEO.duration, contentUrl: `${SITE}${SCHOOLCORE_VIDEO.src}`, inLanguage: "en", publisher: ORG },
+    ...SCHOOLCORE_VIDEO.parts.map(p => ({ "@context": "https://schema.org", "@type": "VideoObject", name: `SchoolCore Demo Part ${p.n}: ${p.title}`, description: `${p.about}. Part ${p.n} of ${SCHOOLCORE_VIDEO.parts.length} of the SchoolCore school management software demo by Orion Soft Limited.`, thumbnailUrl: [`${SITE}${p.thumbnail}`], uploadDate: `${SCHOOLCORE_VIDEO.uploadDate}T15:00:00+01:00`, duration: `PT${p.length.split(":")[0]}M${Number(p.length.split(":")[1])}S`, contentUrl: `${SITE}${p.src}`, inLanguage: "en", publisher: ORG })),
+  ],
 }); count++;
 
 page("/press", {

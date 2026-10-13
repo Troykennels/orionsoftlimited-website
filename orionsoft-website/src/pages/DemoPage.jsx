@@ -1,10 +1,10 @@
-// Product tour videos on pages of their own: /demo (CareCore) and
-// /staffcore-demo. A watch page with the video as its main content lets Google
+// Product tour videos on pages of their own: /demo (CareCore),
+// /staffcore-demo and /schoolcore-demo (an overview plus a playlist of parts). A watch page with the video as its main content lets Google
 // list it in video results (prerender-seo.mjs adds its VideoObject, the
 // sitemap its video entry), and gives us one link to share.
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BRAND } from '../lib/brand.js'
-import { DEMO_VIDEO, STAFFCORE_VIDEO } from '../../shared/demoVideo.js'
+import { DEMO_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO } from '../../shared/demoVideo.js'
 
 const C = {
   bg: '#060810', card: '#0F1828', border: 'rgba(255,255,255,0.08)', borderStrong: 'rgba(255,255,255,0.16)',
@@ -41,11 +41,37 @@ const TOURS = {
     closing: <>StaffCore is the portal Orion Soft's own team works in every day. The video shows a demo company with made-up staff.
       Want to see it set up for your organisation?</>,
   },
+  schoolcore: {
+    video: SCHOOLCORE_VIDEO, length: '2 minutes, then 8 short parts', pageTitle: 'SchoolCore Demo Videos: School Management Software Tour | Orion Soft',
+    product: 'schoolcore', productLabel: 'SchoolCore features', panel: '#F2EADB', frame: '#143D2B',
+    chapters: [
+      ['Fees', 'See who owes, to the last naira, and remind parents without lifting a finger.'],
+      ['Teachers', 'Who came, who is teaching, and tests that mark themselves.'],
+      ['Child safety', 'Pick-up codes at the gate: no code, no child.'],
+      ['Report cards', 'Scores entered once; totals, positions and report cards work themselves out.'],
+      ['Parents', 'Results, fees and payments on the parent\'s own phone.'],
+      ['The principal', 'The whole school on one dashboard before morning assembly.'],
+    ],
+    closing: <>SchoolCore is built by Orion Soft Limited in Lagos, Nigeria, for Nigerian schools. The videos show a demo school with made-up pupils and staff.
+      Want to see it set up for your school?</>,
+  },
 }
 
 function WatchPage({ tour, setCurrentPage }) {
   const { video } = tour
+  // With a playlist, the player shows whichever video was picked: null is the
+  // main one, otherwise a part.
+  const [part, setPart] = useState(null)
+  const player = useRef(null)
+  const picked = useRef(false)
+  const now = part || video
   useEffect(() => { document.title = tour.pageTitle }, [tour])
+  useEffect(() => {
+    if (!picked.current) return
+    player.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    player.current?.play?.().catch(() => { /* the visitor can press play */ })
+  }, [part])
+  const pick = p => { picked.current = true; setPart(p) }
   const go = (e, page) => { e.preventDefault(); setCurrentPage(page) }
 
   return (
@@ -55,14 +81,42 @@ function WatchPage({ tour, setCurrentPage }) {
         <h1 style={{ color: C.heading, fontSize: 'clamp(28px, 5vw, 44px)', lineHeight: 1.15, margin: '0 0 14px', fontWeight: 800 }}>{video.title}</h1>
         <p style={{ color: C.text, fontSize: 17, lineHeight: 1.6, margin: '0 0 28px', maxWidth: 760 }}>{video.description}</p>
 
-        <div style={{ background: '#FFC533', borderRadius: 22, padding: 'clamp(8px, 2.4vw, 22px)' }}>
-          <div style={{ borderRadius: 14, overflow: 'hidden', border: '3px solid #0B1B3A', boxShadow: '0 20px 50px rgba(11,27,58,0.35)', background: '#07111D' }}>
-            <video controls playsInline preload="metadata" poster={video.thumbnail} aria-label={video.title}
+        <div style={{ background: tour.panel || '#FFC533', borderRadius: 22, padding: 'clamp(8px, 2.4vw, 22px)' }}>
+          <div style={{ borderRadius: 14, overflow: 'hidden', border: `3px solid ${tour.frame || '#0B1B3A'}`, boxShadow: '0 20px 50px rgba(11,27,58,0.35)', background: '#07111D' }}>
+            <video key={now.src} ref={player} controls playsInline preload="metadata" poster={now.thumbnail} aria-label={now.title}
               style={{ width: '100%', aspectRatio: '16 / 9', display: 'block' }}>
-              <source src={video.src} type="video/mp4" />
+              <source src={now.src} type="video/mp4" />
             </video>
           </div>
         </div>
+
+        {video.parts && (
+          <section aria-label="All videos" style={{ marginTop: 26 }}>
+            <div style={{ color: C.heading, fontWeight: 700, fontSize: 16, margin: '0 0 4px' }}>
+              Now playing: {part ? `Part ${part.n} of ${video.parts.length}: ${part.title}` : 'The 2-minute overview'}
+            </div>
+            <div style={{ color: C.textMuted, fontSize: 14, margin: '0 0 16px' }}>Start with the overview, then pick the part that matters most to you.</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 14 }}>
+              {[null, ...video.parts].map(p => {
+                const item = p || video
+                const active = (p?.n || 0) === (part?.n || 0)
+                return (
+                  <button key={p?.n || 0} type="button" onClick={() => pick(p)} aria-pressed={active}
+                    style={{ textAlign: 'left', padding: 0, background: C.card, border: `2px solid ${active ? C.gold : C.border}`, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', fontFamily: font }}>
+                    <img src={item.thumbnail} alt="" loading="lazy" width="640" height="360" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                    <span style={{ display: 'block', padding: '12px 14px 14px' }}>
+                      <span style={{ display: 'block', color: C.gold, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
+                        {p ? `Part ${p.n} · ${p.length}` : 'Start here · 1:44'}
+                      </span>
+                      <span style={{ display: 'block', color: C.heading, fontSize: 14.5, fontWeight: 700, lineHeight: 1.35 }}>{p ? p.title : 'SchoolCore in 2 minutes'}</span>
+                      <span style={{ display: 'block', color: C.textMuted, fontSize: 13, marginTop: 4 }}>{p ? p.about : 'Three questions every school owner asks'}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '28px 0 44px' }}>
           <a href="/consultation" onClick={e => go(e, 'consultation')}
@@ -98,4 +152,7 @@ export default function DemoPage({ setCurrentPage }) {
 }
 export function StaffCoreDemoPage({ setCurrentPage }) {
   return <WatchPage tour={TOURS.staffcore} setCurrentPage={setCurrentPage} />
+}
+export function SchoolCoreDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.schoolcore} setCurrentPage={setCurrentPage} />
 }
