@@ -41,6 +41,8 @@ const PRODUCTS = {
     points: ["Invoicing, receivables and payables", "Bank reconciliation", "Payroll with PAYE, pension (PFA) and NHF", "VAT and WHT", "Financial statements", "Budgets and forecasts"] },
   hrcore: { name: "HRCore", h1: "HRCore: HR Software for Nigerian Organisations", title: "HRCore HR & People Management Software Nigeria", desc: "HR software for Nigerian organisations: employee records, recruitment, onboarding, leave, attendance, payroll integration, performance reviews and training.", category: "BusinessApplication",
     points: ["Employee records and org chart", "Recruitment and onboarding", "Leave and attendance", "Payroll integration", "Performance reviews", "Training records"] },
+  staffcore: { name: "StaffCore", h1: "StaffCore: Staff Portal & Attendance App", title: "StaffCore Staff Portal: GPS Attendance, Leave & Tasks App Nigeria", desc: "StaffCore is the staff portal Orion Soft runs its own company on: GPS clock-in, field visits, leave, expenses, payslips, tasks, messages, performance and staff queries, on your staff's phones.", category: "BusinessApplication", image: `${SITE}/assets/staffcore/staffcore-share.jpg`,
+    points: ["GPS clock-in and field visit tracking", "Leave requests, approvals and balances", "Expense claims and payslips", "Tasks, goals, messages and meetings", "Weekly reports, performance and staff queries", "Org chart, handbook and QR staff ID cards"] },
   churchcore: { name: "ChurchCore", h1: "ChurchCore: Church Management Software", title: "ChurchCore Church Management Software in Nigeria", desc: "Church management software built for Nigerian church culture: members, attendance, cell groups and units, tithes and giving, events, SMS/email, volunteers and leadership reports.", category: "BusinessApplication",
     points: ["Member database", "Attendance tracking", "Zones, units and cell groups", "Tithes, offerings and giving", "Events, SMS and email", "Volunteers and leadership reports"] },
   fleetcore: { name: "FleetCore", h1: "FleetCore: Fleet Management Software", title: "FleetCore Fleet Management Software Nigeria", desc: "Fleet management software for Nigerian logistics, schools, hospitals and government fleets: vehicles, drivers, trips, maintenance, fuel, documents and GPS.", category: "BusinessApplication",
@@ -127,7 +129,7 @@ page("/", {
 for (const [path, [title, desc, h1]] of Object.entries(PAGES)) { page(path, { title, desc, h1 }); count++; }
 for (const [id, p] of Object.entries(PRODUCTS)) {
   page(`/${id}`, {
-    title: p.title, desc: p.desc, h1: p.h1, points: p.points,
+    title: p.title, desc: p.desc, h1: p.h1, points: p.points, image: p.image,
     jsonLd: [{ "@context": "https://schema.org", "@type": "SoftwareApplication", name: `${p.name} by Orion Soft`, applicationCategory: p.category, operatingSystem: "Web, Android, iOS", url: `${SITE}/${id}`, description: p.desc, featureList: p.points.join(", "), publisher: ORG, provider: ORG, areaServed: "NG", offers: { "@type": "Offer", priceCurrency: "NGN", availability: id === "telehealth" ? "https://schema.org/PreOrder" : "https://schema.org/InStock", url: `${SITE}/consultation` } }],
   }); count++;
 }

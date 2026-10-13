@@ -171,6 +171,30 @@ const PRODUCTS = {
     ],
     headline2: "The HR system your team will actually use.",
   },
+  staffcore: {
+    name: "StaffCore", tag: "STAFF PORTAL", tagline: "The staff portal we run our own company on.",
+    desc: "An online office for your whole team: GPS clock-in, field visits, leave, expenses, payslips, tasks, messages and staff queries. Staff use it on their phones; managers see and approve everything in one place.",
+    color: "#14B8A6", colorDim: "rgba(20,184,166,0.12)", available: true, category: "HR",
+    forWho: ["Schools & Hospitals", "Field Sales & Marketing Teams", "Companies With Several Branches or Sites", "NGOs, Estates & Churches", "Any Team Run on Paper Registers & WhatsApp"],
+    modules: [
+      { name: "GPS Clock-in", desc: "Staff clock in from their phone at the office, a client site or in the field, with location and lateness recorded." },
+      { name: "Field Visits", desc: "Log each client visit with place and time. Managers see who is where, live." },
+      { name: "Team Desk", desc: "Who's in, who's late, who's on leave and whose tasks are overdue, on one screen." },
+      { name: "Leave", desc: "Requests, handover, approvals and balances, without WhatsApp messages." },
+      { name: "Expense Claims", desc: "Claims with receipts go to the right manager for approval." },
+      { name: "Payslips", desc: "Staff download their own payslips every month." },
+      { name: "Tasks & Goals", desc: "Assign work, set deadlines and track progress on a board." },
+      { name: "Messages & Meetings", desc: "Company chat and meeting scheduling, so work stays out of personal chats." },
+      { name: "Office Feed", desc: "Announcements, wins and kudos, sent to everyone or to selected teams." },
+      { name: "Weekly Reports", desc: "Staff report their week; managers review and sign off." },
+      { name: "Performance", desc: "Scores and reviews for every staff member, visible to their manager." },
+      { name: "Staff Queries", desc: "Issue a formal query, get the written answer and record the outcome." },
+      { name: "People & Org Chart", desc: "A staff directory with reporting lines for the whole company." },
+      { name: "Staff Handbook", desc: "Policies and useful links, with read-and-acknowledge." },
+      { name: "Staff ID Cards", desc: "Printable ID cards with a QR code anyone can scan to confirm the holder works for you." },
+    ],
+    headline2: "Not a mockup. We use it every working day.",
+  },
   churchcore: {
     name: "ChurchCore", tag: "FAITH ORGANISATIONS", tagline: "Built for the body. Not the boardroom.",
     desc: "A church management platform designed specifically for Nigerian ministries and faith communities member care, cell groups, giving, events, and communication in one place.",
@@ -492,6 +516,118 @@ function CareCoreScreenshots() {
   );
 }
 
+// StaffCore-only: screenshots of a demo company, how a rollout works, and how
+// it differs from HRCore.
+const STAFFCORE_MEDIA = [
+  { src: "/assets/staffcore/team.webp", title: "Team Desk", desc: "Managers see headcount, who has clocked in, who is on a field visit, open tasks and leave balances." },
+  { src: "/assets/staffcore/approvals.webp", title: "Approvals", desc: "Leave requests arrive with dates, working days and the reason. Approve or decline with one tap." },
+  { src: "/assets/staffcore/tasks.webp", title: "Tasks", desc: "Assign work to your team and watch it move from To do to Done." },
+  { src: "/assets/staffcore/feed.webp", title: "Office Feed", desc: "Updates, wins and kudos keep everyone in the loop, in the office or out in the field." },
+];
+const STAFFCORE_STEPS = [
+  ["1", "We set it up", "Your logo, colours and web address. We load your staff, departments, office locations, leave rules and handbook."],
+  ["2", "Staff log in on their phones", "No app store needed. They clock in, see their tasks, request leave, claim expenses and send reports."],
+  ["3", "Managers approve and follow up", "One dashboard for attendance, field visits, approvals, performance and queries."],
+  ["4", "We train and support you", "One training session for your team, then hosting, backups, updates and support from us."],
+];
+const STAFFCORE_VS = [
+  ["StaffCore", "#14B8A6", "Used by every staff member, every day.", ["Clock-in and field visits", "Tasks, messages and reports", "Leave, expenses and payslips", "Queries and performance"], null],
+  ["HRCore", "#F43F5E", "Used by HR and management.", ["Recruitment and onboarding", "Employee files and contracts", "Payroll processing", "Training and development"], "hrcore"],
+];
+
+function StaffCoreShowcase({ setCurrentPage }) {
+  const color = PRODUCTS.staffcore.color;
+  const h2 = { fontSize: "clamp(30px, 4vw, 48px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 16px", lineHeight: 1.1 };
+  const lead = { fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 };
+  return (
+    <>
+      <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <Reveal>
+            <div style={{ textAlign: "center", marginBottom: 64, maxWidth: 680, marginLeft: "auto", marginRight: "auto" }}>
+              <SectionLabel color={color}>SEE IT IN ACTION</SectionLabel>
+              <h2 style={h2}>The real portal, with a demo company.</h2>
+              <p style={lead}>Orion Soft's own team works in this portal every day. The screens below show a demo company with made-up staff.</p>
+            </div>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 24 }}>
+            {STAFFCORE_MEDIA.map((m, i) => (
+              <Reveal key={m.title} delay={Math.min(i * 0.06, 0.24)}>
+                <figure style={{ margin: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+                  <img src={m.src} alt={`StaffCore ${m.title} screen`} loading="lazy" width="1440" height="892" style={{ width: "100%", height: "auto", display: "block", borderBottom: `1px solid ${C.border}` }} />
+                  <figcaption style={{ padding: "20px 22px" }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{m.title}</h3>
+                    <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.6, margin: 0 }}>{m.desc}</p>
+                  </figcaption>
+                </figure>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.bg }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 56, alignItems: "center" }}>
+          <Reveal>
+            <div>
+              <SectionLabel color={color}>HOW IT WORKS</SectionLabel>
+              <h2 style={{ ...h2, fontSize: "clamp(30px, 4vw, 44px)" }}>Live in about two weeks.</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 28 }}>
+                {STAFFCORE_STEPS.map(([n, t, d]) => (
+                  <div key={n} style={{ display: "flex", gap: 16, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px" }}>
+                    <span style={{ width: 34, height: 34, borderRadius: "50%", background: PRODUCTS.staffcore.colorDim, color, fontWeight: 800, fontFamily: font, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{n}</span>
+                    <div>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 4px" }}>{t}</h3>
+                      <p style={{ fontSize: 14, color: C.text, fontFamily: font, lineHeight: 1.6, margin: 0 }}>{d}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <figure style={{ margin: "0 auto", maxWidth: 320 }}>
+              <img src="/assets/staffcore/phone-leave.webp" alt="StaffCore leave request on a phone" loading="lazy" width="509" height="1114"
+                style={{ width: "100%", height: "auto", display: "block", borderRadius: 28, border: `1px solid ${C.border}`, boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }} />
+              <figcaption style={{ fontSize: 13.5, color: C.textMuted, fontFamily: font, textAlign: "center", marginTop: 14 }}>Leave request on a staff member's phone</figcaption>
+            </figure>
+          </Reveal>
+        </div>
+      </section>
+
+      <section style={{ padding: "100px clamp(20px, 4vw, 40px)", background: C.surface, borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <Reveal>
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <SectionLabel color={color}>STAFFCORE OR HRCORE?</SectionLabel>
+              <h2 style={{ ...h2, fontSize: "clamp(28px, 3.6vw, 40px)" }}>One is for every staff member. One is for HR.</h2>
+            </div>
+          </Reveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 20 }}>
+            {STAFFCORE_VS.map(([name, col, sub, points, page]) => (
+              <Reveal key={name}>
+                <div style={{ background: C.card, border: `1px solid ${col}33`, borderRadius: 16, padding: "26px 24px", height: "100%" }}>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: col, fontFamily: font, margin: "0 0 6px" }}>{name}</h3>
+                  <p style={{ fontSize: 14.5, color: C.heading, fontFamily: font, margin: "0 0 16px", fontWeight: 600 }}>{sub}</p>
+                  {points.map(p => (
+                    <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
+                      <Check color={col} /><span style={{ fontSize: 14.5, color: C.text, fontFamily: font }}>{p}</span>
+                    </div>
+                  ))}
+                  {page && (
+                    <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ display: "inline-block", marginTop: 12, fontSize: 14, fontWeight: 700, color: col, fontFamily: font, textDecoration: "none" }}>See {name} →</a>
+                  )}
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <p style={{ ...lead, textAlign: "center", marginTop: 28, fontSize: 15 }}>Start with StaffCore on its own, or run both together.</p>
+        </div>
+      </section>
+    </>
+  );
+}
+
 // ═══════════════════════════════════════
 // GENERIC PRODUCT PAGE
 // ═══════════════════════════════════════
@@ -532,6 +668,13 @@ export function FinanceCorePage({ setCurrentPage }) {
 }
 export function HRCorePage({ setCurrentPage }) {
   return <ProductPage product={PRODUCTS.hrcore} setCurrentPage={setCurrentPage} />;
+}
+export function StaffCorePage({ setCurrentPage }) {
+  return (
+    <ProductPage product={PRODUCTS.staffcore} setCurrentPage={setCurrentPage}>
+      <StaffCoreShowcase setCurrentPage={setCurrentPage} />
+    </ProductPage>
+  );
 }
 export function ChurchCorePage({ setCurrentPage }) {
   return <ProductPage product={PRODUCTS.churchcore} setCurrentPage={setCurrentPage} />;

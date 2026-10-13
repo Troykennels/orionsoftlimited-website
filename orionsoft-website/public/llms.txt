@@ -18,6 +18,7 @@
 - [InventoryCore](https://www.orionsoftlimited.com/inventorycore): Inventory and supply chain software: multi-warehouse stock, purchase orders, reorder alerts, suppliers, barcode/QR scanning, batch and expiry tracking.
 - [FinanceCore](https://www.orionsoftlimited.com/financecore): Accounting software built for Nigeria: invoicing, payables/receivables, bank reconciliation, payroll with PAYE, pension and NHF, VAT and WHT, financial statements and budgets.
 - [HRCore](https://www.orionsoftlimited.com/hrcore): HR software: employee records, recruitment, onboarding, leave, attendance, payroll integration, performance reviews and training.
+- [StaffCore](https://www.orionsoftlimited.com/staffcore): Staff portal that Orion Soft's own team uses daily: GPS clock-in, field visit tracking, leave, expense claims, payslips, tasks, messages, weekly reports, performance, formal staff queries, org chart, handbook and QR-verified staff ID cards. Works on staff phones; set up with the client's own logo and web address.
 - [ChurchCore](https://www.orionsoftlimited.com/churchcore): Church management software: members, attendance, cell groups and units, tithes and giving, events, SMS/email, volunteers and reports.
 - [FleetCore](https://www.orionsoftlimited.com/fleetcore): Fleet management: vehicles, drivers, trips, maintenance, fuel, documents and GPS.
 

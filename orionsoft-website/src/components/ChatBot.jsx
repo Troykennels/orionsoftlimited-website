@@ -32,6 +32,7 @@ const PRODUCT_LABELS = {
   inventorycore:  { name: "InventoryCore",  emoji: "📦", color: "#8B5CF6" },
   financecore:    { name: "FinanceCore",    emoji: "💰", color: BRAND.gold },
   hrcore:         { name: "HRCore",         emoji: "👥", color: "#F43F5E" },
+  staffcore:      { name: "StaffCore",      emoji: "📲", color: "#14B8A6" },
   churchcore:     { name: "ChurchCore",     emoji: "⛪", color: "#7C3AED" },
   fleetcore:      { name: "FleetCore",      emoji: "🚗", color: "#06B6D4" },
   telehealth:     { name: "TeleHealth",     emoji: "💊", color: "#4F8EF7" },

@@ -57,6 +57,7 @@ const ComplianceCorePage = lazy(() => import("./pages/ProductPages").then(m => (
 const InventoryCorePage  = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.InventoryCorePage })));
 const FinanceCorePage    = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.FinanceCorePage })));
 const HRCorePage         = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.HRCorePage })));
+const StaffCorePage      = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.StaffCorePage })));
 const ChurchCorePage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.ChurchCorePage })));
 const FleetCorePage      = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.FleetCorePage })));
 const TeleHealthPage     = lazy(() => import("./pages/ProductPages").then(m => ({ default: m.TeleHealthPage })));
@@ -5411,7 +5412,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5519,6 +5520,7 @@ export default function App() {
       inventorycore: "InventoryCore Inventory Management | Orion Soft Limited",
       financecore: "FinanceCore Finance & Accounting | Orion Soft Limited",
       hrcore: "HRCore Human Resources | Orion Soft Limited",
+      staffcore: "StaffCore Staff Portal & Attendance | Orion Soft Limited",
       churchcore: "ChurchCore Faith Organisations | Orion Soft Limited",
       fleetcore: "FleetCore Fleet Management | Orion Soft Limited",
       telehealth: "TeleHealth Telemedicine | Orion Soft Limited",
@@ -5619,6 +5621,9 @@ export default function App() {
         )}
         {currentPage === "hrcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><HRCorePage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "staffcore" && !pageOff && (
+          <Suspense fallback={<PageLoader />}><StaffCorePage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "churchcore" && !pageOff && (
           <Suspense fallback={<PageLoader />}><ChurchCorePage setCurrentPage={navSetPage} /></Suspense>

@@ -31,6 +31,7 @@ const PRODUCTS = [
   { id: "inventorycore", label: "InventoryCore Inventory & Supply Chain" },
   { id: "financecore", label: "FinanceCore Finance & Accounting" },
   { id: "hrcore", label: "HRCore Human Resources" },
+  { id: "staffcore", label: "StaffCore Staff Portal" },
   { id: "churchcore", label: "ChurchCore Church Management" },
   { id: "fleetcore", label: "FleetCore Fleet Management" },
   { id: "telehealth", label: "TeleHealth Telemedicine (2026)" },

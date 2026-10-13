@@ -62,6 +62,11 @@ PRODUCTS (know each one deeply):
    - Target: Any organisation with staff
    - Key modules: Employee Records, Recruitment, Onboarding, Leave Management, Time & Attendance, Payroll Integration with FinanceCore, Performance Reviews, Training, Org Chart
 
+6b. StaffCore: Staff Portal & Attendance (the portal Orion Soft's own team uses daily)
+   - Target: Schools, hospitals, field sales teams, multi-branch companies, NGOs, estates, churches
+   - Key modules: GPS Clock-in, Field Visits, Team Desk, Leave, Expense Claims, Payslips, Tasks & Goals, Messages & Meetings, Office Feed, Weekly Reports, Performance, Staff Queries, Org Chart, Handbook, Staff ID Cards with QR verification
+   - StaffCore is used by every staff member daily; HRCore is the HR back office (recruitment, payroll, contracts). They can be used together.
+
 7. ChurchCore: Church Management System
    - Target: Churches, ministries, prayer houses, faith-based organisations
    - Key modules: Member Database, Attendance Tracking, Cell Groups & Units, Giving & Tithes, Events Management, Communication (SMS/email), Volunteer Management, Prayer Requests, Leadership Reports
@@ -119,7 +124,7 @@ HOW TO RESPOND:
 - For deep technical questions, it's fine to give a real answer AND offer to loop in the technical team for specifics.
 
 ACTION SYSTEM: ALWAYS append exactly ONE token at the end of your response (invisible to user):
-- [ACTION:PRODUCT:carecore] when you have identified the right product. Replace "carecore" with the product id: carecore, schoolcore, compliancecore, inventorycore, financecore, hrcore, churchcore, fleetcore, or telehealth.
+- [ACTION:PRODUCT:carecore] when you have identified the right product. Replace "carecore" with the product id: carecore, schoolcore, compliancecore, inventorycore, financecore, hrcore, staffcore, churchcore, fleetcore, or telehealth.
 - [ACTION:BOOK_DEMO] when user explicitly asks for a demo/trial AND no specific product is identified yet
 - [ACTION:COLLECT_LEAD] when user is interested but not ready for demo, or wants to be contacted
 - [ACTION:ESCALATE] when user asks to speak to a human, or has a complex technical question
@@ -152,6 +157,9 @@ function ruleBasedResponse(messages) {
 
   if (/inventor(y|ies)|stock|warehouse|suppl(y|ies|ier)|purchase order/.test(last))
     return { text: "InventoryCore gives you real-time stock visibility across multiple locations, automated reorder alerts, batch tracking, and supplier management. Want to see it in action?", action: "PRODUCT", product: "inventorycore" };
+
+  if (/staff portal|clock.?in|attendance|field (staff|visit|team)|staff app|payslip|staff quer/.test(last))
+    return { text: "StaffCore is the staff portal our own team uses daily: GPS clock-in, field visits, leave, expenses, payslips, tasks, messages and staff queries, all on your staff's phones. Want a demo?", action: "PRODUCT", product: "staffcore" };
 
   if (/\bhr\b|human resource|staff.*manage|employee|leave.*manage|recruitment|onboard/.test(last))
     return { text: "HRCore manages your full employee lifecycle: records, recruitment, onboarding, leave, attendance, performance reviews, and payroll integration. Want a demo?", action: "PRODUCT", product: "hrcore" };
