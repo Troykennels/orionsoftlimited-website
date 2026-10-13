@@ -12,12 +12,12 @@ export const DEMO_VIDEO = {
 }
 
 export const STAFFCORE_VIDEO = {
-  title: "StaffCore Staff Portal: Product Tour",
-  description: "See StaffCore, the staff portal by Orion Soft Limited, at work: a field sales executive clocks in on his phone with GPS, posts his stand-up, checks in at clients, updates a task and requests leave; his manager sees the team live, checks locations, approves the leave, assigns work and reviews performance and a staff query.",
+  title: "Know Who Is Really at Work: StaffCore in 3 Minutes",
+  description: "No more paper registers, signing in for a friend or leave lost in WhatsApp. Watch a field sales executive clock in with GPS, prove his client visits and request leave on his phone, while his manager sees the whole team live, approves in one click and tracks performance from facts, not claims. StaffCore is the staff portal by Orion Soft Limited.",
   src: "/assets/staffcore/staffcore-demo.mp4",
   thumbnail: "/assets/staffcore/staffcore-demo-thumbnail.jpg",
-  duration: "PT3M12S",
-  seconds: 192,
+  duration: "PT3M16S",
+  seconds: 196,
   uploadDate: "2026-10-13",
 }
 

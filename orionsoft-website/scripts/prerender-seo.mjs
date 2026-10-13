@@ -203,7 +203,7 @@ page("/demo", {
 }); count++;
 
 page("/staffcore-demo", {
-  title: "StaffCore Demo Video: Staff Portal & Attendance App Tour",
+  title: "StaffCore Demo Video: Know Who Is Really at Work (GPS Attendance App)",
   desc: STAFFCORE_VIDEO.description,
   h1: STAFFCORE_VIDEO.title,
   image: `${SITE}${STAFFCORE_VIDEO.thumbnail}`,

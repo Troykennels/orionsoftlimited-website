@@ -540,34 +540,36 @@ function StaffCoreShowcase({ setCurrentPage }) {
   const color = PRODUCTS.staffcore.color;
   const h2 = { fontSize: "clamp(30px, 4vw, 48px)", fontWeight: 800, color: C.heading, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 16px", lineHeight: 1.1 };
   const lead = { fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.75, margin: 0 };
+  // Same flat yellow and navy as the demo video, so the dark portal screens stand out.
+  const sun = "#FFC533", ink = "#0B1B3A";
   return (
     <>
-      <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
+      <section style={{ padding: "120px clamp(20px, 4vw, 40px)", background: sun }}>
         <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 64, maxWidth: 680, marginLeft: "auto", marginRight: "auto" }}>
-              <SectionLabel color={color}>SEE IT IN ACTION</SectionLabel>
-              <h2 style={h2}>The real portal, with a demo company.</h2>
-              <p style={lead}>Orion Soft's own team works in this portal every day. The video and screens below show a demo company with made-up staff.</p>
+              <SectionLabel color={ink}>SEE IT IN ACTION</SectionLabel>
+              <h2 style={{ ...h2, color: ink }}>The real portal, with a demo company.</h2>
+              <p style={{ ...lead, color: ink, fontWeight: 500 }}>Orion Soft's own team works in this portal every day. The video and screens below show a demo company with made-up staff.</p>
             </div>
           </Reveal>
           <Reveal>
             <div style={{ maxWidth: 960, margin: "0 auto 56px" }}>
-              <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${color}44`, boxShadow: "0 30px 90px rgba(0,0,0,0.5)", background: "#07111D" }}>
+              <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${ink}`, boxShadow: "0 24px 60px rgba(11,27,58,0.35)", background: "#07111D" }}>
                 <video controls playsInline preload="none" poster={STAFFCORE_VIDEO.thumbnail} aria-label={STAFFCORE_VIDEO.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
                   <source src={STAFFCORE_VIDEO.src} type="video/mp4" />
                 </video>
               </div>
-              <p style={{ ...lead, fontSize: 14.5, textAlign: "center", marginTop: 14 }}>
+              <p style={{ ...lead, color: ink, fontWeight: 500, fontSize: 14.5, textAlign: "center", marginTop: 14 }}>
                 Three-minute tour with sound.{" "}
-                <a href="/staffcore-demo" onClick={e => { e.preventDefault(); setCurrentPage("staffcore-demo"); }} style={{ color, fontWeight: 700, textDecoration: "none" }}>Open the video on its own page →</a>
+                <a href="/staffcore-demo" onClick={e => { e.preventDefault(); setCurrentPage("staffcore-demo"); }} style={{ color: ink, fontWeight: 800, textDecoration: "underline" }}>Open the video on its own page →</a>
               </p>
             </div>
           </Reveal>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 24 }}>
             {STAFFCORE_MEDIA.map((m, i) => (
               <Reveal key={m.title} delay={Math.min(i * 0.06, 0.24)}>
-                <figure style={{ margin: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden" }}>
+                <figure style={{ margin: 0, background: C.card, border: `3px solid ${ink}`, borderRadius: 16, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,27,58,0.3)" }}>
                   <img src={m.src} alt={`StaffCore ${m.title} screen`} loading="lazy" width="1440" height="892" style={{ width: "100%", height: "auto", display: "block", borderBottom: `1px solid ${C.border}` }} />
                   <figcaption style={{ padding: "20px 22px" }}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, color: C.heading, fontFamily: font, margin: "0 0 6px" }}>{m.title}</h3>

@@ -28,7 +28,7 @@ const TOURS = {
       Want to see it with your own hospital's workflow?</>,
   },
   staffcore: {
-    video: STAFFCORE_VIDEO, length: `${Math.round(STAFFCORE_VIDEO.seconds / 60)} minutes`, pageTitle: 'StaffCore Demo Video: Staff Portal Tour | Orion Soft',
+    video: STAFFCORE_VIDEO, length: `${Math.round(STAFFCORE_VIDEO.seconds / 60)} minutes`, pageTitle: 'StaffCore Demo Video: Know Who Is Really at Work | Orion Soft',
     product: 'staffcore', productLabel: 'StaffCore features',
     chapters: [
       ['Clock in on the phone', 'A staff member chooses where they are working and starts their day. Time and exact location are saved, so nobody signs in for a friend.'],
@@ -55,11 +55,13 @@ function WatchPage({ tour, setCurrentPage }) {
         <h1 style={{ color: C.heading, fontSize: 'clamp(28px, 5vw, 44px)', lineHeight: 1.15, margin: '0 0 14px', fontWeight: 800 }}>{video.title}</h1>
         <p style={{ color: C.text, fontSize: 17, lineHeight: 1.6, margin: '0 0 28px', maxWidth: 760 }}>{video.description}</p>
 
-        <div style={{ borderRadius: 16, overflow: 'hidden', border: `1px solid ${C.borderStrong}`, boxShadow: '0 30px 90px rgba(0,0,0,0.5)', background: '#07111D' }}>
-          <video controls playsInline preload="metadata" poster={video.thumbnail} aria-label={video.title}
-            style={{ width: '100%', aspectRatio: '16 / 9', display: 'block' }}>
-            <source src={video.src} type="video/mp4" />
-          </video>
+        <div style={{ background: '#FFC533', borderRadius: 22, padding: 'clamp(8px, 2.4vw, 22px)' }}>
+          <div style={{ borderRadius: 14, overflow: 'hidden', border: '3px solid #0B1B3A', boxShadow: '0 20px 50px rgba(11,27,58,0.35)', background: '#07111D' }}>
+            <video controls playsInline preload="metadata" poster={video.thumbnail} aria-label={video.title}
+              style={{ width: '100%', aspectRatio: '16 / 9', display: 'block' }}>
+              <source src={video.src} type="video/mp4" />
+            </video>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '28px 0 44px' }}>
