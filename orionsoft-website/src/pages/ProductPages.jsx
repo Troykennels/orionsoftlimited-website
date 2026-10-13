@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
+import { STAFFCORE_VIDEO } from "../../shared/demoVideo.js";
 
 import { BRAND } from "../lib/brand.js";
 // ═══════════════════════════════════════
@@ -547,7 +548,20 @@ function StaffCoreShowcase({ setCurrentPage }) {
             <div style={{ textAlign: "center", marginBottom: 64, maxWidth: 680, marginLeft: "auto", marginRight: "auto" }}>
               <SectionLabel color={color}>SEE IT IN ACTION</SectionLabel>
               <h2 style={h2}>The real portal, with a demo company.</h2>
-              <p style={lead}>Orion Soft's own team works in this portal every day. The screens below show a demo company with made-up staff.</p>
+              <p style={lead}>Orion Soft's own team works in this portal every day. The video and screens below show a demo company with made-up staff.</p>
+            </div>
+          </Reveal>
+          <Reveal>
+            <div style={{ maxWidth: 960, margin: "0 auto 56px" }}>
+              <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${color}44`, boxShadow: "0 30px 90px rgba(0,0,0,0.5)", background: "#07111D" }}>
+                <video controls playsInline preload="none" poster={STAFFCORE_VIDEO.thumbnail} aria-label={STAFFCORE_VIDEO.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
+                  <source src={STAFFCORE_VIDEO.src} type="video/mp4" />
+                </video>
+              </div>
+              <p style={{ ...lead, fontSize: 14.5, textAlign: "center", marginTop: 14 }}>
+                Three-minute tour with sound.{" "}
+                <a href="/staffcore-demo" onClick={e => { e.preventDefault(); setCurrentPage("staffcore-demo"); }} style={{ color, fontWeight: 700, textDecoration: "none" }}>Open the video on its own page →</a>
+              </p>
             </div>
           </Reveal>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", gap: 24 }}>

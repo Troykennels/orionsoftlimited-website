@@ -37,6 +37,7 @@ const PayeCalculatorPage = lazy(() => import("./pages/ToolsPages").then(m => ({ 
 const PressPage         = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.PressPage })));
 const InternationalPage = lazy(() => import("./pages/InternationalPage"));
 const DemoPage = lazy(() => import("./pages/DemoPage"));
+const StaffCoreDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.StaffCoreDemoPage })));
 const DevelopersPage    = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.DevelopersPage })));
 const KenyaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.KenyaPayePage })));
 const GhanaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.GhanaPayePage })));
@@ -5412,7 +5413,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5784,6 +5785,9 @@ export default function App() {
         )}
         {currentPage === "developers" && (
           <Suspense fallback={<PageLoader />}><DevelopersPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "staffcore-demo" && (
+          <Suspense fallback={<PageLoader />}><StaffCoreDemoPage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "demo" && (
           <Suspense fallback={<PageLoader />}><DemoPage setCurrentPage={navSetPage} /></Suspense>
