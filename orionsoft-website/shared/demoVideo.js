@@ -16,9 +16,9 @@ export const STAFFCORE_VIDEO = {
   description: "No more paper registers, signing in for a friend or leave lost in WhatsApp. Watch a field sales executive clock in with GPS, prove his client visits and request leave on his phone, while his manager sees the whole team live, approves in one click and tracks performance from facts, not claims. StaffCore is the staff portal by Orion Soft Limited.",
   src: "/assets/staffcore/staffcore-demo.mp4",
   thumbnail: "/assets/staffcore/staffcore-demo-thumbnail.jpg",
-  duration: "PT3M16S",
-  seconds: 196,
-  uploadDate: "2026-10-13",
+  duration: "PT2M57S",
+  seconds: 177,
+  uploadDate: "2026-10-14",
 }
 
 // SchoolCore: a short overview, then eight parts that each answer one question.
