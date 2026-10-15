@@ -327,6 +327,13 @@ function IllAIAuto() {
 }
 
 // ─── Product data ──────────────────────────────────────────────────────────────
+// A product card picture taken from the product's demo video.
+function thumbIllustration(src) {
+  return function ThumbIllustration() {
+    return <img src={src} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />;
+  };
+}
+
 const PRODUCTS = [
   {
     id: "carecore-ai",
@@ -386,19 +393,55 @@ const PRODUCTS = [
     id: "directors-portal",
     name: "Directors' Portal",
     category: "Business Software",
-    tagline: "Executive Intelligence & Governance",
-    desc: "Built for organisations already running multiple Orion Soft products. The Directors' Portal connects them, pulling live KPIs, operational status, and financial summaries into a single board-level view. No more chasing department heads for weekly reports.",
+    tagline: "Board Governance",
+    desc: "Run your board like a listed company. Board and committee meetings, agendas, board packs, minutes and resolutions in one secure portal, with quorum checked automatically and a full audit trail.",
     color: BRAND.gold,
     badge: "NEW",
     Illustration: IllDirectors,
     benefits: [
-      "Live data from CareCore, SchoolCore, InventoryCore in one screen",
-      "Drill-down from summary to department to individual record",
-      "Board pack generation with scheduled email delivery",
-      "Access controlled per director, with no cross-visibility by default",
+      "Meetings with clear agendas, timings and presenters",
+      "Secure, versioned board packs",
+      "Minutes reviewed and approved online",
+      "Resolutions voted on, with quorum checked",
     ],
-    page: "contact",
-    cta: "Request a Demo →",
+    page: "directors-portal",
+    cta: "Explore Directors' Portal →",
+  },
+  {
+    id: "orion-crm",
+    name: "Orion CRM",
+    category: "Business Software",
+    tagline: "Sales, Billing & Customer Success",
+    desc: "Sell more. Lose fewer customers. Leads, deals, quotes, invoices, renewals and support in one place, built in Nigeria for growing teams.",
+    color: "#0EA5E9",
+    badge: "NEW",
+    Illustration: thumbIllustration("/assets/orioncrm/demo/overview.jpg"),
+    benefits: [
+      "Every enquiry captured and scored",
+      "Proposals that show when they are read",
+      "Invoices, subscriptions and renewals that never slip",
+      "Targets and commission worked out for you",
+    ],
+    page: "orion-crm",
+    cta: "Explore Orion CRM →",
+  },
+  {
+    id: "license-manager",
+    name: "Orion License Manager",
+    category: "Business Software",
+    tagline: "Software Licensing & Activation",
+    desc: "Every licence. Every device. Every naira. Issue signed licences in seconds, see every installed copy live, and keep renewals and invoices on time.",
+    color: "#6366F1",
+    badge: "NEW",
+    Illustration: thumbIllustration("/assets/license-manager/license-manager-demo.jpg"),
+    benefits: [
+      "Signed licence keys in seconds",
+      "Every installed copy, live",
+      "Seats, grace periods and expiry",
+      "Suspend or revoke a licence instantly",
+    ],
+    page: "license-manager",
+    cta: "Explore License Manager →",
   },
   {
     id: "compliancecore",
@@ -691,7 +734,7 @@ export default function ProductsPage({ setCurrentPage, products }) {
               lineHeight: 1.04, letterSpacing: "-0.04em",
               margin: "0 0 22px",
             }}>
-              Eight platforms.<br />
+              Ten platforms.<br />
               One production-grade<br />
               <span style={{ color: LC.gold }}>standard.</span>
             </h1>

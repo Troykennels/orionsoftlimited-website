@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
-import { STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, CARECORE_VIDEO, COMPLIANCECORE_VIDEO } from "../../shared/demoVideo.js";
+import { STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, CARECORE_VIDEO, COMPLIANCECORE_VIDEO, ORIONCRM_VIDEO, DIRECTORS_VIDEO, LICENSE_VIDEO } from "../../shared/demoVideo.js";
 
 import { BRAND } from "../lib/brand.js";
 // ═══════════════════════════════════════
@@ -171,6 +171,65 @@ const PRODUCTS = {
       { name: "Organisation Chart", desc: "Visual org structure with reporting lines and headcounts." },
     ],
     headline2: "The HR system your team will actually use.",
+  },
+  "orion-crm": {
+    name: "Orion CRM", tag: "SALES & CUSTOMER CRM", tagline: "Sell more. Lose fewer customers.",
+    desc: "Leads, deals, quotes, invoices, renewals and support in one place, built in Nigeria for growing teams. Every enquiry is captured and scored, every proposal tracked, every renewal flagged months ahead, and each salesperson's day is planned for them.",
+    color: "#0EA5E9", colorDim: "rgba(14,165,233,0.12)", available: true, category: "Sales",
+    forWho: ["Software & SaaS Companies", "Hospitals, Schools & Clinics Selling Services", "B2B Sales Teams", "Agencies & Consultancies", "Any Business With Repeat Customers"],
+    modules: [
+      { name: "Leads & Pipeline", desc: "Every enquiry captured, scored and moved through one pipeline the whole team can see." },
+      { name: "Lead Scoring", desc: "Know which deals to chase first, from real signals in your records." },
+      { name: "Executive Portal", desc: "Revenue collected, expected forecast and money at risk, on one screen for the owner." },
+      { name: "Demos", desc: "Demos booked, confirmed and debriefed, so no prospect goes cold." },
+      { name: "Proposals", desc: "Branded quotes with version history, and you know when they are read." },
+      { name: "Products & Price List", desc: "One price list for every quote, with editions and pricing." },
+      { name: "Invoices", desc: "Invoices with VAT, part payments and balances." },
+      { name: "Subscriptions & Renewals", desc: "Recurring billing and renewals that never slip." },
+      { name: "Contracts", desc: "Contracts tracked so none quietly expires." },
+      { name: "Customer Success", desc: "Account health from real signals, with renewals flagged months ahead." },
+      { name: "Support Tickets", desc: "Customer issues logged with deadlines, so nothing is forgotten." },
+      { name: "Targets & Commission", desc: "Each person's day planned, targets measured on money received, commission worked out and approved." },
+    ],
+    headline2: "From first enquiry to renewal, in one place.",
+  },
+  "directors-portal": {
+    name: "Directors' Portal", tag: "BOARD GOVERNANCE", tagline: "Run your board like a listed company.",
+    desc: "Board and committee meetings, agendas, board packs, minutes and resolutions in one secure portal. Directors review papers and approve minutes online, resolutions are voted on with quorum checked automatically, and every action is recorded in a full audit trail.",
+    color: "#B8860B", colorDim: "rgba(184,134,11,0.12)", available: true, category: "Governance",
+    forWho: ["Company Boards & Board Secretaries", "Banks, Fintechs & Insurers", "Hospitals & School Boards of Governors", "NGOs, Trusts & Associations", "Churches & Faith Organisations"],
+    modules: [
+      { name: "Board Meetings", desc: "Every board and committee meeting with a clear agenda, timings and presenters." },
+      { name: "Attendance & Quorum", desc: "Who attended, in person or online, with quorum confirmed." },
+      { name: "Board Papers", desc: "Secure, versioned board packs, always current, never lost in email." },
+      { name: "Minutes", desc: "Minutes drafted, reviewed and approved online, with comments in one place." },
+      { name: "Resolutions", desc: "Resolutions proposed and voted on, with quorum checked automatically." },
+      { name: "Committees", desc: "Audit, nomination, remuneration and risk committees, each with its own quorum." },
+      { name: "Directors & Members", desc: "A register of directors and members with their roles." },
+      { name: "Announcements", desc: "Notices to the whole board or to selected committees." },
+      { name: "Audit Trail", desc: "A full record of who did what, and when." },
+      { name: "Security", desc: "Access controlled per director, with secure sign-in." },
+    ],
+    headline2: "Every meeting, paper and decision, on record.",
+  },
+  "license-manager": {
+    name: "Orion License Manager", tag: "SOFTWARE LICENSING", tagline: "Every licence. Every device. Every naira.",
+    desc: "Issue signed software licences in seconds, see every installed copy live, and keep renewals and invoices from slipping. Orion License Manager is how Orion Soft licenses, activates and bills its own products, and it can do the same for software you sell.",
+    color: "#6366F1", colorDim: "rgba(99,102,241,0.12)", available: true, category: "Software Vendors",
+    forWho: ["Software Companies Selling Installed Products", "Developers Selling Desktop or On-Premise Apps", "Resellers & Distributors", "IT Teams Managing Licensed Software"],
+    modules: [
+      { name: "Licence Issuing", desc: "Signed licence keys in seconds, with seats, grace period and expiry." },
+      { name: "Activations", desc: "Every installed copy, live: machine, operating system and last seen." },
+      { name: "Devices", desc: "Release a seat or move a licence to a new machine." },
+      { name: "Products & Editions", desc: "One catalogue of every product and edition you sell." },
+      { name: "Customers", desc: "Every customer with their licences and history." },
+      { name: "Renewals", desc: "Licences close to expiry flagged before they lapse." },
+      { name: "Invoices", desc: "Licence invoices that never slip." },
+      { name: "Suspend & Revoke", desc: "Stop a licence the moment it is misused." },
+      { name: "Dashboard", desc: "Licences by product and status at a glance." },
+      { name: "Audit Logs", desc: "Every licence action recorded." },
+    ],
+    headline2: "Know exactly who is running your software.",
   },
   staffcore: {
     name: "StaffCore", tag: "STAFF PORTAL", tagline: "The staff portal we run our own company on.",
@@ -713,6 +772,33 @@ export function SchoolCorePage({ setCurrentPage }) {
   return (
     <ProductPage product={PRODUCTS.schoolcore} setCurrentPage={setCurrentPage}>
       <SchoolCoreVideo setCurrentPage={setCurrentPage} />
+    </ProductPage>
+  );
+}
+export function OrionCrmPage({ setCurrentPage }) {
+  return (
+    <ProductPage product={PRODUCTS["orion-crm"]} setCurrentPage={setCurrentPage}>
+      <ProductVideo setCurrentPage={setCurrentPage} video={ORIONCRM_VIDEO} page="orion-crm-demo" label="SEE IT IN 2 MINUTES"
+        heading="Where will next month's money come from?" more="Then go deeper: leads, proposals, invoices, customer success and the sales team."
+        linkText="Watch all 6 videos" panel="#E9E4D6" ink="#123D2E" />
+    </ProductPage>
+  );
+}
+export function DirectorsPortalPage({ setCurrentPage }) {
+  return (
+    <ProductPage product={PRODUCTS["directors-portal"]} setCurrentPage={setCurrentPage}>
+      <ProductVideo setCurrentPage={setCurrentPage} video={DIRECTORS_VIDEO} page="directors-portal-demo" label="SEE IT IN 2 MINUTES"
+        heading="Run your board like a listed company." more="Meetings, board packs, minutes and resolutions, with a full audit trail."
+        linkText="Open the video on its own page" panel="#E9E4D6" ink="#123D2E" />
+    </ProductPage>
+  );
+}
+export function LicenseManagerPage({ setCurrentPage }) {
+  return (
+    <ProductPage product={PRODUCTS["license-manager"]} setCurrentPage={setCurrentPage}>
+      <ProductVideo setCurrentPage={setCurrentPage} video={LICENSE_VIDEO} page="license-manager-demo" label="SEE IT IN 3 MINUTES"
+        heading="Every licence. Every device. Every naira." more="Issue licences, see every installed copy and keep renewals on time."
+        linkText="Open the video on its own page" panel="#E9E4D6" ink="#123D2E" />
     </ProductPage>
   );
 }
