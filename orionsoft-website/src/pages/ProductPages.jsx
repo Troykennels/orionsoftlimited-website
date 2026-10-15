@@ -733,28 +733,27 @@ export function CareCorePage({ setCurrentPage }) {
   );
 }
 // A product's demo video on its page, with a link to its watch page.
-// `panel` is the video's own background colour; `text` and `frame` default to `ink`.
-function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkText, panel, ink, text = ink, frame = ink }) {
+function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkText, panel, ink }) {
   return (
     <section style={{ padding: "100px clamp(20px, 4vw, 40px)", background: panel }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <Reveal>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <SectionLabel color={text}>{label}</SectionLabel>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: text, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
+            <SectionLabel color={ink}>{label}</SectionLabel>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: ink, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
               {heading}
             </h2>
           </div>
         </Reveal>
         <Reveal>
-          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${frame}`, boxShadow: "0 24px 60px rgba(11,27,58,0.28)", background: "#07111D" }}>
+          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${ink}`, boxShadow: "0 24px 60px rgba(11,27,58,0.28)", background: "#07111D" }}>
             <video controls playsInline preload="none" poster={video.thumbnail} aria-label={video.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
               <source src={video.src} type="video/mp4" />
             </video>
           </div>
-          <p style={{ fontSize: 15, color: text, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
+          <p style={{ fontSize: 15, color: ink, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
             {more}{" "}
-            <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ color: text, fontWeight: 800, textDecoration: "underline" }}>{linkText} →</a>
+            <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ color: ink, fontWeight: 800, textDecoration: "underline" }}>{linkText} →</a>
           </p>
         </Reveal>
       </div>
@@ -766,7 +765,7 @@ function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkT
 function SchoolCoreVideo({ setCurrentPage }) {
   return <ProductVideo setCurrentPage={setCurrentPage} video={SCHOOLCORE_VIDEO} page="schoolcore-demo" label="SEE IT IN 2 MINUTES"
     heading="Three questions every school owner asks." more="Then go deeper: fees, report cards, the parent's phone, gate safety and more."
-    linkText="Watch all 9 videos" panel="#103A2E" ink="#0A271E" text="#F4EFE3" />;
+    linkText="Watch all 9 videos" panel="#F2EADB" ink="#143D2B" />;
 }
 
 export function SchoolCorePage({ setCurrentPage }) {
@@ -781,7 +780,7 @@ export function OrionCrmPage({ setCurrentPage }) {
     <ProductPage product={PRODUCTS["orion-crm"]} setCurrentPage={setCurrentPage}>
       <ProductVideo setCurrentPage={setCurrentPage} video={ORIONCRM_VIDEO} page="orion-crm-demo" label="SEE IT IN 2 MINUTES"
         heading="Where will next month's money come from?" more="Then go deeper: leads, proposals, invoices, customer success and the sales team."
-        linkText="Watch all 6 videos" panel="#103A2E" ink="#0A271E" text="#F4EFE3" />
+        linkText="Watch all 6 videos" panel="#E9E4D6" ink="#123D2E" />
     </ProductPage>
   );
 }
@@ -790,7 +789,7 @@ export function DirectorsPortalPage({ setCurrentPage }) {
     <ProductPage product={PRODUCTS["directors-portal"]} setCurrentPage={setCurrentPage}>
       <ProductVideo setCurrentPage={setCurrentPage} video={DIRECTORS_VIDEO} page="directors-portal-demo" label="SEE IT IN 2 MINUTES"
         heading="Run your board like a listed company." more="Meetings, board packs, minutes and resolutions, with a full audit trail."
-        linkText="Open the video on its own page" panel="#103A2E" ink="#0A271E" text="#F4EFE3" />
+        linkText="Open the video on its own page" panel="#E9E4D6" ink="#123D2E" />
     </ProductPage>
   );
 }
@@ -799,7 +798,7 @@ export function LicenseManagerPage({ setCurrentPage }) {
     <ProductPage product={PRODUCTS["license-manager"]} setCurrentPage={setCurrentPage}>
       <ProductVideo setCurrentPage={setCurrentPage} video={LICENSE_VIDEO} page="license-manager-demo" label="SEE IT IN 3 MINUTES"
         heading="Every licence. Every device. Every naira." more="Issue licences, see every installed copy and keep renewals on time."
-        linkText="Open the video on its own page" panel="#103A2E" ink="#0A271E" text="#F4EFE3" />
+        linkText="Open the video on its own page" panel="#E9E4D6" ink="#123D2E" />
     </ProductPage>
   );
 }
@@ -808,7 +807,7 @@ export function ComplianceCorePage({ setCurrentPage }) {
     <ProductPage product={PRODUCTS.compliancecore} setCurrentPage={setCurrentPage}>
       <ProductVideo setCurrentPage={setCurrentPage} video={COMPLIANCECORE_VIDEO} page="compliancecore-demo" label="SEE IT IN 2 MINUTES"
         heading="Can you prove it?" more="Then go deeper: which rules apply, your score, policies, the 72-hour clock and the board."
-        linkText="Watch all 6 videos" panel="#103A2E" ink="#0A271E" text="#F4EFE3" />
+        linkText="Watch all 6 videos" panel="#E9E4D6" ink="#123D2E" />
     </ProductPage>
   );
 }

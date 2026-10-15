@@ -15,7 +15,7 @@ const font = "'Instrument Sans','DM Sans',system-ui,sans-serif"
 const TOURS = {
   carecore: {
     video: DEMO_VIDEO, length: '3 minutes', pageTitle: 'CareCore HMS Demo Video: Product Tour | Orion Soft',
-    product: 'carecore', productLabel: 'CareCore features and pricing', panel: '#05070B', frame: '#1C2433',
+    product: 'carecore', productLabel: 'CareCore features and pricing',
     chapters: [
       ['Dashboard', 'Patients, visits, bed occupancy, stock alerts, unpaid invoices and pending lab work at a glance.'],
       ['Registration and consultation', 'One accurate patient profile shared by every department, with clinical notes and care plans.'],
@@ -57,7 +57,7 @@ const TOURS = {
   },
   schoolcore: {
     video: SCHOOLCORE_VIDEO, length: '2 minutes, then 8 short parts', pageTitle: 'SchoolCore Demo Videos: School Management Software Tour | Orion Soft',
-    product: 'schoolcore', productLabel: 'SchoolCore features', panel: '#103A2E', frame: '#0A271E',
+    product: 'schoolcore', productLabel: 'SchoolCore features', panel: '#F2EADB', frame: '#143D2B',
     chapters: [
       ['Fees', 'See who owes, to the last naira, and remind parents without lifting a finger.'],
       ['Teachers', 'Who came, who is teaching, and tests that mark themselves.'],
@@ -71,7 +71,7 @@ const TOURS = {
   },
   compliancecore: {
     video: COMPLIANCECORE_VIDEO, length: '2 minutes, then 5 short parts', pageTitle: 'ComplianceCore Demo Videos: Compliance Management Software Tour | Orion Soft',
-    product: 'compliancecore', productLabel: 'ComplianceCore features', panel: '#103A2E', frame: '#0A271E',
+    product: 'compliancecore', productLabel: 'ComplianceCore features', panel: '#E9E4D6', frame: '#123D2E',
     chapters: [
       ['Which rules apply', 'Plain questions in, and a clear, defensible list of the frameworks that apply to you.'],
       ['Your real score', 'One honest compliance score, an owner for every control, and proof ready before it is asked for.'],
@@ -85,7 +85,7 @@ const TOURS = {
   },
   orioncrm: {
     video: ORIONCRM_VIDEO, length: "2 minutes, then 5 short parts", pageTitle: "Orion CRM Demo Videos: Sales, Billing and Customer Success CRM | Orion Soft",
-    product: "products", productLabel: "All Orion Soft products", panel: "#103A2E", frame: "#0A271E",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
     chapters: [
       ["Never lose a lead", "Every enquiry captured and scored, one pipeline for the whole team, and the deals to chase first."],
       ["Demos to signed deals", "Demos booked and debriefed, proposals that show when they are read, one price list for every quote."],
@@ -99,7 +99,7 @@ const TOURS = {
   },
   directors: {
     video: DIRECTORS_VIDEO, length: "2 minutes", pageTitle: "Directors' Portal Demo Video: Board Governance Software | Orion Soft",
-    product: "products", productLabel: "All Orion Soft products", panel: "#103A2E", frame: "#0A271E",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
     chapters: [
       ["Board meetings", "Every board and committee meeting, with a clear agenda, timings and presenters."],
       ["Board packs", "Secure, versioned board papers, always current, never lost in email."],
@@ -113,7 +113,7 @@ const TOURS = {
   },
   license: {
     video: LICENSE_VIDEO, length: "3 minutes", pageTitle: "Orion License Manager Demo Video: Software Licensing and Activation | Orion Soft",
-    product: "products", productLabel: "All Orion Soft products", panel: "#103A2E", frame: "#0A271E",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
     chapters: [
       ["Issue licences", "Signed licence keys issued in seconds, with seats, grace period and expiry."],
       ["Every installed copy", "See every machine running your software, live, and release a seat when needed."],
