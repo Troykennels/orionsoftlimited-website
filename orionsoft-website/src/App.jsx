@@ -690,23 +690,57 @@ function Nav({ currentPage, setCurrentPage }) {
     setCurrentPage(page);
   };
 
+  // The bar is transparent at the top of a page so dark heroes show through.
+  // Pages that open on a light section (Products, product pages...) would hide
+  // its white text, so look at what is actually behind the bar and go solid
+  // when it is light. Works for any page without a hard-coded list.
+  const navRef = useRef(null);
+  const [lightBehind, setLightBehind] = useState(false);
+  useEffect(() => {
+    if (isMobile) return undefined;
+    const check = () => {
+      const nav = navRef.current;
+      if (!nav) return;
+      const y = nav.getBoundingClientRect().bottom + 12;
+      const el = document.elementsFromPoint(window.innerWidth / 2, Math.min(y, window.innerHeight - 1)).find(n => !nav.contains(n));
+      let node = el, rgb = null;
+      while (node && node !== document.documentElement) {
+        const m = getComputedStyle(node).backgroundColor.match(/rgba?\(([^)]+)\)/);
+        if (m) {
+          const [r, g, b, a = 1] = m[1].split(",").map(Number);
+          if (a > 0.5) { rgb = [r, g, b]; break; }
+        }
+        node = node.parentElement;
+      }
+      if (!rgb) rgb = [6, 8, 16];
+      const lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+      setLightBehind(lum > 0.55);
+    };
+    // Pages load lazily, so check again as they render; and on scroll.
+    const timers = [0, 150, 500, 1200, 2500].map(t => setTimeout(check, t));
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => { timers.forEach(clearTimeout); window.removeEventListener("scroll", check); window.removeEventListener("resize", check); };
+  }, [currentPage, isMobile]);
+  const solid = scrolled || megaOpen || lightBehind;
+
   const isProductPage = navProducts.some(p => p.id === currentPage) || currentPage === "products";
   const isHome = false; // Hero is now dark nav uses unified dark style across all pages
 
   return (
-    <nav aria-label="Main navigation"
+    <nav aria-label="Main navigation" ref={navRef}
       onMouseLeave={() => setMegaOpen(false)}
       style={{
         position: "fixed", top: offset, left: 0, right: 0, zIndex: 1000,
         background: isMobile
           ? "#FFFFFF"
           : isHome
-          ? (scrolled || megaOpen) ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.82)"
-          : (scrolled || megaOpen) ? "rgba(6,8,16,0.92)" : "transparent",
-        backdropFilter: isMobile ? "none" : (scrolled || megaOpen) ? "blur(20px) saturate(1.4)" : "none",
+          ? solid ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.82)"
+          : solid ? "rgba(6,8,16,0.92)" : "transparent",
+        backdropFilter: isMobile ? "none" : solid ? "blur(20px) saturate(1.4)" : "none",
         borderBottom: isMobile
           ? "1px solid rgba(6,24,40,0.08)"
-          : (scrolled || megaOpen)
+          : solid
           ? `1px solid ${isHome ? "rgba(6,24,40,0.08)" : "rgba(255,255,255,0.06)"}`
           : "none",
         boxShadow: isMobile ? "0 2px 12px rgba(6,24,40,0.06)" : "none",
