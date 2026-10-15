@@ -12,6 +12,9 @@
 - CareCore hospital management demo video (3 min): https://www.orionsoftlimited.com/carecore-demo
 - SchoolCore demo videos (2-minute overview plus 8 short parts): https://www.orionsoftlimited.com/schoolcore-demo
 - ComplianceCore demo videos (2-minute overview plus 5 short parts): https://www.orionsoftlimited.com/compliancecore-demo
+- Orion CRM demo videos (2-minute overview plus 5 short parts): https://www.orionsoftlimited.com/orion-crm-demo
+- Directors' Portal board governance demo video: https://www.orionsoftlimited.com/directors-portal-demo
+- Orion License Manager demo video: https://www.orionsoftlimited.com/license-manager-demo
 - Contact: https://www.orionsoftlimited.com/contact
 
 ## Products

@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
 import { KENYA_FAQS, GHANA_FAQS } from "../src/lib/africaPayeFaqs.js";
-import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO } from "../shared/demoVideo.js";
+import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO, ORIONCRM_VIDEO, DIRECTORS_VIDEO, LICENSE_VIDEO } from "../shared/demoVideo.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -249,6 +249,38 @@ page("/compliancecore-demo", {
     { "@context": "https://schema.org", "@type": "VideoObject", name: COMPLIANCECORE_VIDEO.title, description: COMPLIANCECORE_VIDEO.description, thumbnailUrl: [`${SITE}${COMPLIANCECORE_VIDEO.thumbnail}`], uploadDate: `${COMPLIANCECORE_VIDEO.uploadDate}T09:00:00+01:00`, duration: COMPLIANCECORE_VIDEO.duration, contentUrl: `${SITE}${COMPLIANCECORE_VIDEO.src}`, inLanguage: "en", publisher: ORG },
     ...partVideos(COMPLIANCECORE_VIDEO, "ComplianceCore", "compliance management software"),
   ],
+}); count++;
+
+const videoLd = (v, hour) => ({ "@context": "https://schema.org", "@type": "VideoObject", name: v.title, description: v.description, thumbnailUrl: [`${SITE}${v.thumbnail}`], uploadDate: `${v.uploadDate}T${hour}:00:00+01:00`, duration: v.duration, contentUrl: `${SITE}${v.src}`, inLanguage: "en", publisher: ORG });
+
+page("/orion-crm-demo", {
+  title: "Orion CRM Demo Videos: Sales, Billing and Customer Success CRM (Nigeria)",
+  desc: ORIONCRM_VIDEO.description,
+  h1: ORIONCRM_VIDEO.title,
+  image: `${SITE}${ORIONCRM_VIDEO.thumbnail}`,
+  body: [`Watch the overview: ${SITE}${ORIONCRM_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: ORIONCRM_VIDEO.parts.map(p => `Part ${p.n}: ${p.title} (${p.about}, ${p.length})`),
+  jsonLd: [videoLd(ORIONCRM_VIDEO, "10"), ...partVideos(ORIONCRM_VIDEO, "Orion CRM", "sales CRM")],
+}); count++;
+
+page("/directors-portal-demo", {
+  title: "Directors' Portal Demo Video: Board Meeting and Governance Software",
+  desc: DIRECTORS_VIDEO.description,
+  h1: DIRECTORS_VIDEO.title,
+  image: `${SITE}${DIRECTORS_VIDEO.thumbnail}`,
+  body: [`Watch the video: ${SITE}${DIRECTORS_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: ["Board and committee meetings with agendas", "Secure, versioned board packs", "Minutes reviewed and approved online", "Resolutions voted on with quorum checked", "Full audit trail"],
+  jsonLd: [videoLd(DIRECTORS_VIDEO, "10")],
+}); count++;
+
+page("/license-manager-demo", {
+  title: "Orion License Manager Demo Video: Software Licensing and Activation",
+  desc: LICENSE_VIDEO.description,
+  h1: LICENSE_VIDEO.title,
+  image: `${SITE}${LICENSE_VIDEO.thumbnail}`,
+  body: [`Watch the video: ${SITE}${LICENSE_VIDEO.src}`, "Talk to us: call or WhatsApp 0816 957 7059."],
+  points: ["Signed licence keys in seconds", "Every installed copy, live", "Seats, grace periods and expiry", "Renewals and invoices that never slip"],
+  jsonLd: [videoLd(LICENSE_VIDEO, "10")],
 }); count++;
 
 page("/press", {

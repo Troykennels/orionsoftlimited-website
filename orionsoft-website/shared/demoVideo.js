@@ -75,5 +75,44 @@ export const COMPLIANCECORE_VIDEO = {
   ].map(p => ({ ...p, src: `/assets/compliancecore/demo/part-${p.n}.mp4`, thumbnail: `/assets/compliancecore/demo/part-${p.n}.jpg` })),
 }
 
+// Orion CRM: a short overview, then five parts.
+export const ORIONCRM_VIDEO = {
+  title: "Orion CRM in 2 Minutes: Where Will Next Month's Money Come From?",
+  description: "Leads, deals and quotes in one place, invoices and renewals that never slip, and each salesperson's day planned for them. See Orion CRM by Orion Soft Limited, the sales, billing and customer-success CRM built in Nigeria for growing teams.",
+  src: "/assets/orioncrm/demo/overview.mp4",
+  thumbnail: "/assets/orioncrm/demo/overview.jpg",
+  duration: "PT1M16S",
+  seconds: 76,
+  uploadDate: "2026-10-15",
+  overview: { label: "Orion CRM in 2 minutes", about: "Where will next month's money come from?", length: "1:16" },
+  parts: [
+    { n: 1, title: "Never lose a lead again", about: "Leads, scoring and the pipeline", length: "1:08" },
+    { n: 2, title: "Turn demos into signed deals", about: "Demos, proposals and products", length: "0:58" },
+    { n: 3, title: "Get paid, on time", about: "Invoices, subscriptions and contracts", length: "0:56" },
+    { n: 4, title: "Keep every customer you win", about: "Customer success and support", length: "0:54" },
+    { n: 5, title: "Run your sales team", about: "Daily plans, targets and commission", length: "1:14" },
+  ].map(p => ({ ...p, src: `/assets/orioncrm/demo/part-${p.n}.mp4`, thumbnail: `/assets/orioncrm/demo/part-${p.n}.jpg` })),
+}
+
+export const DIRECTORS_VIDEO = {
+  title: "Directors' Portal: Run Your Board Like a Listed Company",
+  description: "Board and committee meetings with clear agendas, secure versioned board packs, minutes reviewed and approved online, resolutions voted on with quorum checked, and a full audit trail. The Directors' Portal is the board governance software by Orion Soft Limited.",
+  src: "/assets/directors/directors-portal-demo.mp4",
+  thumbnail: "/assets/directors/directors-portal-demo.jpg",
+  duration: "PT2M19S",
+  seconds: 139,
+  uploadDate: "2026-10-15",
+}
+
+export const LICENSE_VIDEO = {
+  title: "Orion License Manager: Every Licence, Every Device, Every Naira",
+  description: "Issue signed software licences in seconds, see every installed copy live, and keep renewals and invoices from slipping. Orion License Manager is how Orion Soft Limited licenses, activates and bills its own products.",
+  src: "/assets/license-manager/license-manager-demo.mp4",
+  thumbnail: "/assets/license-manager/license-manager-demo.jpg",
+  duration: "PT2M48S",
+  seconds: 168,
+  uploadDate: "2026-10-15",
+}
+
 // Watch page path -> video, for the sitemap.
-export const VIDEO_PAGES = { "/demo": DEMO_VIDEO, "/carecore-demo": CARECORE_VIDEO, "/staffcore-demo": STAFFCORE_VIDEO, "/schoolcore-demo": SCHOOLCORE_VIDEO, "/compliancecore-demo": COMPLIANCECORE_VIDEO }
+export const VIDEO_PAGES = { "/demo": DEMO_VIDEO, "/carecore-demo": CARECORE_VIDEO, "/staffcore-demo": STAFFCORE_VIDEO, "/schoolcore-demo": SCHOOLCORE_VIDEO, "/compliancecore-demo": COMPLIANCECORE_VIDEO, "/orion-crm-demo": ORIONCRM_VIDEO, "/directors-portal-demo": DIRECTORS_VIDEO, "/license-manager-demo": LICENSE_VIDEO }

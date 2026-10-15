@@ -41,6 +41,9 @@ const StaffCoreDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ def
 const SchoolCoreDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.SchoolCoreDemoPage })));
 const CareCoreDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.CareCoreDemoPage })));
 const ComplianceCoreDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.ComplianceCoreDemoPage })));
+const OrionCrmDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.OrionCrmDemoPage })));
+const DirectorsDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.DirectorsDemoPage })));
+const LicenseDemoPage = lazy(() => import("./pages/DemoPage").then(m => ({ default: m.LicenseDemoPage })));
 const DevelopersPage    = lazy(() => import("./pages/ToolsPages").then(m => ({ default: m.DevelopersPage })));
 const KenyaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.KenyaPayePage })));
 const GhanaPayePage     = lazy(() => import("./pages/AfricaPayePages").then(m => ({ default: m.GhanaPayePage })));
@@ -5416,7 +5419,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo"]);
+const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo", "orion-crm-demo", "directors-portal-demo", "license-manager-demo"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5788,6 +5791,15 @@ export default function App() {
         )}
         {currentPage === "developers" && (
           <Suspense fallback={<PageLoader />}><DevelopersPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "orion-crm-demo" && (
+          <Suspense fallback={<PageLoader />}><OrionCrmDemoPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "directors-portal-demo" && (
+          <Suspense fallback={<PageLoader />}><DirectorsDemoPage setCurrentPage={navSetPage} /></Suspense>
+        )}
+        {currentPage === "license-manager-demo" && (
+          <Suspense fallback={<PageLoader />}><LicenseDemoPage setCurrentPage={navSetPage} /></Suspense>
         )}
         {currentPage === "carecore-demo" && (
           <Suspense fallback={<PageLoader />}><CareCoreDemoPage setCurrentPage={navSetPage} /></Suspense>

@@ -4,7 +4,7 @@
 // sitemap its video entry), and gives us one link to share.
 import { useEffect, useRef, useState } from 'react'
 import { BRAND } from '../lib/brand.js'
-import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO } from '../../shared/demoVideo.js'
+import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO, ORIONCRM_VIDEO, DIRECTORS_VIDEO, LICENSE_VIDEO } from '../../shared/demoVideo.js'
 
 const C = {
   bg: '#060810', card: '#0F1828', border: 'rgba(255,255,255,0.08)', borderStrong: 'rgba(255,255,255,0.16)',
@@ -82,6 +82,48 @@ const TOURS = {
     ],
     closing: <>ComplianceCore is built by Orion Soft Limited in Lagos, Nigeria. The videos show a demo company with made-up data.
       Want to see it set up for your organisation?</>,
+  },
+  orioncrm: {
+    video: ORIONCRM_VIDEO, length: "2 minutes, then 5 short parts", pageTitle: "Orion CRM Demo Videos: Sales, Billing and Customer Success CRM | Orion Soft",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
+    chapters: [
+      ["Never lose a lead", "Every enquiry captured and scored, one pipeline for the whole team, and the deals to chase first."],
+      ["Demos to signed deals", "Demos booked and debriefed, proposals that show when they are read, one price list for every quote."],
+      ["Get paid on time", "Invoices with VAT and part payments, subscriptions and renewals that never slip, contracts that never quietly expire."],
+      ["Keep every customer", "Account health from real signals, renewals flagged months ahead, support tickets with deadlines."],
+      ["Run the sales team", "Each person's day planned for them, targets measured on money received, commission worked out and approved."],
+      ["Your data is yours", "Built in Nigeria for growing teams, with your records kept under your control."],
+    ],
+    closing: <>Orion CRM is built by Orion Soft Limited in Lagos, Nigeria. The videos show a demo company with made-up customers.
+      Want to see it set up for your sales team?</>,
+  },
+  directors: {
+    video: DIRECTORS_VIDEO, length: "2 minutes", pageTitle: "Directors' Portal Demo Video: Board Governance Software | Orion Soft",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
+    chapters: [
+      ["Board meetings", "Every board and committee meeting, with a clear agenda, timings and presenters."],
+      ["Board packs", "Secure, versioned board papers, always current, never lost in email."],
+      ["Minutes", "Minutes reviewed and approved online, with comments in one place."],
+      ["Resolutions", "Resolutions proposed and voted on, with quorum checked automatically."],
+      ["Committees", "Audit, nomination, remuneration and risk committees, each with its own quorum."],
+      ["Audit trail", "A full record of who did what, and when."],
+    ],
+    closing: <>The Directors' Portal is built by Orion Soft Limited in Lagos, Nigeria. The video shows a demo company with made-up directors.
+      Want to see it set up for your board?</>,
+  },
+  license: {
+    video: LICENSE_VIDEO, length: "3 minutes", pageTitle: "Orion License Manager Demo Video: Software Licensing and Activation | Orion Soft",
+    product: "products", productLabel: "All Orion Soft products", panel: "#E9E4D6", frame: "#123D2E",
+    chapters: [
+      ["Issue licences", "Signed licence keys issued in seconds, with seats, grace period and expiry."],
+      ["Every installed copy", "See every machine running your software, live, and release a seat when needed."],
+      ["One catalogue", "Every product and edition in one place."],
+      ["Renewals and invoices", "Expiring licences flagged, renewals and invoices that never slip."],
+      ["What is selling", "Licences by product and status at a glance."],
+      ["Control", "Suspend or revoke a licence the moment it is misused."],
+    ],
+    closing: <>Orion License Manager is built by Orion Soft Limited in Lagos, Nigeria. The video shows made-up customers and machines.
+      Selling software of your own and want licensing like this?</>,
   },
 }
 
@@ -189,4 +231,13 @@ export function CareCoreDemoPage({ setCurrentPage }) {
 }
 export function ComplianceCoreDemoPage({ setCurrentPage }) {
   return <WatchPage tour={TOURS.compliancecore} setCurrentPage={setCurrentPage} />
+}
+export function OrionCrmDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.orioncrm} setCurrentPage={setCurrentPage} />
+}
+export function DirectorsDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.directors} setCurrentPage={setCurrentPage} />
+}
+export function LicenseDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.license} setCurrentPage={setCurrentPage} />
 }

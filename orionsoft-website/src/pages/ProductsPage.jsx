@@ -2,6 +2,7 @@
 import { DEFAULT_PRODUCTS_CATALOG } from "../lib/products.js";
 
 import { BRAND } from "../lib/brand.js";
+import { CARECORE_VIDEO, SCHOOLCORE_VIDEO, STAFFCORE_VIDEO, COMPLIANCECORE_VIDEO, ORIONCRM_VIDEO, DIRECTORS_VIDEO, LICENSE_VIDEO } from "../../shared/demoVideo.js";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const LC = {
   bg:           "#FFFFFF",
@@ -621,6 +622,46 @@ function productList(products) {
   return [...kept, ...added];
 }
 
+// Every product's demo video, each linking to its watch page.
+const DEMOS = [
+  { page: "carecore-demo", name: "CareCore", what: "Hospital management", length: "3 min", v: CARECORE_VIDEO },
+  { page: "schoolcore-demo", name: "SchoolCore", what: "School management", length: "2 min + 8 parts", v: SCHOOLCORE_VIDEO },
+  { page: "staffcore-demo", name: "StaffCore", what: "Staff portal", length: "3 min", v: STAFFCORE_VIDEO },
+  { page: "compliancecore-demo", name: "ComplianceCore", what: "Compliance and risk", length: "1.5 min + 5 parts", v: COMPLIANCECORE_VIDEO },
+  { page: "orion-crm-demo", name: "Orion CRM", what: "Sales, billing and customer success", length: "1 min + 5 parts", v: ORIONCRM_VIDEO },
+  { page: "directors-portal-demo", name: "Directors' Portal", what: "Board governance", length: "2 min", v: DIRECTORS_VIDEO },
+  { page: "license-manager-demo", name: "Orion License Manager", what: "Software licensing", length: "3 min", v: LICENSE_VIDEO },
+];
+
+function DemoVideos({ setCurrentPage }) {
+  return (
+    <section id="demo-videos" style={{ background: LC.bg, padding: "88px clamp(24px,5vw,80px) 96px", borderTop: `1px solid ${LC.border}` }}>
+      <div style={{ maxWidth: 1360, margin: "0 auto" }}>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: LC.gold, fontFamily: font, letterSpacing: "0.14em", marginBottom: 12 }}>WATCH THE DEMOS</div>
+        <h2 style={{ fontSize: "clamp(26px,3.2vw,44px)", fontWeight: 900, color: LC.navy, fontFamily: font, letterSpacing: "-0.03em", margin: "0 0 12px" }}>
+          See each product working, in a few minutes.
+        </h2>
+        <p style={{ fontSize: 16.5, color: LC.textLight, fontFamily: font, lineHeight: 1.7, maxWidth: 640, margin: "0 0 36px" }}>
+          Short video tours of the real software, using demo data. Pick one to watch.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 20 }}>
+          {DEMOS.map(d => (
+            <a key={d.page} href={`/${d.page}`} onClick={e => { e.preventDefault(); setCurrentPage(d.page); }}
+              style={{ display: "block", textDecoration: "none", background: LC.white, border: `1px solid ${LC.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 6px 24px rgba(11,27,58,0.06)" }}>
+              <img src={d.v.thumbnail} alt={`${d.name} demo video`} loading="lazy" width="640" height="360" style={{ width: "100%", height: "auto", display: "block" }} />
+              <span style={{ display: "block", padding: "14px 16px 16px" }}>
+                <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: LC.gold, fontFamily: font, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 }}>▶ {d.length}</span>
+                <span style={{ display: "block", fontSize: 16.5, fontWeight: 800, color: LC.navy, fontFamily: font }}>{d.name}</span>
+                <span style={{ display: "block", fontSize: 14, color: LC.textLight, fontFamily: font, marginTop: 3 }}>{d.what}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ProductsPage({ setCurrentPage, products }) {
   const [activeCat, setActiveCat] = useState("All");
   const all = productList(products);
@@ -754,6 +795,8 @@ export default function ProductsPage({ setCurrentPage, products }) {
           </div>
         </div>
       </section>
+
+      <DemoVideos setCurrentPage={setCurrentPage} />
     </div>
   );
 }
