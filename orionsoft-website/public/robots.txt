@@ -2,9 +2,14 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/
-Disallow: /staff
+# Rules match by prefix: "/staff" alone would also block /staffcore and
+# /staffcore-demo, and "/client" would block /clients. Block the portals only.
+Disallow: /staff$
+Disallow: /staff/
+Disallow: /staff.html
 Disallow: /applicant
-Disallow: /client
+Disallow: /client$
+Disallow: /client/
 Disallow: /sign/
 Disallow: /pay/
 Disallow: /p/
