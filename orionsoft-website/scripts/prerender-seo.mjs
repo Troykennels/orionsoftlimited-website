@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { PAYE_FAQS } from "../src/lib/payeFaqs.js";
 import { INTERNATIONAL_FAQS } from "../src/lib/internationalFaqs.js";
 import { KENYA_FAQS, GHANA_FAQS } from "../src/lib/africaPayeFaqs.js";
-import { DEMO_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO } from "../shared/demoVideo.js";
+import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO } from "../shared/demoVideo.js";
 
 const SITE = "https://www.orionsoftlimited.com";
 const dist = new URL("../dist/", import.meta.url);
@@ -222,6 +222,32 @@ page("/schoolcore-demo", {
   jsonLd: [
     { "@context": "https://schema.org", "@type": "VideoObject", name: SCHOOLCORE_VIDEO.title, description: SCHOOLCORE_VIDEO.description, thumbnailUrl: [`${SITE}${SCHOOLCORE_VIDEO.thumbnail}`], uploadDate: `${SCHOOLCORE_VIDEO.uploadDate}T15:00:00+01:00`, duration: SCHOOLCORE_VIDEO.duration, contentUrl: `${SITE}${SCHOOLCORE_VIDEO.src}`, inLanguage: "en", publisher: ORG },
     ...SCHOOLCORE_VIDEO.parts.map(p => ({ "@context": "https://schema.org", "@type": "VideoObject", name: `SchoolCore Demo Part ${p.n}: ${p.title}`, description: `${p.about}. Part ${p.n} of ${SCHOOLCORE_VIDEO.parts.length} of the SchoolCore school management software demo by Orion Soft Limited.`, thumbnailUrl: [`${SITE}${p.thumbnail}`], uploadDate: `${SCHOOLCORE_VIDEO.uploadDate}T15:00:00+01:00`, duration: `PT${p.length.split(":")[0]}M${Number(p.length.split(":")[1])}S`, contentUrl: `${SITE}${p.src}`, inLanguage: "en", publisher: ORG })),
+  ],
+}); count++;
+
+// A VideoObject for each part of a playlist watch page.
+const partVideos = (v, product, kind) => v.parts.map(p => ({ "@context": "https://schema.org", "@type": "VideoObject", name: `${product} Demo Part ${p.n}: ${p.title}`, description: `${p.about}. Part ${p.n} of ${v.parts.length} of the ${product} ${kind} demo by Orion Soft Limited.`, thumbnailUrl: [`${SITE}${p.thumbnail}`], uploadDate: `${v.uploadDate}T15:00:00+01:00`, duration: `PT${p.length.split(":")[0]}M${Number(p.length.split(":")[1])}S`, contentUrl: `${SITE}${p.src}`, inLanguage: "en", publisher: ORG }));
+
+page("/carecore-demo", {
+  title: "CareCore Demo Video: Hospital Management Software That Stops Revenue Leaks",
+  desc: CARECORE_VIDEO.description,
+  h1: CARECORE_VIDEO.title,
+  image: `${SITE}${CARECORE_VIDEO.thumbnail}`,
+  body: [`Watch the video: ${SITE}${CARECORE_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: ["Duplicate patient records caught at reception", "AI fills the triage form from one sentence", "Critical alerts that escalate until acknowledged", "Allergy checks by drug family, with live stock", "Every service billed automatically; paid bills can never be deleted", "HMO and NHIA claims tracked", "The owner's live view of money and beds"],
+  jsonLd: [{ "@context": "https://schema.org", "@type": "VideoObject", name: CARECORE_VIDEO.title, description: CARECORE_VIDEO.description, thumbnailUrl: [`${SITE}${CARECORE_VIDEO.thumbnail}`], uploadDate: `${CARECORE_VIDEO.uploadDate}T09:00:00+01:00`, duration: CARECORE_VIDEO.duration, contentUrl: `${SITE}${CARECORE_VIDEO.src}`, inLanguage: "en", publisher: ORG }],
+}); count++;
+
+page("/compliancecore-demo", {
+  title: "ComplianceCore Demo Videos: Compliance Management Software Tour (NDPR, ISO 27001, Breaches)",
+  desc: COMPLIANCECORE_VIDEO.description,
+  h1: COMPLIANCECORE_VIDEO.title,
+  image: `${SITE}${COMPLIANCECORE_VIDEO.thumbnail}`,
+  body: [`Watch the overview: ${SITE}${COMPLIANCECORE_VIDEO.src}`, "Book a free live demo: call or WhatsApp 0816 957 7059."],
+  points: COMPLIANCECORE_VIDEO.parts.map(p => `Part ${p.n}: ${p.title} (${p.about}, ${p.length})`),
+  jsonLd: [
+    { "@context": "https://schema.org", "@type": "VideoObject", name: COMPLIANCECORE_VIDEO.title, description: COMPLIANCECORE_VIDEO.description, thumbnailUrl: [`${SITE}${COMPLIANCECORE_VIDEO.thumbnail}`], uploadDate: `${COMPLIANCECORE_VIDEO.uploadDate}T09:00:00+01:00`, duration: COMPLIANCECORE_VIDEO.duration, contentUrl: `${SITE}${COMPLIANCECORE_VIDEO.src}`, inLanguage: "en", publisher: ORG },
+    ...partVideos(COMPLIANCECORE_VIDEO, "ComplianceCore", "compliance management software"),
   ],
 }); count++;
 

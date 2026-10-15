@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
-import { STAFFCORE_VIDEO, SCHOOLCORE_VIDEO } from "../../shared/demoVideo.js";
+import { STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, CARECORE_VIDEO, COMPLIANCECORE_VIDEO } from "../../shared/demoVideo.js";
 
 import { BRAND } from "../lib/brand.js";
 // ═══════════════════════════════════════
@@ -666,38 +666,47 @@ function ProductPage({ product, setCurrentPage, children }) {
 export function CareCorePage({ setCurrentPage }) {
   return (
     <ProductPage product={PRODUCTS.carecore} setCurrentPage={setCurrentPage}>
+      <ProductVideo setCurrentPage={setCurrentPage} video={CARECORE_VIDEO} page="carecore-demo" label="SEE IT IN 3 MINUTES"
+        heading="Is your hospital losing money it already earned?" more="One hospital morning, from reception to the owner's dashboard."
+        linkText="Open the video on its own page" panel="#BFE3FF" ink="#0B1B3A" />
       <CareCoreScreenshots />
     </ProductPage>
   );
 }
-// SchoolCore-only: the 2-minute overview video, with a link to the eight parts.
-function SchoolCoreVideo({ setCurrentPage }) {
-  const cream = "#F2EADB", green = "#143D2B";
+// A product's demo video on its page, with a link to its watch page.
+function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkText, panel, ink }) {
   return (
-    <section style={{ padding: "100px clamp(20px, 4vw, 40px)", background: cream }}>
+    <section style={{ padding: "100px clamp(20px, 4vw, 40px)", background: panel }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <Reveal>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <SectionLabel color={green}>SEE IT IN 2 MINUTES</SectionLabel>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: green, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
-              Three questions every school owner asks.
+            <SectionLabel color={ink}>{label}</SectionLabel>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: ink, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
+              {heading}
             </h2>
           </div>
         </Reveal>
         <Reveal>
-          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${green}`, boxShadow: "0 24px 60px rgba(20,61,43,0.3)", background: "#07111D" }}>
-            <video controls playsInline preload="none" poster={SCHOOLCORE_VIDEO.thumbnail} aria-label={SCHOOLCORE_VIDEO.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
-              <source src={SCHOOLCORE_VIDEO.src} type="video/mp4" />
+          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${ink}`, boxShadow: "0 24px 60px rgba(11,27,58,0.28)", background: "#07111D" }}>
+            <video controls playsInline preload="none" poster={video.thumbnail} aria-label={video.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
+              <source src={video.src} type="video/mp4" />
             </video>
           </div>
-          <p style={{ fontSize: 15, color: green, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
-            Then go deeper: fees, report cards, the parent's phone, gate safety and more.{" "}
-            <a href="/schoolcore-demo" onClick={e => { e.preventDefault(); setCurrentPage("schoolcore-demo"); }} style={{ color: green, fontWeight: 800, textDecoration: "underline" }}>Watch all 9 videos →</a>
+          <p style={{ fontSize: 15, color: ink, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
+            {more}{" "}
+            <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ color: ink, fontWeight: 800, textDecoration: "underline" }}>{linkText} →</a>
           </p>
         </Reveal>
       </div>
     </section>
   );
+}
+
+// SchoolCore: the 2-minute overview, with a link to the eight parts.
+function SchoolCoreVideo({ setCurrentPage }) {
+  return <ProductVideo setCurrentPage={setCurrentPage} video={SCHOOLCORE_VIDEO} page="schoolcore-demo" label="SEE IT IN 2 MINUTES"
+    heading="Three questions every school owner asks." more="Then go deeper: fees, report cards, the parent's phone, gate safety and more."
+    linkText="Watch all 9 videos" panel="#F2EADB" ink="#143D2B" />;
 }
 
 export function SchoolCorePage({ setCurrentPage }) {
@@ -708,7 +717,13 @@ export function SchoolCorePage({ setCurrentPage }) {
   );
 }
 export function ComplianceCorePage({ setCurrentPage }) {
-  return <ProductPage product={PRODUCTS.compliancecore} setCurrentPage={setCurrentPage} />;
+  return (
+    <ProductPage product={PRODUCTS.compliancecore} setCurrentPage={setCurrentPage}>
+      <ProductVideo setCurrentPage={setCurrentPage} video={COMPLIANCECORE_VIDEO} page="compliancecore-demo" label="SEE IT IN 2 MINUTES"
+        heading="Can you prove it?" more="Then go deeper: which rules apply, your score, policies, the 72-hour clock and the board."
+        linkText="Watch all 6 videos" panel="#E9E4D6" ink="#123D2E" />
+    </ProductPage>
+  );
 }
 export function InventoryCorePage({ setCurrentPage }) {
   return <ProductPage product={PRODUCTS.inventorycore} setCurrentPage={setCurrentPage} />;

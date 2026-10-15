@@ -1,10 +1,10 @@
-// Product tour videos on pages of their own: /demo (CareCore),
-// /staffcore-demo and /schoolcore-demo (an overview plus a playlist of parts). A watch page with the video as its main content lets Google
+// Product tour videos on pages of their own: /demo and /carecore-demo (CareCore),
+// /staffcore-demo, and /schoolcore-demo and /compliancecore-demo (an overview plus a playlist of parts). A watch page with the video as its main content lets Google
 // list it in video results (prerender-seo.mjs adds its VideoObject, the
 // sitemap its video entry), and gives us one link to share.
 import { useEffect, useRef, useState } from 'react'
 import { BRAND } from '../lib/brand.js'
-import { DEMO_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO } from '../../shared/demoVideo.js'
+import { DEMO_VIDEO, CARECORE_VIDEO, STAFFCORE_VIDEO, SCHOOLCORE_VIDEO, COMPLIANCECORE_VIDEO } from '../../shared/demoVideo.js'
 
 const C = {
   bg: '#060810', card: '#0F1828', border: 'rgba(255,255,255,0.08)', borderStrong: 'rgba(255,255,255,0.16)',
@@ -26,6 +26,20 @@ const TOURS = {
     ],
     closing: <>CareCore is built by Orion Soft Limited in Lagos, Nigeria, and runs on the web, on Android and iOS, and as an offline local server for hospitals with unreliable internet.
       Want to see it with your own hospital's workflow?</>,
+  },
+  carecoreAd: {
+    video: CARECORE_VIDEO, length: '3 minutes', pageTitle: 'CareCore Demo Video: Is Your Hospital Losing Money? | Orion Soft',
+    product: 'carecore', productLabel: 'CareCore features', panel: '#BFE3FF',
+    chapters: [
+      ['One record per patient', 'Reception is warned the moment a patient who is already registered is typed in again.'],
+      ['AI at triage', 'The nurse types or speaks one sentence; CareCore fills in every vital sign and scores the patient.'],
+      ['Critical alerts', 'A red emergency reaches every doctor on duty, and keeps chasing until someone acknowledges it.'],
+      ['Safer prescribing', 'Allergies are checked by drug family, and stock is shown before the patient leaves the doctor.'],
+      ['No revenue leaks', 'Consultation, tests and drugs are billed by themselves; nobody can charge below the price list or delete a paid bill.'],
+      ["The owner's view", "HMO and NHIA claims, today's money, debtors and every bed, from anywhere."],
+    ],
+    closing: <>CareCore is built by Orion Soft Limited in Lagos, Nigeria. The video shows a demo hospital with made-up patients and staff.
+      Want to see it set up for your hospital?</>,
   },
   staffcore: {
     video: STAFFCORE_VIDEO, length: `${Math.round(STAFFCORE_VIDEO.seconds / 60)} minutes`, pageTitle: 'StaffCore Demo Video: Know Who Is Really at Work | Orion Soft',
@@ -54,6 +68,20 @@ const TOURS = {
     ],
     closing: <>SchoolCore is built by Orion Soft Limited in Lagos, Nigeria, for Nigerian schools. The videos show a demo school with made-up pupils and staff.
       Want to see it set up for your school?</>,
+  },
+  compliancecore: {
+    video: COMPLIANCECORE_VIDEO, length: '2 minutes, then 5 short parts', pageTitle: 'ComplianceCore Demo Videos: Compliance Management Software Tour | Orion Soft',
+    product: 'compliancecore', productLabel: 'ComplianceCore features', panel: '#E9E4D6', frame: '#123D2E',
+    chapters: [
+      ['Which rules apply', 'Plain questions in, and a clear, defensible list of the frameworks that apply to you.'],
+      ['Your real score', 'One honest compliance score, an owner for every control, and proof ready before it is asked for.'],
+      ['Policies and risks', 'Policies approved in the right order, signed and tamper-evident; risks and suppliers under control.'],
+      ['The 72-hour clock', 'Breaches flagged the moment you know, with every step recorded and nothing edited later.'],
+      ["Everyone's job", "Clear tasks and owners, ignored work that escalates itself, and a board pack in one click."],
+      ['Nothing expires unnoticed', 'Certificates and supplier contracts are tracked, so none lapses without warning.'],
+    ],
+    closing: <>ComplianceCore is built by Orion Soft Limited in Lagos, Nigeria. The videos show a demo company with made-up data.
+      Want to see it set up for your organisation?</>,
   },
 }
 
@@ -106,10 +134,10 @@ function WatchPage({ tour, setCurrentPage }) {
                     <img src={item.thumbnail} alt="" loading="lazy" width="640" height="360" style={{ width: '100%', height: 'auto', display: 'block' }} />
                     <span style={{ display: 'block', padding: '12px 14px 14px' }}>
                       <span style={{ display: 'block', color: C.gold, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
-                        {p ? `Part ${p.n} · ${p.length}` : 'Start here · 1:44'}
+                        {p ? `Part ${p.n} · ${p.length}` : `Start here · ${video.overview.length}`}
                       </span>
-                      <span style={{ display: 'block', color: C.heading, fontSize: 14.5, fontWeight: 700, lineHeight: 1.35 }}>{p ? p.title : 'SchoolCore in 2 minutes'}</span>
-                      <span style={{ display: 'block', color: C.textMuted, fontSize: 13, marginTop: 4 }}>{p ? p.about : 'Three questions every school owner asks'}</span>
+                      <span style={{ display: 'block', color: C.heading, fontSize: 14.5, fontWeight: 700, lineHeight: 1.35 }}>{p ? p.title : video.overview.label}</span>
+                      <span style={{ display: 'block', color: C.textMuted, fontSize: 13, marginTop: 4 }}>{p ? p.about : video.overview.about}</span>
                     </span>
                   </button>
                 )
@@ -155,4 +183,10 @@ export function StaffCoreDemoPage({ setCurrentPage }) {
 }
 export function SchoolCoreDemoPage({ setCurrentPage }) {
   return <WatchPage tour={TOURS.schoolcore} setCurrentPage={setCurrentPage} />
+}
+export function CareCoreDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.carecoreAd} setCurrentPage={setCurrentPage} />
+}
+export function ComplianceCoreDemoPage({ setCurrentPage }) {
+  return <WatchPage tour={TOURS.compliancecore} setCurrentPage={setCurrentPage} />
 }

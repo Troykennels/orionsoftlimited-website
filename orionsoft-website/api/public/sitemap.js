@@ -11,7 +11,7 @@ import { VIDEO_PAGES } from "../../shared/demoVideo.js";
 const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "").replace("://orionsoftlimited.com", "://www.orionsoftlimited.com");
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "staffcore", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
-  ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/demo", "monthly", 0.8], ["/staffcore-demo", "monthly", 0.8], ["/schoolcore-demo", "monthly", 0.8], ["/press", "monthly", 0.5],
+  ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/demo", "monthly", 0.8], ["/staffcore-demo", "monthly", 0.8], ["/schoolcore-demo", "monthly", 0.8], ["/carecore-demo", "monthly", 0.8], ["/compliancecore-demo", "monthly", 0.8], ["/press", "monthly", 0.5],
   ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/pricing", "monthly", 0.8],
   ["/about", "monthly", 0.7], ["/why", "monthly", 0.7], ["/process", "monthly", 0.6], ["/work", "monthly", 0.7],
   ["/case-studies", "monthly", 0.7], ["/clients", "monthly", 0.6], ["/testimonials", "monthly", 0.6], ["/success-stories", "monthly", 0.6],
@@ -51,9 +51,16 @@ export default async function handler(req, res) {
   const urls = await sitemapUrls();
   // Product tour pages also list their video, which is how Search Console
   // counts "discovered videos".
+  // Playlist pages list each part as well.
+  const entry = (v, title, description, seconds) => `<video:video><video:thumbnail_loc>${esc(SITE + v.thumbnail)}</video:thumbnail_loc><video:title>${esc(title)}</video:title><video:description>${esc(description)}</video:description><video:content_loc>${esc(SITE + v.src)}</video:content_loc><video:duration>${seconds}</video:duration><video:publication_date>${v.uploadDate}</video:publication_date><video:family_friendly>yes</video:family_friendly></video:video>`;
   const video = loc => {
     const v = VIDEO_PAGES[loc];
-    return !v ? "" : `<video:video><video:thumbnail_loc>${esc(SITE + v.thumbnail)}</video:thumbnail_loc><video:title>${esc(v.title)}</video:title><video:description>${esc(v.description)}</video:description><video:content_loc>${esc(SITE + v.src)}</video:content_loc><video:duration>${v.seconds}</video:duration><video:publication_date>${v.uploadDate}</video:publication_date><video:family_friendly>yes</video:family_friendly></video:video>`;
+    if (!v) return "";
+    const product = v.overview ? v.overview.label.split(" ")[0] : "";
+    return entry(v, v.title, v.description, v.seconds) + (v.parts || []).map(p => {
+      const [m, sec] = p.length.split(":").map(Number);
+      return entry({ ...p, uploadDate: v.uploadDate }, `${product} Demo Part ${p.n}: ${p.title}`, `${p.about}. Part ${p.n} of ${v.parts.length} of the ${product} demo by Orion Soft Limited.`, m * 60 + sec);
+    }).join("");
   };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.map(u =>
     `  <url><loc>${esc(SITE + u.loc)}</loc>${u.mod ? `<lastmod>${u.mod}</lastmod>` : ""}<changefreq>${u.freq}</changefreq><priority>${u.pri.toFixed(1)}</priority>${video(u.loc)}</url>`).join("\n")}\n</urlset>\n`;

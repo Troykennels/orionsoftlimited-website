@@ -9,7 +9,9 @@
 - Book a demo: https://www.orionsoftlimited.com/consultation
 - CareCore product tour video (3 min): https://www.orionsoftlimited.com/demo
 - StaffCore staff portal tour video (3 min): https://www.orionsoftlimited.com/staffcore-demo
+- CareCore hospital management demo video (3 min): https://www.orionsoftlimited.com/carecore-demo
 - SchoolCore demo videos (2-minute overview plus 8 short parts): https://www.orionsoftlimited.com/schoolcore-demo
+- ComplianceCore demo videos (2-minute overview plus 5 short parts): https://www.orionsoftlimited.com/compliancecore-demo
 - Contact: https://www.orionsoftlimited.com/contact
 
 ## Products
