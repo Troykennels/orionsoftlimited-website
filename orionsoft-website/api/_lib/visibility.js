@@ -16,7 +16,9 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": 
 export async function indexNow(paths) {
   const site = SITE();
   const urlList = [...new Set(paths.map(p => (/^https?:/.test(p) ? p : `${site}${p}`)))].slice(0, 10000);
-  if (!urlList.length || process.env.NODE_ENV === "test" || !process.env.UPSTASH_REDIS_REST_URL) return 0;
+  // Only the live site submits (it has a real database; local copies do not).
+  // Was Upstash-only, so submissions silently stopped after the move to Railway Redis.
+  if (!urlList.length || process.env.NODE_ENV === "test" || !(process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL)) return 0;
   const r = await fetch("https://api.indexnow.org/indexnow", {
     method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify({ host: new URL(site).host, key: INDEXNOW_KEY, keyLocation: `${site}/${INDEXNOW_KEY}.txt`, urlList }),
