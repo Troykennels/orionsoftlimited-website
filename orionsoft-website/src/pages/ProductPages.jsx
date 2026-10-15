@@ -614,10 +614,13 @@ function StaffCoreShowcase({ setCurrentPage }) {
           </Reveal>
           <Reveal>
             <div style={{ maxWidth: 960, margin: "0 auto 56px" }}>
-              <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${ink}`, boxShadow: "0 24px 60px rgba(11,27,58,0.35)", background: "#07111D" }}>
-                <video controls playsInline preload="none" poster={STAFFCORE_VIDEO.thumbnail} aria-label={STAFFCORE_VIDEO.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
-                  <source src={STAFFCORE_VIDEO.src} type="video/mp4" />
-                </video>
+              {/* The video is yellow too, so it sits in a navy frame to stand out. */}
+              <div style={{ background: ink, borderRadius: 22, padding: "clamp(8px, 2.4vw, 22px)", boxShadow: "0 24px 60px rgba(11,27,58,0.35)" }}>
+                <div style={{ borderRadius: 14, overflow: "hidden", border: "3px solid #2A3F66", background: "#07111D" }}>
+                  <video controls playsInline preload="none" poster={STAFFCORE_VIDEO.thumbnail} aria-label={STAFFCORE_VIDEO.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
+                    <source src={STAFFCORE_VIDEO.src} type="video/mp4" />
+                  </video>
+                </div>
               </div>
               <p style={{ ...lead, color: ink, fontWeight: 500, fontSize: 14.5, textAlign: "center", marginTop: 14 }}>
                 Three-minute tour with sound.{" "}
@@ -727,33 +730,34 @@ export function CareCorePage({ setCurrentPage }) {
     <ProductPage product={PRODUCTS.carecore} setCurrentPage={setCurrentPage}>
       <ProductVideo setCurrentPage={setCurrentPage} video={CARECORE_VIDEO} page="carecore-demo" label="SEE IT IN 3 MINUTES"
         heading="Is your hospital losing money it already earned?" more="One hospital morning, from reception to the owner's dashboard."
-        linkText="Open the video on its own page" panel="#BFE3FF" ink="#0B1B3A" />
+        linkText="Open the video on its own page" panel="#0B1B3A" ink="#2A3F66" text="#F2F6FF" />
       <CareCoreScreenshots />
     </ProductPage>
   );
 }
 // A product's demo video on its page, with a link to its watch page.
-function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkText, panel, ink }) {
+// `panel` should contrast with the video's own colour; `text` and `frame` default to `ink`.
+function ProductVideo({ setCurrentPage, video, page, label, heading, more, linkText, panel, ink, text = ink, frame = ink }) {
   return (
     <section style={{ padding: "100px clamp(20px, 4vw, 40px)", background: panel }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <Reveal>
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <SectionLabel color={ink}>{label}</SectionLabel>
-            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: ink, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
+            <SectionLabel color={text}>{label}</SectionLabel>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 800, color: text, fontFamily: font, letterSpacing: "-0.03em", margin: "14px 0 0", lineHeight: 1.1 }}>
               {heading}
             </h2>
           </div>
         </Reveal>
         <Reveal>
-          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${ink}`, boxShadow: "0 24px 60px rgba(11,27,58,0.28)", background: "#07111D" }}>
+          <div style={{ borderRadius: 16, overflow: "hidden", border: `3px solid ${frame}`, boxShadow: "0 24px 60px rgba(11,27,58,0.28)", background: "#07111D" }}>
             <video controls playsInline preload="none" poster={video.thumbnail} aria-label={video.title} style={{ width: "100%", aspectRatio: "16 / 9", display: "block" }}>
               <source src={video.src} type="video/mp4" />
             </video>
           </div>
-          <p style={{ fontSize: 15, color: ink, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
+          <p style={{ fontSize: 15, color: text, fontFamily: font, fontWeight: 500, textAlign: "center", margin: "16px 0 0" }}>
             {more}{" "}
-            <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ color: ink, fontWeight: 800, textDecoration: "underline" }}>{linkText} →</a>
+            <a href={`/${page}`} onClick={e => { e.preventDefault(); setCurrentPage(page); }} style={{ color: text, fontWeight: 800, textDecoration: "underline" }}>{linkText} →</a>
           </p>
         </Reveal>
       </div>

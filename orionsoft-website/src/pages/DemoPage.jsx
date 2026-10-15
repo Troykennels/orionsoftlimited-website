@@ -29,7 +29,7 @@ const TOURS = {
   },
   carecoreAd: {
     video: CARECORE_VIDEO, length: '3 minutes', pageTitle: 'CareCore Demo Video: Is Your Hospital Losing Money? | Orion Soft',
-    product: 'carecore', productLabel: 'CareCore features', panel: '#BFE3FF',
+    product: 'carecore', productLabel: 'CareCore features', panel: '#0B1B3A', frame: '#2A3F66',   // light-blue video on navy
     chapters: [
       ['One record per patient', 'Reception is warned the moment a patient who is already registered is typed in again.'],
       ['AI at triage', 'The nurse types or speaks one sentence; CareCore fills in every vital sign and scores the patient.'],
@@ -43,7 +43,7 @@ const TOURS = {
   },
   staffcore: {
     video: STAFFCORE_VIDEO, length: `${Math.round(STAFFCORE_VIDEO.seconds / 60)} minutes`, pageTitle: 'StaffCore Demo Video: Know Who Is Really at Work | Orion Soft',
-    product: 'staffcore', productLabel: 'StaffCore features',
+    product: 'staffcore', productLabel: 'StaffCore features', panel: '#0B1B3A', frame: '#2A3F66',   // yellow video on navy
     chapters: [
       ['Clock in on the phone', 'A staff member chooses where they are working and starts their day. Time and exact location are saved, so nobody signs in for a friend.'],
       ['Clear about privacy', 'Location is recorded only at clock-in and client visits, never in the background.'],
