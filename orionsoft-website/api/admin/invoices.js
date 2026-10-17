@@ -3,8 +3,8 @@
 //   draft → sent → partially_paid → paid, or → void (never once fully paid).
 // Totals, overdue and amount-in-words come from api/_lib/invoicing.js.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
-import { get, set, incr } from "../store.js";
+import { requireAdminAuth } from "../_lib/auth.js";
+import { set, incr } from "../store.js";
 import { renderInvoicePdf } from "../_lib/pdf.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
 import { logAudit } from "../_lib/audit.js";
@@ -131,7 +131,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

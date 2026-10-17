@@ -3,7 +3,7 @@
 // kits, and social advocacy analytics.
 import { get, set } from "../store.js";
 import { listRecords, readIndex, getRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { getRoleCatalog, saveRole, deleteRole, PERMISSIONS, BUILTIN_ROLES } from "../_lib/roles.js";
 import { notify, systemPost, cleanUrl, leaderboard, waNumber, cleanAudience, audienceIds, effectivePresence, loadSeen } from "../_lib/office.js";
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

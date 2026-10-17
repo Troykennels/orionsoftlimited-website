@@ -1,6 +1,6 @@
 import { getRecord, putRecord } from "../_lib/records.js";
 import { storeError } from "../store.js";
-import { requireAuth, hashPassword, verifyPassword } from "../_lib/auth.js";
+import { requireAdminAuth, hashPassword, verifyPassword } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   const { currentPassword, newPassword } = req.body || {};

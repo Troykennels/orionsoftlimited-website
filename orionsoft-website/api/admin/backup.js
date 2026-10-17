@@ -1,11 +1,11 @@
 // Super admin: download a backup now (GET) or email one now (POST).
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { backupFile, emailBackup } from "../_lib/backup.js";
 import { get } from "../store.js";
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
   if (session.adminRole !== "superadmin") return res.status(403).json({ error: "Only a super admin can take backups" });
 

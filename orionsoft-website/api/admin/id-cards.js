@@ -2,14 +2,14 @@
 // reissue it (a lost card, new photo or new role). Reissuing replaces the
 // verification code, so the old card no longer verifies, and the new card
 // needs authorising again.
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { getRecord, putRecord } from "../_lib/records.js";
 import { logAudit } from "../_lib/audit.js";
 import { ensureIdCard, cardPayload, validPassport, setPassport } from "../_lib/idcard.js";
 import { notify } from "../_lib/office.js";
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
   const id = req.query.employeeId || req.body?.employeeId;
   if (!id) return res.status(400).json({ error: "employeeId is required" });

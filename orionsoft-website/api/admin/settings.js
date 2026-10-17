@@ -1,4 +1,4 @@
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { getCompanySettings, saveCompanySettings } from "../_lib/settings.js";
 import { logAudit } from "../_lib/audit.js";
 
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

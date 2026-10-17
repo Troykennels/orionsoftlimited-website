@@ -1,5 +1,5 @@
 import { listRecords, getRecord, putRecord } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { notifyReportReviewed, notifyReportSubmitted } from "../_lib/emailTemplates.js";
 import { notify } from "../_lib/office.js";
 import { getRoleCatalog, reportManagers } from "../_lib/roles.js";
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   async function managersOf(report) {

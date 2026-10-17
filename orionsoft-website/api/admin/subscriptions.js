@@ -4,13 +4,13 @@
 //   PATCH { id, ...fields }               → edit
 //   PATCH { id, action: pause|resume|cancel|bill_now }
 import { listRecords, getRecord, putRecord } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { createSubscription, cleanSubscription, billRenewal, INTERVALS } from "../_lib/subscriptions.js";
 import { totals, effectiveStatus, quoteLink } from "../_lib/proposals.js";
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

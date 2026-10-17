@@ -1,4 +1,4 @@
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { listBanks } from "../_lib/paystackTransfer.js";
 
 // The bank list barely ever changes — cache it in-process (this runs as a
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (!cache || Date.now() - cachedAt > CACHE_TTL) {

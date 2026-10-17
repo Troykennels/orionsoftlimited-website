@@ -2,6 +2,7 @@
 // Replaces the old client-trusted localStorage session and shared x-admin-key header.
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { getRecord } from "./records.js";
 
 // Staff sessions. (Admin sessions used this cookie too until they got their
 // own: signing in to the Staff Office then silently replaced the admin
@@ -133,6 +134,7 @@ export function getAnySession(req) {
 // screen describes them). Every other admin route is super-admin only.
 export const EDITOR_ROUTES = new Set([
   "/api/admin/content", "/api/admin/analytics", "/api/admin/change-password", "/api/admin/security-pin",
+  "/api/auth/me",
 ]);
 const routeOf = req => String(req.originalUrl || req.url || "").split("?")[0].replace(/\/+$/, "");
 export const isEditor = session => session?.role === "admin" && session.adminRole === "editor";
@@ -145,6 +147,32 @@ export function requireAuth(req, res, role) {
     return null;
   }
   if (role === "admin" && isEditor(session) && !EDITOR_ROUTES.has(routeOf(req))) {
+    res.status(403).json({ error: "Your admin role (Editor) covers website content only. Ask a super admin for access." });
+    return null;
+  }
+  return session;
+}
+
+// Admin authorization must use the live account record. A signed JWT alone
+// cannot reflect an account being disabled, deleted, or downgraded after login.
+export async function requireAdminAuth(req, res) {
+  const tokenSession = getAdminSession(req);
+  if (!tokenSession) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  let admin;
+  try { admin = await getRecord("admins", tokenSession.sub); }
+  catch {
+    res.status(503).json({ error: "The database isn't answering right now. Try again shortly." });
+    return null;
+  }
+  if (!admin || admin.status !== "active") {
+    res.status(401).json({ error: "This admin account is no longer active" });
+    return null;
+  }
+  const session = { ...tokenSession, adminRole: admin.role, name: admin.username, email: admin.email };
+  if (isEditor(session) && !EDITOR_ROUTES.has(routeOf(req))) {
     res.status(403).json({ error: "Your admin role (Editor) covers website content only. Ask a super admin for access." });
     return null;
   }
@@ -164,6 +192,18 @@ export async function requireStaff(req, res) {
   if (!raw) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
+  }
+  if (raw.role === "admin") {
+    let admin;
+    try { admin = await getRecord("admins", raw.sub); }
+    catch {
+      res.status(503).json({ error: "The database isn't answering right now. Try again shortly." });
+      return null;
+    }
+    if (!admin || admin.status !== "active") {
+      res.status(401).json({ error: "This admin account is no longer active" });
+      return null;
+    }
   }
   const { getRecord, getByLookup } = await import("./records.js");
   const employee = raw.role === "staff" ? await getRecord("employees", raw.sub) : await getByLookup("employees", "admin", raw.sub);

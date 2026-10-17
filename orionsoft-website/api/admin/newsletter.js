@@ -1,7 +1,7 @@
 // Admin → Newsletter: subscribers, automatic-email settings, and sending.
 // Sending queues the newsletter; it goes out in batches (see _lib/newsletter.js).
 import { get, set } from "../store.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { sendEmail } from "../_lib/mailer.js";
 import {
@@ -16,14 +16,14 @@ const campaignView = c => ({
 });
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {
     const [subs, outbox, settings] = await Promise.all([loadSubscribers(), get(OUTBOX_KEY), newsletterSettings()]);
     return res.json({
       ok: true, settings,
-      subscribers: Object.values(subs).filter(s => !s.removed).map(({ token, ...s }) => s)
+      subscribers: Object.values(subs).filter(s => !s.removed).map(s => { const safe = { ...s }; delete safe.token; return safe; })
         .sort((a, b) => String(b.subscribedAt).localeCompare(String(a.subscribedAt))),
       campaigns: (outbox || []).map(campaignView),
     });

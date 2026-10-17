@@ -1,18 +1,10 @@
 // Comprehensive analytics endpoint — all metrics from Upstash in one call
 import { list, getCount, hgetall, available } from "../store.js";
-import { requireAuth, isEditor } from "../_lib/auth.js";
+import { requireAdminAuth, isEditor } from "../_lib/auth.js";
 
 function safeParse(item) {
   if (item && typeof item === "object") return item;
   try { return JSON.parse(item); } catch { return null; }
-}
-
-function extractDomain(url) {
-  if (!url) return "direct";
-  try {
-    const u = new URL(url);
-    return u.hostname.replace(/^www\./, "") || "direct";
-  } catch { return "direct"; }
 }
 
 const EMPTY = {
@@ -38,7 +30,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (!available()) return res.json(EMPTY);

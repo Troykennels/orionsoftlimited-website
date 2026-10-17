@@ -1,5 +1,5 @@
 // Admin: read all website content (including drafts) and publish changes.
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { CONTENT_KEYS, MAX_CONTENT_BYTES, readAllContent, writeContent, contentMeta } from "../_lib/content.js";
 
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

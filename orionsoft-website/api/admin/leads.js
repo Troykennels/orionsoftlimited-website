@@ -4,7 +4,7 @@
 // themselves live in the orionsoft:leads list; the status lives in a map
 // keyed by lead id.
 import { list, get, set } from "../store.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 
 const STATE_KEY = "orionsoft:leads:state";
@@ -19,7 +19,7 @@ export async function leadsWithState() {
 }
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") return res.json({ ok: true, leads: await leadsWithState(), statuses: STATUSES });

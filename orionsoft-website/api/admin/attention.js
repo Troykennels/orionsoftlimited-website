@@ -4,7 +4,7 @@
 // Single source of truth for both the Dashboard's "needs attention" widget
 // and the notification bell, so the two never disagree with each other.
 import { listRecords } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { isOverdue, normaliseInvoice } from "../_lib/invoicing.js";
 
 export default async function handler(req, res) {
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   const [leave, reports, contracts, payroll, applicants, employees, expenses, tickets, invoices, payments] = await Promise.all([
@@ -53,7 +53,6 @@ export default async function handler(req, res) {
   for (const t of tickets.filter(t => t.status === "open")) {
     items.push({ id: `ticket_${t.id}`, type: "ticket", label: `New ${t.category} ticket: ${t.subject}`, detail: t.raisedByName, at: t.createdAt, nav: "tickets" });
   }
-  const now = Date.now();
   for (const i of invoices.filter(i => isOverdue(normaliseInvoice(i)))) {
     items.push({ id: `invoice_${i.id}`, type: "invoice", label: `Invoice ${i.invoiceNumber} is overdue`, detail: i.clientName, at: i.dueDate, nav: "invoices" });
   }

@@ -1,6 +1,7 @@
 // Real admin account management — replaces the old localStorage SHA-256 "Users & Roles" list.
 import { listRecords, getByLookup, putRecord, deleteRecord, deleteLookup, setLookup, newId } from "../_lib/records.js";
-import { requireAuth, hashPassword } from "../_lib/auth.js";
+import { requireAdminAuth, hashPassword } from "../_lib/auth.js";
+import { logAudit } from "../_lib/audit.js";
 
 function publicShape(a) {
   return { id: a.id, username: a.username, email: a.email, role: a.role, status: a.status, createdAt: a.createdAt };
@@ -13,7 +14,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {
@@ -23,9 +24,13 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     if (session.adminRole !== "superadmin") return res.status(403).json({ error: "Only a super admin can add admins" });
-    const { username, email, password, role } = req.body || {};
-    if (!username || !email || !password) return res.status(400).json({ error: "username, email, and password are required" });
-    if (password.length < 10) return res.status(400).json({ error: "password must be at least 10 characters" });
+    const { role } = req.body || {};
+    const username = String(req.body?.username || "").trim().slice(0, 100);
+    const email = String(req.body?.email || "").trim().toLowerCase().slice(0, 254);
+    const password = req.body?.password;
+    if (!username || !email || typeof password !== "string") return res.status(400).json({ error: "username, email, and password are required" });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address" });
+    if (password.length < 10 || password.length > 1024) return res.status(400).json({ error: "Password must be between 10 and 1024 characters" });
 
     const existing = await getByLookup("admins", "email", email);
     if (existing) return res.status(409).json({ error: "An admin with that email already exists" });
@@ -40,6 +45,7 @@ export default async function handler(req, res) {
     };
     await putRecord("admins", id, admin);
     await setLookup("admins", "email", email, id);
+    await logAudit(session, "admin_created", `admin ${id}`, `${email} (${admin.role})`);
     return res.json({ ok: true, admin: publicShape(admin) });
   }
 
@@ -53,6 +59,7 @@ export default async function handler(req, res) {
     if (!target) return res.status(404).json({ error: "Admin not found" });
     target.status = status;
     await putRecord("admins", id, target);
+    await logAudit(session, "admin_status_changed", `admin ${id}`, `${status}: ${target.email}`);
     return res.json({ ok: true, admin: publicShape(target) });
   }
 
@@ -70,6 +77,7 @@ export default async function handler(req, res) {
     }
     await deleteRecord("admins", id);
     await deleteLookup("admins", "email", target.email);
+    await logAudit(session, "admin_deleted", `admin ${id}`, target.email);
     return res.json({ ok: true });
   }
 

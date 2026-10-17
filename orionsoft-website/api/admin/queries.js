@@ -1,7 +1,7 @@
 // Admin: staff queries across the whole company. Issue a query to anyone,
 // read responses, close with an outcome, withdraw, or delete. See _lib/queries.js.
 import { getRecord, listRecords, deleteRecord } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { getRoleCatalog } from "../_lib/roles.js";
 import { CATEGORIES, OUTCOMES, createQuery, closeQuery, withdrawQuery } from "../_lib/queries.js";
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
   const fail = (e) => res.status(e.status || 500).json({ error: e.message || "Something went wrong" });
   const adminName = session.name || "Management";

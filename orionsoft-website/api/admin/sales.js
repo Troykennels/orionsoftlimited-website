@@ -1,7 +1,7 @@
 // Sales & cash at a glance for the owner: money collected, what's due and
 // overdue, the deal pipeline, and field activity per salesperson.
 import { listRecords } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { normaliseContract, paymentSummary } from "../_lib/contracts.js";
 import { normaliseInvoice, computeTotals, isOverdue } from "../_lib/invoicing.js";
 import { STAGES } from "../staff/pipeline.js";
@@ -10,7 +10,7 @@ const round = n => Math.round(Number(n || 0) * 100) / 100;
 const lagos = () => new Date(Date.now() + 3600000).toISOString().slice(0, 10);
 
 export default async function handler(req, res) {
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 

@@ -1,7 +1,7 @@
 // Performance review / appraisal cycles — per-employee ratings across a
 // fixed rubric, plus free-text strengths, growth areas, and next-cycle goals.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 import { notify } from "../_lib/office.js";
 
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

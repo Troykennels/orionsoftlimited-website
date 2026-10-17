@@ -4,7 +4,7 @@
 // and track milestones. PDFs are generated fresh so they always show the
 // current signing and payment state.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth, signSession } from "../_lib/auth.js";
+import { requireAdminAuth, signSession } from "../_lib/auth.js";
 import { set } from "../store.js";
 import { renderContractPdfV2, renderContractReceiptPdf } from "../_lib/contractPdf.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
@@ -174,7 +174,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

@@ -1,7 +1,7 @@
 // Internal helpdesk — IT/HR/Facilities/Finance requests raised inside the
 // company, assignable to an employee, with a threaded comment trail.
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
 
 const CATEGORIES = ["Client support", "IT", "HR", "Facilities", "Finance", "Other"];
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

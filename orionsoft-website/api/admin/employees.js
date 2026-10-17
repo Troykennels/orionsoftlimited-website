@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { newId, listRecords, getByLookup, getRecord, putRecord, setLookup, deleteRecord, deleteLookup } from "../_lib/records.js";
-import { requireAuth, hashPassword, withoutSecrets } from "../_lib/auth.js";
+import { requireAdminAuth, hashPassword, withoutSecrets } from "../_lib/auth.js";
 import { sendEmployeeWelcome } from "../_lib/emailTemplates.js";
 import { getRoleCatalog, PERMISSIONS, managerChain, directReports } from "../_lib/roles.js";
 import { ensureSlugs, systemPost, notify, listActivity, leaderboard, cleanSocials, effectivePresence, loadSeen } from "../_lib/office.js";
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

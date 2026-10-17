@@ -5,7 +5,7 @@
 // whole session, a PIN proves you specifically mean to approve *this*
 // action right now, and can't be reused from a browser left open/unlocked.
 import { getRecord, putRecord } from "../_lib/records.js";
-import { requireAuth, hashPassword, verifyPassword } from "../_lib/auth.js";
+import { requireAdminAuth, hashPassword, verifyPassword } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {

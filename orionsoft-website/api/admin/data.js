@@ -1,7 +1,7 @@
 // Protected admin data endpoint — returns server-side leads, conversations, visitor stats
 // Protected by a real signed session cookie (see api/_lib/auth.js) — no shared static secret.
 import { list, getCount, hgetall, available } from "../store.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
 
-  if (!requireAuth(req, res, "admin")) return;
+  if (!await requireAdminAuth(req, res)) return;
 
   if (!available()) {
     return res.json({ ok: true, upstashMissing: true, leads: [], conversations: [], stats: { totalVisits: 0, pages: {} } });

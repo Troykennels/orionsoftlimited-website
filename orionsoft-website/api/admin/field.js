@@ -1,7 +1,7 @@
 // Admin: attendance timesheets (clock-in/out times, GPS, device, lateness),
 // field visits with evidence, spot checks, and performance scorecards.
 import { listRecords, getRecord } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { getRoleCatalog } from "../_lib/roles.js";
 import { computeScorecards, loadPerformanceData, WEIGHTS } from "../_lib/performance.js";
 import { lagosDate } from "../_lib/automations.js";
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
   const today = lagosDate();
   const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query?.from || "") ? req.query.from : monthStart(today);

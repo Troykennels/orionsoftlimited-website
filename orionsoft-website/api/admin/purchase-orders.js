@@ -1,5 +1,5 @@
 import { listRecords, getRecord, putRecord, deleteRecord, newId } from "../_lib/records.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireAdminAuth } from "../_lib/auth.js";
 import { get, set, incr } from "../store.js";
 import { renderPurchaseOrderPdf } from "../_lib/pdf.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const session = requireAuth(req, res, "admin");
+  const session = await requireAdminAuth(req, res);
   if (!session) return;
 
   if (req.method === "GET") {
