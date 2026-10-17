@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/staff-html.mjs && node scripts/prerender-seo.mjs",
+    "build": "vite build && node scripts/staff-html.mjs && node scripts/prerender-seo.mjs && node scripts/check-build.mjs",
+    "test:portals": "node --test scripts/test-portals.mjs",
     "start": "node server.js",
     "lint": "eslint .",
     "preview": "vite preview"

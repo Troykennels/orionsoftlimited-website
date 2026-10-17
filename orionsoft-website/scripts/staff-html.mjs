@@ -6,7 +6,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const src = new URL("../dist/index.html", import.meta.url);
-let html = readFileSync(src, "utf8");
+const builtHtml = readFileSync(src, "utf8");
+let html = builtHtml;
 const swap = (re, to) => {
   if (!re.test(html)) throw new Error(`staff-html: pattern not found: ${re}`);
   html = html.replace(re, to);
@@ -25,7 +26,9 @@ console.log("staff-html: dist/staff.html written");
 // search results. Give crawlers a page-level noindex rule; robots.txt must
 // allow these URLs to be fetched so search engines can read that rule.
 function portalHtml(title, description) {
-  let portal = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  // Use Vite's output: the source template points at /src/main.jsx, which
+  // does not exist on the production host and leaves every portal blank.
+  let portal = builtHtml;
   portal = portal.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   portal = portal.replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${description}" />`);
   portal = portal.replace(/<meta name="robots" content="[^"]*"\s*\/?>/, '<meta name="robots" content="noindex, nofollow" />');

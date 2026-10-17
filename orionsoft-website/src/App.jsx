@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
 import { BRAND } from "./lib/brand.js";
+import { pageMetadata, updateMetadata } from "./lib/seo.js";
 import "./App.css";
 import ChatBot from "./components/ChatBot";
 import { readPublished, loadSiteContent, usePublishedList, contentLoaded } from "./lib/siteContent.js";
@@ -764,7 +765,10 @@ function Nav({ currentPage, setCurrentPage }) {
               <div key={l.label}
                 onMouseEnter={() => setMegaOpen(l.hasMenu ? true : false)}
                 style={{ position: "relative" }}>
-                <button type="button" onClick={() => go(l.page)}
+                <a href={pathFor(l.page)} onClick={e => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                  e.preventDefault(); go(l.page);
+                }}
                   aria-current={active ? "page" : undefined}
                   aria-haspopup={l.hasMenu ? "true" : undefined}
                   aria-expanded={l.hasMenu ? megaOpen : undefined}
@@ -773,7 +777,7 @@ function Nav({ currentPage, setCurrentPage }) {
                     color: active ? (isHome ? "#061828" : C.white) : (isHome ? "#4A5B6C" : C.textMuted),
                     fontSize: 14, fontWeight: active ? 600 : 400, fontFamily: font,
                     transition: "color 0.2s", letterSpacing: "0.01em", position: "relative",
-                    display: "inline-flex", alignItems: "center", gap: 5,
+                    display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none",
                   }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.color = isHome ? "#061828" : C.white; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.color = isHome ? "#4A5B6C" : C.textMuted; }}>
@@ -782,7 +786,7 @@ function Nav({ currentPage, setCurrentPage }) {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: megaOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", opacity: 0.7 }}><polyline points="6 9 12 15 18 9" /></svg>
                   )}
                   {active && <span style={{ position: "absolute", bottom: -4, left: 0, right: l.hasMenu ? 15 : 0, height: 1.5, background: C.gold, borderRadius: 1 }} />}
-                </button>
+                </a>
               </div>
             );
           })}
@@ -5462,7 +5466,9 @@ function routeFromLocation() {
   const { pathname, hash } = window.location;
   // Older links (emails, bookmarks, the previous sitemap) used /#page.
   if ((pathname === "/" || pathname === "") && hash.length > 1) return { page: decodeURIComponent(hash.slice(1)).toLowerCase(), param: null };
-  const parts = pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  let parts;
+  try { parts = pathname.split("/").filter(Boolean).map(decodeURIComponent); }
+  catch { return { page: "not-found", param: null }; }
   if (!parts.length) return { page: "home", param: null };
   const page = parts[0].toLowerCase();
   if (page === "people" && parts[1]) return { page: "person", param: parts[1].toLowerCase() };
@@ -5612,6 +5618,29 @@ export default function App() {
   const pageOff = productOff || (["blog", "team", "careers", "resources", "pricing"].includes(currentPage) && flags[currentPage] === false);
   const maintenance = flags.maintenance_mode === true && currentPage !== "admin";
   const isKnownPage = !pageOff && (KNOWN_PAGES.has(currentPage) || cmsProductIds.includes(currentPage));
+
+  useEffect(() => {
+    let active = true;
+    const path = pathFor(currentPage, currentPage === "blog" ? blogPostId : personSlug);
+    const privatePage = ["admin", "login"].includes(currentPage);
+    const seo = cms?.seo?.[currentPage];
+    pageMetadata().then(pages => {
+      if (!active) return;
+      const data = { ...pages[path] };
+      const post = currentPage === "blog" && blogPostId
+        ? cms?.blog?.find(p => p.id === blogPostId || p.slug === blogPostId) : null;
+      if (post?.title) {
+        data.title = `${post.title} | Orion Soft Limited`;
+        data.description = String(post.excerpt || post.content || post.body || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+        if (post.coverImage) data.image = post.coverImage;
+      }
+      if (seo?.title) data.title = seo.title;
+      if (seo?.description) data.description = seo.description;
+      if (!isKnownPage) data.title = "Page not found | Orion Soft Limited";
+      updateMetadata(path, data, { noindex: privatePage || !isKnownPage || maintenance });
+    });
+    return () => { active = false; };
+  }, [currentPage, blogPostId, personSlug, cms, isKnownPage, maintenance]);
 
   // ?embed=1 on a tool page: just the tool, for other websites to embed.
   const embed = ["paye-calculator", "kenya-paye-calculator", "ghana-paye-calculator"].includes(currentPage) && new URLSearchParams(window.location.search).has("embed");

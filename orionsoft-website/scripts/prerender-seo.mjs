@@ -15,6 +15,7 @@ const dist = new URL("../dist/", import.meta.url);
 let base = readFileSync(new URL("index.html", dist), "utf8");
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const ORG = { "@id": `${SITE}/#organization` };
+const metadata = {};
 
 // The social profiles saved in Site Settings become the organisation's
 // "sameAs", which tells Google and AI assistants which LinkedIn, Facebook,
@@ -58,6 +59,8 @@ const PRODUCTS = {
 };
 
 const PAGES = {
+  "/services": ["Custom Software, Websites & App Development | Orion Soft Limited", "Custom software, business websites, web applications, mobile apps and system integrations from Orion Soft Limited in Lagos, serving organisations in Nigeria and worldwide. Discuss your project with our team.", "Custom software, websites and app development"],
+  "/resources": ["Software Resources, Guides & Tools | Orion Soft Limited", "Explore Orion Soft product guides, software insights and free tools for hospitals, schools and businesses.", "Resources, guides and tools"],
   "/products": ["Software Products for Nigerian Hospitals, Schools & Businesses", "Orion Soft's products: CareCore hospital management, SchoolCore, FinanceCore accounting and payroll, HRCore, InventoryCore, ComplianceCore, ChurchCore and FleetCore. Built in Nigeria for African organisations.", "Our software products"],
   "/industries": ["Industries We Serve | Healthcare, Education, Finance & More", "Software for healthcare, education, financial services, government and NGOs, faith organisations, manufacturing, retail and logistics in Nigeria and Africa.", "Industries we serve"],
   "/solutions": ["Business Solutions | Go Paperless, Automate & Report", "Go paperless, automate processes, get real-time reports, stay compliant and integrate your systems with Orion Soft.", "Solutions"],
@@ -87,11 +90,12 @@ const PAGES = {
   "/terms": ["Terms of Service | Orion Soft", "Terms of service for Orion Soft Limited websites and software.", "Terms of service"],
 };
 
-const LINKS = [["/", "Home"], ["/products", "Products"], ["/carecore", "CareCore HMS"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
+const LINKS = [["/", "Home"], ["/products", "Products"], ...Object.entries(PRODUCTS).map(([id, p]) => [`/${id}`, p.name]), ["/services", "Custom software & websites"], ["/international", "International clients"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
 
 function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], image }) {
   const url = `${SITE}${path === "/" ? "/" : path}`;
   const fullTitle = /orion soft/i.test(title) ? title : `${title} | Orion Soft`;
+  metadata[path] = { title: fullTitle, description: desc, canonical: url, image: image || `${SITE}/og-image.png` };
   let html = base
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(fullTitle)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${esc(desc)}" />`)
@@ -101,13 +105,22 @@ function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], imag
     .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${esc(desc)}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${esc(fullTitle)}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${esc(desc)}" />`);
+  // The source homepage graph also describes its own WebPage and CareCore.
+  // Only the shared identities belong on every route.
+  html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/, (_, raw) => {
+    const graph = JSON.parse(raw);
+    graph["@graph"] = graph["@graph"].filter(n => /#(organization|website)$/.test(n["@id"] || ""));
+    return `<script type="application/ld+json">${JSON.stringify(graph).replace(/</g, "\\u003c")}</script>`;
+  });
   if (image) {
     html = html.replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${esc(image)}" />`)
       .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${esc(image)}" />`)
       .replace(/<meta (property="og:image:alt"|name="twitter:image:alt") content="[^"]*"\s*\/?>/g, (_, attr) => `<meta ${attr} content="${esc(fullTitle)}" />`);
   }
   const crumbs = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: `${SITE}/` }, ...(path === "/" ? [] : [{ "@type": "ListItem", position: 2, name: h1, item: url }])] };
-  const ld = [crumbs, ...jsonLd].map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, "\\u003c")}</script>`).join("\n    ");
+  const webPage = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${url}#webpage`, url, name: fullTitle, description: desc, isPartOf: { "@id": `${SITE}/#website` }, publisher: ORG };
+  metadata[path].jsonLd = [webPage, crumbs, ...jsonLd];
+  const ld = metadata[path].jsonLd.map(j => `<script type="application/ld+json">${JSON.stringify(j).replace(/</g, "\\u003c")}</script>`).join("\n    ");
   // Visitors never see the text version flash before the app loads: it's for
   // crawlers and link previews, which read the HTML without running scripts.
   html = html.replace("</head>", `    ${ld}\n    <script>(function(d){d.classList.add("js");if(!/^\\/(q|p|pay|sign|client|applicant|id-card|verify|confirm-visit)(\\/|$)/.test(location.pathname))d.classList.add("dark-boot")})(document.documentElement)</script><style>.js #seo-fallback{display:none}.dark-boot,.dark-boot body{background:#060810}.js #root:has(> #seo-fallback)::before{content:"";position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border:3px solid rgba(200,168,80,.25);border-top-color:#C8A850;border-radius:50%;animation:ossb .8s linear infinite}@keyframes ossb{to{transform:rotate(360deg)}}</style>\n  </head>`);
@@ -324,3 +337,4 @@ try {
 } catch (e) { console.log("prerender-seo: live content skipped:", e.message); }
 
 console.log(`prerender-seo: ${count} pages written`);
+writeFileSync(new URL("seo-pages.json", dist), JSON.stringify(metadata));

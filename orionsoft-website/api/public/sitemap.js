@@ -12,7 +12,7 @@ const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").re
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "staffcore", "orion-crm", "directors-portal", "license-manager", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
   ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/demo", "monthly", 0.8], ["/staffcore-demo", "monthly", 0.8], ["/schoolcore-demo", "monthly", 0.8], ["/carecore-demo", "monthly", 0.8], ["/compliancecore-demo", "monthly", 0.8], ["/orion-crm-demo", "monthly", 0.7], ["/directors-portal-demo", "monthly", 0.7], ["/license-manager-demo", "monthly", 0.6], ["/press", "monthly", 0.5],
-  ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/pricing", "monthly", 0.8],
+  ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/services", "monthly", 0.8], ["/resources", "monthly", 0.6], ["/pricing", "monthly", 0.8],
   ["/about", "monthly", 0.7], ["/why", "monthly", 0.7], ["/process", "monthly", 0.6], ["/work", "monthly", 0.7],
   ["/case-studies", "monthly", 0.7], ["/clients", "monthly", 0.6], ["/testimonials", "monthly", 0.6], ["/success-stories", "monthly", 0.6],
   ["/security", "yearly", 0.6], ["/support", "monthly", 0.6], ["/partners", "monthly", 0.5], ["/tech", "monthly", 0.5],
@@ -30,7 +30,7 @@ export async function sitemapUrls() {
   try { [content, employees] = await Promise.all([readAllContent().then(publicView), listRecords("employees")]); } catch { /* fixed pages still go out */ }
   const flags = content.orionsoft_features_v1 || {};
   const products = Array.isArray(content.orionsoft_products_v1) && content.orionsoft_products_v1.length ? content.orionsoft_products_v1 : null;
-  const urls = PAGES.filter(([p]) => !["blog", "team", "careers", "pricing"].some(k => p === `/${k}` && flags[k] === false))
+  const urls = PAGES.filter(([p]) => !["blog", "team", "careers", "pricing", "resources"].some(k => p === `/${k}` && flags[k] === false))
     .map(([p, freq, pri]) => ({ loc: p, freq, pri }));
   for (const id of products ? products.filter(p => p?.id && p.published !== false).map(p => p.id) : BUILTIN_PRODUCTS) {
     urls.push({ loc: `/${encodeURIComponent(id)}`, freq: "monthly", pri: BUILTIN_PRODUCTS.includes(id) ? 0.8 : 0.7 });
@@ -43,7 +43,7 @@ export async function sitemapUrls() {
   for (const e of employees) {
     if (e.status === "active" && e.publicProfile && e.slug) urls.push({ loc: `/people/${encodeURIComponent(e.slug)}`, freq: "monthly", pri: 0.4 });
   }
-  return urls;
+  return [...new Map(urls.map(u => [u.loc, u])).values()];
 }
 
 export default async function handler(req, res) {

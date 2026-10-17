@@ -2,7 +2,7 @@
 // Bing, Yandex, Seznam, Naver and the AI assistants that use Bing), ask happy
 // clients for a Google review, and turn each new blog post into a share kit
 // so every staff member can post it.
-import { get, set, claim } from "../store.js";
+import { get, set, claim, storeBackend } from "../store.js";
 import { listRecords, putRecord, newId } from "./records.js";
 import { notify } from "./office.js";
 
@@ -18,7 +18,7 @@ export async function indexNow(paths) {
   const urlList = [...new Set(paths.map(p => (/^https?:/.test(p) ? p : `${site}${p}`)))].slice(0, 10000);
   // Only the live site submits (it has a real database; local copies do not).
   // Was Upstash-only, so submissions silently stopped after the move to Railway Redis.
-  if (!urlList.length || process.env.NODE_ENV === "test" || !(process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL)) return 0;
+  if (!urlList.length || process.env.NODE_ENV === "test" || storeBackend() === "mem") return 0;
   const r = await fetch("https://api.indexnow.org/indexnow", {
     method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify({ host: new URL(site).host, key: INDEXNOW_KEY, keyLocation: `${site}/${INDEXNOW_KEY}.txt`, urlList }),
@@ -35,7 +35,7 @@ export async function indexNowOnRelease() {
   if (!sha || (await get("orionsoft:indexnow:release")) === sha) return 0;
   const { sitemapUrls } = await import("../public/sitemap.js");
   const n = await indexNow((await sitemapUrls()).map(u => u.loc));
-  await set("orionsoft:indexnow:release", sha);
+  if (n > 0) await set("orionsoft:indexnow:release", sha);
   return n;
 }
 

@@ -2,7 +2,7 @@
 // Replaces the old client-trusted localStorage session and shared x-admin-key header.
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getRecord } from "./records.js";
+import { getRecord, getByLookup } from "./records.js";
 
 // Staff sessions. (Admin sessions used this cookie too until they got their
 // own: signing in to the Staff Office then silently replaced the admin
@@ -103,7 +103,9 @@ function readToken(req, name = COOKIE_NAME) {
   if (req.cookies && req.cookies[name]) return req.cookies[name];
   const header = req.headers?.cookie || "";
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  // A damaged cookie must lead to sign-in, not crash every protected route.
+  try { return match ? decodeURIComponent(match[1]) : null; }
+  catch { return null; }
 }
 
 export function getSessionFromRequest(req, name = COOKIE_NAME) {
@@ -205,7 +207,6 @@ export async function requireStaff(req, res) {
       return null;
     }
   }
-  const { getRecord, getByLookup } = await import("./records.js");
   const employee = raw.role === "staff" ? await getRecord("employees", raw.sub) : await getByLookup("employees", "admin", raw.sub);
   if (!employee && raw.role === "admin") {
     res.status(403).json({ error: "No owner office account yet", needsOwnerSetup: true });
