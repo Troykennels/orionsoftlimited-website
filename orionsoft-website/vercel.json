@@ -38,6 +38,14 @@
       "destination": "/applicant.html"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/blog/:slug",
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/public/blog-page?slug=:slug"
     },
@@ -69,6 +77,14 @@
     },
     {
       "source": "/applicant/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/admin",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/admin/:path*",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     },
     {

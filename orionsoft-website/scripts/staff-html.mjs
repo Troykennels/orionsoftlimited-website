@@ -41,6 +41,10 @@ writeFileSync(new URL("../dist/applicant.html", import.meta.url), portalHtml(
   "Applicant Portal | Orion Soft Limited",
   "Secure applicant portal for tracking an Orion Soft Limited job application. Sign in with your application reference."
 ));
+writeFileSync(new URL("../dist/admin.html", import.meta.url), portalHtml(
+  "Admin Portal | Orion Soft Limited",
+  "Secure administration portal for Orion Soft Limited."
+));
 console.log("staff-html: noindex portal shells written");
 
 // Which commit this website build came from. The API server compares it with
