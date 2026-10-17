@@ -35,19 +35,27 @@ function checkRate(ip) {
 }
 
 export function candidateView(a) {
+  const interview = a.interview ? {
+    at: a.interview.at || "", mode: a.interview.mode || "video", link: a.interview.link || "",
+    location: a.interview.location || "", interviewers: a.interview.interviewers || "", notes: a.interview.notes || "",
+    candidateResponse: a.interview.candidateResponse || null, candidateNote: a.interview.candidateNote || "",
+    respondedAt: a.interview.respondedAt || null,
+  } : null;
+  const assessment = a.assessment ? { instructions: a.assessment.instructions || "", link: a.assessment.link || "", dueDate: a.assessment.dueDate || "" } : null;
+  const offer = a.offer ? { summary: a.offer.summary || "", link: a.offer.link || "", respondBy: a.offer.respondBy || "" } : null;
   return {
     id: a.id, reference: a.reference || a.id, roleAppliedFor: a.roleAppliedFor, status: a.status,
     statusMessage: STAGE_COPY[a.status] || "", stages: STAGES,
     history: (a.statusHistory || [{ status: "applied", at: a.createdAt }]).map(h => ({ status: h.status, at: h.at, note: h.publicNote || "" })),
-    messages: (a.messages || []).map(m => ({ id: m.id, from: m.from, text: m.text, at: m.at, byName: m.from === "recruiter" ? "Orion Soft Recruiting" : "You" })),
-    interview: a.interview || null, assessment: a.assessment || null, offer: a.offer || null,
+    messages: (a.messages || []).filter(m => !m.internal).map(m => ({ id: m.id, from: m.from, text: m.text, at: m.at, byName: m.from === "recruiter" ? "Orion Soft Recruiting" : "You" })),
+    interview, assessment, offer,
     fullName: a.fullName, email: a.email, phone: a.phone, location: a.location, cvLink: a.cvLink, portfolio: a.portfolio, availability: a.availability,
     createdAt: a.createdAt, updatedAt: a.updatedAt, unreadForCandidate: !!a.unreadForCandidate,
   };
 }
 
 export function portalLinkFor(email) {
-  const base = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
+  const base = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/+$/, "");
   const token = signSession({ role: "applicant-link", email: String(email).toLowerCase() }, PORTAL_TTL);
   return `${base}/applicant?token=${encodeURIComponent(token)}`;
 }
@@ -62,6 +70,7 @@ function startSession(res, email) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
@@ -116,6 +125,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST" && b.action === "message") {
+    if (["rejected", "withdrawn"].includes(app.status)) return res.status(400).json({ error: "This application is closed" });
     const text = String(b.text || "").trim().slice(0, 2000);
     if (!text) return res.status(400).json({ error: "Message can't be empty" });
     app.messages = [...(app.messages || []), { id: newId("am"), from: "candidate", text, at: now }];
@@ -128,6 +138,8 @@ export default async function handler(req, res) {
 
   if (req.method === "POST" && b.action === "interview-response") {
     if (!app.interview) return res.status(400).json({ error: "No interview has been scheduled yet" });
+    if (!["accept", "reschedule"].includes(b.response)) return res.status(400).json({ error: "Choose whether to accept or request a new time" });
+    if (app.interview.candidateResponse === "accepted") return res.status(409).json({ error: "You already confirmed this interview. Contact the recruiting team if your plans change." });
     const response = b.response === "accept" ? "accepted" : "reschedule_requested";
     app.interview = { ...app.interview, candidateResponse: response, candidateNote: String(b.note || "").slice(0, 600), respondedAt: now };
     app.messages = [...(app.messages || []), { id: newId("am"), from: "candidate", text: response === "accepted" ? `✅ I confirm the interview.${b.note ? ` ${b.note}` : ""}` : `🔁 Could we reschedule the interview? ${b.note || ""}`, at: now }];
@@ -150,12 +162,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "PATCH") {
+    if (["hired", "rejected", "withdrawn"].includes(app.status)) return res.status(400).json({ error: "This application is closed" });
     for (const k of ["phone", "location", "availability"]) if (b[k] !== undefined) app[k] = String(b[k]).slice(0, 200);
     for (const k of ["cvLink", "portfolio"]) if (b[k] !== undefined) app[k] = cleanUrl(b[k]);
     app.updatedAt = now;
     app.unreadForAdmin = true;
     app.messages = [...(app.messages || []), { id: newId("am"), from: "candidate", text: "ℹ️ I updated my application details.", at: now, system: true }];
     await putRecord("applicants", app.id, app);
+    try { await notifyAdminCandidateUpdate(app, 'Candidate updated their contact or portfolio details'); } catch { /* best-effort */ }
     return res.json({ ok: true, application: candidateView(app) });
   }
 

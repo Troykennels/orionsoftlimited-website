@@ -66,14 +66,16 @@ function Tickets({ tickets, reload }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ subject: "", message: "", urgent: false });
   const [reply, setReply] = useState({});
-  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false); const [msg, setMsg] = useState(""); const [msgError, setMsgError] = useState(false);
   async function create() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setMsgError(false);
     try { await api("/api/client/portal", { action: "ticket", ...f }); setF({ subject: "", message: "", urgent: false }); setOpen(false); setMsg("Thanks, we've got your request and will reply by email."); reload(); }
-    catch (e) { setMsg(e.message); } finally { setBusy(false); }
+    catch (e) { setMsg(e.message); setMsgError(true); } finally { setBusy(false); }
   }
   async function send(t) {
-    try { await api("/api/client/portal", { action: "reply", id: t.id, message: reply[t.id] }); setReply(r => ({ ...r, [t.id]: "" })); reload(); } catch (e) { setMsg(e.message); }
+    setMsg(""); setMsgError(false);
+    try { await api("/api/client/portal", { action: "reply", id: t.id, message: reply[t.id] }); setReply(r => ({ ...r, [t.id]: "" })); reload(); }
+    catch (e) { setMsg(e.message); setMsgError(true); }
   }
   return (
     <Card>
@@ -89,7 +91,7 @@ function Tickets({ tickets, reload }) {
           <button type="button" disabled={busy || !f.subject.trim() || !f.message.trim()} onClick={create} style={btn(true, busy || !f.subject.trim() || !f.message.trim())}>{busy ? "Sending…" : "Send to support"}</button>
         </div>
       )}
-      {msg && <p role="status" style={{ color: "#15803D", margin: "10px 0 0" }}>{msg}</p>}
+      {msg && <p role={msgError ? "alert" : "status"} style={{ color: msgError ? "#B91C1C" : "#15803D", margin: "10px 0 0" }}>{msg}</p>}
       {tickets.length === 0 && !open && <p style={{ color: MUTED, margin: "10px 0 0" }}>No support requests yet.</p>}
       {tickets.map(t => (
         <div key={t.id} style={{ borderTop: `1px solid ${LINE}`, marginTop: 12, paddingTop: 12 }}>
@@ -116,6 +118,7 @@ function Tickets({ tickets, reload }) {
 export default function ClientPortal() {
   const [state, setState] = useState({ loading: true });
   const load = useCallback(() => api("/api/client/portal").then(d => setState({ d })).catch(e => setState(e.status === 401 ? { signIn: true } : { err: e.message })), []);
+  const signedIn = !!state.d;
 
   useEffect(() => {
     document.title = "Client portal | Orion Soft";
@@ -126,6 +129,12 @@ export default function ClientPortal() {
         .catch(e => setState({ signIn: true, linkErr: e.message }));
     } else load();
   }, [load]);
+
+  useEffect(() => {
+    if (!signedIn) return undefined;
+    const timer = setInterval(() => { if (!document.hidden) load(); }, 30000);
+    return () => clearInterval(timer);
+  }, [load, signedIn]);
 
   async function logout() { await api("/api/client/auth", { action: "logout" }).catch(() => {}); setState({ signIn: true }); }
 

@@ -129,8 +129,12 @@ export default async function handler(req, res) {
         await putRecord("deals", deal.id, deal);
       }
     }
+    let emailSent = false;
     if (visit.contactEmail) {
-      try { await sendVisitConfirmation(visit, me, confirmUrl(visit.confirmation.token)); visit.confirmation.channel = "email"; await putRecord("visits", id, visit); } catch { /* best-effort */ }
+      try { emailSent = await sendVisitConfirmation(visit, me, confirmUrl(visit.confirmation.token)); }
+      catch { /* the check-in must still succeed when email is unavailable */ }
+      visit.confirmation.channel = emailSent ? "email" : "email_failed";
+      await putRecord("visits", id, visit);
     }
     // Line manager + owner hear about every check-in (suspicious ones always).
     const alertAll = (await get(OFFICE_CONFIG_KEY))?.alertFieldVisits !== false;
@@ -145,7 +149,7 @@ export default async function handler(req, res) {
         link: "team:field", actorId: me.id,
       });
     }
-    return res.json({ ok: true, visit: stripPhoto(visit), confirmUrl: confirmUrl(visit.confirmation.token) });
+    return res.json({ ok: true, visit: stripPhoto(visit), confirmUrl: confirmUrl(visit.confirmation.token), emailSent });
   }
 
   if (b.action === "check-out") {
@@ -173,7 +177,10 @@ export default async function handler(req, res) {
     const v = await getRecord("visits", b.id);
     if (!v || v.employeeId !== me.id) return res.status(404).json({ error: "Visit not found" });
     if (!v.contactEmail) return res.status(400).json({ error: "No client email on this visit. Share the link on WhatsApp instead." });
-    try { await sendVisitConfirmation(v, me, confirmUrl(v.confirmation.token)); } catch { return res.status(502).json({ error: "Couldn't send the email" }); }
+    try {
+      const sent = await sendVisitConfirmation(v, me, confirmUrl(v.confirmation.token));
+      if (!sent) return res.status(502).json({ error: "Email provider couldn't deliver the confirmation. Copy the visit link and send it to the client instead." });
+    } catch { return res.status(502).json({ error: "Couldn't send the email. Copy the visit link and send it to the client instead." }); }
     return res.json({ ok: true });
   }
 

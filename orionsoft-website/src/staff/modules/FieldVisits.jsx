@@ -12,43 +12,10 @@ import { enqueue, isNetworkError } from "../offlineQueue.js";
 import CameraCapture from "../CameraCapture.jsx";
 import { useOffice } from "../office.js";
 import { startLateLocation } from "../lateLocation.jsx";
+import { useConsent } from "../useLocationConsent.jsx";
 
 const LEVEL = { verified: ["Verified", C.mint, ShieldCheck], review: ["Needs review", C.amber, ShieldAlert], suspicious: ["Suspicious", C.rose, ShieldAlert] };
 const CONF = { pending: ["Awaiting client", C.textMuted], confirmed: ["Client confirmed", C.mint], disputed: ["Client disputed", C.rose] };
-
-export function LocationConsent({ onAccept, onClose }) {
-  return (
-    <Modal title="How location is used" onClose={onClose} width={520}>
-      <div style={{ fontSize: 14, color: C.text, lineHeight: 1.7 }}>
-        <p style={{ marginTop: 0 }}>To verify field work fairly, the Staff Office records your location <strong>only at these moments</strong>:</p>
-        <ul style={{ paddingLeft: 18, margin: "0 0 12px" }}>
-          <li>when you clock in and clock out,</li>
-          <li>when you check in and out of a client visit,</li>
-          <li>when you answer a location check.</li>
-        </ul>
-        <p>It is <strong>never tracked in the background</strong>. You, your line manager, HR and management can see these records, and you can see everything recorded about you under Field Visits and Performance. This follows the Nigeria Data Protection Act 2023.</p>
-      </div>
-      <Btn onClick={onAccept}>I understand, continue</Btn>
-    </Modal>
-  );
-}
-
-// Ensures the one-time notice has been accepted; resolves true if OK to proceed.
-export function useConsent() {
-  const [ask, setAsk] = useState(null);
-  const ensure = useCallback(async () => {
-    try { if (localStorage.getItem("so_loc_consent")) return true; } catch { /* storage blocked: ask */ }
-    return new Promise(resolve => setAsk(() => resolve));
-  }, []);
-  const modal = ask ? (
-    <LocationConsent onClose={() => { ask(false); setAsk(null); }} onAccept={async () => {
-      try { localStorage.setItem("so_loc_consent", "1"); } catch { /* ignore */ }
-      api("/api/staff/attendance", { method: "POST", body: { action: "consent" } }).catch(() => {});
-      ask(true); setAsk(null);
-    }} />
-  ) : null;
-  return { ensure, modal };
-}
 
 function CheckInFlow({ onClose, onDone }) {
   const { me, can, office } = useOffice();
@@ -124,7 +91,7 @@ function CheckInFlow({ onClose, onDone }) {
         {done.visit.flags.filter(x => x.penalty < 0).map(x => <div key={x.code} style={{ fontSize: 12.5, color: C.amber, marginBottom: 4 }}>• {x.label}</div>)}
         <SectionCard style={{ marginTop: 12, padding: 14 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: C.heading, marginBottom: 6 }}>Ask the client to confirm your visit</div>
-          <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 10 }}>Client-confirmed visits count the most. {f.contactEmail ? `We've emailed ${f.contactEmail}.` : ""} Send the link from WhatsApp too. The client must confirm on <strong>their own phone</strong>.</div>
+          <div style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 10 }}>Client-confirmed visits count the most. {done.emailSent ? `A confirmation email was sent to ${f.contactEmail}.` : f.contactEmail ? "The confirmation email could not be delivered. Send the link through WhatsApp or copy it below." : "No client email was provided; send the link through WhatsApp or copy it below."} The client must confirm on <strong>their own phone</strong>.</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {f.contactPhone && <a href={waLink(f.contactPhone.replace(/\D/g, "").replace(/^0/, "234"), msg)} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small style={{ background: "#25D366", color: "#062" }}>Send on WhatsApp</Btn></a>}
             <Btn small variant="ghost" icon={Copy} onClick={() => copyText(msg).then(() => toast("Message copied"))}>Copy message</Btn>

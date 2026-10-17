@@ -101,7 +101,7 @@ function Application({ app, onChanged }) {
   }
   async function saveDetails() {
     setBusy(true);
-    try { await fetch("/api/applicant/portal", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: app.id, ...details }) }).then(r => { if (!r.ok) throw new Error("Couldn't save your details"); }); toast("Details updated. The team has been told."); setEdit(false); onChanged(); }
+    try { await api({ applicationId: app.id, ...details }, "PATCH"); toast("Details updated. The team has been told."); setEdit(false); onChanged(); }
     catch (e) { toast(e.message, "err"); } finally { setBusy(false); }
   }
 

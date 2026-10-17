@@ -62,7 +62,13 @@ const MESSAGES = {
 // Resolves { geo } or { error, kind } and never throws.
 export async function getLocation(opts = {}) {
   const t0 = Date.now();
-  const r = await locate(opts);
+  let r;
+  try { r = await locate(opts); }
+  catch (err) {
+    let kind = "unsupported";
+    try { kind = await classify(err); } catch { /* use safe fallback */ }
+    r = { error: MESSAGES[kind], kind, code: err?.code || 0, rawMessage: err?.message || "" };
+  }
   // Report every attempt (with the browser's raw error) so managers can see
   // exactly why a phone fails, instead of guessing from "try again".
   const perm = await permissionState("geolocation");
@@ -93,6 +99,13 @@ function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress,
     };
     const take = p => {
       if (done) return;
+      const coords = p?.coords;
+      if (!Number.isFinite(coords?.latitude) || !Number.isFinite(coords?.longitude)
+        || Math.abs(coords.latitude) > 90 || Math.abs(coords.longitude) > 180
+        || !Number.isFinite(coords.accuracy) || coords.accuracy < 0) {
+        lastErr = { code: 2, message: "The phone returned an invalid location" };
+        return;
+      }
       const g = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: new Date(p.timestamp || Date.now()).toISOString() };
       if (!best || g.accuracy < best.accuracy) {
         best = g; onProgress?.(g);
@@ -113,12 +126,14 @@ function locate({ maxWait = 15000, goodEnough = 30, settleMs = 6000, onProgress,
       control.accept = () => { if (best) finish(); };
       control.stop = () => { stopped = true; finish(); };
     }
-    watchId = navigator.geolocation.watchPosition(take, fail, { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 });
+    try { watchId = navigator.geolocation.watchPosition(take, fail, { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }); }
+    catch (err) { lastErr = err; }
     // Also accept the phone's last known position from the past 10 minutes
     // (e.g. from Google Maps or a ride app): when GPS is asleep this is often
     // the only fix available. Its own timestamp is kept, so an old fix is
     // flagged rather than passed off as live.
-    navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 600000 });
+    try { navigator.geolocation.getCurrentPosition(take, fail, { enableHighAccuracy: false, timeout: maxWait, maximumAge: 600000 }); }
+    catch (err) { lastErr = err; }
   });
 }
 

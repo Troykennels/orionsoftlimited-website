@@ -8,7 +8,7 @@ import { api, timeAgo, firstName, waLink, fmtDate } from "../api.js";
 import { Avatar, Badge, Btn, SectionCard, SectionTitle, StatCard, Textarea, Select, EmptyState, Modal, Field, RichText, toast } from "../components.jsx";
 import { useOffice } from "../office.js";
 import { getDeviceId, getLocation, techDetail } from "../geo.js";
-import { useConsent } from "./FieldVisits.jsx";
+import { useConsent } from "../useLocationConsent.jsx";
 import DeviceHelp from "../DeviceHelp.jsx";
 import PhoneCheck from "../PhoneCheck.jsx";
 import ChecklistCard from "../ChecklistCard.jsx";

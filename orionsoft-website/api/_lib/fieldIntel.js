@@ -14,11 +14,14 @@ export function haversineMeters(a, b) {
 
 export function cleanGeo(g) {
   if (!g || typeof g !== "object") return null;
-  const lat = Number(g.lat), lng = Number(g.lng), accuracy = Number(g.accuracy);
+  if (g.lat == null || g.lng == null || g.lat === "" || g.lng === "") return null;
+  const lat = Number(g.lat), lng = Number(g.lng), rawAccuracy = g.accuracy == null || g.accuracy === "" ? NaN : Number(g.accuracy);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  if (Number.isFinite(rawAccuracy) && rawAccuracy < 0) return null;
+  const accuracy = Number.isFinite(rawAccuracy) ? Math.round(rawAccuracy) : null;
   return {
     lat: +lat.toFixed(6), lng: +lng.toFixed(6),
-    accuracy: Number.isFinite(accuracy) ? Math.round(accuracy) : null,
+    accuracy,
     at: g.at && Date.parse(g.at) ? new Date(g.at).toISOString() : new Date().toISOString(),
   };
 }
@@ -82,8 +85,13 @@ export function scoreVisit(visit, ctx = {}) {
   } else {
     const lateSec = Number(visit.checkIn.geoLateSec) || 0;
     if (lateSec > 60) add("LATE_FIX", -8, `Location arrived ${Math.round(lateSec / 60)} min after check-in (no signal at check-in).`);
-    const fixAgeMin = (Date.parse(visit.checkIn.at) - Date.parse(g.at)) / 60000;
-    if (fixAgeMin > 3) add("OLD_FIX", -5, `Used the phone's last known location from ${Math.round(fixAgeMin)} min before check-in.`);
+    const fixAt = Date.parse(g.at), checkInAt = Date.parse(visit.checkIn.at);
+    if (Number.isFinite(fixAt) && Number.isFinite(checkInAt)) {
+      const fixAgeMin = (checkInAt - fixAt) / 60000;
+      if (fixAgeMin > 10) add("OLD_FIX", -25, `Used a stale phone location from ${Math.round(fixAgeMin)} min before check-in.`, "high");
+      else if (fixAgeMin > 3) add("OLD_FIX", -12, `Used the phone's last known location from ${Math.round(fixAgeMin)} min before check-in.`);
+      else if (fixAgeMin < -1) add("FUTURE_FIX", -20, "The location timestamp is more than a minute after the check-in time. Check the phone's date and time settings.", "high");
+    }
     if (clientGeo) {
       const d = haversineMeters(g, clientGeo);
       if (d != null && d <= 700 + (g.accuracy || 0)) flags.push({ code: "CLIENT_LOCATION_MATCH", penalty: 5, label: `The client's phone was ${d >= 1000 ? (d / 1000).toFixed(1) + "km" : d + "m"} from the check-in location.`, severity: "good" });

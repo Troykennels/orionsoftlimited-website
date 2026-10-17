@@ -42,7 +42,7 @@ export default function VisitConfirm() {
       const r = await fetch("/api/public/visit-confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ t: token, answer, name, rating, comment, deviceId: staffDeviceId(), geo: answer === "yes" ? where.geo || null : null }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Couldn't save your answer");
-      setState({ visit: j.visit, done: true });
+      setState({ visit: j.visit, done: true, emailSent: !!j.emailSent });
     } catch (e) { setState(s => ({ ...s, formError: e.message })); } finally { setBusy(false); }
   }
 
@@ -62,6 +62,7 @@ export default function VisitConfirm() {
               <div style={{ fontSize: 44 }}>{v.status === "confirmed" ? "✅" : "🙏"}</div>
               <h1 style={{ fontSize: 22, margin: "8px 0" }}>Thank you!</h1>
               <p style={{ color: "#4b5563", lineHeight: 1.6 }}>{v.status === "confirmed" ? "Your confirmation helps us serve you better." : "Thank you for letting us know. Our management team will follow up."}</p>
+              {state.emailSent && <p role="status" style={{ color: "#4b5563", lineHeight: 1.6 }}>We’ve sent a thank-you message to the email address provided for this visit.</p>}
             </div>
           )}
           {v && !state.done && v.status !== "pending" && (

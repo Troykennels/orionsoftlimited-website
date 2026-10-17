@@ -31,7 +31,7 @@ export default function LocationStep({ onChange, label = "Share my location", al
     // taps "Use this location" first.
     const r = await getLocation({ where, maxWait: 30000, goodEnough: 25, settleMs: 10000, control: control.current,
       onProgress: g => setState({ phase: "locating", accuracy: Math.round(g.accuracy) }) });
-    if (r.geo) { setState({ phase: "done", geo: r.geo }); onChange(r); }
+    if (r.geo) { setState({ phase: "done", geo: r.geo, ageMin: Math.max(0, Math.round((Date.now() - Date.parse(r.geo.at)) / 60000)) }); onChange(r); }
     else { setState({ phase: "error", kind: r.kind, error: r.error, detail: techDetail(r) }); }
   }
 
@@ -45,11 +45,14 @@ export default function LocationStep({ onChange, label = "Share my location", al
   );
   if (state.phase === "done") {
     const acc = Math.round(state.geo.accuracy);
+    const ageMin = state.ageMin || 0;
+    const stale = ageMin > 3;
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontFamily: font }}>
-        <span style={{ fontSize: 13.5, color: acc > 150 ? C.amber : C.mint, display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 13.5, color: acc > 150 || stale ? C.amber : C.mint, display: "flex", alignItems: "center", gap: 6 }}>
           <MapPin size={15} /> Location captured (±{acc}m){acc > 150 ? `. ${roughTip(acc)}` : ""}
         </span>
+        {stale && <span role="status" style={{ fontSize: 12.5, color: C.amber }}>This fix is {ageMin} min old. Refresh for a current location; an older fix may lower verification confidence.</span>}
         <Btn small variant="ghost" icon={Crosshair} onClick={locate}>Refresh</Btn>
       </div>
     );

@@ -7,7 +7,7 @@
 import { listRecords, getRecord, putRecord, newId } from "../_lib/records.js";
 import { getSessionFromRequest } from "../_lib/auth.js";
 import { get } from "../store.js";
-import { normaliseContract, paymentSummary, payLink } from "../_lib/contracts.js";
+import { normaliseContract, paymentSummary, payLink, siteUrl } from "../_lib/contracts.js";
 import { normaliseInvoice, computeTotals, isOverdue } from "../_lib/invoicing.js";
 import { renderInvoicePdf } from "../_lib/pdf.js";
 import { loadReceiptPdf } from "../_lib/contractPayments.js";
@@ -103,7 +103,11 @@ export default async function handler(req, res) {
         <p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>${esc(s.name || email)}</strong> (${esc(email)}) wrote:</p>
         <p style="color:#3A4556;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#F4F6FA;border-radius:10px;padding:14px;">${esc(message)}</p>
         <p style="color:#3A4556;font-size:14px;">Reply in Admin → Helpdesk; the client is emailed your reply.</p>`, { title: "Client support" }), { kind: "client_ticket" }).catch(() => {});
-      return res.json({ ok: true, id });
+      const clientEmailSent = await sendEmail(email, `We received your support request: ${subject}`, brandedShell(`<h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">We received your request</h2>
+        <p style="color:#3A4556;font-size:14px;line-height:1.7;">Hello ${esc(s.name || "there")}, your support request <strong>${esc(id)}</strong> has been received. Our team will reply by email.</p>
+        <p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>${esc(subject)}</strong></p>
+        <p><a href="${siteUrl()}/client" style="color:#0A2540;font-weight:700;">Open your client portal</a></p>`, { title: "Request received" }), { kind: "client_ticket_received" }).then(() => true).catch(() => false);
+      return res.json({ ok: true, id, emailSent: clientEmailSent });
     }
     if (b.action === "reply") {
       const t = await getRecord("tickets", b.id);
@@ -113,6 +117,11 @@ export default async function handler(req, res) {
       if (["resolved", "closed"].includes(t.status)) t.status = "open";
       t.updatedAt = new Date().toISOString();
       await putRecord("tickets", t.id, t);
+      const to = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
+      await sendEmail(to, `Client replied to ticket ${t.id}: ${t.subject}`, brandedShell(`<h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Client ticket reply</h2>
+        <p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>${esc(s.name || email)}</strong> replied to <strong>${esc(t.id)}</strong> — ${esc(t.subject)}.</p>
+        <p style="color:#3A4556;font-size:14px;line-height:1.7;white-space:pre-wrap;background:#F4F6FA;border-radius:10px;padding:14px;">${esc(message)}</p>
+        <p style="color:#3A4556;font-size:14px;">Reply in Admin → Helpdesk.</p>`, { title: "Client ticket reply" }), { kind: "client_ticket_reply" }).catch(() => {});
       return res.json({ ok: true });
     }
     return res.status(400).json({ error: "Unknown action" });

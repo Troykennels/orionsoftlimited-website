@@ -68,6 +68,21 @@ export default async function handler(req, res) {
   const scored = await rescoreVisit(visit);
   await putRecord("visits", visit.id, scored);
 
+  // The client gets an acknowledgement only after their response has been
+  // durably saved. Email delivery is best-effort and must not undo the answer.
+  let emailSent = false;
+  if (visit.contactEmail) {
+    try {
+      const { sendVisitThanks } = await import("../_lib/emailTemplates.js");
+      emailSent = await sendVisitThanks(scored, staff);
+    } catch (err) {
+      console.error("[visit-confirm] thank-you email failed:", err?.message || err);
+    }
+    scored.confirmation.thankYouEmailSent = emailSent;
+    scored.confirmation.thankYouEmailAttemptedAt = new Date().toISOString();
+    await putRecord("visits", visit.id, scored);
+  }
+
   const [employees, catalog] = await Promise.all([listRecords("employees"), getRoleCatalog()]);
   const mgr = staff ? managerChain(staff, employees, catalog)[0] : null;
   if (answer === "yes" && !selfConfirmed && !sameNetwork) {
@@ -82,5 +97,5 @@ export default async function handler(req, res) {
     const why = selfConfirmed ? "was 'confirmed' from a Staff Office device" : "was DISPUTED by the client";
     await notify([visit.employeeId, mgr?.id].filter(Boolean), { type: "field", title: `⚠ Visit to ${visit.organisation} ${why}`, body: scored.confirmation.comment, link: "team:field" });
   }
-  return res.json({ ok: true, visit: { ...summary, status: scored.confirmation.status } });
+  return res.json({ ok: true, emailSent, visit: { ...summary, status: scored.confirmation.status } });
 }

@@ -5,7 +5,7 @@ import { sendEmail, brandedShell } from "./mailer.js";
 import { renderWeeklyReportPdf, reportPdfName } from "./reportPdf.js";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "orionsoftlimited@gmail.com";
-const APP_BASE_URL = process.env.APP_BASE_URL || "https://orionsoftlimited.com";
+const APP_BASE_URL = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/+$/, "");
 
 // Escape anything a member of the public typed before it goes into email HTML.
 function esc(v) {
@@ -240,6 +240,24 @@ export async function sendVisitConfirmation(visit, employee, link) {
     <p style="color:#6B7A96;font-size:12px;">If nobody from Orion Soft visited you, please use the link and choose "No". Thank you.</p>
   `, { title: "Visit Confirmation" });
   return sendEmail(visit.contactEmail, `Did ${employee.fullName} from Orion Soft visit you?`, html, { kind: "visit_confirmation" });
+}
+
+export async function sendVisitThanks(visit, employee) {
+  if (!visit?.contactEmail) return false;
+  const confirmed = visit.confirmation?.status === "confirmed";
+  const answeredBy = visit.confirmation?.name ? ` by ${esc(visit.confirmation.name)}` : "";
+  const html = brandedShell(`
+    <h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">Thank you for your response</h2>
+    <p style="color:#3A4556;font-size:14px;line-height:1.7;">Thank you for taking a moment to respond${answeredBy}. Your feedback helps Orion Soft Limited keep accurate visit records and improve our service.</p>
+    <div style="background:#F4F6FA;border-radius:10px;padding:14px 16px;color:#3A4556;font-size:14px;line-height:1.7;">
+      <strong>${esc(visit.organisation || "Your organisation")}</strong><br>
+      Staff member: ${esc(employee?.fullName || "Orion Soft staff member")}<br>
+      Visit date: ${esc(new Date(visit.checkIn.at).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos", weekday: "long", day: "numeric", month: "long", year: "numeric" }))}<br>
+      Your response: <strong>${confirmed ? "Visit confirmed" : "Visit reported for follow-up"}</strong>
+    </div>
+    <p style="color:#6B7A96;font-size:12px;line-height:1.6;margin-top:18px;">${confirmed ? "We appreciate your confirmation." : "Our management team will review your response. Thank you for letting us know."}</p>
+  `, { title: "Thank You for Confirming" });
+  return sendEmail(visit.contactEmail, `Thank you for your response about ${visit.organisation || "our visit"}`, html, { kind: "visit_confirmation_thanks" });
 }
 
 export async function notifySpotCheck(employee, spot) {
