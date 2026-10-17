@@ -22,6 +22,22 @@
       "destination": "/staff.html"
     },
     {
+      "source": "/client",
+      "destination": "/client.html"
+    },
+    {
+      "source": "/client/:path*",
+      "destination": "/client.html"
+    },
+    {
+      "source": "/applicant",
+      "destination": "/applicant.html"
+    },
+    {
+      "source": "/applicant/:path*",
+      "destination": "/applicant.html"
+    },
+    {
       "source": "/blog/:slug",
       "destination": "https://orionsoftlimited-website-production.up.railway.app/api/public/blog-page?slug=:slug"
     },
@@ -31,6 +47,30 @@
     }
   ],
   "headers": [
+    {
+      "source": "/staff",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/staff/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/client",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/client/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/applicant",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/applicant/:path*",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
     {
       "source": "/assets/(.*\\.mp4)",
       "headers": [

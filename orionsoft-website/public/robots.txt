@@ -2,14 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /admin/
-# Rules match by prefix: "/staff" alone would also block /staffcore and
-# /staffcore-demo, and "/client" would block /clients. Block the portals only.
-Disallow: /staff$
-Disallow: /staff/
-Disallow: /staff.html
-Disallow: /applicant
-Disallow: /client$
-Disallow: /client/
+# Portals are public login shells with page-level noindex metadata. Keep them
+# crawlable so search engines can read that directive; authenticated data
+# remains behind sign-in and portal APIs are blocked below.
 Disallow: /sign/
 Disallow: /pay/
 Disallow: /p/
