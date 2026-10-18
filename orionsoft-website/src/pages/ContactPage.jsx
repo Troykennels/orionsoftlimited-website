@@ -668,10 +668,10 @@ export default function ContactPage({ setCurrentPage }) {
                   <h2 style={{ color: C.heading, fontFamily: font, fontSize: 18, fontWeight: 800, margin: 0 }}>Find us</h2>
                   <p style={{ color: C.textMuted, fontFamily: font, fontSize: 13.5, margin: "4px 0 0" }}>Orion Soft Limited · Urban Prime 2, Abraham Adesanya, Ajah, Lagos, Nigeria · <a href="tel:+2348169577059" style={{ color: C.blue }}>+234 816 957 7059</a> · Mon–Fri, 9am–5pm</p>
                 </div>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=Orion+Soft+Limited+Lagos+Island+Lagos+Nigeria" target="_blank" rel="noopener noreferrer"
+                <a href="https://www.google.com/maps/dir/?api=1&destination=Urban+Prime+2%2C+Abraham+Adesanya%2C+Ajah%2C+Lagos%2C+Nigeria" target="_blank" rel="noopener noreferrer"
                   style={{ padding: "10px 16px", borderRadius: 10, background: C.gold, color: "#05070A", fontFamily: font, fontSize: 13.5, fontWeight: 800, textDecoration: "none" }}>Get directions →</a>
               </div>
-              <iframe title="Orion Soft Limited on Google Maps" src="https://www.google.com/maps?q=Lagos+Island,+Lagos,+Nigeria&z=14&output=embed"
+              <iframe title="Orion Soft Limited on Google Maps" src="https://www.google.com/maps?q=Urban+Prime+2%2C+Abraham+Adesanya%2C+Ajah%2C+Lagos%2C+Nigeria&z=14&output=embed"
                 loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{ width: "100%", height: 320, border: 0, display: "block" }} />
             </div>
           </Reveal>
