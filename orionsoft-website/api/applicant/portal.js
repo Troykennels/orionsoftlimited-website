@@ -1,3 +1,4 @@
+import { claim } from "../store.js";
 import { sendEmail, brandedShell } from "../_lib/mailer.js";
 // Applicant portal: job candidates track their application(s) and talk to the
 // recruiting team. All updates originate from the admin Applicants section;
@@ -87,13 +88,15 @@ export default async function handler(req, res) {
     if (b.action === "request-link") {
       const address = String(b.email || "").trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) return res.status(400).json({error:"Enter a valid email address."});
+      const generic = {ok:true,message:"If that email has applications with us, a secure sign-in link will arrive shortly. Check your spam folder too. The link works for 30 minutes."};
+      if (!(await claim(`orionsoft:applicant:link:${address}`, 60))) return res.json(generic);
       if ((await applicationsFor(address)).length) {
         const base = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/+$/, "");
         const token = signSession({role:"applicant-link",email:address},30 * 60);
         const link = `${base}/applicant?token=${encodeURIComponent(token)}`;
         await sendEmail(address,"Your Orion Soft applicant portal link",brandedShell(`<h2>Open your applicant portal</h2><p>Use this secure link to view your applications. It expires in 30 minutes. Keep it private.</p><p><a href="${link}">Open applicant portal</a></p><p>If you did not request this, you can ignore this email.</p>`,{title:"Applicant sign-in"}),{kind:"applicant_signin"}).catch(() => false);
       }
-      return res.json({ok:true,message:"If that email has applications with us, a secure sign-in link will arrive shortly. Check your spam folder too. The link works for 30 minutes."});
+      return res.json(generic);
     }
     if (b.action === "magic") {
       const payload = verifySession(String(b.token || ""));

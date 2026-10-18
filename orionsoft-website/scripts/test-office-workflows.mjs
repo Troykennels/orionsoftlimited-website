@@ -98,7 +98,11 @@ test('career submission rejects blank required fields',async()=>{
 
 test('applicant email-link recovery returns the same response for known and unknown addresses',async()=>{
  const {default:handler}=await import('../api/applicant/portal.js');
+ const before=(await store.list('orionsoft:emails:sent',3000)).filter(item=>item.kind==='applicant_signin').length;
  const known=await call(handler,'POST',{action:'request-link',email:'apply-scope@example.invalid'});
+ const repeated=await call(handler,'POST',{action:'request-link',email:'apply-scope@example.invalid'});
+ assert.deepEqual(repeated.body,known.body);
+ assert.equal((await store.list('orionsoft:emails:sent',3000)).filter(item=>item.kind==='applicant_signin').length,before+1);
  const unknown=await call(handler,'POST',{action:'request-link',email:'unknown-fixture@example.invalid'});
  assert.equal(known.statusCode,200);assert.deepEqual(known.body,unknown.body);
  assert.equal(known.headers['Set-Cookie'],undefined);assert.equal(known.body.token,undefined);
