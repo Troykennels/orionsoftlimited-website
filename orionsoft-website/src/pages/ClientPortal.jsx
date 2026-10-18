@@ -159,7 +159,7 @@ export default function ClientPortal() {
       {state.err && <Card><p role="alert">Could not refresh: {state.err}. Showing your last loaded information.</p><button onClick={load} style={btn(false)}>Retry refresh</button></Card>}
       <nav className="or-office-section-nav" aria-label="Client sections">{[['contracts','Contracts'],['invoices','Invoices'],['receipts','Receipts'],['support','Support']].map(([id,label]) => <a key={id} href={`#client-${id}`}>{label}</a>)}</nav>
       <input className="or-office-section-search" type="search" aria-label="Search client records" placeholder="Find a document, invoice, receipt or support request..." value={query} onChange={event => setQuery(event.target.value)} />
-      {query && !['documents','invoices','receipts','tickets'].some(key => d[key].length) && <Card><p role="status">No records match ?{query}?.</p><button onClick={() => setQuery('')} style={btn(false)}>Clear search</button></Card>}
+      {query && !['documents','invoices','receipts','tickets'].some(key => d[key].length) && <Card><p role="status">No records match "{query}".</p><button onClick={() => setQuery('')} style={btn(false)}>Clear search</button></Card>}
       <Card>
         <div style={{ fontSize: 13, color: MUTED }}>Welcome{d.client.name ? `, ${d.client.name.split(" ")[0]}` : ""}</div>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 8 }}>
