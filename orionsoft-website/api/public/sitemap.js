@@ -11,8 +11,9 @@ import { VIDEO_PAGES } from "../../shared/demoVideo.js";
 const SITE = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "").replace("://orionsoftlimited.com", "://www.orionsoftlimited.com");
 const BUILTIN_PRODUCTS = ["carecore", "schoolcore", "compliancecore", "inventorycore", "financecore", "hrcore", "staffcore", "orion-crm", "directors-portal", "license-manager", "churchcore", "fleetcore", "telehealth"];
 const PAGES = [
+  ["/api-docs", "monthly", 0.5], ["/awards", "monthly", 0.5], ["/certifications", "monthly", 0.5], ["/investors", "monthly", 0.5], ["/referral", "monthly", 0.5],
   ["/", "weekly", 1.0], ["/products", "weekly", 0.9], ["/paye-calculator", "monthly", 0.9], ["/kenya-paye-calculator", "monthly", 0.9], ["/ghana-paye-calculator", "monthly", 0.9], ["/international", "monthly", 0.9], ["/developers", "monthly", 0.7], ["/demo", "monthly", 0.8], ["/staffcore-demo", "monthly", 0.8], ["/schoolcore-demo", "monthly", 0.8], ["/carecore-demo", "monthly", 0.8], ["/compliancecore-demo", "monthly", 0.8], ["/orion-crm-demo", "monthly", 0.7], ["/directors-portal-demo", "monthly", 0.7], ["/license-manager-demo", "monthly", 0.6], ["/press", "monthly", 0.5],
-  ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/services", "monthly", 0.8], ["/resources", "monthly", 0.6], ["/pricing", "monthly", 0.8],
+  ["/industries", "monthly", 0.8], ["/solutions", "monthly", 0.8], ["/office", "monthly", 0.6], ["/services", "monthly", 0.8], ["/resources", "monthly", 0.6], ["/pricing", "monthly", 0.8],
   ["/about", "monthly", 0.7], ["/why", "monthly", 0.7], ["/process", "monthly", 0.6], ["/work", "monthly", 0.7],
   ["/case-studies", "monthly", 0.7], ["/clients", "monthly", 0.6], ["/testimonials", "monthly", 0.6], ["/success-stories", "monthly", 0.6],
   ["/security", "yearly", 0.6], ["/support", "monthly", 0.6], ["/partners", "monthly", 0.5], ["/tech", "monthly", 0.5],

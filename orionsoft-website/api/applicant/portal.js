@@ -1,3 +1,4 @@
+import { sendEmail, brandedShell } from "../_lib/mailer.js";
 // Applicant portal: job candidates track their application(s) and talk to the
 // recruiting team. All updates originate from the admin Applicants section;
 // candidates only ever see candidate-safe fields (never internal notes,
@@ -49,7 +50,7 @@ export function candidateView(a) {
     history: (a.statusHistory || [{ status: "applied", at: a.createdAt }]).map(h => ({ status: h.status, at: h.at, note: h.publicNote || "" })),
     messages: (a.messages || []).filter(m => !m.internal).map(m => ({ id: m.id, from: m.from, text: m.text, at: m.at, byName: m.from === "recruiter" ? "Orion Soft Recruiting" : "You" })),
     interview, assessment, offer,
-    fullName: a.fullName, email: a.email, phone: a.phone, location: a.location, cvLink: a.cvLink, portfolio: a.portfolio, availability: a.availability,
+    fullName: a.fullName, email: a.email, phone: a.phone, location: a.location, cvLink: cleanUrl(a.cvLink), portfolio: cleanUrl(a.portfolio), availability: a.availability,
     createdAt: a.createdAt, updatedAt: a.updatedAt, unreadForCandidate: !!a.unreadForCandidate,
   };
 }
@@ -62,11 +63,12 @@ export function portalLinkFor(email) {
 
 async function applicationsFor(email) {
   const all = await listRecords("applicants");
-  return all.filter(a => String(a.email || "").toLowerCase() === email).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return all.filter(a => String(a.email || "").toLowerCase() === email).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 }
 
-function startSession(res, email) {
-  setSessionCookie(res, signSession({ role: "applicant", email }, PORTAL_TTL), APPLICANT_COOKIE, PORTAL_TTL);
+function startSession(res, email, appIds = null) {
+  const scope = Array.isArray(appIds) ? { appIds } : { emailVerified: true };
+  setSessionCookie(res, signSession({ role: "applicant", email, ...scope }, PORTAL_TTL), APPLICANT_COOKIE, PORTAL_TTL);
 }
 
 export default async function handler(req, res) {
@@ -79,9 +81,20 @@ export default async function handler(req, res) {
 
   const b = req.body || {};
 
-  if (req.method === "POST" && (b.action === "login" || b.action === "magic")) {
+  if (req.method === "POST" && (b.action === "login" || b.action === "magic" || b.action === "request-link")) {
     const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
     if (!checkRate(ip)) return res.status(429).json({ error: "Too many attempts. Try again in 15 minutes." });
+    if (b.action === "request-link") {
+      const address = String(b.email || "").trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) return res.status(400).json({error:"Enter a valid email address."});
+      if ((await applicationsFor(address)).length) {
+        const base = (process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/+$/, "");
+        const token = signSession({role:"applicant-link",email:address},30 * 60);
+        const link = `${base}/applicant?token=${encodeURIComponent(token)}`;
+        await sendEmail(address,"Your Orion Soft applicant portal link",brandedShell(`<h2>Open your applicant portal</h2><p>Use this secure link to view your applications. It expires in 30 minutes. Keep it private.</p><p><a href="${link}">Open applicant portal</a></p><p>If you did not request this, you can ignore this email.</p>`,{title:"Applicant sign-in"}),{kind:"applicant_signin"}).catch(() => false);
+      }
+      return res.json({ok:true,message:"If that email has applications with us, a secure sign-in link will arrive shortly. Check your spam folder too. The link works for 30 minutes."});
+    }
     if (b.action === "magic") {
       const payload = verifySession(String(b.token || ""));
       if (payload?.role !== "applicant-link" || !payload.email) return res.status(401).json({ error: "This link has expired. Sign in with your email and reference instead." });
@@ -93,7 +106,9 @@ export default async function handler(req, res) {
     if (!email || !ref) return res.status(400).json({ error: "Enter your email and application reference" });
     const app = (await getByLookup("applicants", "reference", ref)) || (await getRecord("applicants", String(b.reference).trim()));
     if (!app || String(app.email || "").toLowerCase() !== email) return res.status(401).json({ error: "We couldn't find an application with that email and reference" });
-    startSession(res, email);
+    // A reference proves access to this application, not ownership of the
+    // email address. Anyone can submit a new application using another email.
+    startSession(res, email, [app.id]);
     return res.json({ ok: true });
   }
 
@@ -104,6 +119,7 @@ export default async function handler(req, res) {
 
   const session = getSessionFromRequest(req, APPLICANT_COOKIE);
   if (!session || session.role !== "applicant" || !session.email) return res.status(401).json({ error: "Please sign in" });
+  if (!Array.isArray(session.appIds) && session.emailVerified !== true) return res.status(401).json({ error: "Please sign in again to update your application security." });
   const email = session.email;
   // A session made straight after applying only covers the application(s)
   // sent from this browser (see api/careers/apply.js).
@@ -137,6 +153,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST" && b.action === "interview-response") {
+    if (["hired", "rejected", "withdrawn"].includes(app.status)) return res.status(400).json({ error: "This application is closed" });
     if (!app.interview) return res.status(400).json({ error: "No interview has been scheduled yet" });
     if (!["accept", "reschedule"].includes(b.response)) return res.status(400).json({ error: "Choose whether to accept or request a new time" });
     if (app.interview.candidateResponse === "accepted") return res.status(409).json({ error: "You already confirmed this interview. Contact the recruiting team if your plans change." });

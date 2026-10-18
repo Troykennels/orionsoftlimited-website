@@ -9,7 +9,8 @@
     "test:portals": "node --test scripts/test-portals.mjs",
     "start": "node server.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:office": "node --test scripts/test-office-workflows.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",

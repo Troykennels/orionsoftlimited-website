@@ -1,3 +1,5 @@
+import OfficePage from './pages/OfficePage.jsx';
+import OfficeTools from './components/OfficeTools.jsx';
 ﻿import { useState, useEffect, useRef, lazy, Suspense, createContext, useContext } from "react";
 import { BRAND } from "./lib/brand.js";
 import { pageMetadata, updateMetadata } from "./lib/seo.js";
@@ -5460,7 +5462,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo", "orion-crm-demo", "directors-portal-demo", "license-manager-demo", "orion-crm", "directors-portal", "license-manager"]);
+const KNOWN_PAGES = new Set(["office", "home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo", "orion-crm-demo", "directors-portal-demo", "license-manager-demo", "orion-crm", "directors-portal", "license-manager"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5913,9 +5915,11 @@ export default function App() {
         </>}
         {!maintenance && !isKnownPage && <NotFoundPage setCurrentPage={navSetPage} />}
 
+        {!maintenance && currentPage === "office" && <OfficePage />}
         {currentPage === "admin" && (
           <Suspense fallback={<PageLoader label="Loading admin…" />}>
             <AdminDashboard setCurrentPage={navSetPage} />
+            <OfficeTools scope="admin" />
           </Suspense>
         )}
       </main>

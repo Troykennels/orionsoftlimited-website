@@ -15,17 +15,7 @@ export function lagosDate(d = lagosNow()) { return d.toISOString().slice(0, 10);
 // A stored UTC timestamp expressed as Lagos wall-clock "YYYY-MM-DDTHH:mm".
 export function toLagos(iso) { const t = Date.parse(iso); return t ? new Date(t + LAGOS_OFFSET_MS).toISOString().slice(0, 16) : ""; }
 
-// Jobs already done are remembered in memory too, so the 5-minute tick doesn't
-// re-read every "done today?" flag from the database 288 times a day.
-const doneKeys = new Set();
-async function once(key, fn) {
-  if (doneKeys.has(key)) return false;
-  if (await get(key)) { doneKeys.add(key); return false; }
-  await set(key, new Date().toISOString());
-  doneKeys.add(key);
-  await fn();
-  return true;
-}
+import { runOnce as once } from "./scheduledJobs.js";
 
 function yearsBetween(from, today) {
   return parseInt(today.slice(0, 4), 10) - parseInt(from.slice(0, 4), 10);
@@ -328,9 +318,9 @@ async function meetingReminders() {
     if (m.reminded || m.status === "cancelled" || !m.startsAt) continue;
     const start = Date.parse(m.startsAt);
     if (start - now <= 15 * 60000 && start > now - 5 * 60000) {
+      await notify([m.hostId, ...(m.attendeeIds || [])], { type: "meeting", title: `Starting soon: ${m.title}`, body: m.link ? `Join: ${m.link}` : (m.location || ""), link: `meetings:${m.id}` });
       m.reminded = true;
       await putRecord("meetings", m.id, m);
-      await notify([m.hostId, ...(m.attendeeIds || [])], { type: "meeting", title: `Starting soon: ${m.title}`, body: m.link ? `Join: ${m.link}` : (m.location || ""), link: `meetings:${m.id}` });
     }
   }
 }
@@ -342,11 +332,15 @@ export async function runAutomations() {
   try {
     const now = lagosNow();
     const today = lagosDate(now);
-    await once("orionsoft:migration:photos-v1", migrateInlinePhotos);
+    try { await once("orionsoft:migration:photos-v1", migrateInlinePhotos); }
+    catch (err) { console.error("[photos]", err.message); }
     // Daily jobs wait until 07:00 Lagos time so greetings land in the morning.
-    if (now.getUTCHours() >= 7) await once(`orionsoft:automation:daily:${today}`, () => dailyJobs(today));
-    await meetingReminders();
-    await spotChecks(now);
+    if (now.getUTCHours() >= 7) {
+      try { await once(`orionsoft:automation:daily:${today}`, () => dailyJobs(today)); }
+      catch (err) { console.error("[daily]", err.message); }
+    }
+    try { await meetingReminders(); } catch (err) { console.error("[meetings]", err.message); }
+    try { await spotChecks(now); } catch (err) { console.error("[spotchecks]", err.message); }
     try { if (await claim("orionsoft:automation:noclockin:tick", 900)) await missingClockIns(now); } catch (err) { console.error("[noclockin]", err.message); }
     // Nightly backup by email (after 02:00 Lagos), once a day.
     // Off unless AUTO_BACKUP=on (the owner turned it off on 2026-10-07; it

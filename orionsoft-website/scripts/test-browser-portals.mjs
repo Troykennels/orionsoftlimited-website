@@ -19,10 +19,14 @@ await setLookup('admins', 'email', 'admin@example.invalid', 'browser-admin');
 await putRecord('employees', 'browser-staff', { id: 'browser-staff', fullName: 'Audit Staff', email: 'staff@example.invalid', status: 'active', staffRole: 'owner', department: 'Engineering', title: 'Engineer', slug: 'audit-staff', startDate: '2026-01-01', createdAt: now, passwordHash: await hashPassword(password) });
 await setLookup('employees', 'email', 'staff@example.invalid', 'browser-staff');
 await setLookup('employees', 'admin', 'browser-admin', 'browser-staff');
-await putRecord('applicants', 'browser-applicant', { id: 'browser-applicant', reference: 'AUDIT-001', fullName: 'Audit Applicant', email: 'applicant@example.invalid', roleAppliedFor: 'Software Engineer', status: 'reviewing', createdAt: now, updatedAt: now, messages: [], statusHistory: [{ status: 'applied', at: now }] });
+await putRecord('applicants', 'browser-applicant', { id: 'browser-applicant', reference: 'AUDIT-001', fullName: 'Audit Applicant', email: 'applicant@example.invalid', roleAppliedFor: 'Software Engineer', status: 'interview', interview: {at:'2030-01-02T09:00:00Z',mode:'video',link:'https://example.invalid/interview'}, createdAt: now, updatedAt: now, messages: [], statusHistory: [{ status: 'applied', at: now }] });
+await putRecord('contracts','browser-contract',{id:'browser-contract',number:'AUDIT-CTR-1',title:'Audit software project',client:{name:'Audit Client',email:'client@example.invalid'},status:'signed',amount:500,currency:'NGN',createdAt:now,schedule:[]});
+await putRecord('invoices','browser-invoice',{id:'browser-invoice',invoiceNumber:'AUDIT-INV-1',clientEmail:'client@example.invalid',clientName:'Audit Client',status:'sent',currency:'NGN',issueDate:'2030-01-01',items:[]});
+await putRecord('tickets','browser-ticket',{id:'browser-ticket',clientEmail:'client@example.invalid',subject:'Audit support conversation',description:'Audit fixture only',status:'open',createdAt:now,updatedAt:now,comments:[{author:'Support',text:'Public fixture reply',at:now},{author:'Internal',text:'Private fixture note',internal:true,at:now}]});
+await putRecord('tasks','browser-task',{id:'browser-task',title:'Audit work item',assigneeId:'browser-staff',createdByEmployee:'browser-staff',status:'todo',priority:'medium',createdAt:now,dueDate:'2030-01-01'});
 const app = express();
 app.use(express.json({ limit: '5mb' }));
-for (const group of ['auth', 'admin', 'staff', 'client', 'applicant']) {
+for (const group of ['auth', 'admin', 'staff', 'client', 'applicant', 'public', 'careers', 'contracts', 'payments', 'files']) {
   for (const file of await readdir(new URL(`../api/${group}/`, import.meta.url))) {
     if (!file.endsWith('.js')) continue;
     const { default: handler } = await import(`../api/${group}/${file}`);
@@ -30,7 +34,7 @@ for (const group of ['auth', 'admin', 'staff', 'client', 'applicant']) {
   }
 }
 for (const name of ['content', 'track']) { const { default: handler } = await import(`../api/${name}.js`); app.all(`/api/${name}`, handler); }
-app.all('/api/{*path}', (req, res) => res.json({ ok: true }));
+app.all('/api/{*path}', (req, res) => res.status(404).json({error:'Unknown fixture API route'}));
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 for (const name of ['admin', 'staff', 'client', 'applicant']) app.get([`/${name}`, `/${name}/{*path}`], (req, res) => res.sendFile(`${dist}/${name}.html`));
 app.use(express.static(dist));
@@ -47,9 +51,9 @@ try {
       const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
       await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
       const page = await context.newPage();
-      const errors = [], failed = [];
+      const errors = [], failed = []; let expectedFault = false;
       page.on('pageerror', e => errors.push(e.message));
-      page.on('response', r => { if (r.status() >= 500) failed.push(`${r.status()} ${new URL(r.url()).pathname}`); });
+      page.on('response', r => { if (r.status() >= 400 && r.status() !== 401 && !(expectedFault && new URL(r.url()).pathname === `/api/${portal}/portal`)) failed.push(`${r.status()} ${new URL(r.url()).pathname}`); });
       await page.goto(`${base}/${portal}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.waitForFunction(() => document.querySelector('#root form, #root input'), null, { timeout: 20000 });
       assert.ok(await page.locator('#root').innerText(), `${portal} blank login`);
@@ -57,7 +61,7 @@ try {
         admin: [ADMIN_COOKIE, { sub: 'browser-admin', role: 'admin', adminRole: 'super_admin', name: 'Audit Admin' }],
         staff: ['orionsoft_session', { sub: 'browser-staff', role: 'staff', name: 'Audit Staff', staffRole: 'owner' }],
         client: ['orionsoft_client', { role: 'client', email: 'client@example.invalid', name: 'Audit Client' }],
-        applicant: [APPLICANT_COOKIE, { role: 'applicant', email: 'applicant@example.invalid' }],
+        applicant: [APPLICANT_COOKIE, { role: 'applicant', email: 'applicant@example.invalid', emailVerified: true }],
       };
       const [name, payload] = identities[portal];
       await context.addCookies([{ name, value: signSession(payload), url: base }]);
@@ -69,6 +73,43 @@ try {
       assert.ok(!content.includes('This section hit a problem'), `${portal} error boundary`);
       assert.equal(errors.length, 0, `${portal}: ${errors.join('; ')}`);
       assert.equal(failed.length, 0, `${portal}: ${failed.join('; ')}`);
+      if (width === 1440 && ['client','applicant'].includes(portal)) {
+        expectedFault = true; let injected = false;
+        await page.route(`${base}/api/${portal}/portal`, route => {
+          if (!injected) { injected = true; return route.fulfill({status:503,contentType:'application/json',body:'{"error":"Temporary fixture outage"}'}); }
+          return route.continue();
+        });
+        await page.reload({waitUntil:'domcontentloaded'});
+        await page.getByText('Temporary fixture outage',{exact:true}).waitFor();
+        await page.getByRole('button',{name:'Try again',exact:true}).click();
+        await page.getByRole('button',{name:/Office guide/}).waitFor(); expectedFault = false;
+      }
+      await page.getByRole('button', { name: /Office guide/ }).click();
+      const guide = page.getByRole('dialog'); await guide.waitFor();
+      await guide.getByRole('heading', {name:'Find your next step'}).waitFor();
+      if (portal === 'admin') {
+        await guide.getByRole('button', {name:'Check office health'}).click();
+        await guide.getByText(/Database:/).waitFor();
+      }
+      if (['admin','staff'].includes(portal)) {
+        await guide.getByRole('searchbox').fill('Tasks');
+        assert.ok(await guide.locator('.or-office-results button').count() > 0);
+        const pin = guide.getByRole('button',{name:/^Pin .*Tasks/}).first();
+        await pin.click(); assert.equal(await pin.getAttribute('aria-pressed'),'true');
+      }
+      await page.screenshot({path:`artifacts/${portal}-guide-${width}.png`});
+      await page.keyboard.press('Escape'); await guide.waitFor({state:'hidden'});
+      if (portal === 'client') {
+        await page.getByRole('searchbox',{name:'Search client records'}).fill('audit-no-matching-record');
+        await page.getByText(/No records match/).waitFor();
+        await page.getByRole('button',{name:'Clear search'}).click();
+        for (const id of ['contracts','invoices','receipts','support']) assert.equal(await page.locator(`#client-${id}`).count(),1);
+      }
+      if (portal === 'applicant') {
+        await page.getByRole('heading',{name:'Your next step'}).waitFor();
+        if (width === 1440) { await page.getByRole('button',{name:"I'll be there"}).click(); await page.getByText('You confirmed',{exact:true}).waitFor(); }
+      }
+      if (portal === 'client') { assert.ok((await page.locator('#root').innerText()).includes('Audit software project')); assert.ok(!(await page.locator('#root').innerText()).includes('Private fixture note')); }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2);
       results.push({ portal, width, textLength: content.length, overflow, errors, failed });
       await page.screenshot({ path: `artifacts/${portal}-${width}.png`, fullPage: true });
@@ -97,7 +138,13 @@ try {
   assert.equal(await page.locator('meta[name="description"]').getAttribute('content'), JSON.parse(await (await page.request.get(`${base}/seo-pages.json`)).text())['/products'].description);
   await page.goto(`${base}/audit-missing-page`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.querySelector('meta[name="robots"]')?.content.includes('noindex'));
-  console.log('Navigation metadata and missing-page noindex passed.');
+  await page.goto(`${base}/office`, {waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:/One company/i}).waitFor();
+  for (const portal of ['client','staff','applicant','admin']) assert.equal(await page.locator(`.or-office-portal a[href="/${portal}"]`).count(),1);
+  await page.screenshot({path:'artifacts/office-directory-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:'artifacts/office-directory-mobile.png',fullPage:true});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+  console.log('Office directory, navigation metadata and missing-page noindex passed.');
   assert.ok(results.every(r => !r.errorBoundary && !r.errors.length && !r.failed.length), 'A portal section failed; inspect artifacts/local-portals.json');
 } catch (error) {
   console.error(error);

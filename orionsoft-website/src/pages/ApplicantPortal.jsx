@@ -1,3 +1,5 @@
+import OfficeTools from '../components/OfficeTools.jsx';
+import '../components/office.css';
 // Applicant portal (/applicant): candidates track their application, see
 // interview/assessment/offer details set by the recruiting team in the admin
 // dashboard, message the team, update their details, or withdraw.
@@ -28,11 +30,16 @@ function H({ icon: Icon, children, color = C.gold }) {
 function Login({ onDone }) {
   const [email, setEmail] = useState("");
   const [reference, setReference] = useState("");
+  const [emailLink, setEmailLink] = useState(false);
+  const [sent, setSent] = useState('');
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(e) {
     e.preventDefault(); setBusy(true); setErr("");
-    try { await api({ action: "login", email, reference }); onDone(); } catch (ex) { setErr(ex.message); } finally { setBusy(false); }
+    try {
+      if (emailLink) { const result = await api({action:"request-link",email}); setSent(result.message); }
+      else { await api({ action: "login", email, reference }); onDone(); }
+    } catch (ex) { setErr(ex.message); } finally { setBusy(false); }
   }
   return (
     <div className="so-login" style={{ fontFamily: font }}>
@@ -52,10 +59,12 @@ function Login({ onDone }) {
           <h1 style={{ fontSize: 28, fontWeight: 800, color: C.heading, margin: "8px 0 8px", letterSpacing: "-0.03em" }}>Track your application</h1>
           <p style={{ fontSize: 14, color: C.textMuted, margin: "0 0 22px", lineHeight: 1.6 }}>Sign in with the email you applied with and the reference we sent you (it looks like ORN-AB12CD).</p>
           <Field label="Email" style={{ marginBottom: 12 }}><Input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required /></Field>
-          <Field label="Application reference" style={{ marginBottom: 16 }}><Input value={reference} onChange={e => setReference(e.target.value.toUpperCase())} placeholder="ORN-XXXXXX" required style={{ letterSpacing: "0.08em" }} /></Field>
+          {!emailLink && <Field label="Application reference" style={{ marginBottom: 16 }}><Input value={reference} onChange={e => setReference(e.target.value.toUpperCase())} placeholder="ORN-XXXXXX" required style={{ letterSpacing: "0.08em" }} /></Field>}
           {err && <p role="alert" style={{ color: C.rose, fontSize: 13, margin: "0 0 12px" }}>{err}</p>}
-          <Btn type="submit" disabled={busy || !email || !reference} style={{ width: "100%", padding: 13 }}>{busy ? "Checking…" : "View my application"}</Btn>
-          <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 18, lineHeight: 1.6 }}>Lost your reference? Check your email for "Application received", or email <a href="mailto:orionsoftlimited@gmail.com" style={{ color: C.blue }}>orionsoftlimited@gmail.com</a>. Haven't applied yet? <a href="/careers" style={{ color: C.gold }}>See open roles</a>.</p>
+          {sent && <p role="status" style={{color:C.mint,marginBottom:14}}>{sent}</p>}
+          <Btn type="submit" disabled={busy || !email || (!emailLink && !reference)} style={{ width: "100%", padding: 13 }}>{busy ? "Checking..." : emailLink ? "Email me a secure link" : "View my application"}</Btn>
+          <button type="button" onClick={() => {setEmailLink(value => !value);setErr('');setSent('');}} style={{background:'none',border:0,color:C.gold,textDecoration:'underline',marginTop:14,cursor:'pointer'}}>{emailLink ? 'Use my application reference instead' : 'Lost your reference? Sign in by email link'}</button>
+          <p style={{ fontSize: 12.5, color: C.textMuted, marginTop: 18, lineHeight: 1.6 }}>Need help signing in? Check your spam folder for requested links, or email <a href="mailto:orionsoftlimited@gmail.com" style={{ color: C.blue }}>orionsoftlimited@gmail.com</a>. Haven't applied yet? <a href="/careers" style={{ color: C.gold }}>See open roles</a>.</p>
         </form>
       </div>
     </div>
@@ -133,6 +142,7 @@ function Application({ app, onChanged }) {
           </div>
           {iv.location && <div style={{ fontSize: 13.5, color: C.text, marginTop: 4 }}>{iv.location}</div>}
           {iv.notes && <div style={{ fontSize: 13.5, color: C.textMuted, marginTop: 8, lineHeight: 1.6 }}>{iv.notes}</div>}
+          {!closed && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
             {iv.link && <a href={iv.link} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn icon={Video}>Join interview</Btn></a>}
             {iv.candidateResponse === "accepted" ? <Badge color={C.mint} style={{ padding: "8px 12px" }}><CheckCircle2 size={13} /> You confirmed</Badge> : (
@@ -143,6 +153,7 @@ function Application({ app, onChanged }) {
             )}
             {iv.candidateResponse === "reschedule_requested" && <Badge color={C.amber}>Reschedule requested</Badge>}
           </div>
+          )}
           {iv.candidateResponse !== "accepted" && <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional note to the team" style={{ marginTop: 10, maxWidth: 420 }} />}
         </Card>
       )}
@@ -234,7 +245,7 @@ export default function ApplicantPortal() {
 
   const load = useCallback(async () => {
     try { const j = await api(null, "GET"); setState({ loading: false, data: j }); setActive(a => a || j.applications[0]?.id || null); }
-    catch { setState({ loading: false, data: null }); }
+    catch (error) { setState(previous => error.status === 401 ? { loading: false, data: null } : { ...previous, loading: false, error: error.message }); }
   }, []);
 
   useEffect(() => {
@@ -256,7 +267,8 @@ export default function ApplicantPortal() {
     return () => clearInterval(t);
   }, [state.data, load]);
 
-  if (state.loading) return <div className="so-root" />;
+  if (state.loading) return <div className="so-root" role="status" style={{padding:32}}>Opening your application...</div>;
+  if (state.error && !state.data) return <div className="so-root" style={{padding:32}}><Card><h1>We could not open your application</h1><p role="alert">{state.error}</p><Btn onClick={load}>Try again</Btn><p><a href="/office">Back to the online office</a></p></Card></div>;
   if (!state.data) return <div className="so-root"><Login onDone={load} /><Toaster /></div>;
 
   const apps = state.data.applications;
@@ -277,8 +289,12 @@ export default function ApplicantPortal() {
           <p style={{ color: "rgba(255,255,255,0.78)", fontSize: 14.5, margin: 0 }}>Everything about your application with Orion Soft, in one place. {state.data.email}</p>
         </div>
       </header>
+      <OfficeTools scope="applicant" />
       <main style={{ maxWidth: 1000, margin: "0 auto", padding: "22px 16px 80px" }}>
-        {state.data.limited && apps.length > 0 && <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>Showing the application you just sent. To see all your applications, sign out and sign in with your email and application reference.</p>}
+        {state.error && <Card><p role="alert">Could not refresh: {state.error}. Showing your last loaded information.</p><Btn onClick={load}>Retry refresh</Btn></Card>}
+        {app && <section className="or-office-banner" data-office-section="Your next step"><h2>Your next step</h2><p>{app.interview && !['accepted','reschedule_requested'].includes(app.interview.candidateResponse) ? 'Review your interview invitation and confirm or request a different time below.' : app.assessment?.dueDate && app.status === 'assessment' ? `Complete your assessment by ${day(app.assessment.dueDate)}.` : app.offer && app.status === 'offer' ? 'Review your offer details below and contact recruiting with any questions.' : app.statusMessage}</p><p>Reference: <strong>{app.reference}</strong>{app.unreadForCandidate ? ' - You have an update from recruiting.' : ''}</p><a href="/careers">Explore other opportunities</a></section>}
+
+        {state.data.limited && apps.length > 0 && <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 12px" }}>This sign-in covers your referenced application. Use the secure link sent to your email to see all your applications.</p>}
         {apps.length === 0 && <Card><p style={{ color: C.text, margin: 0 }}>We couldn't find applications for this email. <a href="/careers" style={{ color: C.gold }}>See open roles</a>.</p></Card>}
         {apps.length > 1 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>

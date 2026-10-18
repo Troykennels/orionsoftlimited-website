@@ -1,3 +1,4 @@
+import OfficeTools from '../components/OfficeTools.jsx';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
   Home, Newspaper, MessagesSquare, CalendarClock, ListChecks, Target, Share2, TrendingUp, Handshake,
@@ -344,6 +345,7 @@ export default function StaffApp() {
 
   return (
     <OfficeContext.Provider value={ctx}>
+      <OfficeTools scope="staff" />
       <div className="so-root" style={{ fontFamily: font }}>
         <div className="so-shell">
           <div className={`so-scrim ${navOpen ? "open" : ""}`} onClick={() => setNavOpen(false)} />

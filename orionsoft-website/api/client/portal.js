@@ -106,7 +106,7 @@ export default async function handler(req, res) {
       const clientEmailSent = await sendEmail(email, `We received your support request: ${subject}`, brandedShell(`<h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">We received your request</h2>
         <p style="color:#3A4556;font-size:14px;line-height:1.7;">Hello ${esc(s.name || "there")}, your support request <strong>${esc(id)}</strong> has been received. Our team will reply by email.</p>
         <p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>${esc(subject)}</strong></p>
-        <p><a href="${siteUrl()}/client" style="color:#0A2540;font-weight:700;">Open your client portal</a></p>`, { title: "Request received" }), { kind: "client_ticket_received" }).then(() => true).catch(() => false);
+        <p><a href="${siteUrl()}/client" style="color:#0A2540;font-weight:700;">Open your client portal</a></p>`, { title: "Request received" }), { kind: "client_ticket_received" }).then(sent => !!sent).catch(() => false);
       return res.json({ ok: true, id, emailSent: clientEmailSent });
     }
     if (b.action === "reply") {

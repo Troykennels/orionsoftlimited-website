@@ -59,6 +59,12 @@ const PRODUCTS = {
 };
 
 const PAGES = {
+  "/api-docs": ["API Reference | Orion Soft Limited", "Explore Orion Soft integration documentation and API guidance for developers.", "API reference"],
+  "/awards": ["Recognition | Orion Soft Limited", "Explore Orion Soft company recognition and published achievements.", "Recognition"],
+  "/certifications": ["Standards & Certifications | Orion Soft Limited", "Read Orion Soft's published standards and certification information.", "Standards and certifications"],
+  "/investors": ["Investor Information | Orion Soft Limited", "Explore Orion Soft company information and contact the team about investor enquiries.", "Investor information"],
+  "/referral": ["Refer an Organisation | Orion Soft Limited", "Introduce an organisation to Orion Soft's software and custom development services.", "Refer an organisation"],
+  "/office": ["Online Office | Orion Soft Limited", "Access Orion Soft client, staff, applicant and administration portals. Find your workspace, support and application updates in one place.", "Your Orion Soft online office"],
   "/services": ["Custom Software, Websites & App Development | Orion Soft Limited", "Custom software, business websites, web applications, mobile apps and system integrations from Orion Soft Limited in Lagos, serving organisations in Nigeria and worldwide. Discuss your project with our team.", "Custom software, websites and app development"],
   "/resources": ["Software Resources, Guides & Tools | Orion Soft Limited", "Explore Orion Soft product guides, software insights and free tools for hospitals, schools and businesses.", "Resources, guides and tools"],
   "/products": ["Software Products for Nigerian Hospitals, Schools & Businesses", "Orion Soft's products: CareCore hospital management, SchoolCore, FinanceCore accounting and payroll, HRCore, InventoryCore, ComplianceCore, ChurchCore and FleetCore. Built in Nigeria for African organisations.", "Our software products"],
@@ -90,7 +96,7 @@ const PAGES = {
   "/terms": ["Terms of Service | Orion Soft", "Terms of service for Orion Soft Limited websites and software.", "Terms of service"],
 };
 
-const LINKS = [["/", "Home"], ["/products", "Products"], ...Object.entries(PRODUCTS).map(([id, p]) => [`/${id}`, p.name]), ["/services", "Custom software & websites"], ["/international", "International clients"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
+const LINKS = [["/office", "Online office"], ["/", "Home"], ["/products", "Products"], ...Object.entries(PRODUCTS).map(([id, p]) => [`/${id}`, p.name]), ["/services", "Custom software & websites"], ["/international", "International clients"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
 
 function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], image }) {
   const url = `${SITE}${path === "/" ? "/" : path}`;

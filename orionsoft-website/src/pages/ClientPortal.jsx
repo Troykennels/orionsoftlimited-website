@@ -1,3 +1,5 @@
+import OfficeTools from '../components/OfficeTools.jsx';
+import '../components/office.css';
 // Client portal (/client): clients sign in with an emailed link and see their
 // payment plans and contracts (with what's due next and the pay link), their
 // invoices, receipts, and support tickets.
@@ -22,14 +24,15 @@ async function api(path, body) {
 
 function Shell({ children, onLogout }) {
   return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, ${NAVY} 0, ${NAVY} 170px, #EEF2F7 170px)`, fontFamily: FONT, padding: "22px 16px 60px", boxSizing: "border-box", color: INK }}>
-      <div style={{ maxWidth: 820, margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", background: `radial-gradient(ellipse at top right, #32618355, transparent 55%), linear-gradient(180deg, ${NAVY} 0, ${NAVY} 210px, #EEF2F7 210px)`, fontFamily: FONT, padding: "22px 16px 60px", boxSizing: "border-box", color: INK }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>Orion<span style={{ color: GOLD }}>Soft</span> <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>Client portal</span></div>
           {onLogout && <button type="button" onClick={onLogout} style={{ background: "none", border: "1px solid rgba(255,255,255,0.35)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontFamily: FONT, cursor: "pointer" }}>Sign out</button>}
         </div>
         {children}
         <p style={{ textAlign: "center", fontSize: 12, color: MUTED, marginTop: 18 }}>Orion Soft Limited · orionsoftlimited@gmail.com · 0816 957 7059</p>
+        <p style={{textAlign:'center',fontSize:13}}><a href="/office" style={{color:NAVY,fontWeight:700}}>Find another Orion workspace</a></p>
       </div>
     </div>
   );
@@ -66,21 +69,25 @@ function Tickets({ tickets, reload }) {
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ subject: "", message: "", urgent: false });
   const [reply, setReply] = useState({});
+  const [replyBusy, setReplyBusy] = useState(null);
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState(""); const [msgError, setMsgError] = useState(false);
   async function create() {
     setBusy(true); setMsg(""); setMsgError(false);
-    try { await api("/api/client/portal", { action: "ticket", ...f }); setF({ subject: "", message: "", urgent: false }); setOpen(false); setMsg("Thanks, we've got your request and will reply by email."); reload(); }
+    try { await api("/api/client/portal", { action: "ticket", ...f }); setF({ subject: "", message: "", urgent: false }); setOpen(false); setMsg("Your support request is saved. Follow the conversation below."); reload(); }
     catch (e) { setMsg(e.message); setMsgError(true); } finally { setBusy(false); }
   }
   async function send(t) {
+    if (replyBusy) return;
+    setReplyBusy(t.id);
     setMsg(""); setMsgError(false);
     try { await api("/api/client/portal", { action: "reply", id: t.id, message: reply[t.id] }); setReply(r => ({ ...r, [t.id]: "" })); reload(); }
     catch (e) { setMsg(e.message); setMsgError(true); }
+    finally { setReplyBusy(null); }
   }
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 17, margin: 0, color: NAVY }}>Support</h2>
+        <h2 id="client-support" style={{ fontSize: 17, margin: 0, color: NAVY }}>Support</h2>
         <button type="button" onClick={() => setOpen(o => !o)} style={btn(!open)}>{open ? "Cancel" : "Ask for help"}</button>
       </div>
       {open && (
@@ -107,7 +114,7 @@ function Tickets({ tickets, reload }) {
           ))}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <input value={reply[t.id] || ""} onChange={e => setReply(r => ({ ...r, [t.id]: e.target.value }))} placeholder="Write a reply…" aria-label="Reply" style={{ ...input, flex: 1 }} />
-            <button type="button" disabled={!String(reply[t.id] || "").trim()} onClick={() => send(t)} style={btn(true, !String(reply[t.id] || "").trim())}>Send</button>
+            <button type="button" disabled={!!replyBusy || !reply[t.id]?.trim()} onClick={() => send(t)} style={btn(true, !String(reply[t.id] || "").trim())}>Send</button>
           </div>
         </div>
       ))}
@@ -117,7 +124,8 @@ function Tickets({ tickets, reload }) {
 
 export default function ClientPortal() {
   const [state, setState] = useState({ loading: true });
-  const load = useCallback(() => api("/api/client/portal").then(d => setState({ d })).catch(e => setState(e.status === 401 ? { signIn: true } : { err: e.message })), []);
+  const [query, setQuery] = useState('');
+  const load = useCallback(() => api("/api/client/portal").then(d => setState({ d, updatedAt: new Date().toISOString() })).catch(e => setState(previous => e.status === 401 ? { signIn: true } : { ...previous, loading: false, err: e.message })), []);
   const signedIn = !!state.d;
 
   useEffect(() => {
@@ -140,11 +148,18 @@ export default function ClientPortal() {
 
   if (state.loading) return <Shell><Card>Loading…</Card></Shell>;
   if (state.signIn) return <>{state.linkErr && <div role="alert" style={{ background: "#FEE2E2", color: "#B91C1C", padding: 10, textAlign: "center", fontFamily: FONT }}>{state.linkErr}</div>}<SignIn /></>;
-  if (state.err) return <Shell><Card>{state.err}</Card></Shell>;
-  const { d } = state;
+  if (state.err && !state.d) return <Shell><Card><p role="alert">{state.err}</p><button onClick={load} style={btn(true)}>Try again</button></Card></Shell>;
+  const match = value => JSON.stringify(value).toLowerCase().includes(query.toLowerCase());
+  const d = { ...state.d, ...Object.fromEntries(['documents','invoices','receipts','tickets'].map(key => [key, (state.d[key] || []).filter(match)])) };
 
   return (
     <Shell onLogout={logout}>
+      <OfficeTools scope="client" />
+      <section className="or-office-banner" data-office-section="Overview"><h1>Your client workspace</h1><p>Keep agreements, payments and support together. {state.d.summary.openTickets} support {state.d.summary.openTickets === 1 ? 'request' : 'requests'} currently open.</p><a href="#client-support">Ask for help or check a reply</a></section>
+      {state.err && <Card><p role="alert">Could not refresh: {state.err}. Showing your last loaded information.</p><button onClick={load} style={btn(false)}>Retry refresh</button></Card>}
+      <nav className="or-office-section-nav" aria-label="Client sections">{[['contracts','Contracts'],['invoices','Invoices'],['receipts','Receipts'],['support','Support']].map(([id,label]) => <a key={id} href={`#client-${id}`}>{label}</a>)}</nav>
+      <input className="or-office-section-search" type="search" aria-label="Search client records" placeholder="Find a document, invoice, receipt or support request..." value={query} onChange={event => setQuery(event.target.value)} />
+      {query && !['documents','invoices','receipts','tickets'].some(key => d[key].length) && <Card><p role="status">No records match ?{query}?.</p><button onClick={() => setQuery('')} style={btn(false)}>Clear search</button></Card>}
       <Card>
         <div style={{ fontSize: 13, color: MUTED }}>Welcome{d.client.name ? `, ${d.client.name.split(" ")[0]}` : ""}</div>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 8 }}>
@@ -155,7 +170,7 @@ export default function ClientPortal() {
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Payment plans & contracts</h2>
+        <h2 id="client-contracts" style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Payment plans & contracts</h2>
         {d.documents.length === 0 && <p style={{ color: MUTED, margin: 0 }}>Nothing here yet.</p>}
         {d.documents.map(doc => (
           <div key={doc.id} style={{ borderTop: `1px solid ${LINE}`, padding: "12px 0" }}>
@@ -174,7 +189,7 @@ export default function ClientPortal() {
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Invoices</h2>
+        <h2 id="client-invoices" style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Invoices</h2>
         {d.invoices.length === 0 && <p style={{ color: MUTED, margin: 0 }}>No invoices yet.</p>}
         {d.invoices.map(i => {
           const [l, fg, bg] = STATUS[i.overdue ? "overdue" : i.status] || STATUS.sent;
@@ -188,7 +203,7 @@ export default function ClientPortal() {
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Receipts</h2>
+        <h2 id="client-receipts" style={{ fontSize: 17, margin: "0 0 10px", color: NAVY }}>Receipts</h2>
         {d.receipts.length === 0 && <p style={{ color: MUTED, margin: 0 }}>No payments yet.</p>}
         {d.receipts.map(r => (
           <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: `1px solid ${LINE}`, padding: "10px 0", flexWrap: "wrap" }}>

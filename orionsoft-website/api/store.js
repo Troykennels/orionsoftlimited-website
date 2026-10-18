@@ -239,3 +239,22 @@ export async function del(key) {
 }
 
 export const available = () => MODE !== "mem";
+
+
+// Owned leases prevent an expired worker from releasing a successor's lock.
+export async function acquireLease(key, owner, ttlSeconds = 900) {
+  if (MODE === "mem") {
+    const hit = mem.get(key);
+    if (hit && hit.until > Date.now()) return false;
+    mem.set(key, { owner, until: Date.now() + ttlSeconds * 1000 });
+    return true;
+  }
+  return (await cmd(["SET", key, owner, "NX", "EX", Math.max(1, Math.trunc(ttlSeconds))])) === "OK";
+}
+export async function releaseLease(key, owner) {
+  if (MODE === "mem") {
+    if (mem.get(key)?.owner === owner) mem.delete(key);
+    return;
+  }
+  await cmd(["EVAL", "if redis.call('get',KEYS[1]) == ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end", 1, key, owner]);
+}

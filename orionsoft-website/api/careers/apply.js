@@ -1,3 +1,4 @@
+import { cleanUrl } from "../_lib/office.js";
 import { newId, putRecord, setLookup, getByLookup } from "../_lib/records.js";
 import { notifyNewApplicant, sendApplicationReceived } from "../_lib/emailTemplates.js";
 import { signSession, setSessionCookie, getSessionFromRequest, APPLICANT_COOKIE } from "../_lib/auth.js";
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
     availability, cvLink, portfolio, referral, whyOrion,
   } = req.body || {};
 
-  if (!fullName || !email || !role) {
+  if (![fullName, email, role].every(value => typeof value === "string" && value.trim())) {
     return res.status(400).json({ error: "fullName, email, and role are required" });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
     id, reference,
     fullName: cut(fullName, 120), email: String(email).trim().toLowerCase(), phone: cut(phone, 40), location: cut(location, 120),
     roleAppliedFor: cut(role, 120), experience: cut(experience, 120), qualification: cut(qualification, 200),
-    availability: cut(availability, 120), cvLink: cut(cvLink, 400), portfolio: cut(portfolio, 400),
+    availability: cut(availability, 120), cvLink: cleanUrl(cvLink), portfolio: cleanUrl(portfolio),
     referral: cut(referral, 200), coverNote: cut(whyOrion, 4000),
     source: "website",
     status: "applied",
@@ -84,9 +85,9 @@ export default async function handler(req, res) {
   try {
     const prev = getSessionFromRequest(req, APPLICANT_COOKIE);
     const samePerson = prev?.role === "applicant" && prev.email === applicant.email;
-    const payload = samePerson && !prev.appIds
-      ? { role: "applicant", email: applicant.email }
-      : { role: "applicant", email: applicant.email, appIds: [...new Set([...(samePerson ? prev.appIds : []), id])].slice(-20) };
+    const payload = samePerson && prev.emailVerified === true && !prev.appIds
+      ? { role: "applicant", email: applicant.email, emailVerified: true }
+      : { role: "applicant", email: applicant.email, appIds: [...new Set([...(samePerson && Array.isArray(prev.appIds) ? prev.appIds : []), id])].slice(-20) };
     setSessionCookie(res, signSession(payload, 60 * 60 * 24 * 30), APPLICANT_COOKIE, 60 * 60 * 24 * 30);
   } catch { /* SESSION_SECRET missing: portal sign-in still works via email + reference */ }
 

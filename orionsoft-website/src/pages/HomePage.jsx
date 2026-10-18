@@ -1281,6 +1281,7 @@ export default function HomePage({ setCurrentPage, products }) {
   return (
     <div style={{ background:LC.bg, overflowX:"hidden" }}>
       <HeroSection           setCurrentPage={setCurrentPage}/>
+      <section aria-label="Online office" style={{background:'#0a2540',color:'#fff',padding:'22px 24px',display:'flex',justifyContent:'center',gap:24,flexWrap:'wrap',alignItems:'center'}}><span>Already working with Orion?</span><a href="/office" style={{color:'#efd48b',fontWeight:800,textDecoration:'underline'}}>Open your online office &rarr;</a><a href="/client" style={{color:'#fff'}}>Client portal</a><a href="/staff" style={{color:'#fff'}}>Staff Office</a><a href="/applicant" style={{color:'#fff'}}>Applicant portal</a></section>
       <LatestSection         setCurrentPage={setCurrentPage}/>
       <WhoWeAreSection       setCurrentPage={setCurrentPage}/>
       <IndustriesSection     setCurrentPage={setCurrentPage}/>
