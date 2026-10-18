@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './office.css';
+import OfficeWorkspace from './OfficeWorkspace.jsx';
 
 const guides = {
   staff: ['Start in the Lobby to clock in and review your day.', 'Use Tasks, Meetings and Messages for daily work. Your menu shows the modules your role can access.', 'Leave, expenses and weekly reports stay in your office account. Keep it open while queued offline work synchronises.'],
@@ -41,7 +42,7 @@ export default function OfficeTools({ scope }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   return <>
-    <button className="or-office-trigger" ref={trigger} onClick={open} aria-haspopup="dialog">Office guide <span>Ctrl K</span></button>
+    <div className="or-office-launcher"><OfficeWorkspace scope={scope} /><button className="or-office-trigger" ref={trigger} onClick={open} aria-haspopup="dialog">Office guide <span>Ctrl K</span></button></div>
     <dialog className="or-office-dialog" ref={dialog} onKeyDownCapture={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); } }} onClose={() => trigger.current?.focus()} aria-labelledby={`office-title-${scope}`}>
       <div className="or-office-dialog-head"><div><small>YOUR ORION WORKSPACE</small><h2 id={`office-title-${scope}`}>Find your next step</h2></div><button onClick={close} aria-label="Close office guide">&times;</button></div>
       <div className="or-office-dialog-body">

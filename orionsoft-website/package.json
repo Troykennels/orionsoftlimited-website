@@ -10,7 +10,8 @@
     "start": "node server.js",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:office": "node --test scripts/test-office-workflows.mjs"
+    "test:office": "node --test scripts/test-office-workflows.mjs",
+    "test:workspace": "node --test scripts/test-workspace.mjs"
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.2",

@@ -24,6 +24,9 @@ await putRecord('contracts','browser-contract',{id:'browser-contract',number:'AU
 await putRecord('invoices','browser-invoice',{id:'browser-invoice',invoiceNumber:'AUDIT-INV-1',clientEmail:'client@example.invalid',clientName:'Audit Client',status:'sent',currency:'NGN',issueDate:'2030-01-01',items:[]});
 await putRecord('tickets','browser-ticket',{id:'browser-ticket',clientEmail:'client@example.invalid',subject:'Audit support conversation',description:'Audit fixture only',status:'open',createdAt:now,updatedAt:now,comments:[{author:'Support',text:'Public fixture reply',at:now},{author:'Internal',text:'Private fixture note',internal:true,at:now}]});
 await putRecord('tasks','browser-task',{id:'browser-task',title:'Audit work item',assigneeId:'browser-staff',createdByEmployee:'browser-staff',status:'todo',priority:'medium',createdAt:now,dueDate:'2030-01-01'});
+await putRecord('employees','browser-requester',{id:'browser-requester',fullName:'Audit Requester',status:'active',staffRole:'staff',managerId:'browser-staff'});
+await putRecord('officeRequests','browser-request',{id:'browser-request',title:'Audit equipment request',reason:'Fixture equipment for delivery',category:'equipment',employeeId:'browser-requester',employeeName:'Audit Requester',status:'pending',dueDate:'2030-01-01',createdAt:now,history:[{status:'pending',at:now,by:'Audit Requester'}]});
+await putRecord('clientProjects','browser-project',{id:'browser-project',title:'Audit delivery workspace',summary:'Client-facing fixture project',status:'active',clientEmail:'client@example.invalid',contractId:'browser-contract',contractNumber:'AUDIT-CTR-1',memberIds:['browser-staff'],dueDate:'2030-01-02',version:1,createdAt:now,updatedAt:now,updates:[],milestones:[{id:'browser-milestone',title:'Audit deliverable',description:'Please review the fixture deliverable.',status:'review',deliverableUrl:'https://example.invalid/delivery',dueDate:'2030-01-01',updatedAt:now,history:[]}]});
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 for (const group of ['auth', 'admin', 'staff', 'client', 'applicant', 'public', 'careers', 'contracts', 'payments', 'files']) {
@@ -33,7 +36,7 @@ for (const group of ['auth', 'admin', 'staff', 'client', 'applicant', 'public', 
     if (typeof handler === 'function') app.all(`/api/${group}/${file.slice(0, -3)}`, handler);
   }
 }
-for (const name of ['content', 'track']) { const { default: handler } = await import(`../api/${name}.js`); app.all(`/api/${name}`, handler); }
+for (const name of ['content', 'track', 'workspace']) { const { default: handler } = await import(`../api/${name}.js`); app.all(`/api/${name}`, handler); }
 app.all('/api/{*path}', (req, res) => res.status(404).json({error:'Unknown fixture API route'}));
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 for (const name of ['admin', 'staff', 'client', 'applicant']) app.get([`/${name}`, `/${name}/{*path}`], (req, res) => res.sendFile(`${dist}/${name}.html`));
@@ -99,6 +102,55 @@ try {
       }
       await page.screenshot({path:`artifacts/${portal}-guide-${width}.png`});
       await page.keyboard.press('Escape'); await guide.waitFor({state:'hidden'});
+      // Hub uses real fixture handlers and persisted records, including saves.
+      await page.getByRole('button',{name:/^Office hub/}).click();
+      const hub=page.getByRole('dialog');await hub.getByRole('heading',{name:'Your attention, in one place'}).waitFor();
+      await hub.getByRole('searchbox',{name:'Search inbox'}).fill('no fixture item matches');
+      await hub.getByText('No updates match these filters.').waitFor();
+      await hub.getByRole('searchbox',{name:'Search inbox'}).fill('');
+      if(portal!=='applicant') {
+        await hub.getByRole('button',{name:'Project workspace',exact:true}).click();
+        await hub.getByRole('heading',{name:'Audit delivery workspace',exact:true}).waitFor();
+        if(width===1440&&portal==='client') {
+          await hub.getByLabel('Sign-off or change request note').fill('Accepted via browser fixture.');
+          await hub.getByRole('button',{name:'Accept deliverable',exact:true}).click();
+          await hub.getByText('Saved successfully.',{exact:true}).waitFor();
+          await hub.locator('.ow-status-accepted').waitFor();
+          await hub.getByLabel('Your feedback',{exact:true}).fill('Browser fixture feedback.');
+          await hub.getByRole('button',{name:'Post feedback',exact:true}).click();
+          await hub.locator('.ow-timeline').getByText('Browser fixture feedback.',{exact:true}).waitFor();
+        }
+        if(width===1440&&portal==='admin') {
+          await hub.getByRole('button',{name:'New project',exact:true}).click();
+          await hub.getByLabel('Project title',{exact:true}).fill('Browser-created draft');
+          await hub.getByLabel('Issued client contract').selectOption('browser-contract');
+          await hub.getByRole('button',{name:'Create draft project',exact:true}).click();
+          await hub.getByRole('heading',{name:'Browser-created draft',exact:true}).waitFor();
+        }
+      }
+      if(['staff','admin'].includes(portal)) {
+        await hub.getByRole('button',{name:'Approval centre',exact:true}).click();
+        if(width===1440&&portal==='admin') {
+          const request=hub.locator('[data-workspace-id="browser-request"]');
+          await request.getByLabel('Decision note',{exact:true}).fill('Approved via browser fixture.');
+          await request.getByRole('button',{name:'Approve request',exact:true}).click();
+          await request.waitFor({state:'hidden'});
+          await hub.getByRole('button',{name:'Decision history',exact:true}).click();
+          await hub.locator('[data-workspace-id="browser-request"] .ow-status-approved').waitFor();
+        }
+        if(width===1440&&portal==='staff') {
+          await hub.getByRole('button',{name:'New request',exact:true}).click();
+          await hub.getByLabel('Title',{exact:true}).fill('Browser staff request');
+          await hub.getByLabel('Reason and expected outcome',{exact:true}).fill('Browser fixture operational request.');
+          await hub.getByRole('button',{name:'Submit request',exact:true}).click();
+          await hub.getByRole('heading',{name:'Browser staff request',exact:true}).waitFor();
+        }
+      }
+      assert.equal(await hub.locator('[role="alert"]').count(),0,`${portal} hub error`);
+      assert.equal(await hub.evaluate(el=>el.scrollWidth>el.clientWidth+2),false,`${portal} hub overflow`);
+      await page.screenshot({path:`artifacts/${portal}-hub-${width}.png`});
+      await page.keyboard.press('Escape');await hub.waitFor({state:'hidden'});
+      assert.equal(await page.getByRole('button',{name:/^Office hub/}).evaluate(el=>el===document.activeElement),true);
       if (portal === 'client') {
         await page.getByRole('searchbox',{name:'Search client records'}).fill('audit-no-matching-record');
         await page.getByText(/No records match/).waitFor();
