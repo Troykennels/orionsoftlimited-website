@@ -51,6 +51,8 @@ test('workspace permissions and complete operational/project lifecycle',async t=
  await t.test('one decision creates an attributable history and blocks duplicate/cancel',async()=>{
   await post('staff',staff('hub-manager'),{action:'request-decide',id:requestId,status:'approved',note:'Approved fixture equipment'});
   const r=await getRecord('officeRequests',requestId);assert.equal(r.status,'approved');assert.equal(r.history.length,2);assert.equal(r.history[1].by,'hub-manager');
+  assert.equal((await load('staff',staff('hub-manager'))).requests.find(r=>r.id===requestId).isMine,false);
+  assert.equal((await load('staff',staff('hub-staff'))).requests.find(r=>r.id===requestId).isMine,true);
   await post('admin',admin,{action:'request-decide',id:requestId,status:'rejected',note:'Late'},409);
   await post('staff',staff('hub-staff'),{action:'request-cancel',id:requestId},409);
  });

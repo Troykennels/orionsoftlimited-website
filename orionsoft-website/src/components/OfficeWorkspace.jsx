@@ -76,7 +76,7 @@ function Inbox({data,busy,save,jump}) {
 
 function Approvals({data,busy,save,jump}) {
   const [view,setView]=useState('pending'),[create,setCreate]=useState(false);
-  const rows=data.requests.filter(r=>view==='history'?r.status!=='pending':view==='mine'?data.identity.scope==='staff'&&!r.canDecide:r.status==='pending');
+  const rows=data.requests.filter(r=>view==='history'?r.status!=='pending':view==='mine'?r.isMine:r.status==='pending');
   return <section aria-label="Approval centre"><div className="ow-section-heading"><div><h3>Decisions with a clear history</h3><p>Operational requests follow the current reporting line, with administrators available as a fallback.</p></div>{data.canCreateRequest&&<button className="ow-primary" onClick={()=>setCreate(!create)} aria-expanded={create}>New request</button>}</div>
     {create&&<RequestForm busy={busy} save={save} onDone={()=>setCreate(false)} approvers={data.approvers}/>}
     {data.nativeApprovals.length>0&&<div className="ow-card"><h4>Existing approvals waiting ({data.nativeApprovals.length})</h4><p>Leave, reports and expenses keep their established review process. Open the original desk to see the full record and decide.</p><div className="ow-native">{data.nativeApprovals.map(n=><button key={n.id} onClick={()=>jump({section:n.section})}><strong>{n.title}</strong><span>{n.person}</span><small>Open {n.section} &rarr;</small></button>)}</div></div>}

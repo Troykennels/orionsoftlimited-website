@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 process.env.NODE_ENV = 'development';
 process.env.SESSION_SECRET = 'orion-browser-isolated-session-secret';
-for (const key of Object.keys(process.env)) if (/REDIS|KV_REST|GMAIL|RESEND|PAYSTACK|DATA_DIR|VAPID/.test(key)) delete process.env[key];
+for (const key of Object.keys(process.env)) if (/REDIS|UPSTASH|KV_REST|GMAIL|RESEND|SMTP|PAYSTACK|DATA_DIR|VAPID|TERMII/.test(key)) delete process.env[key];
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { storeBackend } = await import('../api/store.js');
 assert.equal(storeBackend(), 'mem');
@@ -108,6 +108,14 @@ try {
       await hub.getByRole('searchbox',{name:'Search inbox'}).fill('no fixture item matches');
       await hub.getByText('No updates match these filters.').waitFor();
       await hub.getByRole('searchbox',{name:'Search inbox'}).fill('');
+      if(width===1440) {
+        const mark=hub.getByRole('button',{name:'Mark read',exact:true}).first();
+        if(await mark.count()){await mark.click();await hub.getByText('Inbox updated.',{exact:true}).waitFor();}
+        await hub.getByRole('button',{name:'Inbox preferences',exact:true}).click();
+        const category=hub.getByRole('checkbox',{name:'Office updates',exact:true});
+        await category.uncheck();await hub.getByText('Saved successfully.',{exact:true}).waitFor();
+        await category.check();await hub.getByRole('button',{name:'Inbox preferences',exact:true}).click();
+      }
       if(portal!=='applicant') {
         await hub.getByRole('button',{name:'Project workspace',exact:true}).click();
         await hub.getByRole('heading',{name:'Audit delivery workspace',exact:true}).waitFor();
@@ -144,6 +152,9 @@ try {
           await hub.getByLabel('Reason and expected outcome',{exact:true}).fill('Browser fixture operational request.');
           await hub.getByRole('button',{name:'Submit request',exact:true}).click();
           await hub.getByRole('heading',{name:'Browser staff request',exact:true}).waitFor();
+          await hub.getByRole('button',{name:'My requests',exact:true}).click();
+          await hub.getByRole('heading',{name:'Browser staff request',exact:true}).waitFor();
+          assert.equal(await hub.getByRole('heading',{name:'Audit equipment request',exact:true}).count(),0);
         }
       }
       assert.equal(await hub.locator('[role="alert"]').count(),0,`${portal} hub error`);
@@ -166,7 +177,7 @@ try {
       results.push({ portal, width, textLength: content.length, overflow, errors, failed });
       await page.screenshot({ path: `artifacts/${portal}-${width}.png`, fullPage: true });
       console.log(JSON.stringify(results.at(-1)));
-      if (width === 1440 && ['admin', 'staff'].includes(portal)) {
+      if (!process.env.OFFICE_HUB_ONLY && width === 1440 && ['admin', 'staff'].includes(portal)) {
         const selector = portal === 'admin' ? 'aside button' : 'nav[aria-label="Staff Office"] button.so-nav-item';
         const labels = (await page.locator(selector).allTextContents()).map(s => s.trim()).filter(s => s && !/^sign\s*out$/i.test(s));
         for (const label of labels) {

@@ -59,7 +59,7 @@ function projectView(a, p) {
   if (a.scope !== 'client') Object.assign(out, {clientEmail:p.clientEmail, memberIds:p.memberIds, contractId:p.contractId});
   return out;
 }
-function requestView(a, r) { return {...r, canDecide:r.status === 'pending' && canDecide(a,r), canCancel:r.status === 'pending' && a.scope === 'staff' && r.employeeId === a.id}; }
+function requestView(a, r) { return {...r, isMine:a.scope === 'staff' && r.employeeId === a.id, canDecide:r.status === 'pending' && canDecide(a,r), canCancel:r.status === 'pending' && a.scope === 'staff' && r.employeeId === a.id}; }
 
 async function existingApprovals(a) {
   if (!['staff','admin'].includes(a.scope)) return [];
