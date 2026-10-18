@@ -40,8 +40,9 @@ test('automation health is admin-only, respects live roles and hides secrets',as
  await putRecord('admins','office-editor',{id:'office-editor',username:'Editor',role:'editor',status:'active'});
  const editor=cookie(ADMIN_COOKIE,{sub:'office-editor',role:'admin',adminRole:'super_admin'});
  assert.equal((await call(handler,'GET',{},editor,'/api/admin/office-health')).statusCode,403);
+ await store.set('orionsoft:push:vapid',{publicKey:'audit-public-fixture',privateKey:'audit-private-fixture'});
  const res=await call(handler,'GET',{},adminCookie,'/api/admin/office-health');assert.equal(res.statusCode,200);assert.equal(res.body.database.status,'temporary');
- assert.ok(res.body.jobs.length>=2);assert.equal(typeof res.body.services.email,'boolean');
+ assert.ok(res.body.jobs.length>=2);assert.equal(typeof res.body.services.email,'boolean');assert.equal(res.body.services.push,true);assert.ok(!JSON.stringify(res.body).includes('audit-private-fixture'));
  assert.ok(!JSON.stringify(res.body).includes(process.env.SESSION_SECRET));assert.equal(res.headers['Cache-Control'],'private, no-store');
 });
 test('client support lifecycle connects admin replies, private notes and reopening',async()=>{
