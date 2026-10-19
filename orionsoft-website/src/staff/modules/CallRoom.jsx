@@ -17,6 +17,7 @@ export default function CallRoom({ meeting, onClose }) {
   const host = me.id === meeting.hostId;
   const [video, setVideo] = useState(true), [consent, setConsent] = useState(false), [busy, setBusy] = useState(false);
   const [error, setError] = useState(''), [room, setRoom] = useState(null), [joined, setJoined] = useState(false), [mic, setMic] = useState(true), [sharing, setSharing] = useState(false), [recording, setRecording] = useState(false), [download, setDownload] = useState(null);
+  const [screenSupported] = useState(() => typeof navigator.mediaDevices?.getDisplayMedia === 'function');
   const [preview, setPreview] = useState(null), [sessionId, setSessionId] = useState('');
   const [streams, setStreams] = useState({}), [states, setStates] = useState({}), [config, setConfig] = useState(null);
   const call = useRef(null), local = useRef(null), screen = useRef(null), recorder = useRef(null), recordingUrl = useRef(null);
@@ -57,12 +58,17 @@ export default function CallRoom({ meeting, onClose }) {
   }
   async function share() {
     try {
+      setError('');
       if (screen.current) { screen.current.getTracks().forEach(t => t.stop()); screen.current = null; await call.current.replaceVideo(local.current.getVideoTracks()[0] || null); setPreview(local.current); setSharing(false); return; }
       if (!navigator.mediaDevices.getDisplayMedia) throw Error('Screen sharing is unavailable in this browser.');
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }); screen.current = stream;
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 15, max: 30 } }, audio: false }); screen.current = stream;
+      if (!call.current || stopped.current) { stream.getTracks().forEach(t => t.stop()); screen.current = null; return; }
       await call.current.replaceVideo(stream.getVideoTracks()[0]); setPreview(stream); setSharing(true);
       stream.getVideoTracks()[0].onended = () => { screen.current = null; setPreview(local.current); setSharing(false); call.current?.replaceVideo(local.current?.getVideoTracks()[0] || null).catch(() => {}); };
-    } catch (e) { if (e.name !== 'NotAllowedError') setError(e.message); }
+    } catch (e) {
+      screen.current?.getTracks().forEach(t => t.stop()); screen.current = null; setPreview(local.current); setSharing(false);
+      setError(e.name === 'NotAllowedError' ? 'Screen sharing was cancelled or blocked by your browser. Select a screen and allow sharing. If your phone cannot share its screen, join from desktop Chrome or Edge.' : e.name === 'InvalidStateError' ? 'Keep this meeting tab active, then tap Share screen again.' : e.message);
+    }
   }
   async function record() {
     if (recording) { stopRecording(); return; }
@@ -92,7 +98,8 @@ export default function CallRoom({ meeting, onClose }) {
     {!joined ? <div><p style={{ color: C.text }}>Join directly here. Your microphone and camera start only after you choose Join.</p><label style={{ display: 'block', marginBottom: 12, color: C.text }}><input type="checkbox" checked={video} onChange={e => setVideo(e.target.checked)} /> Use camera (untick for voice only)</label><label style={{ display: 'block', marginBottom: 16, color: C.text }}><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} /> I agree that the host may record this call. Everyone sees when recording is active.</label><Btn icon={video ? Video : Mic} onClick={join} disabled={busy || !config}>{busy ? 'Joining…' : video ? 'Join video call' : 'Join voice call'}</Btn></div> : <>
       <p role="status" style={{ color: room?.recording ? C.rose : C.textMuted }}>{room?.recording ? '● Recording is active. The host saves a copy on their device.' : `${room?.participants.length || 1} participant(s). Media is shared only with people in this room.`}</p>
       <div ref={grid} className="so-call-grid"><Tile stream={preview} name={`${me.fullName} (you)`} muted />{(room?.participants || []).filter(p => p.id !== sessionId).map(p => <Tile key={p.id} stream={streams[p.id]} name={p.name} state={states[p.id] || 'connecting'} />)}</div>
-      <div className="so-call-controls"><Btn small variant="ghost" icon={mic ? Mic : MicOff} onClick={() => { const enabled = !mic; local.current.getAudioTracks().forEach(t => { t.enabled = enabled; }); setMic(enabled); }}>{mic ? 'Mute' : 'Unmute'}</Btn><Btn small variant="ghost" icon={video ? Video : VideoOff} onClick={toggleVideo} disabled={sharing}>{video ? 'Camera off' : 'Camera on'}</Btn><Btn small variant="ghost" icon={Monitor} onClick={share}>{sharing ? 'Stop sharing' : 'Share screen'}</Btn>{host && <Btn small variant="ghost" icon={Circle} onClick={record} disabled={!recording && (!window.MediaRecorder || !room?.participants.every(p => p.consent))}>{recording ? 'Stop recording' : 'Record'}</Btn>}<Btn small danger icon={PhoneOff} onClick={() => leave()}>Leave</Btn>{host && <Btn small danger onClick={() => leave(true)}>End for everyone</Btn>}</div>
+      <div className="so-call-controls"><Btn small variant="ghost" icon={mic ? Mic : MicOff} onClick={() => { const enabled = !mic; local.current.getAudioTracks().forEach(t => { t.enabled = enabled; }); setMic(enabled); }}>{mic ? 'Mute' : 'Unmute'}</Btn><Btn small variant="ghost" icon={video ? Video : VideoOff} onClick={toggleVideo} disabled={sharing}>{video ? 'Camera off' : 'Camera on'}</Btn><Btn small variant="ghost" icon={Monitor} onClick={share} disabled={!screenSupported} title={screenSupported ? "Share a tab, window or screen" : "This browser cannot broadcast its screen"}>{sharing ? 'Stop sharing' : 'Share screen'}</Btn>{host && <Btn small variant="ghost" icon={Circle} onClick={record} disabled={!recording && (!window.MediaRecorder || !room?.participants.every(p => p.consent))}>{recording ? 'Stop recording' : 'Record'}</Btn>}<Btn small danger icon={PhoneOff} onClick={() => leave()}>Leave</Btn>{host && <Btn small danger onClick={() => leave(true)}>End for everyone</Btn>}</div>
+      {!screenSupported && <p role="status" style={{ color: C.textMuted, fontSize: 13 }}>This browser does not support broadcasting your screen. You can watch another participant?s shared screen here. To share your own, use a supported desktop browser such as Chrome or Edge.</p>}
       {host && <p style={{ color: C.textMuted, fontSize: 12 }}>Recording requires everyone’s agreement. Save the download before closing. Recordings stop at 30 minutes or 256 MB.</p>}
     </>}
     {download && <a href={download.url} download={download.name} onClick={() => { if (pendingDownload.current) pendingDownload.current.saved = true; }} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.blue, marginTop: 14 }}><Download size={16} />Download meeting recording</a>}

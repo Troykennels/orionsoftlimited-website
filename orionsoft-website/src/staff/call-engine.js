@@ -6,7 +6,9 @@ export class OfficeCall {
     Object.assign(this, { meetingId, sessionId, stream, iceServers, events });
     this.peers = new Map(); this.cursor = 0; this.closed = false;
     this.lastConfigRefresh = Date.now();
+    this.videoTrack = stream.getVideoTracks()[0] || null;
   }
+  outgoingTrack(kind) { return kind === 'video' ? this.videoTrack : this.stream.getAudioTracks()[0] || null; }
   async send(body) { return api('/api/staff/calls', { method: 'POST', body: { meetingId: this.meetingId, sessionId: this.sessionId, ...body } }); }
   peer(id) {
     if (this.peers.has(id)) return this.peers.get(id);
@@ -17,7 +19,7 @@ export class OfficeCall {
     // Only the offerer creates transceivers. The answerer binds its tracks to
     // those established by the incoming offer; precreating them can silently
     // negotiate one-way media on Unified Plan implementations.
-    if (this.sessionId < id) for (const kind of ['audio','video']) pc.addTransceiver(this.stream.getTracks().find(t => t.kind === kind) || kind, { direction: 'sendrecv', streams: [this.stream] });
+    if (this.sessionId < id) for (const kind of ['audio','video']) pc.addTransceiver(this.outgoingTrack(kind) || kind, { direction: 'sendrecv', streams: [this.stream] });
     pc.onicecandidate = event => { if (event.candidate) this.send({ action: 'signal', to: id, type: 'candidate', data: event.candidate.toJSON() }).catch(() => {}); };
     pc.ontrack = event => {
       const attach = () => { if (!remote.getTracks().includes(event.track)) remote.addTrack(event.track); this.events.stream(id, remote); };
@@ -63,7 +65,7 @@ export class OfficeCall {
           if (signal.type === 'offer') {
             for (const transceiver of pc.getTransceivers()) {
               transceiver.direction = 'sendrecv';
-              await transceiver.sender.replaceTrack(this.stream.getTracks().find(t => t.kind === transceiver.receiver.track.kind) || null);
+              await transceiver.sender.replaceTrack(this.outgoingTrack(transceiver.receiver.track.kind));
             }
             await pc.setLocalDescription(await pc.createAnswer()); await this.send({ action: 'signal', to: signal.from, type: 'answer', data: pc.localDescription.toJSON() });
           }
@@ -78,7 +80,15 @@ export class OfficeCall {
     if (!this.closed) this.timer = setTimeout(() => this.poll(), 1500);
   }
   async replaceVideo(track) {
-    await Promise.all([...this.peers.values()].map(({ pc }) => pc.getTransceivers().find(t => t.receiver.track.kind === 'video')?.sender.replaceTrack(track)));
+    const previous = this.videoTrack;
+    this.videoTrack = track;
+    const senders = [...this.peers.values()].map(({ pc }) => pc.getTransceivers().find(t => t.receiver.track.kind === 'video')?.sender).filter(Boolean);
+    const results = await Promise.allSettled(senders.map(sender => sender.replaceTrack(track)));
+    if (results.some(result => result.status === 'rejected')) {
+      this.videoTrack = previous;
+      await Promise.allSettled(senders.map(sender => sender.replaceTrack(previous)));
+      throw Error('Your browser could not send the shared screen. Try sharing a browser tab in current desktop Chrome or Edge.');
+    }
   }
   close() {
     this.closed = true; clearTimeout(this.timer);
