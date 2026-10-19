@@ -1,15 +1,44 @@
 import { api } from './api.js';
+import { OfficeRelay } from './office-relay.js';
 
 // Native WebRTC media; the authenticated API exchanges descriptions only.
 export class OfficeCall {
-  constructor(meetingId, sessionId, stream, iceServers, events) {
+  constructor(meetingId, sessionId, stream, iceServers, events, options = {}) {
     Object.assign(this, { meetingId, sessionId, stream, iceServers, events });
     this.peers = new Map(); this.cursor = 0; this.closed = false;
     this.lastConfigRefresh = Date.now();
     this.videoTrack = stream.getVideoTracks()[0] || null;
+    if(options.officeRelay && options.audioContext){
+      this.relay=new OfficeRelay(this,options.audioContext,{
+        status:status=>events.relayState?.(status),error:message=>events.relayError?.(message),
+        media:id=>this.updateChoice(id),
+      });
+      void this.relay.start();
+    }
+  }
+  directReady(peer){return peer.pc.connectionState==='connected'&&peer.stream.getTracks().some(t=>t.readyState==='live'&&!t.muted);}
+  updateChoice(id){
+    const peer=this.peers.get(id);if(!peer||this.closed)return;
+    const direct=this.directReady(peer),backup=this.relay?.remotes.get(id);
+    const fresh=backup?.received&&Date.now()-Math.max(backup.audioSeenAt,backup.videoSeenAt)<5000;
+    const stream=direct?peer.stream:fresh?backup.stream:null;
+    if(stream&&peer.chosen!==stream){peer.chosen=stream;this.events.stream(id,stream);}
+    if(!stream&&peer.chosen){peer.chosen=null;this.events.stream(id,null);}
+    this.events.connection(id,stream?(direct?'Direct connection':'Office compatibility connection'):'Connecting');
+    this.relay?.watch([...this.peers].filter(([,p])=>!this.directReady(p)).map(([key])=>key));
   }
   outgoingTrack(kind) { return kind === 'video' ? this.videoTrack : this.stream.getAudioTracks()[0] || null; }
-  async send(body) { return api('/api/staff/calls', { method: 'POST', body: { meetingId: this.meetingId, sessionId: this.sessionId, ...body } }); }
+  send(body) {
+    const task=async()=>{
+      for(let attempt=0;attempt<6;attempt++){
+        if(this.closed&&body.action==='signal')return {ok:false};
+        try{return await api('/api/staff/calls',{method:'POST',body:{meetingId:this.meetingId,sessionId:this.sessionId,...body}});}
+        catch(e){if(attempt===5||!(e.status===503||e.status===409&&/room is updating/i.test(e.message)||!e.status))throw e;await new Promise(resolve=>setTimeout(resolve,80*2**attempt+Math.random()*80));}
+      }
+    };
+    if(body.action!=='signal')return task();
+    const result=(this.signalQueue||Promise.resolve()).then(task);this.signalQueue=result.catch(()=>{});return result;
+  }
   peer(id) {
     if (this.peers.has(id)) return this.peers.get(id);
     const pc = new RTCPeerConnection({ iceServers: this.iceServers });
@@ -22,13 +51,13 @@ export class OfficeCall {
     if (this.sessionId < id) for (const kind of ['audio','video']) pc.addTransceiver(this.outgoingTrack(kind) || kind, { direction: 'sendrecv', streams: [this.stream] });
     pc.onicecandidate = event => { if (event.candidate) this.send({ action: 'signal', to: id, type: 'candidate', data: event.candidate.toJSON() }).catch(() => {}); };
     pc.ontrack = event => {
-      const attach = () => { if (!remote.getTracks().includes(event.track)) remote.addTrack(event.track); this.events.stream(id, remote); };
+      const attach = () => { if (!remote.getTracks().includes(event.track)) remote.addTrack(event.track); this.updateChoice(id); };
       // An empty negotiated video receiver must not stall audio-only playback.
       if (event.track.kind === 'video' && event.track.muted) event.track.onunmute = attach;
       else attach();
     };
     pc.onconnectionstatechange = async () => {
-      this.events.connection(id, pc.connectionState);
+      this.updateChoice(id);
       if (pc.connectionState === 'failed' && this.sessionId < id && !peer.restarted && !this.closed) {
         peer.restarted = true;
         try { await pc.setLocalDescription(await pc.createOffer({ iceRestart: true })); await this.send({ action: 'signal', to: id, type: 'offer', data: pc.localDescription.toJSON() }); }
@@ -49,7 +78,7 @@ export class OfficeCall {
         for (const { pc } of this.peers.values()) pc.setConfiguration({ iceServers: this.iceServers });
         this.events.config?.(config);
       }
-      for (const [id, peer] of this.peers) if (!room.participants.some(p => p.id === id)) { peer.pc.close(); this.peers.delete(id); this.events.stream(id, null); }
+      for (const [id, peer] of this.peers) if (!room.participants.some(p => p.id === id)) { peer.pc.close(); this.peers.delete(id); this.relay?.remove(id);this.events.stream(id, null); }
       for (const p of room.participants) if (p.id !== this.sessionId && !this.peers.has(p.id)) {
         const { pc } = this.peer(p.id);
         if (this.sessionId < p.id) { await pc.setLocalDescription(await pc.createOffer()); await this.send({ action: 'signal', to: p.id, type: 'offer', data: pc.localDescription.toJSON() }); }
@@ -73,9 +102,15 @@ export class OfficeCall {
         this.cursor = Math.max(this.cursor, signal.seq);
       }
       this.cursor = Math.max(this.cursor, room.cursor);
+      for(const id of this.peers.keys())this.updateChoice(id);
+      this.failures=0;this.events.networkError?.('');
       this.events.synced();
     } catch (e) {
-      if (!this.closed) { this.events.error(e.message); if ([401,403,404,410].includes(e.status)) { this.events.ended(); return; } }
+      if (!this.closed) {
+        if([401,403,404,410].includes(e.status)){this.events.error(e.message);this.events.ended();return;}
+        this.failures=(this.failures||0)+1;
+        if(e.status!==409||this.failures>=3)this.events.networkError?.('Office connection interrupted. Retrying automatically…');
+      }
     }
     if (!this.closed) this.timer = setTimeout(() => this.poll(), 1500);
   }
@@ -92,6 +127,7 @@ export class OfficeCall {
   }
   close() {
     this.closed = true; clearTimeout(this.timer);
+    this.relay?.close();
     for (const { pc } of this.peers.values()) pc.close(); this.peers.clear();
     this.send({ action: 'leave' }).catch(() => {});
   }
@@ -101,10 +137,16 @@ export function recordCall(tiles, streams, onSaved, onError) {
   if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) throw Error('Recording is not supported in this browser. Use current Chrome or Edge.');
   const canvas = document.createElement('canvas'); canvas.width = 1280; canvas.height = 720;
   const ctx = canvas.getContext('2d'), audio = new AudioContext(), destination = audio.createMediaStreamDestination();
-  const nodes = streams.filter(s => s.getAudioTracks().length).map(s => { const node = audio.createMediaStreamSource(s); node.connect(destination); return node; });
+  const nodes = new Map(), readStreams=typeof streams==='function'?streams:()=>streams;
+  function syncAudio(){
+    const active=new Map(readStreams().filter(s=>s?.getAudioTracks().length).map(s=>[s.id+':'+s.getAudioTracks().map(t=>t.id).join(','),s]));
+    for(const [id,node]of nodes)if(!active.has(id)){node.disconnect();nodes.delete(id);}
+    for(const [id,stream]of active)if(!nodes.has(id)){const node=audio.createMediaStreamSource(stream);node.connect(destination);nodes.set(id,node);}
+  }
+  syncAudio();const audioTimer=setInterval(syncAudio,250);
   const output = canvas.captureStream(20); for (const track of destination.stream.getAudioTracks()) output.addTrack(track);
   const type = ['video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
-  if (!type) { audio.close(); output.getTracks().forEach(t => t.stop()); throw Error('This browser cannot encode a recording.'); }
+  if (!type) { clearInterval(audioTimer);for(const node of nodes.values())node.disconnect();audio.close(); output.getTracks().forEach(t => t.stop()); throw Error('This browser cannot encode a recording.'); }
   const recorder = new MediaRecorder(output, { mimeType: type, videoBitsPerSecond: 1600000 });
   const chunks = []; let size = 0;
   function draw() {
@@ -119,7 +161,7 @@ export function recordCall(tiles, streams, onSaved, onError) {
   const timer = setInterval(draw, 50); draw();
   const stop = () => { if (recorder.state !== 'inactive') recorder.stop(); };
   const maximum = setTimeout(stop, 30 * 60000);
-  function cleanup() { clearInterval(timer); clearTimeout(maximum); nodes.forEach(n => n.disconnect()); output.getTracks().forEach(t => t.stop()); void audio.close(); }
+  function cleanup() { clearInterval(timer);clearInterval(audioTimer); clearTimeout(maximum); nodes.forEach(n => n.disconnect()); output.getTracks().forEach(t => t.stop()); void audio.close(); }
   recorder.ondataavailable = e => { if (e.data.size) { chunks.push(e.data); size += e.data.size; if (size > 256*1024*1024) stop(); } };
   recorder.onerror = () => { cleanup(); onError('Recording stopped unexpectedly.'); };
   recorder.onstop = () => { cleanup(); if (chunks.length) onSaved(new Blob(chunks, { type })); };

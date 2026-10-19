@@ -10,6 +10,7 @@ import path from "node:path";
 import fs from "node:fs";
 import dns from "node:dns";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { attachOfficeRelay } from './api/_lib/call-relay.js';
 
 // Railway's container network doesn't have IPv6 egress, but Node's default DNS
 // resolution can still return Gmail's SMTP AAAA record first, causing
@@ -93,7 +94,8 @@ async function start() {
   catch (err) { console.error("[migrate]", err.message); }
   await mountApiRoutes();
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`Orion Soft API server listening on port ${port}`));
+  const server = app.listen(port, () => console.log(`Orion Soft API server listening on port ${port}`));
+  attachOfficeRelay(server);
 
   // Staff Office automations (birthdays, reminders, follow-ups…). Every job
   // is idempotent, so a restart or a concurrent lazy run can't double-fire.

@@ -49,6 +49,10 @@ const base = `http://127.0.0.1:${server.address().port}`;
 await putRecord('employees','call-guest',{id:'call-guest',fullName:'Video Guest',status:'active',staffRole:'staff',email:'guest@example.invalid',slug:'video-guest'});
 await putRecord('employees','voice-guest',{id:'voice-guest',fullName:'Voice Guest',status:'active',staffRole:'staff',email:'voice@example.invalid',slug:'voice-guest'});
 await putRecord('meetings','browser-meeting',{id:'browser-meeting',title:'Browser video acceptance',roomMode:'internal',link:'',hostId:'browser-staff',attendeeIds:['call-guest','voice-guest'],status:'scheduled',startsAt:now,durationMin:60,notes:'',actionItems:[]});
+const compatibility=process.env.OFFICE_FORCE_COMPAT==='1';
+const {attachOfficeRelay}=await import('../api/_lib/call-relay.js');
+process.env.CALL_OFFICE_RELAY_URL=base.replace('http:','ws:')+'/api/staff/call-media';
+const closeRelay=attachOfficeRelay(server,{allowedOrigins:[base]});
 const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required','--auto-select-desktop-capture-source=Entire screen']});
 const results=[];const contexts=[];const pages=[];const errors=[];
 await mkdir('artifacts/staff-meetings',{recursive:true});
@@ -58,7 +62,11 @@ try {
     const context=await browser.newContext({viewport:{width:1440,height:1000},permissions:['camera','microphone'],serviceWorkers:'block',acceptDownloads:true});contexts.push(context);
     await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
     await context.addCookies([{name:'orionsoft_session',value:signSession({role:'staff',sub:id}),url:base}]);
-    await context.addInitScript(()=>{const Native=window.RTCPeerConnection;window.__peers=[];window.RTCPeerConnection=class extends Native{constructor(...args){super(...args);window.__peers.push(this);}};});
+    await context.addInitScript(compatibility=>{const Native=window.RTCPeerConnection;window.__sockets=[];const NativeSocket=window.WebSocket;window.WebSocket=class extends NativeSocket{constructor(...args){super(...args);window.__sockets.push(this);}};window.__peers=[];window.RTCPeerConnection=class extends Native{constructor(config){super(compatibility?{...config,iceServers:[],iceTransportPolicy:'relay'}:config);window.__peers.push(this);}};},compatibility);
+    if(compatibility&&id==='browser-staff')await context.addInitScript(()=>{
+      const capture=navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getDisplayMedia=async options=>{const native=await capture(options);native.getTracks().forEach(t=>t.stop());const canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;canvas.getContext('2d').fillStyle='#d32f2f';canvas.getContext('2d').fillRect(0,0,1280,720);window.__fixtureScreen=canvas;return canvas.captureStream(10);};
+    });
     if(id==='voice-guest')await context.addInitScript(()=>Object.defineProperty(navigator.mediaDevices,'getDisplayMedia',{configurable:true,value:undefined}));
     const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));pages.push(page);
     await page.goto(base+'/staff/meetings/join-browser-meeting');
@@ -81,19 +89,26 @@ try {
   await host.waitForFunction(()=>[...document.querySelectorAll('.so-call-tile video')].some(v=>v.dataset.callName==='Voice Guest'&&v.readyState>=2&&v.currentTime>0),null,{timeout:20000});
   await host.getByRole('button',{name:'Mute',exact:true}).click();await host.getByRole('button',{name:'Unmute',exact:true}).click();
   await guest.getByRole('button',{name:'Camera off',exact:true}).click();await guest.getByRole('button',{name:'Camera on',exact:true}).click();
+  if(compatibility){await host.getByText(/Video Guest.*Office compatibility connection/).waitFor();await guest.getByText(/Audit Staff.*Office compatibility connection/).waitFor();}
+  const pixels=()=>{const v=document.querySelector('video[data-call-name="Audit Staff"]'),c=document.createElement('canvas');if(!v||v.readyState<2)return null;c.width=32;c.height=18;const ctx=c.getContext('2d');ctx.drawImage(v,0,0,32,18);const data=ctx.getImageData(0,0,32,18).data;const sum=[0,0,0];for(let i=0;i<data.length;i+=4)for(let k=0;k<3;k++)sum[k]+=data[i+k];return sum.map(n=>n/(32*18));};
+  await guest.waitForFunction(()=>{const v=document.querySelector('video[data-call-name="Audit Staff"]'),c=document.createElement('canvas');if(!v||v.readyState<2)return false;c.width=16;c.height=9;const ctx=c.getContext('2d');ctx.drawImage(v,0,0,16,9);return ctx.getImageData(0,0,16,9).data.some((n,i)=>i%4===1&&n>80);},null,{timeout:20000});
+  const cameraPixels=await guest.evaluate(pixels);
+  if(compatibility){await host.evaluate(()=>window.__sockets[0].close());await host.waitForFunction(()=>window.__sockets.length>=2&&window.__sockets.at(-1).readyState===1,null,{timeout:20000});await host.waitForTimeout(2500);}
+  if(compatibility){const audible=await guest.evaluate(async()=>{const video=document.querySelector('video[data-call-name="Audit Staff"]'),audio=new AudioContext(),node=audio.createMediaStreamSource(video.srcObject),analyser=audio.createAnalyser();node.connect(analyser);await audio.resume();const data=new Float32Array(analyser.fftSize);let peak=0;for(let i=0;i<15;i++){await new Promise(r=>setTimeout(r,100));analyser.getFloatTimeDomainData(data);peak=Math.max(peak,...data.map(Math.abs));if(peak>0.001)break;}node.disconnect();await audio.close();return peak>0.001;});assert(audible,'Compatibility audio must contain actual samples');}
   const cameraSize=await guest.locator('video[data-call-name="Audit Staff"]').evaluate(v=>({width:v.videoWidth,height:v.videoHeight}));
   await host.getByRole('button',{name:'Share screen',exact:true}).click();
   await host.getByRole('button',{name:'Stop sharing',exact:true}).waitFor({timeout:15000});
-  await guest.waitForFunction(size=>{const v=document.querySelector('video[data-call-name="Audit Staff"]');return v&&v.readyState>=2&&(v.videoWidth!==size.width||v.videoHeight!==size.height);},cameraSize,{timeout:20000});
+  if(!compatibility)await guest.waitForFunction(size=>{const v=document.querySelector('video[data-call-name="Audit Staff"]');return v&&v.readyState>=2&&(v.videoWidth!==size.width||v.videoHeight!==size.height);},cameraSize,{timeout:20000});else await guest.waitForFunction(initial=>{const v=document.querySelector('video[data-call-name="Audit Staff"]'),c=document.createElement('canvas');if(!v||v.readyState<2)return false;c.width=32;c.height=18;const ctx=c.getContext('2d');ctx.drawImage(v,0,0,32,18);const d=ctx.getImageData(0,0,32,18).data;let delta=0;for(let k=0;k<3;k++){let sum=0;for(let i=k;i<d.length;i+=4)sum+=d[i];delta+=Math.abs(sum/(32*18)-initial[k]);}return delta>35;},cameraPixels,{timeout:20000});
   await host.getByRole('button',{name:'Stop sharing',exact:true}).click();
   await guest.waitForFunction(size=>{const v=document.querySelector('video[data-call-name="Audit Staff"]');return v&&v.videoWidth===size.width&&v.videoHeight===size.height;},cameraSize,{timeout:20000});
+  if(compatibility)await guest.waitForFunction(()=>{const v=document.querySelector('video[data-call-name="Audit Staff"]'),c=document.createElement('canvas');c.width=16;c.height=9;const ctx=c.getContext('2d');ctx.drawImage(v,0,0,16,9);const d=ctx.getImageData(0,0,16,9).data;return d.some((n,i)=>i%4===1&&n>100);},null,{timeout:20000});
   await host.getByRole('button',{name:'Record',exact:true}).click();
   await guest.getByText('Recording is active.',{exact:false}).waitFor({timeout:10000});
   await host.waitForTimeout(2500);await host.getByRole('button',{name:'Stop recording',exact:true}).click();
   const link=host.getByRole('link',{name:'Download meeting recording'});await link.waitFor();
   const downloadEvent=host.waitForEvent('download');await link.click();const download=await downloadEvent;await download.saveAs('artifacts/staff-meetings/recording.webm');
   const {stat}=await import('node:fs/promises');assert((await stat('artifacts/staff-meetings/recording.webm')).size>1000);
-  await host.screenshot({path:'artifacts/staff-meetings/light-video-room.png',fullPage:true});
+  await host.screenshot({path:`artifacts/staff-meetings/${compatibility?'compatibility-':'direct-'}light-video-room.png`,fullPage:true});
   await host.getByLabel('Colour mode').selectOption('dark');await host.screenshot({path:'artifacts/staff-meetings/dark-video-room.png',fullPage:true});
   // Browser can stop camera capture and still run a voice-only call.
   await voice.getByRole('main').getByRole('button',{name:'Leave',exact:true}).click();await host.getByText('2 participant(s).',{exact:false}).waitFor({timeout:10000});
@@ -102,7 +117,7 @@ try {
   await host.getByLabel('Colour mode').selectOption('light');await host.reload();await host.getByLabel('Colour mode').waitFor();assert.equal(await host.getByLabel('Colour mode').inputValue(),'light');
   await host.setViewportSize({width:390,height:900});await host.waitForTimeout(300);await host.screenshot({path:'artifacts/staff-meetings/light-mobile.png',fullPage:true});assert(await host.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
   assert.deepEqual(errors,[]);
-  results.push({actualVideoFramesBothDirections:true,threeParticipants:true,voiceOnlyJoin:true,voiceAudioPlayback:true,unsupportedScreenCaptureExplained:true,screenShareControl:true,screenFramesReceivedRemotely:true,cameraRestoredRemotely:true,muteAndCameraControls:true,recordingNoticeRemote:true,recordingFileVerified:true,hostEndRemote:true,lightPersists:true,mobileNoOverflow:true,noRuntimeErrors:true});
+  results.push({compatibility,compatibilityReconnectVerified:compatibility,remoteCameraPixelsVerified:true,compatibilitySpeechSamplesVerified:compatibility,actualVideoFramesBothDirections:true,threeParticipants:true,voiceOnlyJoin:true,voiceAudioPlayback:true,unsupportedScreenCaptureExplained:true,screenShareControl:true,screenFramesReceivedRemotely:true,cameraRestoredRemotely:true,muteAndCameraControls:true,recordingNoticeRemote:true,recordingFileVerified:true,hostEndRemote:true,lightPersists:true,mobileNoOverflow:true,noRuntimeErrors:true});
   console.log(JSON.stringify(results));
  }catch(e){for(let i=0;i<pages.length;i++){try{console.log(JSON.stringify({page:i,alerts:await pages[i].getByRole('alert').allTextContents(),peers:await pages[i].evaluate(()=>window.__peers.map(p=>({connection:p.connectionState,ice:p.iceConnectionState,signaling:p.signalingState,local:p.localDescription?.type,remote:p.remoteDescription?.type}))),videos:await pages[i].locator('video').evaluateAll(vs=>vs.map(v=>({name:v.dataset.callName,width:v.videoWidth,ready:v.readyState,tracks:v.srcObject?.getTracks().map(t=>({kind:t.kind,ready:t.readyState,muted:t.muted}))})))}));await pages[i].screenshot({path:`artifacts/staff-meetings/failure-${i}.png`});}catch{}}throw e;
-}finally{await writeFile('artifacts/staff-meetings/results.json',JSON.stringify(results,null,2));await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+}finally{await writeFile(`artifacts/staff-meetings/${compatibility?'compatibility':'direct'}-results.json`,JSON.stringify(results,null,2));await browser.close();await closeRelay();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

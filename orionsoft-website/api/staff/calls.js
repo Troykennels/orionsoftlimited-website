@@ -2,6 +2,7 @@ import { randomUUID, createHmac } from 'node:crypto';
 import { requireStaff } from '../_lib/auth.js';
 import { getRecord } from '../_lib/records.js';
 import { get, setExpiring, acquireLease, releaseLease, incrTtl } from '../store.js';
+import { officeRelayConfig, issueRelayTicket } from '../_lib/call-relay.js';
 
 const alive = p => Date.now() - p.seenAt < 45000;
 const key = id => `orionsoft:call:${id}`;
@@ -18,14 +19,14 @@ export function callIceConfig(userId) {
     iceServers.push({ urls, username: process.env.CALL_TURN_USERNAME, credential: process.env.CALL_TURN_PASSWORD });
     relayConfigured = true;
   }
-  return { iceServers, relayConfigured, maxParticipants: 6 };
+  return { iceServers, relayConfigured, officeRelay:officeRelayConfig(), maxParticipants: 6 };
 }
 export async function resolvedIceConfig(userId) {
   const base = callIceConfig(userId);
   if (base.relayConfigured || !process.env.CALL_CLOUDFLARE_TURN_KEY_ID || !process.env.CALL_CLOUDFLARE_TURN_API_TOKEN) return base;
   const cacheKey = `orionsoft:call-relay:${userId}`;
   const cached = await get(cacheKey);
-  if (cached && cached.keyId === process.env.CALL_CLOUDFLARE_TURN_KEY_ID) return cached.config;
+  if (cached && cached.keyId === process.env.CALL_CLOUDFLARE_TURN_KEY_ID) return {...cached.config,officeRelay:officeRelayConfig()};
   try {
     const response = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(process.env.CALL_CLOUDFLARE_TURN_KEY_ID)}/credentials/generate-ice-servers`, {
       method: 'POST', headers: { Authorization: `Bearer ${process.env.CALL_CLOUDFLARE_TURN_API_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 3600 }), signal: AbortSignal.timeout(6000),
@@ -37,7 +38,7 @@ export async function resolvedIceConfig(userId) {
       ...(typeof server.username === 'string' && typeof server.credential === 'string' ? { username: server.username, credential: server.credential } : {}),
     })).filter(server => server.urls.length);
     if (!iceServers.some(server => server.username && server.urls.some(url => /^turns?:/.test(url)))) throw Error('Relay unavailable');
-    const config = { iceServers, relayConfigured: true, maxParticipants: 6 };
+    const config = { iceServers, relayConfigured: true, officeRelay:officeRelayConfig(), maxParticipants: 6 };
     await setExpiring(cacheKey, { keyId: process.env.CALL_CLOUDFLARE_TURN_KEY_ID, config }, 900);
     return config;
   } catch { return { ...base, relayUnavailable: true }; }
@@ -74,6 +75,11 @@ export default async function handler(req, res) {
       }
       const p = mine(); if (!p || room.ended) fail(410, 'You have left this call. Join again.');
       p.seenAt = Date.now();
+      if (b.action === 'relay-ticket') {
+        const ticket=await issueRelayTicket(meeting.id,p.id,me.id);
+        if(!ticket)fail(503,'The office media relay is unavailable.');
+        return res.json({ok:true,...ticket});
+      }
       if (b.action === 'leave') { room.participants = room.participants.filter(x => x.id !== p.id); if (me.id === meeting.hostId) room.recording = false; }
       else if (b.action === 'end') { if (me.id !== meeting.hostId) fail(403, 'Only the host can end the call.'); room.ended = true; room.recording = false; room.participants = []; room.signals = []; }
       else if (b.action === 'record') {
