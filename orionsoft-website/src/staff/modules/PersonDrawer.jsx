@@ -1,3 +1,4 @@
+import { Video } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { MessageSquare, Award, CalendarPlus, ExternalLink, Trophy } from "lucide-react";
 import { C, font, PRESENCE, SOCIAL_META, presenceLabel } from "../theme.js";
@@ -48,6 +49,12 @@ export default function PersonDrawer({ id, onClose }) {
     } catch (e) { toast(e.message, "err"); }
   }
 
+  const [calling, setCalling] = useState(false);
+  async function startCall() {
+    if (calling) return; setCalling(true);
+    try { const j = await api('/api/staff/meetings', { method: 'POST', body: { title: `Call with ${data.person.fullName}`, startsAt: new Date().toISOString(), durationMin: 30, instant: true, attendeeIds: [id], roomMode: 'internal' } }); onClose(); navigate('meetings', `join-${j.meeting.id}`); }
+    catch (e) { toast(e.message, 'err'); } finally { setCalling(false); }
+  }
   const p = data?.person;
   const isMe = p?.id === me.id;
   const presence = PRESENCE[p?.presence?.status] || PRESENCE.offline;
@@ -77,6 +84,7 @@ export default function PersonDrawer({ id, onClose }) {
           {!isMe && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
               <Btn small icon={MessageSquare} onClick={message}>Message</Btn>
+              <Btn small icon={Video} variant="ghost" disabled={calling} onClick={startCall}>{calling ? "Calling?" : "Video / voice call"}</Btn>
               {p.whatsapp && <a href={waLink(p.whatsapp, `Hi ${firstName(p.fullName)}, it's ${firstName(me.fullName)} from Orion Soft. `)} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn small variant="ghost" style={{ color: "#25D366", borderColor: "#25D36655" }}>WhatsApp</Btn></a>}
               <Btn small variant="blue" icon={Award} onClick={() => { onClose(); navigate("feed", `kudos-${p.id}`); }}>Give kudos</Btn>
               <Btn small variant="ghost" icon={CalendarPlus} onClick={() => { onClose(); navigate("meetings", `with-${p.id}`); }}>Book a meeting</Btn>

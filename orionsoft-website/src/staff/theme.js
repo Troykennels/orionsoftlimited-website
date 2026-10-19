@@ -2,9 +2,9 @@
 // palette so the two portals feel like one product, kept as a separate small
 // module so the staff bundle doesn't pull in the entire admin chunk.
 export const C = {
-  bg: "#060810", surface: "#0B1120", card: "#0F1828", cardHover: "#141E30", raised: "#131D2F",
-  border: "rgba(255,255,255,0.07)", borderStrong: "rgba(255,255,255,0.13)", borderHover: "rgba(200,168,80,0.35)",
-  white: "#FFFFFF", heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#8391AB",
+  bg: "var(--so-bg, #060810)", surface: "var(--so-surface, #0B1120)", card: "var(--so-card, #0F1828)", cardHover: "var(--so-cardHover, #141E30)", raised: "var(--so-raised, #131D2F)",
+  border: "var(--so-border, rgba(255,255,255,0.07))", borderStrong: "var(--so-borderStrong, rgba(255,255,255,0.13))", borderHover: "var(--so-borderHover, rgba(200,168,80,0.35))",
+  white: "#FFFFFF", heading: "var(--so-heading, #F2F6FF)", text: "var(--so-text, #C8D0E0)", textMuted: "var(--so-textMuted, #8391AB)",
   gold: "#C8A850", goldLight: "#E8C96A", goldDim: "rgba(200,168,80,0.12)",
   blue: "#4F8EF7", blueDim: "rgba(79,142,247,0.12)",
   mint: "#10B981", mintDim: "rgba(16,185,129,0.12)",

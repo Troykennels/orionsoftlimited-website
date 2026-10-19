@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import CallRoom from './CallRoom.jsx';
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Video, CalendarPlus, MapPin, Plus, Trash2, Sparkles } from "lucide-react";
 import { C, font } from "../theme.js";
 import { api, fmtDateTime } from "../api.js";
@@ -13,7 +14,7 @@ function localInputValue(d) {
 function NewMeeting({ onClose, onCreated, withId }) {
   const { me, directory } = useOffice();
   const next = new Date(); next.setMinutes(0, 0, 0); next.setHours(next.getHours() + 1);
-  const [f, setF] = useState({ title: "", agenda: "", startsAt: localInputValue(next), durationMin: 30, attendeeIds: withId ? [withId] : [], everyone: false, linkMode: "auto", link: "", location: "" });
+  const [f, setF] = useState({ title: "", agenda: "", startsAt: localInputValue(next), durationMin: 30, attendeeIds: withId ? [withId] : [], everyone: false, linkMode: "internal", link: "", location: "" });
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const toggle = id => setF(x => ({ ...x, attendeeIds: x.attendeeIds.includes(id) ? x.attendeeIds.filter(a => a !== id) : [...x.attendeeIds, id] }));
@@ -24,7 +25,7 @@ function NewMeeting({ onClose, onCreated, withId }) {
       const j = await api("/api/staff/meetings", { method: "POST", body: {
         title: f.title, agenda: f.agenda, startsAt: new Date(f.startsAt).toISOString(), durationMin: f.durationMin,
         attendeeIds: f.attendeeIds, everyone: f.everyone, location: f.location,
-        link: f.linkMode === "auto" ? "" : f.linkMode === "none" ? "none" : f.link,
+        roomMode: f.linkMode, link: f.linkMode === "none" ? "none" : f.linkMode === "custom" ? f.link : "",
       } });
       toast("Meeting scheduled. Invites sent.");
       onCreated(j.meeting);
@@ -38,7 +39,7 @@ function NewMeeting({ onClose, onCreated, withId }) {
       <Grid min={170} style={{ marginBottom: 12 }}>
         <Field label="Starts"><Input type="datetime-local" value={f.startsAt} onChange={e => setF(x => ({ ...x, startsAt: e.target.value }))} /></Field>
         <Field label="Duration"><Select value={f.durationMin} onChange={e => setF(x => ({ ...x, durationMin: Number(e.target.value) }))}>{[15, 30, 45, 60, 90, 120].map(m => <option key={m} value={m}>{m} minutes</option>)}</Select></Field>
-        <Field label="Video room"><Select value={f.linkMode} onChange={e => setF(x => ({ ...x, linkMode: e.target.value }))}><option value="auto">Create a Jitsi room for me</option><option value="custom">Use my own link (Meet/Zoom)</option><option value="none">No video (in person/phone)</option></Select></Field>
+        <Field label="Video room"><Select value={f.linkMode} onChange={e => setF(x => ({ ...x, linkMode: e.target.value }))}><option value="internal">Orion Meet (inside the portal)</option><option value="custom">Use my own link (Meet/Zoom)</option><option value="none">No video (in person/phone)</option></Select></Field>
       </Grid>
       {f.linkMode === "custom" && <Field label="Meeting link" style={{ marginBottom: 12 }}><Input value={f.link} onChange={e => setF(x => ({ ...x, link: e.target.value }))} placeholder="https://meet.google.com/…" /></Field>}
       {f.linkMode === "none" && <Field label="Location" style={{ marginBottom: 12 }}><Input value={f.location} onChange={e => setF(x => ({ ...x, location: e.target.value }))} placeholder="Client office, phone call…" /></Field>}
@@ -72,6 +73,8 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
   const attendees = m.everyone ? directory.map(p => p.id).filter(id => id !== m.hostId) : m.attendeeIds;
 
   const [summarising, setSummarising] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const operations = useRef(new Map());
   async function summarise() {
     setSummarising(true);
     try {
@@ -83,8 +86,12 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
   }
 
   async function patch(body, msg) {
-    try { const j = await api("/api/staff/meetings", { method: "PATCH", body: { id: m.id, ...body } }); setM(j.meeting); if (msg) toast(msg); onChanged(); return j.meeting; }
-    catch (e) { toast(e.message, "err"); return null; }
+    if (saving) return null;
+    setSaving(true);
+    const fingerprint = JSON.stringify(body);
+    if (!operations.current.has(fingerprint)) operations.current.set(fingerprint, crypto.randomUUID());
+    try { const j = await api("/api/staff/meetings", { method: "PATCH", body: { id: m.id, operationId: operations.current.get(fingerprint), ...body } }); operations.current.delete(fingerprint); setM(j.meeting); if (msg) toast(msg); onChanged(); return j.meeting; }
+    catch (e) { toast(e.message, "err"); return null; } finally { setSaving(false); }
   }
 
   return (
@@ -93,6 +100,7 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
         <Badge color={C.gold}>{fmtDateTime(m.startsAt)}</Badge><Badge color={C.blue}>{m.durationMin} min</Badge>
         {m.status !== "scheduled" && <Badge color={m.status === "cancelled" ? C.rose : C.mint}>{m.status}</Badge>}
       </div>
+      {m.roomMode === "internal" && m.status === "scheduled" && <Btn icon={Video} onClick={() => { onClose(); onChanged(m.id); }}>Open Orion Meet</Btn>}
       {m.link && <a href={m.link} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}><Btn icon={Video}>Join video call</Btn></a>}
       {m.location && <div style={{ fontSize: 13, color: C.text, marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}><MapPin size={14} /> {m.location}</div>}
       {m.agenda && <><h3 style={h3}>AGENDA</h3><p style={{ fontSize: 14, color: C.text, whiteSpace: "pre-wrap", lineHeight: 1.6, margin: 0 }}>{m.agenda}</p></>}
@@ -142,9 +150,9 @@ function MeetingDetail({ meeting: initial, onClose, onChanged }) {
           ))}
           <Btn small variant="ghost" icon={Plus} onClick={() => setItems(list => [...list, { text: "", assigneeId: attendees[0] || me.id, dueDate: "" }])}>Add action item</Btn>
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-            <Btn onClick={async () => { if (await patch({ notes, actionItems: items.filter(a => a.text.trim()) }, "Minutes saved, tasks created")) setItems([]); }}>Save minutes</Btn>
-            {m.status === "scheduled" && <Btn variant="ghost" onClick={() => patch({ notes, done: true, actionItems: items.filter(a => a.text.trim()) }, "Meeting marked done")}>Mark as done</Btn>}
-            {m.status === "scheduled" && <Btn danger onClick={() => confirm("Cancel this meeting for everyone?") && patch({ status: "cancelled" }, "Meeting cancelled")}>Cancel meeting</Btn>}
+            <Btn disabled={saving} onClick={async () => { if (await patch({ notes, actionItems: items.filter(a => a.text.trim()) }, "Minutes saved, tasks created")) setItems([]); }}>Save minutes</Btn>
+            {m.status === "scheduled" && <Btn disabled={saving} variant="ghost" onClick={() => patch({ notes, done: true, actionItems: items.filter(a => a.text.trim()) }, "Meeting marked done")}>Mark as done</Btn>}
+            {m.status === "scheduled" && <Btn disabled={saving} danger onClick={() => confirm("Cancel this meeting for everyone?") && patch({ status: "cancelled" }, "Meeting cancelled")}>Cancel meeting</Btn>}
           </div>
         </>
       )}
@@ -157,12 +165,23 @@ export default function Meetings({ param }) {
   const { person, navigate } = useOffice();
   const [meetings, setMeetings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const load = useCallback(() => api("/api/staff/meetings").then(j => setMeetings(j.meetings)).catch(e => toast(e.message, "err")).finally(() => setLoading(false)), []);
+  const [roomId, setRoomId] = useState(() => param?.startsWith("join-") ? param.slice(5) : null);
+  useEffect(() => { if (!param?.startsWith("join-")) return; const timer = setTimeout(() => setRoomId(param.slice(5)), 0); return () => clearTimeout(timer); }, [param]);
+  const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const load = useCallback(() => api("/api/staff/meetings").then(j => { setMeetings(j.meetings); setError(""); }).catch(e => setError(e.message)).finally(() => setLoading(false)), []);
   useEffect(() => { load(); }, [load]);
 
+  async function startNow() {
+    if (starting) return; setStarting(true);
+    try { const j = await api('/api/staff/meetings', { method: 'POST', body: { title: 'Team huddle', startsAt: new Date().toISOString(), durationMin: 30, instant: true, roomMode: 'internal', everyone: true } }); await load(); setRoomId(j.meeting.id); }
+    catch (e) { setError(e.message); } finally { setStarting(false); }
+  }
+  const activeRoom = meetings.find(m => m.id === roomId);
   const creating = param === "new" || param?.startsWith("with-");
   const open = param && !creating ? meetings.find(m => m.id === param) : null;
-  const now = Date.now();
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 15000); return () => clearInterval(timer); }, []);
   const upcoming = meetings.filter(m => m.status === "scheduled" && Date.parse(m.startsAt) + m.durationMin * 60000 >= now);
   const past = meetings.filter(m => !upcoming.includes(m)).reverse().slice(0, 20);
 
@@ -179,6 +198,7 @@ export default function Meetings({ param }) {
           <div style={{ fontSize: 12.5, color: C.gold, fontWeight: 700, marginTop: 4 }}>{fmtDateTime(m.startsAt)} · {m.durationMin} min</div>
           <div style={{ fontSize: 12.5, color: C.textMuted, marginTop: 4 }}>Host: {person(m.hostId).fullName} · {m.everyone ? "Whole company" : `${m.attendeeIds.length + 1} people`}</div>
         </div>
+        {m.roomMode === "internal" && m.status === "scheduled" && <Btn small icon={Video} onClick={() => setRoomId(m.id)} style={{ marginTop: 10 }}>Join in portal</Btn>}
         {m.link && m.status === "scheduled" && <a href={m.link} target="_blank" rel="noreferrer" style={{ textDecoration: "none", display: "inline-block", marginTop: 10 }} onClick={e => e.stopPropagation()}><Btn small icon={Video} variant={live ? "primary" : "ghost"}>Join</Btn></a>}
       </SectionCard>
     );
@@ -186,13 +206,16 @@ export default function Meetings({ param }) {
 
   return (
     <div>
-      <PageHeader title="Meetings" sub="Every meeting gets a video room automatically. Reminders go out 15 minutes before." action={<Btn icon={CalendarPlus} onClick={() => navigate("meetings", "new")}>Schedule meeting</Btn>} />
+      <PageHeader title="Meetings" sub="Meet in your office. Voice, video, screen sharing and meeting notes in one place." action={<><Btn variant="ghost" icon={Video} disabled={starting} onClick={startNow}>{starting ? "Starting?" : "Start team huddle"}</Btn><Btn icon={CalendarPlus} onClick={() => navigate("meetings", "new")}>Schedule meeting</Btn></>} />
+      {error && <SectionCard><p role="alert" style={{ color: C.rose }}>{error}</p><Btn small onClick={load}>Try again</Btn></SectionCard>}
+      {loading && <p role="status" style={{ color: C.textMuted }}>Loading meetings?</p>}
+      {activeRoom && <CallRoom key={activeRoom.id} meeting={activeRoom} onClose={() => setRoomId(null)} />}
       <SectionTitle>Upcoming</SectionTitle>
       {!loading && upcoming.length === 0 && <EmptyState icon={Video}>No upcoming meetings.</EmptyState>}
       <Grid min={280} style={{ marginBottom: 24 }}>{upcoming.map(card)}</Grid>
       {past.length > 0 && <><SectionTitle>Past & cancelled</SectionTitle><Grid min={280}>{past.map(card)}</Grid></>}
       {creating && <NewMeeting withId={param?.startsWith("with-") ? param.slice(5) : null} onClose={() => navigate("meetings")} onCreated={m => { load(); navigate("meetings", m.id); }} />}
-      {open && <MeetingDetail key={open.id} meeting={open} onClose={() => navigate("meetings")} onChanged={load} />}
+      {open && <MeetingDetail key={open.id} meeting={open} onClose={() => navigate("meetings")} onChanged={id => { load(); if (id) setRoomId(id); }} />}
     </div>
   );
 }

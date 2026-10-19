@@ -38,7 +38,7 @@ export function Badge({ children, color = C.textMuted, style = {} }) {
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 999,
       fontSize: 11.5, fontWeight: 700, fontFamily: font, whiteSpace: "nowrap",
-      background: `${color}22`, color, ...style,
+      background: `color-mix(in srgb, ${color} 13%, transparent)`, color, ...style,
     }}>
       {children}
     </span>

@@ -70,6 +70,7 @@ try {
       await context.addCookies([{ name, value: signSession(payload), url: base }]);
       await page.reload({ waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.waitForTimeout(portal === 'admin' ? 2500 : 1200);
+      if (portal === "staff") await page.getByLabel("Colour mode").selectOption(width === 1440 ? "light" : "dark");
       const content = await page.locator('#root').innerText();
       assert.ok(content.length > 100, `${portal} blank authenticated view`);
       assert.match(content, { admin: /Audit Admin/, staff: /Audit Staff/, client: /Payment plans & contracts/, applicant: /Software Engineer/ }[portal]);

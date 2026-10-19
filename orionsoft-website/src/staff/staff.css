@@ -94,3 +94,30 @@
 
 /* Modals fit the visible screen, including when the phone's address bar shows. */
 .so-modal { max-height: 90vh; max-height: 90dvh; }
+
+/* Tokens live on html so portalled dialogs inherit the selected appearance. */
+html[data-staff-theme="light"] {
+  color-scheme: light;
+  --so-bg: #f3f6fb; --so-surface: #eef2f8; --so-card: #ffffff;
+  --so-cardHover: #f8fafc; --so-raised: #e7edf6;
+  --so-border: #dce3ee; --so-borderStrong: #c3cfdf; --so-borderHover: #96701b;
+  --so-heading: #152740; --so-text: #344660; --so-textMuted: #596b82;
+}
+html[data-staff-theme="dark"] { color-scheme: dark; }
+html[data-staff-theme="light"] .so-root { color: var(--so-text); background: radial-gradient(ellipse at 90% 0%, #e2ecfa, transparent 60%), #f3f6fb; }
+html[data-staff-theme="light"] .so-card { background: #fff !important; box-shadow: 0 4px 20px #18315306; }
+html[data-staff-theme="light"] .so-side { background: #fff; border-color: var(--so-border); }
+html[data-staff-theme="light"] .so-top { background: #ffffffed; border-color: var(--so-border); }
+html[data-staff-theme="light"] .so-nav-item { color: #52627a; }
+html[data-staff-theme="light"] .so-nav-item:hover, html[data-staff-theme="light"] .so-row:hover { color: #152740; background: #eef2f8; }
+html[data-staff-theme="light"] .so-nav-item[aria-current="page"] { color: #795710; background: #f8efd7; }
+html[data-staff-theme="light"] .so-nav-group { color: #66758a; }
+html[data-staff-theme="light"] .so-iconbtn:hover { background: #e7edf6 !important; color: #152740 !important; }
+.so-btn:active, .so-iconbtn:active { transform: translateY(1px); }
+.so-btn:disabled { cursor: wait; }
+.so-call-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 12px; }
+.so-call-tile { position: relative; background: #0b1120; border: 1px solid #334155; border-radius: 14px; overflow: hidden; aspect-ratio: 16/10; }
+.so-call-tile video { width: 100%; height: 100%; object-fit: contain; }
+.so-call-tile span { position: absolute; bottom: 10px; left: 10px; padding: 4px 8px; border-radius: 6px; color: #fff; background: #0b1120d9; font-size: 12px; }
+.so-call-controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+html[data-staff-theme="light"] .so-login { background: var(--so-bg); }

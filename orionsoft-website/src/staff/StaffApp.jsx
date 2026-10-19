@@ -1,3 +1,4 @@
+import { useAppearance } from './appearance.js';
 import OfficeTools from '../components/OfficeTools.jsx';
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
@@ -7,7 +8,7 @@ import {
 } from "lucide-react";
 import { C, font, PRESENCE } from "./theme.js";
 import { api, timeAgo } from "./api.js";
-import { Avatar, IconBtn, Toaster, toast } from "./components.jsx";
+import { Avatar, Btn, IconBtn, Toaster, toast } from "./components.jsx";
 import { OfficeContext } from "./office.js";
 import StaffLogin, { loadGoogleIdentity } from "./StaffLogin.jsx";
 import PersonDrawer from "./modules/PersonDrawer.jsx";
@@ -159,6 +160,7 @@ function PeopleSearch({ directory, onPick }) {
 }
 
 export default function StaffApp() {
+  const [appearance, setAppearance] = useAppearance();
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [loginNotice, setLoginNotice] = useState("");
@@ -170,6 +172,9 @@ export default function StaffApp() {
   const [notifs, setNotifs] = useState(null);
   const [msgUnread, setMsgUnread] = useState(0);
   const [personId, setPersonId] = useState(null);
+  const [dismissedCalls, setDismissedCalls] = useState([]);
+  const [callClock, setCallClock] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setCallClock(Date.now()), 15000); return () => clearInterval(timer); }, []);
 
   // Session check. Only a STAFF session opens the office. An admin who is
   // signed in elsewhere sees the staff sign-in instead of a blank screen.
@@ -339,6 +344,7 @@ export default function StaffApp() {
   const allowed = new Set(nav.flatMap(g => g.items.map(i => i.id)));
   const mod = allowed.has(route.module) ? route.module : "home";
   const me = office.me;
+  const incoming = (notifs?.items || []).find(n => n.type === "call" && !n.read && !dismissedCalls.includes(n.id) && callClock - Date.parse(n.at) < 2 * 60000);
 
   const MODULES = { visits: FieldVisits, performance: Performance, queries: Queries, home: Lobby, feed: Feed, messages: Messages, meetings: Meetings, tasks: Tasks, goals: Goals, social: Social, pipeline: Pipeline, proposals: Proposals, liaison: Liaison, team: TeamDesk, approvals: Approvals, people: People, handbook: Handbook, expenses: Expenses, reports: Reports, leave: Leave, payslips: Payslips, profile: Profile };
   const Active = MODULES[mod];
@@ -382,6 +388,7 @@ export default function StaffApp() {
               <span className="so-menu-btn"><IconBtn icon={Menu} label="Open menu" onClick={() => setNavOpen(true)} /></span>
               <PeopleSearch directory={office.directory} onPick={setPersonId} />
               <div style={{ flex: 1 }} />
+              <select aria-label="Colour mode" className="so-field" value={appearance} onChange={e => setAppearance(e.target.value)} style={{ background: C.surface, color: C.text, border: `1px solid ${C.borderStrong}`, borderRadius: 8, padding: 7, maxWidth: 108 }}><option value="system">System</option><option value="light">Light mode</option><option value="dark">Dark mode</option></select>
               <PresencePicker me={me} onChange={setPresence} />
               <div style={{ position: "relative" }}>
                 <IconBtn icon={Bell} label="Notifications" badge={notifs?.unread || 0} onClick={() => setNotifOpen(o => !o)} />
@@ -392,6 +399,7 @@ export default function StaffApp() {
             <main className="so-content">
               <InAppBanner />
               <AlertsBanner />
+              {incoming && <div role="status" style={{ padding: 16, borderRadius: 12, background: C.blueDim, border: `1px solid ${C.blue}`, marginBottom: 16, color: C.heading }}><strong>{incoming.title}</strong><div style={{ display: "flex", gap: 8, marginTop: 10 }}><Btn small onClick={() => { setDismissedCalls(ids => [...ids, incoming.id]); openLink(incoming.link); }}>Open call</Btn><Btn small variant="ghost" onClick={() => setDismissedCalls(ids => [...ids, incoming.id])}>Dismiss</Btn></div></div>}
               <LateLocationBanner />
               {(office.pendingSpotChecks || []).length > 0 && mod !== "visits" && (
                 <button type="button" onClick={() => navigate("visits")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: C.amberDim, border: `1px solid ${C.amber}88`, color: C.heading, borderRadius: 12, padding: "12px 16px", marginBottom: 16, cursor: "pointer", fontFamily: font, fontSize: 14, fontWeight: 700, textAlign: "left" }}>

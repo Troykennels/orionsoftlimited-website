@@ -62,8 +62,8 @@ try{
    const denied=await context.request.get(base+'/api/admin/payroll');assert.equal(denied.status(),403);
    await navigate('Blog');await page.waitForTimeout(250);
    await navigate('Newsletter');await page.getByText('Write a newsletter',{exact:true}).waitFor();
-   await navigate('Social Media Content');await page.getByRole('heading',{name:'Social media content',exact:true}).waitFor();
-   await page.getByLabel('Caption',{exact:true}).fill('Local fixture social draft.');await page.getByRole('button',{name:'Save content',exact:true}).click();await page.getByText('Social content saved.',{exact:true}).waitFor();
+   await navigate('Social Media Content');await page.getByRole('heading',{name:'Social studio',exact:true}).waitFor();
+   await page.getByLabel('Caption',{exact:true}).fill('Local fixture social draft.');await page.getByRole('button',{name:'Save content',exact:true}).click();await page.getByText('Content saved to the shared publication planner.',{exact:true}).waitFor();
   }
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));assert.deepEqual(errors,[]);
   await page.screenshot({path:`artifacts/client-content-role/${role}-${width}.png`,fullPage:true});results.push({role,width,passed:true,noRuntimeErrors:true,noOverflow:true});await context.close();

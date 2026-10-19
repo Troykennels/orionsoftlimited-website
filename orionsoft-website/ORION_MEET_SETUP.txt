@@ -1,0 +1,66 @@
+ORION MEET - OWNER SETUP
+
+Staff Office > Meetings > Start team huddle / Schedule meeting.
+Private calls: People > choose a colleague > Video / voice call.
+Internal meetings do not require downloads or external meeting links.
+Camera is enabled by default; users can select voice only before joining.
+This implementation supports SIX active participants. Larger organisation
+meetings need an SFU and load testing before they can be offered to customers.
+
+Controls: mute, camera, share screen, leave and host end for everyone.
+Only invited staff can join a private meeting. Everyone meetings admit active
+company staff. The owner uses their linked Staff Office. Content managers do
+not gain staff access.
+
+RECORDING
+Host only; every participant must explicitly agree before joining.
+All participants see the recording indicator. Stop recording before admitting
+new participants. Stop, then Download meeting recording. The file mixes voices
+and the video grid. Files stay on the host's device; there is no cloud archive.
+Recording stops at 30 minutes or 256 MB. Use a current supported browser.
+Test target mobile devices separately; screen capture differs by browser.
+
+RELAY ACTIVATION - NOT YET CONFIGURED
+Local media acceptance does not prove connectivity on every external network.
+The portal displays the missing relay. No account or purchase was created.
+
+Recommended: Cloudflare Realtime TURN.
+1. Create your own account at https://dash.cloudflare.com/ .
+2. Open Realtime > TURN and create a TURN key. Keep its ID and API token private.
+3. Railway > Orion WEBSITE API service > Variables. This is the website service,
+   NOT ComplianceCore, OLM, CareCore or SchoolCore. Add:
+   CALL_CLOUDFLARE_TURN_KEY_ID
+   CALL_CLOUDFLARE_TURN_API_TOKEN
+   Use the matching values from Cloudflare. Never send the token in chat or add
+   it to frontend/VITE variables, source files or Git.
+4. Redeploy that website API service. Its adapter issues temporary credentials
+   and refreshes them during calls; the main API token stays server-side.
+5. Confirm the limited-coverage warning disappears. Verify actual relay
+   candidate allocation and test two devices on different mobile/Wi-Fi and
+   office networks, voice/video, screen share and both voices in a recording.
+   Provider configuration alone is not proof of real-network coverage.
+
+Pricing checked 19 October 2026: first 1,000 GB/month free, shared by TURN/SFU;
+then USD0.05/GB egress. Monitor usage. Free allowance is not a spending cap.
+https://developers.cloudflare.com/realtime/sfu/platform/pricing/
+https://developers.cloudflare.com/realtime/turn/generate-credentials/
+
+Alternative: an existing coturn server with public UDP/TCP and TLS. The API
+supports CALL_TURN_URLS plus CALL_TURN_SECRET; matching temporary credentials
+are generated server-side. Existing static CALL_TURN_USERNAME/PASSWORD are
+also supported. A UDP relay cannot run behind an HTTP-only hosting proxy.
+
+LIGHT MODE
+Staff header > Colour mode > Light / Dark / System. Saved per browser. System
+follows the device appearance. Forms, dialogs and sign-in share the palette.
+
+SOCIAL STUDIO
+Admin > Social Media Content. Campaigns, draft/ready/published/archive states,
+caption preview, search, filters and due queue. Stale edits cannot overwrite
+newer team changes. Published posts require the actual social post URL.
+This planner DOES NOT automatically publish to social networks. That requires
+approved OAuth connections to each platform. Content-manager permissions remain
+restricted to their existing communications and assigned-client access.
+
+Notifications use browser push and existing jobs. Device permissions and quiet
+hours control delivery and sound; audible delivery is not guaranteed everywhere.

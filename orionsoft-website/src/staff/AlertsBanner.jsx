@@ -28,7 +28,7 @@ export default function AlertsBanner() {
       await enablePush();
       setState("on");
       await sendTestPush().catch(() => {});
-      toast("Alerts are on. You'll hear meetings, tasks and messages even when the office is closed.");
+      toast("Alerts are on. Meeting, task and message alerts can now arrive while the office is closed. Your device controls notification sounds.");
     } catch (e) { setErr(e.kind ? { kind: e.kind } : { kind: "notif_other", message: e.message }); }
     finally { setBusy(false); }
   }
@@ -41,7 +41,7 @@ export default function AlertsBanner() {
     ? "On iPhone, alerts only work from the Home Screen app: tap Share → Add to Home Screen, then open the Staff Office from there and turn alerts on."
     : state === "blocked"
       ? "Alerts are blocked for this site, so you'll miss meetings and location checks. Allow notifications in your browser settings."
-      : "Get meeting invites, tasks, approvals and messages on your phone instantly, with sound, even when the Staff Office is closed.";
+      : "Get meeting invites, tasks, approvals and messages on supported devices while the Staff Office is closed. Your browser and device control sound and delivery.";
 
   return (
     <div role="region" aria-label="Phone alerts" style={{ background: C.goldDim, border: `1px solid ${C.gold}88`, borderRadius: 12, padding: "12px 14px", marginBottom: 16, fontFamily: font }}>
@@ -55,7 +55,8 @@ export default function AlertsBanner() {
         {state === "off" && !isInstalled() && canInstall() && <button type="button" onClick={() => promptInstall()} style={{ background: "transparent", color: C.heading, border: `1px solid ${C.border}`, borderRadius: 9, padding: "10px 14px", fontWeight: 700, fontSize: 13, fontFamily: font, cursor: "pointer" }}>Install app</button>}
         <button type="button" onClick={later} aria-label="Remind me tomorrow" title="Remind me tomorrow" style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 4, display: "flex" }}><X size={18} /></button>
       </div>
-      {(err || state === "blocked") && <div style={{ marginTop: 10 }}><DeviceHelp kind={err?.kind || "notif_denied"} onRetry={turnOn} /></div>}
+      {err && <div style={{ marginTop: 10 }}><DeviceHelp kind={err.kind} onRetry={turnOn} /></div>}
+      {!err && state === "blocked" && <details style={{ marginTop: 8, fontSize: 12, color: C.text }}><summary style={{ cursor: "pointer" }}>How to allow notifications</summary><DeviceHelp kind="notif_denied" onRetry={turnOn} /></details>}
       {err?.message && <div style={{ fontSize: 12.5, color: C.rose, marginTop: 6 }}>{err.message}</div>}
     </div>
   );

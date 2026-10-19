@@ -238,6 +238,17 @@ export async function del(key) {
   return { result: await cmd(["DEL", key]) };
 }
 
+// Call signaling is temporary: never keep network descriptions indefinitely.
+export async function setExpiring(key, value, seconds) {
+  const raw = JSON.stringify(value);
+  if (MODE === 'mem') {
+    mem.set(key, raw);
+    const timer = setTimeout(() => { if (mem.get(key) === raw) mem.delete(key); }, seconds * 1000);
+    timer.unref?.();
+    return;
+  }
+  await cmd(['SET', key, raw, 'EX', seconds]);
+}
 export const available = () => MODE !== "mem";
 
 
