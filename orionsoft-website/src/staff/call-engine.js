@@ -32,7 +32,7 @@ export class OfficeCall {
     const task=async()=>{
       for(let attempt=0;attempt<6;attempt++){
         if(this.closed&&body.action==='signal')return {ok:false};
-        try{return await api('/api/staff/calls',{method:'POST',body:{meetingId:this.meetingId,sessionId:this.sessionId,...body}});}
+        try{return await api('/api/staff/calls',{method:'POST',keepalive:body.action==='leave',body:{meetingId:this.meetingId,sessionId:this.sessionId,...body}});}
         catch(e){if(attempt===5||!(e.status===503||e.status===409&&/room is updating/i.test(e.message)||!e.status))throw e;await new Promise(resolve=>setTimeout(resolve,80*2**attempt+Math.random()*80));}
       }
     };
