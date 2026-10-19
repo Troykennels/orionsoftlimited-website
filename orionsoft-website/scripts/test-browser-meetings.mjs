@@ -59,6 +59,7 @@ try {
     await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
     await context.addCookies([{name:'orionsoft_session',value:signSession({role:'staff',sub:id}),url:base}]);
     await context.addInitScript(()=>{const Native=window.RTCPeerConnection;window.__peers=[];window.RTCPeerConnection=class extends Native{constructor(...args){super(...args);window.__peers.push(this);}};});
+    if(id==='voice-guest')await context.addInitScript(()=>Object.defineProperty(navigator.mediaDevices,'getDisplayMedia',{configurable:true,value:undefined}));
     const page=await context.newPage();page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));pages.push(page);
     await page.goto(base+'/staff/meetings/join-browser-meeting');
     await page.getByRole('heading',{name:'Orion Meet',exact:true}).waitFor();
@@ -75,6 +76,8 @@ try {
   await host.waitForFunction(()=>[...document.querySelectorAll('.so-call-tile video')].some(v=>v.dataset.callName==='Video Guest'&&v.videoWidth>0),null,{timeout:45000});
   await guest.waitForFunction(()=>[...document.querySelectorAll('.so-call-tile video')].some(v=>v.dataset.callName==='Audit Staff'&&v.videoWidth>0),null,{timeout:45000});
   assert.equal(await voice.locator('.so-call-tile').count(),3);
+  assert(await voice.getByRole('button',{name:'Share screen',exact:true}).isDisabled());
+  await voice.getByText('This browser does not support broadcasting your screen.',{exact:false}).waitFor();
   await host.waitForFunction(()=>[...document.querySelectorAll('.so-call-tile video')].some(v=>v.dataset.callName==='Voice Guest'&&v.readyState>=2&&v.currentTime>0),null,{timeout:20000});
   await host.getByRole('button',{name:'Mute',exact:true}).click();await host.getByRole('button',{name:'Unmute',exact:true}).click();
   await guest.getByRole('button',{name:'Camera off',exact:true}).click();await guest.getByRole('button',{name:'Camera on',exact:true}).click();
@@ -99,7 +102,7 @@ try {
   await host.getByLabel('Colour mode').selectOption('light');await host.reload();await host.getByLabel('Colour mode').waitFor();assert.equal(await host.getByLabel('Colour mode').inputValue(),'light');
   await host.setViewportSize({width:390,height:900});await host.waitForTimeout(300);await host.screenshot({path:'artifacts/staff-meetings/light-mobile.png',fullPage:true});assert(await host.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
   assert.deepEqual(errors,[]);
-  results.push({actualVideoFramesBothDirections:true,threeParticipants:true,voiceOnlyJoin:true,voiceAudioPlayback:true,screenShareControl:true,screenFramesReceivedRemotely:true,cameraRestoredRemotely:true,muteAndCameraControls:true,recordingNoticeRemote:true,recordingFileVerified:true,hostEndRemote:true,lightPersists:true,mobileNoOverflow:true,noRuntimeErrors:true});
+  results.push({actualVideoFramesBothDirections:true,threeParticipants:true,voiceOnlyJoin:true,voiceAudioPlayback:true,unsupportedScreenCaptureExplained:true,screenShareControl:true,screenFramesReceivedRemotely:true,cameraRestoredRemotely:true,muteAndCameraControls:true,recordingNoticeRemote:true,recordingFileVerified:true,hostEndRemote:true,lightPersists:true,mobileNoOverflow:true,noRuntimeErrors:true});
   console.log(JSON.stringify(results));
  }catch(e){for(let i=0;i<pages.length;i++){try{console.log(JSON.stringify({page:i,alerts:await pages[i].getByRole('alert').allTextContents(),peers:await pages[i].evaluate(()=>window.__peers.map(p=>({connection:p.connectionState,ice:p.iceConnectionState,signaling:p.signalingState,local:p.localDescription?.type,remote:p.remoteDescription?.type}))),videos:await pages[i].locator('video').evaluateAll(vs=>vs.map(v=>({name:v.dataset.callName,width:v.videoWidth,ready:v.readyState,tracks:v.srcObject?.getTracks().map(t=>({kind:t.kind,ready:t.readyState,muted:t.muted}))})))}));await pages[i].screenshot({path:`artifacts/staff-meetings/failure-${i}.png`});}catch{}}throw e;
 }finally{await writeFile('artifacts/staff-meetings/results.json',JSON.stringify(results,null,2));await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
