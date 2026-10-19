@@ -14,7 +14,7 @@ const { putRecord, setLookup } = await import('../api/_lib/records.js');
 const { signSession, hashPassword, ADMIN_COOKIE, APPLICANT_COOKIE } = await import('../api/_lib/auth.js');
 const now = new Date().toISOString();
 const password = 'local-audit-only-4829';
-await putRecord('admins', 'browser-admin', { id: 'browser-admin', username: 'Audit Admin', email: 'admin@example.invalid', status: 'active', role: 'super_admin', passwordHash: await hashPassword(password) });
+await putRecord('admins', 'browser-admin', { id: 'browser-admin', username: 'Audit Admin', email: 'admin@example.invalid', status: 'active', role: 'superadmin', passwordHash: await hashPassword(password) });
 await setLookup('admins', 'email', 'admin@example.invalid', 'browser-admin');
 await putRecord('employees', 'browser-staff', { id: 'browser-staff', fullName: 'Audit Staff', email: 'staff@example.invalid', status: 'active', staffRole: 'owner', department: 'Engineering', title: 'Engineer', slug: 'audit-staff', startDate: '2026-01-01', createdAt: now, passwordHash: await hashPassword(password) });
 await setLookup('employees', 'email', 'staff@example.invalid', 'browser-staff');

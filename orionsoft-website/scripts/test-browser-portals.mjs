@@ -14,7 +14,7 @@ const { putRecord, setLookup } = await import('../api/_lib/records.js');
 const { signSession, hashPassword, ADMIN_COOKIE, APPLICANT_COOKIE } = await import('../api/_lib/auth.js');
 const now = new Date().toISOString();
 const password = 'local-audit-only-4829';
-await putRecord('admins', 'browser-admin', { id: 'browser-admin', username: 'Audit Admin', email: 'admin@example.invalid', status: 'active', role: 'super_admin', passwordHash: await hashPassword(password) });
+await putRecord('admins', 'browser-admin', { id: 'browser-admin', username: 'Audit Admin', email: 'admin@example.invalid', status: 'active', role: 'superadmin', passwordHash: await hashPassword(password) });
 await setLookup('admins', 'email', 'admin@example.invalid', 'browser-admin');
 await putRecord('employees', 'browser-staff', { id: 'browser-staff', fullName: 'Audit Staff', email: 'staff@example.invalid', status: 'active', staffRole: 'owner', department: 'Engineering', title: 'Engineer', slug: 'audit-staff', startDate: '2026-01-01', createdAt: now, passwordHash: await hashPassword(password) });
 await setLookup('employees', 'email', 'staff@example.invalid', 'browser-staff');
@@ -61,7 +61,7 @@ try {
       await page.waitForFunction(() => document.querySelector('#root form, #root input'), null, { timeout: 20000 });
       assert.ok(await page.locator('#root').innerText(), `${portal} blank login`);
       const identities = {
-        admin: [ADMIN_COOKIE, { sub: 'browser-admin', role: 'admin', adminRole: 'super_admin', name: 'Audit Admin' }],
+        admin: [ADMIN_COOKIE, { sub: 'browser-admin', role: 'admin', adminRole: 'superadmin', name: 'Audit Admin' }],
         staff: ['orionsoft_session', { sub: 'browser-staff', role: 'staff', name: 'Audit Staff', staffRole: 'owner' }],
         client: ['orionsoft_client', { role: 'client', email: 'client@example.invalid', name: 'Audit Client' }],
         applicant: [APPLICANT_COOKIE, { role: 'applicant', email: 'applicant@example.invalid', emailVerified: true }],
