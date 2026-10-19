@@ -9,7 +9,7 @@ const guides = {
   applicant: ['Your next step, interview and assessment details appear in your application.', 'Message the recruiting team or update your details without submitting a duplicate application.', 'Keep your application reference and sign-in links private.'],
 };
 
-export default function OfficeTools({ scope }) {
+export default function OfficeTools({ scope, allowWorkspace = true }) {
   const dialog = useRef(null), trigger = useRef(null), searchInput = useRef(null);
   const [items, setItems] = useState([]), [query, setQuery] = useState('');
   const [health, setHealth] = useState(null), [error, setError] = useState('');
@@ -42,7 +42,7 @@ export default function OfficeTools({ scope }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   }
   return <>
-    <div className="or-office-launcher"><OfficeWorkspace scope={scope} /><button className="or-office-trigger" ref={trigger} onClick={open} aria-haspopup="dialog">Office guide <span>Ctrl K</span></button></div>
+    <div className="or-office-launcher">{allowWorkspace && <OfficeWorkspace scope={scope} />}<button className="or-office-trigger" ref={trigger} onClick={open} aria-haspopup="dialog">Office guide <span>Ctrl K</span></button></div>
     <dialog className="or-office-dialog" ref={dialog} onKeyDownCapture={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); } }} onClose={() => trigger.current?.focus()} aria-labelledby={`office-title-${scope}`}>
       <div className="or-office-dialog-head"><div><small>YOUR ORION WORKSPACE</small><h2 id={`office-title-${scope}`}>Find your next step</h2></div><button onClick={close} aria-label="Close office guide">&times;</button></div>
       <div className="or-office-dialog-body">
@@ -52,7 +52,7 @@ export default function OfficeTools({ scope }) {
         <div className="or-office-results">{items.filter(item => item.label.toLowerCase().includes(query.toLowerCase())).sort((a,b) => Number(pinned.includes(b.label)) - Number(pinned.includes(a.label))).map(item => <div className="or-office-result" key={item.label}><button onClick={() => { close(); if (item.element.tagName === 'BUTTON') item.element.click(); else { item.element.scrollIntoView({behavior:'smooth',block:'start'}); item.element.setAttribute('tabindex','-1'); item.element.focus({preventScroll:true}); } }}>{item.label}<span aria-hidden="true">&#8599;</span></button><button className="or-office-pin" aria-label={`Pin ${item.label}`} aria-pressed={pinned.includes(item.label)} onClick={() => togglePin(item.label)}>{pinned.includes(item.label) ? '\u2605' : '\u2606'}</button></div>)}</div>
         {query && !items.some(item => item.label.toLowerCase().includes(query.toLowerCase())) && <p role="status">No section matches. Try another word or use the office directory below.</p>}
         <h3>Make the most of your office</h3><ul>{guides[scope].map(text => <li key={text}>{text}</li>)}</ul>
-        {scope === 'admin' && items.length > 0 && <section><h3>Automation health</h3><button className="or-office-action" onClick={checkHealth} disabled={busy}>{busy ? 'Checking...' : 'Check office health'}</button>
+        {scope === 'admin' && allowWorkspace && items.length > 0 && <section><h3>Automation health</h3><button className="or-office-action" onClick={checkHealth} disabled={busy}>{busy ? 'Checking...' : 'Check office health'}</button>
           {error && <p role="alert">{error}</p>}
           {health && <div role="status"><p>Database: <strong>{health.database.status}</strong> &middot; {health.failed} recorded failed jobs</p><p>Connections configured: email {health.services.email ? 'yes' : 'no'}, payments {health.services.payments ? 'yes' : 'no'}, push {health.services.push ? 'yes' : 'no'}. Configuration does not confirm delivery.</p>
           {!health.jobs.length && <p>No job runs have been recorded yet. This is not a completed health check.</p>}

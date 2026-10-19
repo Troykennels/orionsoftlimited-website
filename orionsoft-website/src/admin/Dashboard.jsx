@@ -1,4 +1,7 @@
 import RenewalCenter from './RenewalCenter.jsx';
+import AdminInteractionFeedback from './AdminInteractionFeedback.jsx';
+import OfficeTools from '../components/OfficeTools.jsx';
+import './admin-workspace.css';
 import SocialContentManager from './SocialContentManager.jsx';
 ﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
@@ -26,9 +29,9 @@ import { QueriesSection } from "./QueriesAdmin.jsx";
 
 // ─── Design tokens (self-contained) ──────────────────────────────────────────
 const C = {
-  bg: "#060810", surface: "#0B1120", card: "#0F1828", cardHover: "#141E30",
+  bg: "#080F1C", surface: "#0D1728", card: "#111E32", cardHover: "#192A43",
   border: "rgba(255,255,255,0.07)", borderHover: "rgba(200,168,80,0.35)",
-  white: "#FFFFFF", heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#6B7A96",
+  white: "#FFFFFF", heading: "#F2F6FF", text: "#C8D0E0", textMuted: "#91A1BA",
   gold: "#C8A850", goldLight: "#E8C96A", goldDim: "rgba(200,168,80,0.12)", goldGlow: "rgba(200,168,80,0.22)",
   blue: "#4F8EF7", blueDim: "rgba(79,142,247,0.12)",
   mint: "#10B981", mintDim: "rgba(16,185,129,0.12)",
@@ -7382,7 +7385,7 @@ function NotificationBell({ navigate, enabled = true }) {
 
 function TopBar({ session, navigate, onMenuClick }) {
   return (
-    <div style={{
+    <div className="admin-topbar" style={{
       display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
       padding: "14px clamp(20px, 3vw, 40px)", borderBottom: `1px solid ${C.border}`, background: C.surface,
     }}>
@@ -7392,6 +7395,7 @@ function TopBar({ session, navigate, onMenuClick }) {
       }}>
         <Menu size={17} />
       </button>
+      <div className="admin-tools"><OfficeTools scope="admin" allowWorkspace={session.adminRole === "superadmin"} /></div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto" }}>
       {session.adminRole === "superadmin" && <NotificationBell navigate={navigate} />}
 
@@ -7400,7 +7404,7 @@ function TopBar({ session, navigate, onMenuClick }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.heading, fontFamily: font, lineHeight: 1.2 }}>{session.name}</div>
-          <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, textTransform: "capitalize" }}>{session.adminRole || "Admin"}</div>
+          <div style={{ fontSize: 11, color: C.textMuted, fontFamily: font, textTransform: "capitalize" }}>{{ superadmin: "Owner", client_content_manager: "Client & Content Manager", editor: "Editor" }[session.adminRole] || "Admin"}</div>
         </div>
         <div style={{
           width: 34, height: 34, borderRadius: "50%", background: C.goldDim, border: `1px solid ${C.border}`,
@@ -7423,6 +7427,7 @@ export default function AdminDashboard({ setCurrentPage }) {
   const [active, setActive] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sectionSearch, setSectionSearch] = useState("");
 
   const previousRole = useRef(null);
   const applySession = useCallback((user) => {
@@ -7509,7 +7514,8 @@ export default function AdminDashboard({ setCurrentPage }) {
   const navigate = (id) => { if(session.adminRole==='client_content_manager'&&!MANAGER_SECTIONS.has(id))return; if (session.adminRole === "editor" && !EDITOR_SECTIONS.has(id)) return; setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
+    <div className="admin-workspace" style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>
+      <AdminInteractionFeedback />
       {publishNote && (
         <div role="status" style={{ position: "fixed", right: 16, bottom: 16, zIndex: 2000, maxWidth: "calc(100% - 32px)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: C.card, border: `1px solid ${publishNote.ok ? C.mint : C.rose}88`, borderRadius: 12, padding: "11px 14px", boxShadow: "0 16px 40px rgba(0,0,0,0.45)", fontSize: 13.5, color: C.heading }}>
           <span>{publishNote.ok ? `✓ ${publishNote.label} published to the website` : `⚠ ${publishNote.label} not published: ${publishNote.error}`}</span>
@@ -7528,7 +7534,7 @@ export default function AdminDashboard({ setCurrentPage }) {
         transition: "width 0.25s", position: "fixed", top: 0, left: 0, zIndex: 300,
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: sidebarOpen ? "20px 20px 16px" : "20px 12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <div className="admin-sidebar-brand" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: sidebarOpen ? "20px 20px 16px" : "20px 12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           {sidebarOpen && (
             <div>
               <div style={{ fontSize: 15, fontWeight: 800, color: C.heading, letterSpacing: "-0.02em" }}>Orion<span style={{ color: C.gold }}>Soft</span></div>
@@ -7540,15 +7546,16 @@ export default function AdminDashboard({ setCurrentPage }) {
           </button>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
-          {navFor(session).map(g => (
+        {sidebarOpen && <label className="admin-nav-search"><Search size={15} /><input aria-label="Find admin section" type="search" placeholder="Find a section…" value={sectionSearch} onChange={event => setSectionSearch(event.target.value)} /></label>}
+        <div className="admin-nav-scroll" style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
+          {navFor(session).map(group => ({ ...group, items: group.items.filter(item => item.label.toLowerCase().includes(sectionSearch.toLowerCase())) })).filter(group => group.items.length).map(g => (
             <div key={g.label} style={{ padding: sidebarOpen ? "16px 12px 8px" : "16px 8px 8px" }}>
               {sidebarOpen && <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: "0.1em", padding: "0 8px 8px" }}>{g.label}</div>}
               {g.items.map(item => {
                 const isActive = active === item.id;
                 const Icon = item.icon;
                 return (
-                  <button key={item.id} type="button" onClick={() => navigate(item.id)} style={{
+                  <button key={item.id} type="button" className={`admin-nav-item${isActive ? " is-active" : ""}`} aria-current={isActive ? "page" : undefined} onClick={() => navigate(item.id)} style={{
                     display: "flex", alignItems: "center", gap: 10, width: "100%", padding: sidebarOpen ? "10px 12px" : "10px 8px",
                     background: isActive ? C.gold : "none", border: "1px solid transparent",
                     borderRadius: 10, cursor: "pointer", color: isActive ? "#0A0E18" : C.textMuted, fontFamily: font,
@@ -7587,8 +7594,8 @@ export default function AdminDashboard({ setCurrentPage }) {
       {/* Main content */}
       <main className="admin-main" style={{ marginLeft: sidebarOpen ? 240 : 64, overflowX: "hidden", transition: "margin-left 0.25s" }}>
         <TopBar session={session} navigate={navigate} onMenuClick={() => setMobileSidebarOpen(o => !o)} />
-        <div style={{ padding: "24px clamp(20px, 3vw, 40px) 32px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
+        <div className="admin-content" style={{ padding: "24px clamp(20px, 3vw, 40px) 32px" }}>
+          <div className="admin-page-heading" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 12 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 800, color: C.heading, margin: 0, letterSpacing: "-0.02em" }}>
                 {NAV_GROUPS.flatMap(g => g.items).find(i => i.id === active)?.label || "Dashboard"}

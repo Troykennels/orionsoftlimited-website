@@ -21,19 +21,36 @@ const server=await new Promise(resolve=>{const s=app.listen(0,'127.0.0.1',()=>re
 const browser=await chromium.launch({channel:'msedge',headless:true});const results=[];
 await mkdir('artifacts/client-content-role',{recursive:true});
 try{
- for(const width of [1440,390])for(const role of ['superadmin','client_content_manager']){
+ for(const width of [1440,820,390])for(const role of ['superadmin','client_content_manager']){
   const context=await browser.newContext({viewport:{width,height:950},serviceWorkers:'block'});
   await context.addCookies([{name:ADMIN_COOKIE,value:signSession({sub:role==='superadmin'?'browser-owner':'browser-manager',role:'admin',adminRole:role}),url:base}]);
+  await context.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__copiedRenewal=value;}}}));
   await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());
+  await context.route('**/api/admin/renewals',async route=>{if(route.request().method()==='POST')await new Promise(resolve=>setTimeout(resolve,700));await route.fallback();});
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/admin',{waitUntil:'domcontentloaded',timeout:60000});
   await page.waitForTimeout(1200);
-  async function navigate(name){if(width===390)await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.locator('.admin-sidebar').getByRole('button',{name,exact:true}).click();}
+  async function navigate(name){if(width<=1000)await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.locator('.admin-sidebar').getByRole('button',{name,exact:true}).click();}
   if(role==='superadmin'){
    await navigate('Users & Roles');await page.getByRole('heading',{name:'Add Admin',exact:true}).waitFor();
    assert.equal(await page.getByRole('option',{name:'Client & Content Manager',exact:true}).count(),1);
-   await navigate('Proposals & Renewals');await page.getByLabel('Manager account').selectOption('browser-manager');
+   await navigate('Proposals & Renewals');await page.getByRole('button',{name:'Assign clients',exact:true}).click();await page.getByLabel('Manager account').selectOption('browser-manager');
    await page.getByLabel('Assigned to selected manager').waitFor();
+   await page.getByRole('button',{name:/Save assigned clients/}).click();await page.getByText('Assigned clients updated. The access change takes effect immediately.',{exact:true}).waitFor();
+   await page.getByRole('button',{name:'Assign clients',exact:true}).click();
+   await page.locator('.renewal-tabs').getByRole('button',{name:'Needs attention',exact:true}).click();await page.getByRole('heading',{name:'No matching subscriptions',exact:true}).waitFor();
+   await page.getByRole('button',{name:'All clients',exact:false}).click();
+   await page.getByRole('heading',{name:'Assigned Hospital',exact:true}).waitFor();
+   await page.screenshot({path:`artifacts/client-content-role/renewals-preview-${width}.png`,fullPage:true});
+   await page.getByLabel('Search renewals').fill('missing client');await page.getByRole('heading',{name:'No matching subscriptions',exact:true}).waitFor();
+   await page.getByRole('button',{name:'Clear filters',exact:true}).click();
+   const copy=page.getByRole('button',{name:'Copy payment link',exact:true});await copy.click();await copy.getByText('Copied',{exact:true}).waitFor();
+   const reminder=page.getByRole('button',{name:'Queue client reminder',exact:true});await reminder.click();await reminder.getByText(/^Queuing/).waitFor();assert(await reminder.isDisabled());
+   await page.getByText(/Reminder queued for the saved client billing email\.|A reminder is already queued for this client today\./).first().waitFor();await reminder.getByText('Queued today',{exact:true}).waitFor();assert(await reminder.isDisabled());
+   const refreshed=page.getByRole('button',{name:'Refresh status',exact:true});await refreshed.click();await page.getByText('Renewal status refreshed.',{exact:true}).waitFor();
+   if(width===1440){const target=page.locator('.admin-sidebar [aria-current="page"]');assert.equal(await target.innerText(),'Proposals & Renewals');await page.getByLabel('Find admin section').fill('renewal');assert.equal(await page.locator('.admin-nav-item').count(),1);await page.getByLabel('Find admin section').fill('');}
+   const launcher=page.locator('.admin-tools .or-office-launcher');assert.equal(await launcher.evaluate(node=>getComputedStyle(node).position),'static');
+
   }else{
    await page.getByRole('heading',{name:'Client renewals',exact:true}).waitFor();
    await page.getByRole('heading',{name:'Assigned Hospital',exact:true}).waitFor();

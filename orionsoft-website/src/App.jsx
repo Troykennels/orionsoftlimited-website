@@ -5919,7 +5919,6 @@ export default function App() {
         {currentPage === "admin" && (
           <Suspense fallback={<PageLoader label="Loading admin…" />}>
             <AdminDashboard setCurrentPage={navSetPage} />
-            <OfficeTools scope="admin" />
           </Suspense>
         )}
       </main>

@@ -1,38 +1,107 @@
-import {useCallback,useEffect,useState} from 'react';
-const card={background:'var(--ow-card,#111827)',border:'1px solid #334155',borderRadius:14,padding:18,marginBottom:16,color:'#e2e8f0'};
-const button={padding:'8px 12px',borderRadius:8,border:'1px solid #64748b',background:'#1e293b',color:'#fff',cursor:'pointer'};
-const date=value=>value?new Date(value).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'}):'Not set';
-export default function RenewalCenter(){
- const [data,setData]=useState(null),[error,setError]=useState(''),[search,setSearch]=useState(''),[manager,setManager]=useState(''),[assigned,setAssigned]=useState([]),[busy,setBusy]=useState(false),[note,setNote]=useState('');
- const load=useCallback(async()=>{try{const r=await fetch('/api/admin/renewals',{cache:'no-store'});const j=await r.json();if(!r.ok)throw Error(j.error||'Renewal status unavailable');setData(j);setError('');}catch(e){setError(e.message);}},[]);
- useEffect(()=>{load();const t=setInterval(load,60000);return()=>clearInterval(t);},[load]);
- const clients=(data?.customers||[]).filter(c=>`${c.customer} ${c.product}`.toLowerCase().includes(search.toLowerCase()));
- async function save(){setBusy(true);setNote('');try{const r=await fetch('/api/admin/renewals',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminId:manager,licenseIds:assigned})});const j=await r.json();if(!r.ok)throw Error(j.error);setNote('Assigned clients updated. The access change takes effect immediately.');await load();}catch(e){setError(e.message);}finally{setBusy(false);}}
- async function remind(id){setNote('');try{const r=await fetch('/api/admin/renewals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});const j=await r.json();if(!r.ok)throw Error(j.error);setNote(j.alreadyQueued?'A reminder is already queued for this client today.':'Reminder queued for the saved client billing email.');}catch(e){setError(e.message);}}
- return <section style={card} aria-label="Client renewal management">
-  <div style={{display:'flex',gap:12,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}><div><h2 style={{margin:0}}>Client renewals</h2><p style={{fontSize:13,color:'#cbd5e1'}}>Live subscription status and saved-contact reminders. Verified payments update access automatically.</p></div><button style={button} onClick={load}>Refresh status</button></div>
-  {error&&<p role="alert" style={{color:'#fda4af'}}>{error}</p>}
-  {data?.sources?.some(s=>!s.available)&&<p role="status" style={{color:'#fde68a'}}>Some services are temporarily unavailable: {data.sources.filter(s=>!s.available).map(s=>s.name).join(', ')}. Their subscriptions are not shown as settled.</p>}
-  {!data&&!error&&<p>Loading renewal status…</p>}
-  {!data?.restricted&&data&&<div style={{border:'1px solid #475569',borderRadius:10,padding:14,margin:'12px 0'}}>
-   <label>Assign clients to a Client &amp; Content Manager <select aria-label="Manager account" value={manager} onChange={e=>{setManager(e.target.value);setAssigned(data.managers.find(m=>m.id===e.target.value)?.assignments||[]);}} style={{display:'block',padding:9,maxWidth:'100%',marginTop:6}}><option value="">Choose a manager</option>{data.managers.map(m=><option key={m.id} value={m.id}>{m.name} ({m.status})</option>)}</select></label>
-   <p style={{fontSize:13}}>Add this role in Users &amp; Roles, then select the client subscriptions below. An unassigned manager sees no clients. Managers cannot see prices, financial reports or payment settings.</p>
-   {manager&&<button style={button} disabled={busy} onClick={save}>{busy?'Saving…':'Save assigned clients'}</button>}{note&&<p role="status">{note}</p>}
-  </div>}
-  <input aria-label="Search renewals" placeholder="Search client or product" value={search} onChange={e=>setSearch(e.target.value)} style={{boxSizing:'border-box',width:'100%',padding:11,borderRadius:8,margin:'10px 0 16px'}}/>
-  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,260px),1fr))',gap:12}}>
-   {clients.map(c=><article key={c.id} style={{border:'1px solid #475569',borderRadius:12,padding:14,overflowWrap:'anywhere'}}>
-    {manager&&!data.restricted&&<label style={{display:'block',marginBottom:10}}><input type="checkbox" checked={assigned.includes(c.id)} onChange={e=>setAssigned(a=>e.target.checked?[...a,c.id]:a.filter(id=>id!==c.id))}/> Assigned to selected manager</label>}
-    <h3 style={{margin:'0 0 5px'}}>{c.customer}</h3><p style={{margin:'0 0 12px',color:'#cbd5e1'}}>{c.product}</p>
-    <p>Paid through: <strong>{date(c.paid_through)}</strong></p>
-    <p>{c.paid_through&&new Date(c.paid_through)<new Date()?'Renewal due':'Subscription status'}: {c.exception||c.status||c.payment_status||'Check subscription'}</p>
-    <p style={{fontSize:13}}>Automatic renewal: {(c.automatic_renewal??c.recurring?.enabled)?'Customer approved':'Customer approval needed'}</p>
-    {!data.restricted&&c.amount!=null&&<p>Agreed amount: {Number(c.amount).toLocaleString('en-NG')} {c.currency||'NGN'}</p>}
-    {(c.can_remind||(!data.restricted&&c.billing_email&&c.renewal_url))&&<button style={button} onClick={()=>remind(c.id)}>Queue client reminder</button>}
-    {!data.restricted&&c.renewal_url&&<div style={{display:'flex',flexWrap:'wrap',gap:8}}><a href={c.renewal_url} target="_blank" rel="noopener noreferrer" style={{...button,textDecoration:'none'}}>Open client renewal</a><button style={button} onClick={async()=>{try{await navigator.clipboard.writeText(c.renewal_url);setNote('Client renewal link copied.');}catch{setError('Copy is unavailable in this browser. Open the renewal link to copy its address.');}}}>Copy payment link</button></div>}
-   </article>)}
-  </div>
-  {data&&clients.length===0&&<p>{data.restricted?'No assigned client subscriptions match. The owner can assign clients from this section.':'No subscriptions match. Configure each client’s agreed billing in the relevant product.'}</p>}
-  {note&&<p role="status">{note}</p>}
- </section>;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, Bell, Check, CheckCircle2, ChevronDown, Clock3, Copy, RefreshCw, Search, ShieldCheck, Users, UserRoundPlus, X } from 'lucide-react';
+import './admin-workspace.css';
+
+const date = value => value && Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleDateString('en-NG', { timeZone: 'Africa/Lagos', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set';
+function status(client) {
+  const raw = String(client.exception || client.payment_status || client.status || '').toLowerCase();
+  if (/verif|pending|processing/.test(raw)) return { label: 'Checking payment', tone: 'blue', attention: true };
+  if (/revoked|suspended|cancel/.test(raw)) return { label: raw.includes('cancel') ? 'Cancelled' : 'Access restricted', tone: 'rose', attention: true };
+  const expired = client.paid_through && Date.parse(client.paid_through) < Date.now();
+  if (raw.includes('trial')) return { label: expired ? 'Trial ended' : 'Trial', tone: expired ? 'amber' : 'blue', attention: !!expired };
+  if (/grace/.test(raw)) return { label: 'Grace period', tone: 'amber', attention: true };
+  if (expired || /past_due|expired|overdue/.test(raw)) return { label: 'Renewal due', tone: 'amber', attention: true };
+  return { label: 'Active', tone: 'green', attention: false };
+}
+const automatic = client => !!(client.automatic_renewal ?? client.recurring?.enabled);
+
+export default function RenewalCenter() {
+  const [data, setData] = useState(null), [error, setError] = useState('');
+  const [search, setSearch] = useState(''), [filter, setFilter] = useState('all'), [product, setProduct] = useState('all');
+  const [assignmentOpen, setAssignmentOpen] = useState(false), [manager, setManager] = useState(''), [assigned, setAssigned] = useState([]);
+  const [saving, setSaving] = useState(false), [refreshing, setRefreshing] = useState(false), [updated, setUpdated] = useState(null);
+  const [notice, setNotice] = useState(''), [actions, setActions] = useState({});
+  const inFlight = useRef(new Set());
+  const loaded = useRef(false);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) { setRefreshing(true); setNotice(''); }
+    try {
+      const response = await fetch('/api/admin/renewals', { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || 'Renewal status is unavailable. Please try again.');
+      setData(result); setError(''); setUpdated(new Date());
+      if (!silent && loaded.current) setNotice('Renewal status refreshed.');
+      loaded.current = true;
+    } catch (err) { setError(err.message); }
+    finally { if (!silent) setRefreshing(false); }
+  }, []);
+  useEffect(() => { load(); const timer = setInterval(() => load(true), 60000); return () => clearInterval(timer); }, [load]);
+  const all = data?.customers || [];
+  const clients = all.filter(client => `${client.customer} ${client.product}`.toLowerCase().includes(search.toLowerCase()) && (product === 'all' || client.product === product) && (filter === 'all' || (filter === 'attention' ? status(client).attention : automatic(client))));
+  const products = [...new Set(all.map(client => client.product))].sort();
+  function rowState(id, value) { setActions(current => ({ ...current, [id]: value })); }
+  async function save() {
+    if (saving) return;
+    setSaving(true); setError(''); setNotice('');
+    try {
+      const response = await fetch('/api/admin/renewals', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminId: manager, licenseIds: assigned }) });
+      const result = await response.json(); if (!response.ok) throw Error(result.error || 'Assignments could not be saved.');
+      setNotice('Assigned clients updated. The access change takes effect immediately.'); await load(true);
+    } catch (err) { setError(err.message); } finally { setSaving(false); }
+  }
+  async function remind(id) {
+    if (inFlight.current.has(id)) return;
+    inFlight.current.add(id); rowState(id, { pending: true });
+    try {
+      const response = await fetch('/api/admin/renewals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const result = await response.json(); if (!response.ok) throw Error(result.error || 'Reminder could not be queued. Please try again.');
+      rowState(id, { queued: true, message: result.alreadyQueued ? 'A reminder is already queued for this client today.' : 'Reminder queued for the saved client billing email.' });
+    } catch (err) { rowState(id, { error: true, message: err.message }); }
+    finally { inFlight.current.delete(id); }
+  }
+  async function copy(client) {
+    try { await navigator.clipboard.writeText(client.renewal_url); setActions(current => ({ ...current, [client.id]: { ...current[client.id], copied: true, message: 'Client renewal link copied.', error: false } })); }
+    catch { setActions(current => ({ ...current, [client.id]: { ...current[client.id], error: true, message: 'Copy is unavailable. Open the renewal page to copy its address.' } })); }
+  }
+  const missing = data?.sources?.filter(source => !source.available) || [];
+  return <section className="renewal-workspace" aria-label="Client renewal management">
+    <header className="renewal-heading">
+      <div><span className="admin-eyebrow">CLIENT OPERATIONS</span><h2>Client renewals</h2><p>Stay ahead of renewals. Keep every client connected.</p></div>
+      <div className="renewal-heading-actions">
+        {data && !data.restricted && <button className={`admin-action ${assignmentOpen ? 'is-selected' : ''}`} aria-expanded={assignmentOpen} aria-controls="renewal-assignments" onClick={() => setAssignmentOpen(open => !open)}><UserRoundPlus size={16} />Assign clients</button>}
+        <button className="admin-action admin-action-primary" disabled={refreshing} aria-busy={refreshing} onClick={() => load()}><RefreshCw size={16} className={refreshing ? 'admin-spin' : ''} />{refreshing ? 'Refreshing…' : 'Refresh status'}</button>
+      </div>
+    </header>
+    <div className="renewal-stats">
+      {[{ label: data?.restricted ? 'Assigned clients' : 'Client subscriptions', value: all.length, icon: Users, tone: 'blue' }, { label: 'Need attention', value: all.filter(client => status(client).attention).length, icon: Clock3, tone: 'amber' }, { label: 'Automatic renewal approved', value: all.filter(automatic).length, icon: ShieldCheck, tone: 'green' }].map(({ label, value, icon: Icon, tone }) => <div className="renewal-stat" key={label}><span className={`renewal-stat-icon tone-${tone}`}><Icon size={19} /></span><div><strong>{data ? value : '—'}</strong><span>{label}</span></div></div>)}
+    </div>
+    {error && <div className="admin-notice is-error" role="alert">{error}<button className="admin-action" onClick={() => load()}>Try again</button></div>}
+    {notice && <div className="admin-notice" role="status"><CheckCircle2 size={17} /><span>{notice}</span><button className="admin-icon-button" aria-label="Dismiss confirmation" onClick={() => setNotice('')}><X size={16} /></button></div>}
+    {missing.length > 0 && <div className="admin-notice is-warning" role="status">Some services are unavailable: {missing.map(source => source.name).join(', ')}. Their subscriptions are not shown as settled.</div>}
+    {data && !data.restricted && assignmentOpen && <div id="renewal-assignments" className="renewal-assignment">
+      <div><h3>Delegate client follow-ups</h3><p>Choose a manager, then select their clients below. Financial details stay with the owner.</p></div>
+      <div className="renewal-assignment-controls"><label>Client &amp; Content Manager<select aria-label="Manager account" value={manager} onChange={event => { setManager(event.target.value); setAssigned(data.managers.find(item => item.id === event.target.value)?.assignments || []); setNotice(''); }}><option value="">Choose a manager</option>{data.managers.map(item => <option key={item.id} value={item.id}>{item.name} ({item.status})</option>)}</select></label>
+      {manager ? <button className="admin-action admin-action-primary" disabled={saving} aria-busy={saving} onClick={save}>{saving ? <RefreshCw size={16} className="admin-spin" /> : <Check size={16} />}{saving ? 'Saving…' : 'Save assigned clients'}<span className="renewal-count">{assigned.length}</span></button> : <span className="renewal-help">Create a manager account in Users &amp; Roles.</span>}</div>
+    </div>}
+    <div className="renewal-panel">
+      <div className="renewal-toolbar"><div className="renewal-tabs" role="group" aria-label="Filter subscriptions">{[['all', 'All clients'], ['attention', 'Needs attention'], ['automatic', 'Automatic renewal']].map(([value, label]) => <button key={value} aria-pressed={filter === value} className={filter === value ? 'is-selected' : ''} onClick={() => setFilter(value)}>{label}{value === 'all' && <span>{all.length}</span>}</button>)}</div><span className="renewal-updated">{updated ? `Updated ${updated.toLocaleTimeString('en-NG', { timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit' })} WAT` : 'Connecting to your services'}</span></div>
+      <div className="renewal-search-row"><label className="renewal-search"><Search size={17} /><input type="search" aria-label="Search renewals" placeholder="Search client or product" value={search} onChange={event => setSearch(event.target.value)} /></label><label className="renewal-product"><span className="admin-sr-only">Product</span><select aria-label="Filter by product" value={product} onChange={event => setProduct(event.target.value)}><option value="all">All products</option>{products.map(value => <option key={value}>{value}</option>)}</select><ChevronDown size={15} aria-hidden="true" /></label></div>
+      <div className="renewal-list-heading" aria-hidden="true"><span>CLIENT / PRODUCT</span><span>SUBSCRIPTION</span><span>AUTOMATIC RENEWAL</span><span>ACTIONS</span></div>
+      {!data && !error && <div className="renewal-empty" role="status"><RefreshCw size={24} className="admin-spin" /><h3>Loading your subscriptions</h3><p>Checking the latest status across your services.</p></div>}
+      <div role="list" className="renewal-list">{clients.map(client => {
+        const state = status(client), action = actions[client.id] || {};
+        return <article key={client.id} role="listitem" className="renewal-row">
+          <div className="renewal-client">{assignmentOpen && manager && !data.restricted && <label className="renewal-select-client"><input type="checkbox" aria-label="Assigned to selected manager" checked={assigned.includes(client.id)} onChange={event => setAssigned(current => event.target.checked ? [...current, client.id] : current.filter(id => id !== client.id))} /><span className="admin-sr-only">Assign {client.customer}</span></label>}<div className="renewal-client-details"><h3>{client.customer}</h3><p>{client.product}</p>{!data.restricted && client.amount != null && <span className="renewal-amount">{Number(client.amount).toLocaleString('en-NG')} {client.currency || 'NGN'}<span> / agreed billing</span></span>}</div></div>
+          <div className="renewal-subscription"><span className={`renewal-badge tone-${state.tone}`}><i />{state.label}</span><span className="renewal-date">Paid through <strong>{date(client.paid_through)}</strong></span></div>
+          <div className="renewal-auto">{automatic(client) ? <><span className="renewal-auto-approved"><CheckCircle2 size={15} />Approved</span><small>Verified payments renew access</small></> : <><span className="renewal-auto-waiting"><Clock3 size={15} />Awaiting approval</span><small>Client consent required</small></>}</div>
+          <div className="renewal-actions">{(client.can_remind || (!data.restricted && client.billing_email && client.renewal_url)) && <button className={`admin-action renewal-remind ${action.queued ? 'is-complete' : ''}`} disabled={action.pending || action.queued} aria-label="Queue client reminder" aria-busy={!!action.pending} onClick={() => remind(client.id)}>{action.pending ? <RefreshCw size={14} className="admin-spin" /> : action.queued ? <Check size={14} /> : <Bell size={14} />}{action.pending ? 'Queuing…' : action.queued ? 'Queued today' : 'Queue client reminder'}</button>}
+            {!data.restricted && client.renewal_url && <div className="renewal-secondary-actions"><a href={client.renewal_url} target="_blank" rel="noopener noreferrer" className="renewal-link" aria-label="Open client renewal">Renewal page<ArrowUpRight size={13} /></a><button className="renewal-copy" onClick={() => copy(client)} aria-label="Copy payment link">{action.copied ? <Check size={14} /> : <Copy size={14} />}{action.copied ? 'Copied' : 'Copy link'}</button></div>}
+            {action.message && <p className={`renewal-row-message ${action.error ? 'is-error' : ''}`} role={action.error ? 'alert' : 'status'}>{action.message}</p>}
+          </div>
+        </article>;
+      })}</div>
+      {data && clients.length === 0 && <div className="renewal-empty"><Search size={26} /><h3>{all.length ? 'No matching subscriptions' : data.restricted ? 'No clients assigned yet' : 'No subscriptions yet'}</h3><p>{all.length ? 'Try another search or change your filters.' : data.restricted ? 'The owner can assign clients from this section.' : 'Configure client billing in the relevant product to see it here.'}</p>{all.length > 0 && <button className="admin-action" onClick={() => { setSearch(''); setFilter('all'); setProduct('all'); }}>Clear filters</button>}</div>}
+      {data && <footer className="renewal-footer"><span>{clients.length} of {all.length} subscriptions</span><span><ShieldCheck size={13} />Access updates after verified payment</span></footer>}
+    </div>
+  </section>;
 }
