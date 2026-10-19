@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 process.env.NODE_ENV='test';process.env.SESSION_SECRET='isolated-orion-calls-fixture';
-for(const k of Object.keys(process.env)) if(/REDIS|UPSTASH|KV_REST|DATA_DIR|GMAIL|BREVO|RESEND|SMTP|VAPID|TERMII|CALL_TURN/.test(k)) delete process.env[k];
+for(const k of Object.keys(process.env)) if(/REDIS|UPSTASH|KV_REST|DATA_DIR|GMAIL|BREVO|RESEND|SMTP|VAPID|TERMII|CALL_/.test(k)) delete process.env[k];
 const store=await import('../api/store.js');assert.equal(store.storeBackend(),'mem');
 const {putRecord,getRecord,listRecords}=await import('../api/_lib/records.js');
 const {signSession,ADMIN_COOKIE}=await import('../api/_lib/auth.js');

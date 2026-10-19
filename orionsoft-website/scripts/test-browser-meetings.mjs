@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 process.env.NODE_ENV = 'development';
 process.env.SESSION_SECRET = 'orion-browser-isolated-session-secret';
-for (const key of Object.keys(process.env)) if (/REDIS|UPSTASH|KV_REST|BREVO|GMAIL|RESEND|SMTP|PAYSTACK|DATA_DIR|VAPID|TERMII/.test(key)) delete process.env[key];
+for (const key of Object.keys(process.env)) if (/REDIS|UPSTASH|KV_REST|BREVO|GMAIL|RESEND|SMTP|PAYSTACK|DATA_DIR|VAPID|TERMII|CALL_/.test(key)) delete process.env[key];
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const { storeBackend } = await import('../api/store.js');
 assert.equal(storeBackend(), 'mem');
