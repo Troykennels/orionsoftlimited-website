@@ -1,3 +1,4 @@
+import { managerRouteAllowed, CLIENT_CONTENT_ROLE } from './adminAccess.js';
 // Real server-verified auth: bcrypt password hashes + signed httpOnly JWT session cookies.
 // Replaces the old client-trusted localStorage session and shared x-admin-key header.
 import bcrypt from "bcryptjs";
@@ -148,6 +149,10 @@ export function requireAuth(req, res, role) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
   }
+  if (role === "admin" && !managerRouteAllowed(session,routeOf(req))) {
+    res.status(403).json({error:'This role covers assigned client renewals and website communications only.'});
+    return null;
+  }
   if (role === "admin" && isEditor(session) && !EDITOR_ROUTES.has(routeOf(req))) {
     res.status(403).json({ error: "Your admin role (Editor) covers website content only. Ask a super admin for access." });
     return null;
@@ -174,6 +179,10 @@ export async function requireAdminAuth(req, res) {
     return null;
   }
   const session = { ...tokenSession, adminRole: admin.role, name: admin.username, email: admin.email };
+  if (!managerRouteAllowed(session,routeOf(req))) {
+    res.status(403).json({error:'This role covers assigned client renewals and website communications only.'});
+    return null;
+  }
   if (isEditor(session) && !EDITOR_ROUTES.has(routeOf(req))) {
     res.status(403).json({ error: "Your admin role (Editor) covers website content only. Ask a super admin for access." });
     return null;
@@ -205,6 +214,9 @@ export async function requireStaff(req, res) {
     if (!admin || admin.status !== "active") {
       res.status(401).json({ error: "This admin account is no longer active" });
       return null;
+    }
+    if (admin.role === CLIENT_CONTENT_ROLE) {
+      res.status(403).json({error:'Staff Office access is not included in this role.'});return null;
     }
   }
   const employee = raw.role === "staff" ? await getRecord("employees", raw.sub) : await getByLookup("employees", "admin", raw.sub);

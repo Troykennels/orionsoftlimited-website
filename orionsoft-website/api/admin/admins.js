@@ -39,7 +39,8 @@ export default async function handler(req, res) {
     const admin = {
       id, username, email,
       passwordHash: await hashPassword(password),
-      role: role === "superadmin" ? "superadmin" : "editor",
+      role: ["superadmin","client_content_manager"].includes(role) ? role : "editor",
+      renewalAssignments: [],
       status: "active",
       createdAt: new Date().toISOString(),
     };

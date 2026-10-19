@@ -395,6 +395,8 @@ export async function runAutomations() {
     // Hourly: remind staff whose response to a query is overdue (once per query).
     try { if (await claim("orionsoft:automation:queries:tick", 3600)) { const { overdueQueryReminders } = await import("./queries.js"); await overdueQueryReminders(today); } }
     catch (err) { console.error("[queries]", err.message); }
+    try { const {processRenewalReminders}=await import('./renewalReminders.js');await processRenewalReminders(); }
+    catch(err){console.error('[client-renewal-reminders]',err.message);}
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { if (await claim("orionsoft:automation:newsletter:tick", 900)) { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); } }
     catch (err) { console.error("[newsletter]", err.message); }

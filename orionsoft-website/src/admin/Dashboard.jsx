@@ -1,3 +1,5 @@
+import RenewalCenter from './RenewalCenter.jsx';
+import SocialContentManager from './SocialContentManager.jsx';
 ﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
@@ -419,6 +421,7 @@ const NAV_GROUPS = [
     items: [
       { id: "leads",        label: "Contact Forms",    icon: Inbox },
       { id: "newsletter",   label: "Newsletter",       icon: Newspaper },
+      { id: "social-content", label: "Social Media Content", icon: MessageCircle },
       { id: "chat",         label: "AI Conversations", icon: Bot },
       { id: "livechat",     label: "Live Chat Widget", icon: MessageCircle },
     ],
@@ -506,9 +509,11 @@ const NAV_GROUPS = [
 
 // Editor admins manage website content only (the server enforces the same).
 const EDITOR_SECTIONS = new Set(["dashboard", "analytics", "live", "homepage", "announcements", "products", "services", "blog", "portfolio", "testimonials", "faqs", "team", "events", "careers", "seo", "features", "clients", "menus", "theme", "settings", "media", "my-account"]);
-const navFor = session => session?.adminRole === "editor"
-  ? NAV_GROUPS.map(g => ({ ...g, items: g.items.filter(i => EDITOR_SECTIONS.has(i.id)) })).filter(g => g.items.length)
-  : NAV_GROUPS;
+const MANAGER_SECTIONS = new Set(['renewals','social-content','newsletter','analytics','live','homepage','announcements','blog','portfolio','testimonials','faqs','team','events','seo','my-account']);
+const navFor = session => {
+  const allowed = session?.adminRole === 'client_content_manager' ? MANAGER_SECTIONS : session?.adminRole === 'editor' ? EDITOR_SECTIONS : null;
+  return allowed ? NAV_GROUPS.map(g=>({...g,items:g.items.filter(i=>allowed.has(i.id))})).filter(g=>g.items.length) : NAV_GROUPS;
+};
 
 // ─── Login Screen ────────────────────────────────────────────────────────────
 function AdminLogin({ onLogin, notice }) {
@@ -3042,6 +3047,7 @@ function MyAccountSection({ session }) {
 const ROLE_PERMS = {
   superadmin: "Full access all sections, system settings, admin & staff management",
   editor:     "Content only blog, products, testimonials, FAQs, team, careers",
+  client_content_manager: "Assigned client renewal status and reminders, social content, newsletters and public website content. No Staff Office, money, payment settings or admin management.",
 };
 
 function UsersSection({ session }) {
@@ -3150,6 +3156,7 @@ function UsersSection({ session }) {
               <Label>Role</Label>
               <Select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
                 <option value="editor">Editor</option>
+                <option value="client_content_manager">Client &amp; Content Manager</option>
                 <option value="superadmin">Super Admin</option>
               </Select>
             </div>
@@ -7221,10 +7228,12 @@ function RenewalsSection() {
 }
 
 function DashboardContent({ active, session, navigate }) {
+  if(session?.adminRole==='client_content_manager'&&!MANAGER_SECTIONS.has(active))return <RenewalCenter/>;
   switch (active) {
     case "dashboard":     return <DashboardOverview navigate={navigate} editor={session?.adminRole === "editor"} />;
     case "sales":         return <SalesSection />;
-    case "renewals":      return <RenewalsSection />;
+    case "renewals":      return <><RenewalCenter />{session?.adminRole==='superadmin'&&<RenewalsSection />}</>;
+    case "social-content": return <SocialContentManager />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;
@@ -7384,7 +7393,7 @@ function TopBar({ session, navigate, onMenuClick }) {
         <Menu size={17} />
       </button>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "auto" }}>
-      {session.adminRole !== "editor" && <NotificationBell navigate={navigate} />}
+      {session.adminRole === "superadmin" && <NotificationBell navigate={navigate} />}
 
       <div style={{ width: 1, height: 24, background: C.border }} />
 
@@ -7415,7 +7424,10 @@ export default function AdminDashboard({ setCurrentPage }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  const previousRole = useRef(null);
   const applySession = useCallback((user) => {
+    if(user?.adminRole==='client_content_manager'&&previousRole.current!==user.adminRole)setActive('renewals');
+    previousRole.current=user?.adminRole||null;
     setSession(user);
     setCurrentAuditUser(user);
   }, []);
@@ -7431,6 +7443,7 @@ export default function AdminDashboard({ setCurrentPage }) {
     const t = setInterval(async () => {
       const user = await fetchSession();
       if (!cancelled && user === null) endSession();
+      else if (!cancelled && user) applySession(user);
     }, 60000);
     return () => { cancelled = true; clearInterval(t); };
   }, [applySession, endSession]);
@@ -7493,7 +7506,7 @@ export default function AdminDashboard({ setCurrentPage }) {
     applySession(null);
   }
 
-  const navigate = (id) => { if (session.adminRole === "editor" && !EDITOR_SECTIONS.has(id)) return; setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
+  const navigate = (id) => { if(session.adminRole==='client_content_manager'&&!MANAGER_SECTIONS.has(id))return; if (session.adminRole === "editor" && !EDITOR_SECTIONS.has(id)) return; setActive(id); setMobileSidebarOpen(false); window.scrollTo({ top: 0 }); };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font }}>

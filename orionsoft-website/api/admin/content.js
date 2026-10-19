@@ -1,3 +1,4 @@
+import { CLIENT_CONTENT_ROLE, CLIENT_CONTENT_KEYS } from '../_lib/adminAccess.js';
 // Admin: read all website content (including drafts) and publish changes.
 import { requireAdminAuth } from "../_lib/auth.js";
 import { logAudit } from "../_lib/audit.js";
@@ -24,11 +25,15 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     const [content, meta] = await Promise.all([readAllContent(), contentMeta()]);
+    if(session.adminRole===CLIENT_CONTENT_ROLE)return res.json({ok:true,
+      content:Object.fromEntries(Object.entries(content).filter(([key])=>CLIENT_CONTENT_KEYS.has(key))),
+      meta:Object.fromEntries(Object.entries(meta||{}).filter(([key])=>CLIENT_CONTENT_KEYS.has(key))),keys:[...CLIENT_CONTENT_KEYS]});
     return res.json({ ok: true, content, meta, keys: CONTENT_KEYS });
   }
 
   if (req.method === "PUT") {
     const { key, value } = req.body || {};
+    if (session.adminRole===CLIENT_CONTENT_ROLE&&!CLIENT_CONTENT_KEYS.has(key))return res.status(403).json({error:'This content section is reserved for the owner.'});
     if (!CONTENT_KEYS.includes(key)) return res.status(400).json({ error: "Unknown content section" });
     if (value === undefined) return res.status(400).json({ error: "Nothing to save" });
     const bytes = Buffer.byteLength(JSON.stringify(value));
