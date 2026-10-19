@@ -94,7 +94,7 @@ try {
   host.once('dialog',d=>d.accept());await host.getByRole('button',{name:'End for everyone',exact:true}).click();
   await guest.getByRole('button',{name:'Join video call',exact:true}).waitFor({timeout:10000});
   await host.getByLabel('Colour mode').selectOption('light');await host.reload();await host.getByLabel('Colour mode').waitFor();assert.equal(await host.getByLabel('Colour mode').inputValue(),'light');
-  await host.setViewportSize({width:390,height:900});await host.screenshot({path:'artifacts/staff-meetings/light-mobile.png',fullPage:true});assert(await host.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
+  await host.setViewportSize({width:390,height:900});await host.waitForTimeout(300);await host.screenshot({path:'artifacts/staff-meetings/light-mobile.png',fullPage:true});assert(await host.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
   assert.deepEqual(errors,[]);
   results.push({actualVideoFramesBothDirections:true,threeParticipants:true,voiceOnlyJoin:true,voiceAudioPlayback:true,screenShareControl:true,muteAndCameraControls:true,recordingNoticeRemote:true,recordingFileVerified:true,hostEndRemote:true,lightPersists:true,mobileNoOverflow:true,noRuntimeErrors:true});
   console.log(JSON.stringify(results));

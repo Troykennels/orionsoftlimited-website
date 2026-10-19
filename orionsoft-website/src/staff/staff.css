@@ -121,3 +121,9 @@ html[data-staff-theme="light"] .so-iconbtn:hover { background: #e7edf6 !importan
 .so-call-tile span { position: absolute; bottom: 10px; left: 10px; padding: 4px 8px; border-radius: 6px; color: #fff; background: #0b1120d9; font-size: 12px; }
 .so-call-controls { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
 html[data-staff-theme="light"] .so-login { background: var(--so-bg); }
+
+/* Workspace tools stay in the layout so they never cover call controls. */
+.so-tools .or-office-launcher { position: static; display: flex; justify-content: flex-end; gap: 8px; max-width: 1180px; margin: 0 auto; padding: 12px 20px 0; }
+.so-tools :is(.ow-launch, .or-office-trigger) { position: static; border-radius: 8px; box-shadow: none; padding: 8px 12px; font-size: 12px; }
+.so-tools .or-office-trigger { background: var(--so-surface, #0b1120); color: var(--so-text, #c8d0e0); border-color: var(--so-borderStrong, #334155); }
+@media (max-width: 900px) { .so-tools .or-office-launcher { padding: 12px 14px 0; } }

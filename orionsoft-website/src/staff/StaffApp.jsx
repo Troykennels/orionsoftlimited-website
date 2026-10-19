@@ -351,7 +351,6 @@ export default function StaffApp() {
 
   return (
     <OfficeContext.Provider value={ctx}>
-      <OfficeTools scope="staff" />
       <div className="so-root" style={{ fontFamily: font }}>
         <div className="so-shell">
           <div className={`so-scrim ${navOpen ? "open" : ""}`} onClick={() => setNavOpen(false)} />
@@ -396,6 +395,7 @@ export default function StaffApp() {
               </div>
               <Avatar src={me.avatarDataUrl} name={me.fullName} size={34} presence={me.presence?.status} onClick={() => navigate("profile")} />
             </header>
+            <div className="so-tools"><OfficeTools scope="staff" /></div>
             <main className="so-content">
               <InAppBanner />
               <AlertsBanner />
