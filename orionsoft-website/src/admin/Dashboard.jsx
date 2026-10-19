@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
+﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
   Home, Megaphone, Package, Wrench, FileText, Briefcase, Star, HelpCircle,
@@ -644,7 +644,7 @@ function useAttention(enabled = true) {
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(enabled);
 
-  const load = useCallback(async (silent = false) => {
+  async function load(silent = false) {
     if (!enabled) return;
     if (!silent) setLoading(true);
     try {
@@ -652,12 +652,12 @@ function useAttention(enabled = true) {
       const json = await r.json();
       if (r.ok) { setItems(json.items || []); setCounts(json.counts || {}); }
     } finally { if (!silent) setLoading(false); }
-  }, [enabled]);
+  }
   useEffect(() => {
-    const initial = setTimeout(() => load(), 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
-  }, [load]);
+    return () => clearInterval(t);
+  }, []);
 
   return { items, counts, loading, total: items.length };
 }
@@ -784,13 +784,12 @@ function DonutChart({ segments = [], size = 140, innerLabel = "total" }) {
   const total = segments.reduce((s, sg) => s + (sg.value || 0), 0);
   if (!total) return <div style={{ height:size, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:12 }}>No data yet</div>;
   const cx = size/2, cy = size/2, R = size*0.35, stroke = size*0.17;
-  const positiveSegments = segments.filter(s => s.value > 0);
-  const arcs = positiveSegments.map((sg, index) => {
+  let angle = -Math.PI / 2;
+  const arcs = segments.filter(s => s.value > 0).map(sg => {
     const sweep = (sg.value / total) * 2 * Math.PI;
-    const angle = -Math.PI / 2 + positiveSegments.slice(0, index).reduce((sum, item) => sum + (item.value / total) * 2 * Math.PI, 0);
     const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
-    const endAngle = angle + sweep;
-    const x2 = cx + R * Math.cos(endAngle), y2 = cy + R * Math.sin(endAngle);
+    angle += sweep;
+    const x2 = cx + R * Math.cos(angle), y2 = cy + R * Math.sin(angle);
     // A full circle can't be drawn as one arc (start == end draws nothing),
     // so a 100% segment is drawn as two half-arcs.
     if (sweep >= 2 * Math.PI - 1e-6) {
@@ -1223,7 +1222,7 @@ function LeadsSection() {
   }, []);
 
   // Auto-sync on mount
-  useEffect(() => { const initial = setTimeout(syncFromServer, 0); return () => clearTimeout(initial); }, [syncFromServer]);
+  useEffect(() => { syncFromServer(); }, [syncFromServer]);
 
   const norm = (l) => ({
     ...l,
@@ -1447,7 +1446,7 @@ function NewsletterSection() {
     try { const r = await fetch("/api/admin/newsletter"); const j = await r.json(); if (r.ok) setData(j); else setMsg(j.error || "Couldn't load subscribers"); }
     catch { setMsg("Couldn't load subscribers"); }
   }, []);
-  useEffect(() => { const initial = setTimeout(load, 0); const t = setInterval(() => { if (!document.hidden) load(); }, 30000); return () => { clearTimeout(initial); clearInterval(t); }; }, [load]);
+  useEffect(() => { load(); const t = setInterval(() => { if (!document.hidden) load(); }, 30000); return () => clearInterval(t); }, [load]);
 
   async function call(method, body, url = "/api/admin/newsletter") {
     const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
@@ -2300,9 +2299,9 @@ function ApplicantsSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   // Stable reference so the portal panel's mark-read effect doesn't re-run each render.
@@ -2922,7 +2921,7 @@ function BackupCard() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const load = () => fetch("/api/admin/backup?view=status").then(r => r.json()).then(setStatus).catch(() => {});
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
   async function emailNow() {
     setBusy(true); setMsg("");
     try {
@@ -3063,7 +3062,7 @@ function UsersSection({ session }) {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function addUser() {
     setErr(""); setMsg("");
@@ -3204,9 +3203,9 @@ function AuditSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   function exportLogs() {
@@ -3465,7 +3464,7 @@ function ConversationsSection() {
     }
   }, []);
 
-  useEffect(() => { const initial = setTimeout(syncFromServer, 0); return () => clearTimeout(initial); }, [syncFromServer]);
+  useEffect(() => { syncFromServer(); }, [syncFromServer]);
 
   const filtered = filter === "leads" ? convs.filter(c => c.lead)
     : filter === "escalated" ? convs.filter(c => c.escalated)
@@ -3801,7 +3800,7 @@ function SystemHealthSection() {
     setPinging(false);
   }
 
-  useEffect(() => { const initial = setTimeout(ping, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { ping(); }, []);
 
   const SERVICES = [
     {
@@ -4113,9 +4112,9 @@ function WeeklyReportsSection() {
   }
 
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -4185,9 +4184,9 @@ function LeaveRequestsSection() {
   }
 
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -4437,7 +4436,7 @@ function TemplatesSection() {
       if (r.ok) setTemplates(json.templates || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   function startEdit(t) { setEditing(t.id); setDraft({ name: t.name, bodyMarkup: t.bodyMarkup }); }
 
@@ -4517,7 +4516,7 @@ function SignatoriesSection() {
       if (r.ok) setSignatories(json.signatories || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function add() {
     setErr(""); setMsg("");
@@ -4675,10 +4674,10 @@ function ContractsSection() {
     } catch { /* keep what's on screen; the next poll retries */ } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     // Picks up signings, online payments and reported transfers without a reload.
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   function flash(text) { setMsg(text); setTimeout(() => setMsg(""), 5000); }
@@ -5223,9 +5222,9 @@ function PayrollSection({ session }) {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -5619,9 +5618,9 @@ function EmailLogSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    const initial = setTimeout(load, 0);
+    load();
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => { clearTimeout(initial); clearInterval(t); };
+    return () => clearInterval(t);
   }, []);
 
   const kinds = Array.from(new Set(emails.map(e => e.kind)));
@@ -5724,7 +5723,7 @@ function TasksSection() {
       if (r.ok) setTasks(json.tasks || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function create() {
     if (!form.title) return;
@@ -5832,7 +5831,7 @@ function ExpensesSection() {
       if (r.ok) setExpenses(json.expenses || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function handleReceipt(e) {
     const file = e.target.files[0];
@@ -5963,7 +5962,7 @@ function AppraisalsSection() {
       if (r.ok) setAppraisals(json.appraisals || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function create() {
     setErr(""); setMsg("");
@@ -6096,7 +6095,7 @@ function AssetsSection() {
       if (r.ok) setAssets(json.assets || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function create() {
     if (!form.name) return;
@@ -6207,7 +6206,7 @@ function TicketsSection() {
       if (r.ok) setTickets(json.tickets || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function create() {
     if (!form.subject) return;
@@ -6596,7 +6595,7 @@ function InvoicesSection() {
       if (r.ok) { setInvoices(json.invoices || []); if (json.defaults) setDefaults(json.defaults); }
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
   const flash = t => { setMsg(t); setTimeout(() => setMsg(""), 3500); };
 
   function changed(inv, action) {
@@ -6686,7 +6685,7 @@ function PurchaseOrdersSection() {
       if (r.ok) setPos(json.purchaseOrders || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   async function create() {
     setErr(""); setMsg("");
@@ -6874,7 +6873,7 @@ function LettersSection() {
       if (rS.ok) setSignatories(jS.signatories || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
 
   function resetForm() {
     setForm({ subject: "", recipientName: "", recipientAddress: "", recipientEmail: "", signatoryId: signatories[0]?.id || "", bodyMarkup: "" });
@@ -7122,7 +7121,7 @@ function RenewalsSection() {
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
   const load = () => fetch("/api/admin/subscriptions").then(r => r.json()).then(setD).catch(() => setErr("Couldn't load"));
-  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
+  useEffect(() => { load(); }, []);
   async function call(method, body, done) {
     setErr("");
     const r = await fetch("/api/admin/subscriptions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -7457,17 +7456,15 @@ export default function AdminDashboard({ setCurrentPage }) {
 
   // Load the published website content before showing any editor, so every
   // section starts from what visitors actually see.
-  const [readySessionKey, setReadySessionKey] = useState("");
-  const sessionKey = session ? `${session.sub}:${session.adminRole}` : "";
-  const contentReady = !!sessionKey && readySessionKey === sessionKey;
+  const [contentReady, setContentReady] = useState(false);
   useEffect(() => {
-    if (!sessionKey) return undefined;
+    if (!session) { setContentReady(false); return undefined; }
     let done = false;
-    const finish = () => { if (!done) { done = true; setReadySessionKey(sessionKey); } };
+    const finish = () => { if (!done) { done = true; setContentReady(true); } };
     syncPublishedContent().catch(() => {}).finally(finish);
     const t = setTimeout(finish, 8000);
     return () => clearTimeout(t);
-  }, [sessionKey]);
+  }, [session]);
 
   // "Published to the website" / publishing errors, for every content save.
   const [publishNote, setPublishNote] = useState(null);
