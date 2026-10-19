@@ -181,6 +181,7 @@ export default function ClientPortal() {
             {doc.amount > 0 && <div style={{ fontSize: 14, marginTop: 4 }}>Paid <strong>{fmt(doc.paid, doc.currency)}</strong> of {fmt(doc.amount, doc.currency)} · Balance <strong style={{ color: doc.balance ? "#B45309" : "#15803D" }}>{fmt(doc.balance, doc.currency)}</strong></div>}
             {doc.next && <div style={{ fontSize: 14, marginTop: 4, color: doc.next.overdue ? "#B91C1C" : INK }}>{doc.next.overdue ? "Overdue" : "Next"}: {doc.next.title}, {fmt(doc.next.balance, doc.currency)}{doc.next.dueDate ? ` · due ${day(doc.next.dueDate)}` : ""}</div>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              {doc.renewalUrl && <a href={doc.renewalUrl} target="_blank" rel="noopener noreferrer" style={btn(true)}>Subscription / maintenance renewal</a>}
               {doc.payLink && doc.balance > 0 && <a href={doc.payLink} style={btn(true)}>Pay now</a>}
               {doc.hasPdf && <a href={pdfUrl(`contract:${doc.id}`)} target="_blank" rel="noreferrer" style={btn(false)}>View document</a>}
             </div>

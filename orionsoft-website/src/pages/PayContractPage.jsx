@@ -111,6 +111,7 @@ export default function PayContractPage() {
         </div>
       )}
 
+      {c.renewalUrl && <div style={{marginTop:16,padding:16,borderRadius:12,border:`1px solid ${LINE}`}}><strong>Software, hosting or maintenance renewal</strong><p style={{fontSize:14}}>View your agreed subscription amount and paid-through date, pay securely, or manage automatic renewal. Project payments remain shown below.</p><a href={c.renewalUrl} target="_blank" rel="noopener noreferrer" style={{color:NAVY,fontWeight:800}}>Open subscription renewal</a></div>}
       {dva && sum.balance > 0 && (
         <div style={{ marginTop: 14, padding: 16, borderRadius: 14, background: NAVY, color: "#fff" }}>
           <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.1em", color: GOLD }}>YOUR ACCOUNT NUMBER FOR THIS PLAN</div>

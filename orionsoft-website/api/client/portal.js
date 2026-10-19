@@ -67,6 +67,7 @@ export default async function handler(req, res) {
         amount: c.amount, paid: sum.paid, balance: sum.balance, hasPdf: !!(raw.signedPdfKey || raw.pdfKey),
         next: next ? { title: next.title, dueDate: next.dueDate, balance: next.balance, overdue: next.payStatus === "overdue" } : null,
         items: sum.schedule.map(m => ({ title: m.title, amount: m.amount, dueDate: m.dueDate, payStatus: m.payStatus })),
+        renewalUrl: c.status !== "cancelled" ? c.renewalUrl : "",
         payLink: c.amount > 0 && raw.payCode && c.status !== "cancelled" ? payLink(raw) : "",
       };
     });

@@ -1,3 +1,4 @@
+import { normaliseRenewalLink } from './renewalLinks.js';
 // Contract rules shared by the admin API, the signing and payment pages, the
 // Paystack webhook and the PDFs: numbering, the milestone payment schedule,
 // what has been paid, and the fields filled into every template.
@@ -18,6 +19,7 @@ export async function nextContractNumber() {
 // Older contracts have no number / schedule / client block.
 export function normaliseContract(c) {
   const out = { ...c };
+  out.renewalUrl = normaliseRenewalLink(out.renewalUrl);
   out.number = out.number || `CTR-${String(out.id || "").slice(-6).toUpperCase()}`;
   out.client = { name: out.recipientName || "", organisation: "", email: out.recipientEmail || "", phone: "", address: "", ...(out.client || {}) };
   out.schedule = Array.isArray(out.schedule) ? out.schedule : [];

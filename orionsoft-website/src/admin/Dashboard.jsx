@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
   Home, Megaphone, Package, Wrench, FileText, Briefcase, Star, HelpCircle,
@@ -644,7 +644,7 @@ function useAttention(enabled = true) {
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(enabled);
 
-  async function load(silent = false) {
+  const load = useCallback(async (silent = false) => {
     if (!enabled) return;
     if (!silent) setLoading(true);
     try {
@@ -652,12 +652,12 @@ function useAttention(enabled = true) {
       const json = await r.json();
       if (r.ok) { setItems(json.items || []); setCounts(json.counts || {}); }
     } finally { if (!silent) setLoading(false); }
-  }
+  }, [enabled]);
   useEffect(() => {
-    load();
+    const initial = setTimeout(() => load(), 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
-  }, []);
+    return () => { clearTimeout(initial); clearInterval(t); };
+  }, [load]);
 
   return { items, counts, loading, total: items.length };
 }
@@ -784,12 +784,13 @@ function DonutChart({ segments = [], size = 140, innerLabel = "total" }) {
   const total = segments.reduce((s, sg) => s + (sg.value || 0), 0);
   if (!total) return <div style={{ height:size, display:"flex", alignItems:"center", justifyContent:"center", color:C.textMuted, fontSize:12 }}>No data yet</div>;
   const cx = size/2, cy = size/2, R = size*0.35, stroke = size*0.17;
-  let angle = -Math.PI / 2;
-  const arcs = segments.filter(s => s.value > 0).map(sg => {
+  const positiveSegments = segments.filter(s => s.value > 0);
+  const arcs = positiveSegments.map((sg, index) => {
     const sweep = (sg.value / total) * 2 * Math.PI;
+    const angle = -Math.PI / 2 + positiveSegments.slice(0, index).reduce((sum, item) => sum + (item.value / total) * 2 * Math.PI, 0);
     const x1 = cx + R * Math.cos(angle), y1 = cy + R * Math.sin(angle);
-    angle += sweep;
-    const x2 = cx + R * Math.cos(angle), y2 = cy + R * Math.sin(angle);
+    const endAngle = angle + sweep;
+    const x2 = cx + R * Math.cos(endAngle), y2 = cy + R * Math.sin(endAngle);
     // A full circle can't be drawn as one arc (start == end draws nothing),
     // so a 100% segment is drawn as two half-arcs.
     if (sweep >= 2 * Math.PI - 1e-6) {
@@ -1222,7 +1223,7 @@ function LeadsSection() {
   }, []);
 
   // Auto-sync on mount
-  useEffect(() => { syncFromServer(); }, [syncFromServer]);
+  useEffect(() => { const initial = setTimeout(syncFromServer, 0); return () => clearTimeout(initial); }, [syncFromServer]);
 
   const norm = (l) => ({
     ...l,
@@ -1446,7 +1447,7 @@ function NewsletterSection() {
     try { const r = await fetch("/api/admin/newsletter"); const j = await r.json(); if (r.ok) setData(j); else setMsg(j.error || "Couldn't load subscribers"); }
     catch { setMsg("Couldn't load subscribers"); }
   }, []);
-  useEffect(() => { load(); const t = setInterval(() => { if (!document.hidden) load(); }, 30000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { const initial = setTimeout(load, 0); const t = setInterval(() => { if (!document.hidden) load(); }, 30000); return () => { clearTimeout(initial); clearInterval(t); }; }, [load]);
 
   async function call(method, body, url = "/api/admin/newsletter") {
     const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
@@ -2299,9 +2300,9 @@ function ApplicantsSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   // Stable reference so the portal panel's mark-read effect doesn't re-run each render.
@@ -2921,7 +2922,7 @@ function BackupCard() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const load = () => fetch("/api/admin/backup?view=status").then(r => r.json()).then(setStatus).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
   async function emailNow() {
     setBusy(true); setMsg("");
     try {
@@ -3062,7 +3063,7 @@ function UsersSection({ session }) {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function addUser() {
     setErr(""); setMsg("");
@@ -3203,9 +3204,9 @@ function AuditSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   function exportLogs() {
@@ -3464,7 +3465,7 @@ function ConversationsSection() {
     }
   }, []);
 
-  useEffect(() => { syncFromServer(); }, [syncFromServer]);
+  useEffect(() => { const initial = setTimeout(syncFromServer, 0); return () => clearTimeout(initial); }, [syncFromServer]);
 
   const filtered = filter === "leads" ? convs.filter(c => c.lead)
     : filter === "escalated" ? convs.filter(c => c.escalated)
@@ -3800,7 +3801,7 @@ function SystemHealthSection() {
     setPinging(false);
   }
 
-  useEffect(() => { ping(); }, []);
+  useEffect(() => { const initial = setTimeout(ping, 0); return () => clearTimeout(initial); }, []);
 
   const SERVICES = [
     {
@@ -4112,9 +4113,9 @@ function WeeklyReportsSection() {
   }
 
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -4184,9 +4185,9 @@ function LeaveRequestsSection() {
   }
 
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -4436,7 +4437,7 @@ function TemplatesSection() {
       if (r.ok) setTemplates(json.templates || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   function startEdit(t) { setEditing(t.id); setDraft({ name: t.name, bodyMarkup: t.bodyMarkup }); }
 
@@ -4516,7 +4517,7 @@ function SignatoriesSection() {
       if (r.ok) setSignatories(json.signatories || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function add() {
     setErr(""); setMsg("");
@@ -4605,7 +4606,7 @@ const SCHEDULE_PRESETS = [
 const emptyContractForm = () => ({
   id: "", templateId: "", title: "", client: { name: "", organisation: "", email: "", phone: "", address: "" },
   effectiveDate: localToday(), endDate: "", scope: "", deliverables: "", currency: "NGN", amount: "", vatIncluded: false, allowPartial: true,
-  paymentTerms: "", schedule: [], fillData: {}, signatoryIds: [], customBody: "", payBeforeSigning: false,
+  paymentTerms: "", renewalUrl: "", schedule: [], fillData: {}, signatoryIds: [], customBody: "", payBeforeSigning: false,
 });
 const subHead = { fontSize: 11, fontWeight: 700, color: C.textMuted, letterSpacing: "0.08em", margin: "20px 0 10px" };
 const grid2 = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 };
@@ -4674,10 +4675,10 @@ function ContractsSection() {
     } catch { /* keep what's on screen; the next poll retries */ } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     // Picks up signings, online payments and reported transfers without a reload.
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   function flash(text) { setMsg(text); setTimeout(() => setMsg(""), 5000); }
@@ -4722,7 +4723,7 @@ function ContractsSection() {
       id: c.id, templateId: c.templateId, title: c.title, client: { ...emptyContractForm().client, ...c.client },
       effectiveDate: c.effectiveDate || localToday(), endDate: c.endDate || "", scope: c.scope || "", deliverables: (c.deliverables || []).join("\n"),
       currency: c.currency || "NGN", amount: c.amount ? String(c.amount) : "", vatIncluded: !!c.vatIncluded, allowPartial: c.allowPartial !== false,
-      paymentTerms: c.paymentTerms || "", schedule: (c.schedule || []).map(m => ({ ...newRow(m.title, m.amount, m.trigger || ""), id: m.id, dueDate: m.dueDate || "" })),
+      renewalUrl: c.renewalUrl || "", paymentTerms: c.paymentTerms || "", schedule: (c.schedule || []).map(m => ({ ...newRow(m.title, m.amount, m.trigger || ""), id: m.id, dueDate: m.dueDate || "" })),
       fillData: { ...(c.fillData || {}) }, signatoryIds: c.signatoryIds || [], customBody: c.customBody || "", payBeforeSigning: !!c.payBeforeSigning,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4737,7 +4738,7 @@ function ContractsSection() {
     if (!isPlan && form.signatoryIds.length === 0 && signatories.length > 0 && !confirm("No company signatory is selected, so the document will carry no Orion Soft signature. Continue anyway?")) return;
     const editedBody = form.customBody.trim() && form.customBody.trim() !== String(template?.bodyMarkup || "").trim() ? form.customBody : "";
     const body = {
-      templateId: form.templateId, title: form.title.trim() || undefined, client: form.client,
+      renewalUrl: form.renewalUrl || "", templateId: form.templateId, title: form.title.trim() || undefined, client: form.client,
       effectiveDate: form.effectiveDate, endDate: form.endDate, fillData: form.fillData, signatoryIds: form.signatoryIds,
       customBody: editedBody, payBeforeSigning: kind === "agreement" && payable ? form.payBeforeSigning : false,
       ...(kind === "agreement" ? { scope: form.scope, deliverables: form.deliverables } : {}),
@@ -4907,6 +4908,7 @@ function ContractsSection() {
                       {!isPlan && form.schedule.length > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: scheduleOff ? C.rose : C.mint }}>Schedule total {ctrMoney(scheduleTotal, form.currency)}{scheduleOff ? ` ≠ value ${ctrMoney(value, form.currency)}` : " ✓"}</span>}
                       {!isPlan && form.schedule.length === 0 && value > 0 && <span style={{ fontSize: 12.5, color: C.textMuted }}>No schedule: the full value is due on signing.</span>}
                     </div>
+                    <div style={{marginTop:12}}><Label>Software, hosting or maintenance renewal link (optional)</Label><Input type="url" value={form.renewalUrl || ''} onChange={e=>setF({renewalUrl:e.target.value})} placeholder="https://olm-console-production.up.railway.app/pay/?"/><p style={{fontSize:12,color:C.text}}>Copy this customer's secure payment link from Orion License Manager after setting their agreed price and billing email. The client can approve automatic renewal there. These renewals are separate from the project balance below.</p></div>
                     <div style={{ marginTop: 12 }}><Label>Extra payment terms (optional)</Label><Textarea rows={2} value={form.paymentTerms} onChange={e => setF({ paymentTerms: e.target.value })} placeholder="e.g. Hosting is billed separately at cost." /></div>
                   </>
                 )}
@@ -5221,9 +5223,9 @@ function PayrollSection({ session }) {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   function employeeName(id) { return employees.find(e => e.id === id)?.fullName || "Unknown"; }
@@ -5617,9 +5619,9 @@ function EmailLogSection() {
     } finally { if (!silent) setLoading(false); }
   }
   useEffect(() => {
-    load();
+    const initial = setTimeout(load, 0);
     const t = setInterval(() => { if (!document.hidden) load(true); }, 30000);
-    return () => clearInterval(t);
+    return () => { clearTimeout(initial); clearInterval(t); };
   }, []);
 
   const kinds = Array.from(new Set(emails.map(e => e.kind)));
@@ -5722,7 +5724,7 @@ function TasksSection() {
       if (r.ok) setTasks(json.tasks || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function create() {
     if (!form.title) return;
@@ -5830,7 +5832,7 @@ function ExpensesSection() {
       if (r.ok) setExpenses(json.expenses || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function handleReceipt(e) {
     const file = e.target.files[0];
@@ -5961,7 +5963,7 @@ function AppraisalsSection() {
       if (r.ok) setAppraisals(json.appraisals || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function create() {
     setErr(""); setMsg("");
@@ -6094,7 +6096,7 @@ function AssetsSection() {
       if (r.ok) setAssets(json.assets || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function create() {
     if (!form.name) return;
@@ -6205,7 +6207,7 @@ function TicketsSection() {
       if (r.ok) setTickets(json.tickets || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function create() {
     if (!form.subject) return;
@@ -6594,7 +6596,7 @@ function InvoicesSection() {
       if (r.ok) { setInvoices(json.invoices || []); if (json.defaults) setDefaults(json.defaults); }
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
   const flash = t => { setMsg(t); setTimeout(() => setMsg(""), 3500); };
 
   function changed(inv, action) {
@@ -6684,7 +6686,7 @@ function PurchaseOrdersSection() {
       if (r.ok) setPos(json.purchaseOrders || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   async function create() {
     setErr(""); setMsg("");
@@ -6872,7 +6874,7 @@ function LettersSection() {
       if (rS.ok) setSignatories(jS.signatories || []);
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
 
   function resetForm() {
     setForm({ subject: "", recipientName: "", recipientAddress: "", recipientEmail: "", signatoryId: signatories[0]?.id || "", bodyMarkup: "" });
@@ -7120,7 +7122,7 @@ function RenewalsSection() {
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState(""); const [err, setErr] = useState("");
   const load = () => fetch("/api/admin/subscriptions").then(r => r.json()).then(setD).catch(() => setErr("Couldn't load"));
-  useEffect(() => { load(); }, []);
+  useEffect(() => { const initial = setTimeout(load, 0); return () => clearTimeout(initial); }, []);
   async function call(method, body, done) {
     setErr("");
     const r = await fetch("/api/admin/subscriptions", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -7455,15 +7457,17 @@ export default function AdminDashboard({ setCurrentPage }) {
 
   // Load the published website content before showing any editor, so every
   // section starts from what visitors actually see.
-  const [contentReady, setContentReady] = useState(false);
+  const [readySessionKey, setReadySessionKey] = useState("");
+  const sessionKey = session ? `${session.sub}:${session.adminRole}` : "";
+  const contentReady = !!sessionKey && readySessionKey === sessionKey;
   useEffect(() => {
-    if (!session) { setContentReady(false); return undefined; }
+    if (!sessionKey) return undefined;
     let done = false;
-    const finish = () => { if (!done) { done = true; setContentReady(true); } };
+    const finish = () => { if (!done) { done = true; setReadySessionKey(sessionKey); } };
     syncPublishedContent().catch(() => {}).finally(finish);
     const t = setTimeout(finish, 8000);
     return () => clearTimeout(t);
-  }, [session]);
+  }, [sessionKey]);
 
   // "Published to the website" / publishing errors, for every content save.
   const [publishNote, setPublishNote] = useState(null);

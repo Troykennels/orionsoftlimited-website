@@ -1,3 +1,4 @@
+import { normaliseRenewalLink } from '../_lib/renewalLinks.js';
 // Admin contracts: create from a template with structured details (client,
 // dates, scope, deliverables, value and milestone payment schedule), send for
 // signature, send the payment link, record/confirm payments with receipts,
@@ -35,6 +36,10 @@ function templateMeta(t) {
 // Validates the structured details. Returns { data } or { error }.
 function cleanDetails(b, meta, { partial = false } = {}) {
   const d = {};
+  if (b.renewalUrl !== undefined) {
+    d.renewalUrl = normaliseRenewalLink(b.renewalUrl);
+    if (String(b.renewalUrl || '').trim() && !d.renewalUrl) return { error: 'Use the secure customer renewal link issued by Orion License Manager.' };
+  }
   const client = { ...(b.client || {}) };
   if (b.recipientName !== undefined && !client.name) client.name = b.recipientName;
   if (b.recipientEmail !== undefined && !client.email) client.email = b.recipientEmail;

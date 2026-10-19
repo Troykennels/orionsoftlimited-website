@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       dva: dva ? { bankName: dva.bankName, accountNumber: dva.accountNumber, accountName: dva.accountName } : null,
       link: payLink(raw),
       ok: true,
-      contract: { id: c.id, number: c.number, kind: c.kind || "agreement", docLabel: c.docLabel || "", pdfKey: raw.signedPdfKey || raw.pdfKey || "", title: c.title, clientName: c.client.name, organisation: c.client.organisation, currency: c.currency, allowPartial: c.allowPartial, status: c.status },
+      contract: { renewalUrl: c.renewalUrl, id: c.id, number: c.number, kind: c.kind || "agreement", docLabel: c.docLabel || "", pdfKey: raw.signedPdfKey || raw.pdfKey || "", title: c.title, clientName: c.client.name, organisation: c.client.organisation, currency: c.currency, allowPartial: c.allowPartial, status: c.status },
       summary: { total: summary.total, paid: summary.paid, balance: summary.balance, schedule: summary.schedule.map(m => ({ id: m.id, title: m.title, description: m.description || "", dueDate: m.dueDate || null, trigger: m.trigger || "", amount: m.amount, paid: m.paid, balance: m.balance, payStatus: m.payStatus })), receipts: summary.receipts.map(r => ({ receiptNumber: r.receiptNumber, amount: r.amount, paidAt: r.paidAt, method: r.method, pdfKey: payments.find(p => p.id === r.id)?.receiptPdfKey || "" })), pending: summary.pending.map(p => ({ amount: p.amount, bankReference: p.bankReference, createdAt: p.createdAt })) },
       payOnline: !!process.env.PAYSTACK_SECRET_KEY,
       bankDetails: company.bankDetails || "",
