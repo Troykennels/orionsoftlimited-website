@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFile } from 'node:fs/promises';
 process.env.NODE_ENV='test';process.env.SESSION_SECRET='isolated-orion-calls-fixture';
 for(const k of Object.keys(process.env)) if(/REDIS|UPSTASH|KV_REST|DATA_DIR|GMAIL|BREVO|RESEND|SMTP|VAPID|TERMII|CALL_TURN/.test(k)) delete process.env[k];
 const store=await import('../api/store.js');assert.equal(store.storeBackend(),'mem');
@@ -15,6 +16,11 @@ async function request(fn,method,body={},id='host',query={}) {
   await fn({method,body,query,url:fn===social?'/api/admin/social-content':'',headers:{cookie:id?cookie(id):''},socket:{remoteAddress:'127.0.0.1'}},res);return res;
 }
 let meeting;
+test('production permissions permit same-origin microphones',async()=>{
+  const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
+  const rule=config.headers.flatMap(group=>group.headers).find(h=>h.key==='Permissions-Policy');
+  assert.match(rule.value,/microphone=\(self\)/);assert.match(rule.value,/camera=\(self\)/);
+});
 test('internal meeting is the default and private to invitees',async()=>{
   const r=await request(meetings,'POST',{title:'Private call',startsAt:new Date().toISOString(),attendeeIds:['guest']});
   assert.equal(r.statusCode,200);meeting=r.body.meeting;assert.equal(meeting.roomMode,'internal');assert.equal(meeting.link,'');
