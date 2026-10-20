@@ -90,13 +90,14 @@ const PAGES = {
   "/events": ["Events | Orion Soft", "Webinars, demos and events from Orion Soft.", "Events"],
   "/faq": ["FAQ | Orion Soft Software", "Answers to common questions about Orion Soft software, pricing, implementation, data and support.", "Frequently asked questions"],
   "/docs": ["Documentation | Orion Soft", "Product documentation and guides.", "Documentation"],
+  "/custom-software": ["Custom Software & Product Customisation | Orion Soft", "Customise Orion software or request a new website, web app, mobile app or business system. Submit a project brief to Orion Soft Limited in Lagos, Nigeria, serving organisations internationally.", "Custom software for your business"],
   "/contact": ["Contact Orion Soft | Ajah, Lagos · 0816 957 7059", "Contact Orion Soft Limited: call or WhatsApp 0816 957 7059, email orionsoftlimited@gmail.com, or visit us at Urban Prime 2, Abraham Adesanya, Ajah, Lagos. Book a free demo.", "Contact us"],
   "/consultation": ["Book a Free Demo or Consultation | Orion Soft", "Book a free demo of CareCore, SchoolCore, FinanceCore and more, or a consultation for custom software, websites and apps.", "Book a free demo"],
   "/privacy": ["Privacy Policy | Orion Soft", "How Orion Soft Limited collects, uses and protects personal data.", "Privacy policy"],
   "/terms": ["Terms of Service | Orion Soft", "Terms of service for Orion Soft Limited websites and software.", "Terms of service"],
 };
 
-const LINKS = [["/office", "Online office"], ["/", "Home"], ["/products", "Products"], ...Object.entries(PRODUCTS).map(([id, p]) => [`/${id}`, p.name]), ["/services", "Custom software & websites"], ["/international", "International clients"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
+const LINKS = [["/office", "Online office"], ["/", "Home"], ["/products", "Products"], ...Object.entries(PRODUCTS).map(([id, p]) => [`/${id}`, p.name]), ["/custom-software", "Custom software & product customisation"], ["/international", "International clients"], ["/pricing", "Pricing"], ["/case-studies", "Case studies"], ["/about", "About"], ["/blog", "Blog"], ["/careers", "Careers"], ["/contact", "Contact"], ["/consultation", "Book a demo"]];
 
 function page(path, { title, desc, h1, body = [], points = [], jsonLd = [], image }) {
   const url = `${SITE}${path === "/" ? "/" : path}`;

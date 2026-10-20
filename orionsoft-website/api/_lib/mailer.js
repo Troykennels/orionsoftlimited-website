@@ -12,6 +12,7 @@ async function sendViaResend(to, subject, html, apiKey, attachments) {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
       body: JSON.stringify({
         from: RESEND_FROM, to: [to], subject, html,
         attachments: attachments?.map(a => ({ filename: a.filename, content: a.content.toString("base64") })),
@@ -59,12 +60,16 @@ async function sendViaGmail(to, subject, html, attachments) {
 // onboarding@resend.dev sender is restricted to the account owner only, so it
 // silently fails for client/staff emails. Gmail has no such restriction.
 // `attachments`: [{ filename, content: Buffer }] — used for PDF letterheads/payslips.
-export async function sendEmail(to, subject, html, { attachments, kind } = {}) {
-  let ok = false;
-  if (process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_USER) {
+export async function sendEmail(to, subject, html, { attachments, kind, preferHttp = false } = {}) {
+  let ok = false, resendTried = false;
+  if (preferHttp && process.env.RESEND_API_KEY) {
+    resendTried = true;
+    ok = await sendViaResend(to, subject, html, process.env.RESEND_API_KEY, attachments);
+  }
+  if (!ok && process.env.GMAIL_APP_PASSWORD && process.env.GMAIL_USER) {
     ok = await sendViaGmail(to, subject, html, attachments);
   }
-  if (!ok && process.env.RESEND_API_KEY) {
+  if (!ok && !resendTried && process.env.RESEND_API_KEY) {
     ok = await sendViaResend(to, subject, html, process.env.RESEND_API_KEY, attachments);
   }
   if (!ok && !process.env.GMAIL_APP_PASSWORD && !process.env.RESEND_API_KEY) {

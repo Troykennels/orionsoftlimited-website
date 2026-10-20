@@ -304,3 +304,11 @@ article, .card { will-change: transform; }
   .process-plans-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
 }
 
+
+/* Keep the complete navigation usable as the custom software entry is added. */
+@media (max-width:1240px) {
+  .nav-links { display:none !important; }
+  .nav-burger { display:block !important; }
+  .mobile-menu { display:block !important; }
+  .nav-megamenu { display:none !important; }
+}

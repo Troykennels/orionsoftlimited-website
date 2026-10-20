@@ -12,6 +12,7 @@ import { SHARE_TARGETS, openShare } from "./staff/api.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
 const AdminDashboard    = lazy(() => import("./admin/Dashboard"));
+const CustomSoftwarePage = lazy(() => import("./pages/CustomSoftwarePage"));
 const HomePage          = lazy(() => import("./pages/HomePage"));
 const ProductsPageFull  = lazy(() => import("./pages/ProductsPage"));
 const IndustriesPageFull = lazy(() => import("./pages/IndustriesPage"));
@@ -282,7 +283,8 @@ const DEFAULT_MAIN_MENU = [
 // Top-level desktop nav (fixed structure no longer CMS-driven)
 const TOP_NAV = [
   { label: "Products",     page: "products",     hasMenu: true },
-  { label: "Industries",   page: "industries" },
+  { label: "Custom software", page: "custom-software" },
+  { label: "Industries", page: "industries" },
   { label: "Why Us",       page: "why" },
   { label: "Pricing",      page: "pricing" },
   { label: "About",        page: "about" },
@@ -673,7 +675,7 @@ function Nav({ currentPage, setCurrentPage }) {
   // section happened to sit behind it). Force a solid, always-legible white
   // bar with dark text on small screens instead.
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
+    const mq = window.matchMedia("(max-width: 1240px)");
     const h = () => setIsMobile(mq.matches);
     h();
     mq.addEventListener("change", h);
@@ -760,7 +762,7 @@ function Nav({ currentPage, setCurrentPage }) {
         </button>
 
         {/* Desktop links */}
-        <div className="nav-links" style={{ display: "flex", gap: 28, alignItems: "center" }}>
+        <div className="nav-links" style={{ display: "flex", gap: 20, alignItems: "center" }}>
           {TOP_NAV.map(l => {
             const active = l.hasMenu ? isProductPage : currentPage === l.page;
             return (
@@ -3214,6 +3216,7 @@ function Footer({ setCurrentPage }) {
             ]},
             { title: "Solutions", links: [
               { l: "Industries", a: "/industries", onClick: (e) => { e.preventDefault(); setCurrentPage("industries"); } },
+              { l: "Custom software", a: "/custom-software", onClick: (e) => { e.preventDefault(); setCurrentPage("custom-software"); } },
               { l: "Solutions", a: "/solutions", onClick: (e) => { e.preventDefault(); setCurrentPage("solutions"); } },
               { l: "International Clients", a: "/international", onClick: (e) => { e.preventDefault(); setCurrentPage("international"); } },
               { l: "Partners", a: "/partners", onClick: (e) => { e.preventDefault(); setCurrentPage("partners"); } },
@@ -5462,7 +5465,7 @@ function OrionHome({ setCurrentPage, portfolio }) {
 }
 
 // Every page the router knows (CMS-only product pages are checked at render).
-const KNOWN_PAGES = new Set(["office", "home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo", "orion-crm-demo", "directors-portal-demo", "license-manager-demo", "orion-crm", "directors-portal", "license-manager"]);
+const KNOWN_PAGES = new Set(["office", "home", "about", "admin", "api-docs", "awards", "blog", "carecore", "careers", "case-studies", "certifications", "churchcore", "clients", "compliancecore", "consultation", "contact", "custom-software", "docs", "events", "faq", "financecore", "fleetcore", "hrcore", "industries", "inventorycore", "investors", "login", "partners", "pricing", "privacy", "process", "products", "referral", "resources", "schoolcore", "security", "services", "solutions", "success-stories", "support", "team", "tech", "telehealth", "terms", "testimonials", "why", "work", "people", "person", "paye-calculator", "press", "international", "developers", "kenya-paye-calculator", "ghana-paye-calculator", "demo", "staffcore", "staffcore-demo", "schoolcore-demo", "carecore-demo", "compliancecore-demo", "orion-crm-demo", "directors-portal-demo", "license-manager-demo", "orion-crm", "directors-portal", "license-manager"]);
 
 function routeFromLocation() {
   const { pathname, hash } = window.location;
@@ -5774,6 +5777,7 @@ export default function App() {
           <WorkPage setCurrentPage={navSetPage} portfolio={portfolio} />
         )}
 
+        {currentPage === "custom-software" && <Suspense fallback={<PageLoader label="Loading custom software…" />}><CustomSoftwarePage /></Suspense>}
         {currentPage === "contact" && (
           <Suspense fallback={<PageLoader label="Loading contact page…" />}>
             <ContactPage setCurrentPage={navSetPage} />

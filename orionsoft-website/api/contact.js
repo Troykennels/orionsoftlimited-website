@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { push } from "./store.js";
 import { sendEmail } from "./_lib/mailer.js";
 import { escapeHtml as esc } from "./_lib/office.js";
@@ -68,10 +69,10 @@ function checkRate(ip) {
   return true;
 }
 
-function confirmHtml({ type, name, ref, product, demoSlot }) {
-  const label = TYPE_LABELS[type] || "Enquiry";
+function confirmHtml({ type, name, ref, product, demoSlot, customProject }) {
+  const label = customProject ? "Custom Software Request" : TYPE_LABELS[type] || "Enquiry";
   const p = PRODUCT_INFO[product?.toLowerCase?.()];
-  const next = type === "demo" && p
+  const next = customProject ? "Your project request is registered. Our team will contact you to discuss your requirements, scope, timeline and quotation. No paid work starts until we agree the proposal with you." : type === "demo" && p
     ? `Your demo for <strong>${p.name}</strong> has been confirmed ✅${demoSlot ? ` Preferred time: <strong>${esc(demoSlot)}</strong>.` : ""} Our team will contact you within 1 business day to send a calendar invite and meeting link. Please check your phone and email.`
     : NEXT_STEPS[type] || NEXT_STEPS.contact;
 
@@ -111,7 +112,8 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
   <tr><td style="background:#0F1828;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:36px;">
     <div style="text-align:center;font-size:40px;margin-bottom:16px;">${type === "demo" ? "🗓️" : "✓"}</div>
     <h1 style="color:#F2F6FF;font-size:22px;font-weight:700;margin:0 0 6px;text-align:center;">${p ? p.name + " " : ""}${label} Confirmed</h1>
-    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${esc(name || "there")}, thank you for reaching out to Orion Soft. We're excited to show you what we've built.</p>
+    <p style="color:#C8D0E0;font-size:15px;line-height:1.7;margin:0 0 26px;text-align:center;">Hi ${esc(name || "there")}, ${customProject ? "thank you for sharing your project brief. We have registered your request for review." : "thank you for reaching out to Orion Soft. We are excited to show you what we have built."}</p>
+    ${customProject ? `<div style="background:#060810;padding:18px;border-radius:10px;margin-bottom:20px"><p style="color:#C8A850;margin:0 0 8px;font-weight:700">YOUR PROJECT REQUEST</p><p style="color:#F2F6FF;margin:0 0 10px">${esc(customProject.projectTitle)}</p><p style="color:#C8D0E0;margin:0 0 10px">${esc(customProject.company)} ? ${esc(customProject.product)}</p><p style="color:#C8D0E0;line-height:1.7;white-space:pre-wrap;margin:0">${esc(customProject.message)}</p></div>` : ""}
     ${productBlock}
     ${demoSlotBlock}
     <div style="background:#060810;border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:18px;margin-bottom:22px;">
@@ -135,7 +137,8 @@ function confirmHtml({ type, name, ref, product, demoSlot }) {
 }
 
 function adminHtml(data) {
-  const { type, honeypot: _h, timing: _t, ref, ...fields } = data;
+  const { type, ref, ...rest } = data;
+  const fields = Object.fromEntries(Object.entries(rest).filter(([key])=>!["honeypot","timing"].includes(key)));
   const label = TYPE_LABELS[type] || "Enquiry";
   const rows = Object.entries(fields)
     .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "")
@@ -204,7 +207,18 @@ export default async function handler(req, res) {
     body.type = body.type || "demo";
   }
 
-  const ref = /^ORN-[A-Z0-9]{4,10}$/.test(body.ref || "") ? body.ref : `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const customProject = body.requestCategory === "software_customisation";
+  if (customProject) {
+    body.type = "quote";
+    const allowed = new Set(["type","requestCategory","name","email","phone","company","projectKind","product","projectTitle","message","budget","timeline","honeypot","timing"]);
+    for (const key of Object.keys(body)) if (!allowed.has(key)) delete body[key];
+    body.email = String(body.email || "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) return res.status(400).json({ error: "Enter a valid email address." });
+    body.projectTitle = String(body.projectTitle || "").trim().slice(0,160);
+    if (!body.name?.trim() || !body.company?.trim() || !body.phone?.trim() || !body.projectTitle?.trim() || !body.product?.trim() || !body.message?.trim() || body.message.trim().length < 20) return res.status(400).json({ error: "Please complete your contact details, organisation, project name and requirements (at least 20 characters)." });
+    if (!["new-software", "customise-product", "website", "mobile-app", "integration"].includes(body.projectKind)) return res.status(400).json({ error: "Choose a valid project type." });
+  }
+  const ref = customProject ? `ORN-${randomBytes(5).toString("hex").toUpperCase()}` : /^ORN-[A-Z0-9]{4,10}$/.test(body.ref || "") ? body.ref : `ORN-${Date.now().toString(36).toUpperCase().slice(-7)}`;
   // The demo form sends a preferred date and time; the emails show them as one slot.
   if (!body.demoSlot && (body.preferredDate || body.preferredTime)) {
     const day = body.preferredDate ? new Date(`${body.preferredDate}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "";
@@ -233,19 +247,29 @@ export default async function handler(req, res) {
 
   // Build product-aware subject lines
   const productMeta = PRODUCT_INFO[body.product?.toLowerCase?.()];
-  const clientSubject = body.type === "demo" && productMeta
+  const clientSubject = customProject ? `Custom Software Request Registered: Orion Soft [${ref}]` : body.type === "demo" && productMeta
     ? `${productMeta.name} Demo Confirmed: Orion Soft [${ref}]`
     : `${TYPE_LABELS[body.type] || "Enquiry"} Received: Orion Soft [${ref}]`;
-  const adminSubject = productMeta
+  const adminSubject = customProject ? `[${ref}] New Custom Software Request: ${body.projectTitle}` : productMeta
     ? `[${ref}] ${TYPE_LABELS[body.type] || "Lead"}: ${productMeta.name}, ${body.name || body.email}`
     : `[${ref}] New ${TYPE_LABELS[body.type] || "Lead"} from ${body.name || body.email}`;
+
+  if (customProject) {
+    // HTTP mail avoids blocked SMTP ports on hosted services. Both sends are
+    // awaited together; a failed email never discards the saved project brief.
+    const [confirmationEmailSent] = await Promise.all([
+      sendEmail(body.email, clientSubject, confirmHtml({ type: body.type, name: body.name, ref, product: body.product, customProject: body }), { kind: "custom_project_confirmation", preferHttp: true }),
+      sendEmail(ADMIN_EMAIL, adminSubject, adminHtml(emailData), { kind: "custom_project_alert", preferHttp: true }),
+    ]);
+    return res.json({ ok: true, ref, confirmationEmailSent });
+  }
 
   // Send confirmation to the user (best-effort)
   if (body.email && body.type !== "newsletter") {
     await sendEmail(
       body.email,
       clientSubject,
-      confirmHtml({ type: body.type, name: body.name, ref, product: body.product, demoSlot: body.demoSlot }),
+      confirmHtml({ type: body.type, name: body.name, ref, product: body.product, demoSlot: body.demoSlot, customProject: customProject ? body : null }),
     );
   }
   // Newsletter signups join the list at once and get a welcome email.

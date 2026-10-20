@@ -494,7 +494,7 @@ const PRODUCTS = [
       "iOS and Android mobile apps (cross-platform or native)",
       "API development, integrations and cloud migrations",
     ],
-    page: "contact",
+    page: "custom-software",
     cta: "Start a Project →",
   },
   {
