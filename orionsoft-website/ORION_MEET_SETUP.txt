@@ -7,7 +7,7 @@ Camera is enabled by default; users can select voice only before joining.
 This implementation supports SIX active participants. Larger organisation
 meetings need an SFU and load testing before they can be offered to customers.
 
-Controls: mute, camera, share screen, leave and host end for everyone.
+Controls: mute, camera, share screen, Restore audio, leave and host end for everyone.
 Only invited staff can join a private meeting. Everyone meetings admit active
 company staff. The owner uses their linked Staff Office. Content managers do
 not gain staff access.
@@ -32,10 +32,14 @@ meeting; the other chooses Join in portal. Starting two separate meetings will
 show two self previews because neither person joined the other's meeting.
 A one-person room now explains that it is waiting for someone else.
 
-The participant tile shows Direct connection or Office compatibility connection
-only when media arrives. Interrupted connections retry automatically. The
-compatibility path uses smaller JPEG video frames and 16 kHz speech audio to
-prioritise connectivity. It has lower video quality than direct WebRTC and uses
+The participant tile prefers Direct connection only while incoming speech and
+any active video have fresh receiver statistics. Otherwise it uses Office
+compatibility connection while fallback media arrives; missing media is shown
+explicitly after 12 seconds instead of an indefinite Connecting label. Interrupted connections retry automatically. The
+camera requests up to 1280 x 720 at 24 fps for direct calls. Compatibility video
+uses 640 x 360 JPEG frames at up to 10 fps, with a bounded image budget that
+drops pictures before speech on a slow uplink. It uses 16 kHz mono speech audio
+and a 160 ms jitter buffer to absorb bursty delivery. It has lower video quality than direct WebRTC and uses
 your existing Railway hosting bandwidth. This is not unlimited free bandwidth.
 Current rooms still support SIX people. Larger meetings require an SFU and load
 and real-device testing before being sold or presented as supported.
@@ -73,3 +77,29 @@ restricted to their existing communications and assigned-client access.
 
 Notifications use browser push and existing jobs. Device permissions and quiet
 hours control delivery and sound; audible delivery is not guaranteed everywhere.
+
+20 OCTOBER - AUDIO AND SCREEN CONTROL REPAIR
+Remote speech plays through separate audio elements so a stalled video decoder
+cannot silence it. Blocked playback offers Enable sound. The meeting audio
+context reports interruptions and can resume after returning to the page.
+Restore audio also reacquires the microphone and replaces it in existing peer
+connections and the compatibility capture graph. Browser AudioSession is set
+to play-and-record during calls where supported, then reset on exit.
+Keep the meeting page in the foreground on phones. Operating-system calls,
+locking the device and switching applications can pause browser capture; the
+portal cannot override operating-system restrictions.
+Screen sharing gives Choose screen feedback while the browser picker is open.
+Missing capture APIs disable sharing with an explanation. A browser rejecting
+capture as unsupported also disables the button and explains desktop presenting.
+Receiving a shared screen remains available on phones. No native phone screen
+capture or permission bypass is claimed.
+Automated browser runs no longer override autoplay security. They simulate
+blocked playback, suspend/resume the real audio context, replace microphones,
+reconnect WSS and sample speech both ways through an extended jittered session.
+These checks do not certify a physical iPhone or organisational readiness.
+
+Enlarge video opens a participant or shared-screen image in a full-window view
+without duplicating speech. Close enlarged video or Escape returns to the grid
+and restores keyboard focus. Expand meeting enlarges the complete room; Restore
+meeting or Escape returns to the normal page. These use an in-page overlay,
+so they do not depend on native fullscreen being available on a phone.

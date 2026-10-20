@@ -16,7 +16,25 @@ export class OfficeCall {
       void this.relay.start();
     }
   }
-  directReady(peer){return peer.pc.connectionState==='connected'&&peer.stream.getTracks().some(t=>t.readyState==='live'&&!t.muted);}
+  directReady(peer){
+    // An ICE connection and a live video track do not prove that speech arrived.
+    const now=Date.now(),video=peer.stream.getVideoTracks().some(t=>t.readyState==='live'&&!t.muted);
+    return peer.pc.connectionState==='connected'&&now-(peer.audioReceivedAt||0)<6000&&(!video||now-(peer.videoReceivedAt||0)<6000);
+  }
+  async inspectMedia(peer){
+    try{
+      const stats=await peer.pc.getStats();
+      stats.forEach(stat=>{
+        if(stat.type!=='inbound-rtp')return;
+        const kind=stat.kind||stat.mediaType;if(!['audio','video'].includes(kind))return;
+        const count=kind==='audio'?stat.packetsReceived:stat.framesDecoded;
+        peer.mediaCounts||=new Map();const key=stat.id||`${kind}:${stat.ssrc||''}`,previous=peer.mediaCounts.get(key)||0;
+        // A new SSRC or a counter reset after source replacement is fresh media.
+        if(count>0&&count!==previous)peer[kind+'ReceivedAt']=Date.now();
+        peer.mediaCounts.set(key,count||0);
+      });
+    }catch{/* Browser statistics may be temporarily unavailable during negotiation. */}
+  }
   updateChoice(id){
     const peer=this.peers.get(id);if(!peer||this.closed)return;
     const direct=this.directReady(peer),backup=this.relay?.remotes.get(id);
@@ -24,7 +42,7 @@ export class OfficeCall {
     const stream=direct?peer.stream:fresh?backup.stream:null;
     if(stream&&peer.chosen!==stream){peer.chosen=stream;this.events.stream(id,stream);}
     if(!stream&&peer.chosen){peer.chosen=null;this.events.stream(id,null);}
-    this.events.connection(id,stream?(direct?'Direct connection':'Office compatibility connection'):'Connecting');
+    this.events.connection(id,stream?(direct?'Direct connection':'Office compatibility connection'):Date.now()-peer.createdAt>12000?'No media received - check connection or rejoin':'Connecting');
     this.relay?.watch([...this.peers].filter(([,p])=>!this.directReady(p)).map(([key])=>key));
   }
   outgoingTrack(kind) { return kind === 'video' ? this.videoTrack : this.stream.getAudioTracks()[0] || null; }
@@ -32,7 +50,7 @@ export class OfficeCall {
     const task=async()=>{
       for(let attempt=0;attempt<6;attempt++){
         if(this.closed&&body.action==='signal')return {ok:false};
-        try{return await api('/api/staff/calls',{method:'POST',keepalive:body.action==='leave',body:{meetingId:this.meetingId,sessionId:this.sessionId,...body}});}
+        try{return await api('/api/staff/calls',{method:'POST',keepalive:body.action==='leave',signal:AbortSignal.timeout(8000),body:{meetingId:this.meetingId,sessionId:this.sessionId,...body}});}
         catch(e){if(attempt===5||!(e.status===503||e.status===409&&/room is updating/i.test(e.message)||!e.status))throw e;await new Promise(resolve=>setTimeout(resolve,80*2**attempt+Math.random()*80));}
       }
     };
@@ -43,7 +61,7 @@ export class OfficeCall {
     if (this.peers.has(id)) return this.peers.get(id);
     const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     const remote = new MediaStream();
-    const peer = { pc, stream: remote, pending: [], restarted: false };
+    const peer = { pc, stream: remote, pending: [], restarted: false, createdAt: Date.now() };
     this.peers.set(id, peer);
     // Only the offerer creates transceivers. The answerer binds its tracks to
     // those established by the incoming offer; precreating them can silently
@@ -69,7 +87,7 @@ export class OfficeCall {
   async poll() {
     if (this.closed) return;
     try {
-      const room = await api(`/api/staff/calls?meetingId=${encodeURIComponent(this.meetingId)}&sessionId=${this.sessionId}&after=${this.cursor}`);
+      const room = await api(`/api/staff/calls?meetingId=${encodeURIComponent(this.meetingId)}&sessionId=${this.sessionId}&after=${this.cursor}`,{signal:AbortSignal.timeout(8000)});
       if (this.closed) return;
       this.events.room(room);
       if (Date.now() - this.lastConfigRefresh > 15 * 60000) {
@@ -102,6 +120,7 @@ export class OfficeCall {
         this.cursor = Math.max(this.cursor, signal.seq);
       }
       this.cursor = Math.max(this.cursor, room.cursor);
+      await Promise.all([...this.peers.values()].map(peer=>this.inspectMedia(peer)));
       for(const id of this.peers.keys())this.updateChoice(id);
       this.failures=0;this.events.networkError?.('');
       this.events.synced();
@@ -113,6 +132,17 @@ export class OfficeCall {
       }
     }
     if (!this.closed) this.timer = setTimeout(() => this.poll(), 1500);
+  }
+  async replaceAudio(track) {
+    const previous=this.outgoingTrack('audio');
+    const senders=[...this.peers.values()].map(({pc})=>pc.getTransceivers().find(t=>t.receiver.track.kind==='audio')?.sender).filter(Boolean);
+    const results=await Promise.allSettled(senders.map(sender=>sender.replaceTrack(track)));
+    if(results.some(result=>result.status==='rejected')){
+      await Promise.allSettled(senders.map(sender=>sender.replaceTrack(previous)));
+      track.stop();throw Error('Could not restore the microphone. Leave and rejoin the call.');
+    }
+    this.stream.getAudioTracks().forEach(old=>this.stream.removeTrack(old));this.stream.addTrack(track);
+    this.relay?.replaceMicrophone();previous?.stop();
   }
   async replaceVideo(track) {
     const previous = this.videoTrack;

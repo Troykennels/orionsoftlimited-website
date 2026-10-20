@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { OfficeRelay } from '../src/staff/office-relay.js';
 import { OfficeCall } from '../src/staff/call-engine.js';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
@@ -29,4 +30,26 @@ test('compatibility audio resamples speech correctly and stops publishing when u
   for(let i=0;i<375;i++)processor.process([[new Float32Array(128).fill(0.25)]]);
   assert.equal(buffers.length,25);assert.equal(buffers.reduce((n,b)=>n+b.byteLength/2,0),16000);assert.equal(new Int16Array(buffers[0])[0],8192);
   processor.port.onmessage({data:{enabled:false}});for(let i=0;i<375;i++)processor.process([[new Float32Array(128)]]);assert.equal(buffers.length,25);
+});
+
+test('a connected camera without incoming speech does not disable fallback audio',async()=>{
+  const call=new OfficeCall('fixture','a',stream,[],{});
+  const peer={pc:{connectionState:'connected',getStats:async()=>new Map([['audio',{type:'inbound-rtp',kind:'audio',packetsReceived:20}],['video',{type:'inbound-rtp',kind:'video',framesDecoded:10}]])},stream:{getVideoTracks:()=>[{readyState:'live',muted:false}]}};
+  assert.equal(call.directReady(peer),false);
+  await call.inspectMedia(peer);assert.equal(call.directReady(peer),true);
+  peer.audioReceivedAt=Date.now()-7000;assert.equal(call.directReady(peer),false);
+  peer.pc.getStats=async()=>new Map([['new',{type:'inbound-rtp',kind:'audio',packetsReceived:1}]]);
+  await call.inspectMedia(peer);assert.equal(call.directReady(peer),true,'Source counter resets must recover');
+});
+test('slow uplink drops pictures before speech and caps image traffic',()=>{
+  const previous=globalThis.WebSocket;globalThis.WebSocket={OPEN:1};
+  try{
+    const relay=new OfficeRelay({},null,{}),sent=[];relay.watchers=1;relay.socket={readyState:1,bufferedAmount:20000,send:packet=>sent.push(packet[0])};
+    assert.equal(relay.send(1,new Uint8Array(30000)),false);
+    assert.equal(relay.send(2,new Uint8Array(1280)),true);
+    relay.socket.bufferedAmount=0;
+    assert.equal(relay.send(1,new Uint8Array(50000)),true);
+    assert.equal(relay.send(1,new Uint8Array(50000)),false);
+    assert.deepEqual(sent,[2,1]);
+  }finally{globalThis.WebSocket=previous;}
 });
