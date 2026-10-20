@@ -58,3 +58,8 @@ test('public customisation fields cannot override internal lead ownership or sta
  const lead=(await list('orionsoft:leads',100)).find(item=>item.email===req.body.email);
  assert.notEqual(lead.id,'spoofed');assert.equal(lead.status,'new');assert.equal(lead.contactName,'Local Client');assert.equal(lead.ownerId,undefined);
 });
+
+test('custom software is listed once in the public search sitemap',async()=>{
+ const {sitemapUrls}=await import('../api/public/sitemap.js');
+ const urls=await sitemapUrls();assert.equal(urls.filter(url=>url.loc==='/custom-software').length,1);
+});
