@@ -3,6 +3,9 @@ import AdminInteractionFeedback from './AdminInteractionFeedback.jsx';
 import OfficeTools from '../components/OfficeTools.jsx';
 import './admin-workspace.css';
 import SocialContentManager from './SocialContentManager.jsx';
+import BlogStudio from './BlogStudio.jsx';
+import MediaLibrary from './MediaLibrary.jsx';
+import StudioNavigation from './StudioNavigation.jsx';
 ﻿import { useState, useEffect, useRef, useCallback, forwardRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Radio, Bell, Calendar, Inbox, Newspaper, Bot,
@@ -511,8 +514,8 @@ const NAV_GROUPS = [
 ];
 
 // Editor admins manage website content only (the server enforces the same).
-const EDITOR_SECTIONS = new Set(["dashboard", "analytics", "live", "homepage", "announcements", "products", "services", "blog", "portfolio", "testimonials", "faqs", "team", "events", "careers", "seo", "features", "clients", "menus", "theme", "settings", "media", "my-account"]);
-const MANAGER_SECTIONS = new Set(['renewals','social-content','newsletter','analytics','live','homepage','announcements','blog','portfolio','testimonials','faqs','team','events','seo','my-account']);
+const EDITOR_SECTIONS = new Set(["social-content","dashboard", "analytics", "live", "homepage", "announcements", "products", "services", "blog", "portfolio", "testimonials", "faqs", "team", "events", "careers", "seo", "features", "clients", "menus", "theme", "settings", "media", "my-account"]);
+const MANAGER_SECTIONS = new Set(['media','renewals','social-content','newsletter','analytics','live','homepage','announcements','blog','portfolio','testimonials','faqs','team','events','seo','my-account']);
 const navFor = session => {
   const allowed = session?.adminRole === 'client_content_manager' ? MANAGER_SECTIONS : session?.adminRole === 'editor' ? EDITOR_SECTIONS : null;
   return allowed ? NAV_GROUPS.map(g=>({...g,items:g.items.filter(i=>allowed.has(i.id))})).filter(g=>g.items.length) : NAV_GROUPS;
@@ -1910,55 +1913,6 @@ function BlogShareMenu({ post }) {
   );
 }
 
-function BlogSection() {
-  return (
-    <CrudSection
-      title="Blog Post"
-      sk={SK.blog}
-      defaultList={[]}
-      defaultItem={{ title: "", slug: "", excerpt: "", content: "", author: "Orion Soft", category: "", coverImage: "", date: "", published: false }}
-      normalize={(f, others) => {
-        if (!String(f.title || "").trim()) return "Enter a title.";
-        const slug = String(f.slug || f.title).toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-        if (others.some(o => o.slug === slug)) return `Another post already uses the address /blog/${slug}.`;
-        if (f.coverImage && !/^(https:\/\/|\/)/.test(f.coverImage)) return "The cover image must be an https:// link or a /assets/… path.";
-        return { ...f, slug, date: f.date || new Date().toISOString().slice(0, 10) };
-      }}
-      extraActions={p => p.published && (p.slug || p.id) ? <BlogShareMenu post={p} /> : null}
-      fields={[
-        { key: "title", label: "Title", placeholder: "Post title" },
-        { key: "slug", label: "Slug", placeholder: "url-friendly-slug (made from the title if left blank)" },
-        { key: "category", label: "Category", placeholder: "e.g. Technology, Healthcare" },
-        { key: "author", label: "Author", placeholder: "Author name" },
-        { key: "date", label: "Publish date", type: "date" },
-        { key: "coverImage", label: "Cover image link", placeholder: "https://… (also used when the post is shared on social media)" },
-        { key: "excerpt", label: "Excerpt", type: "textarea", rows: 2, placeholder: "Short summary shown in lists and social previews" },
-        { key: "content", label: "Content", type: "textarea", rows: 12, placeholder: "Write the post. Blank line = new paragraph. # Heading, **bold**, *italic*, - bullet, [link text](https://…)" },
-        { key: "published", label: "Published", type: "toggle", toggleLabel: "Published" },
-      ]}
-      renderItem={p => (
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.heading, fontFamily: font }}>{p.title}</span>
-            <Badge color={p.published ? C.mint : C.textMuted}>{p.published ? "Published" : "Draft"}</Badge>
-          </div>
-          <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>{p.category} · {p.author}</div>
-          {p.excerpt && <div style={{ fontSize: 13, color: C.textMuted, fontFamily: font, marginTop: 4 }}>{p.excerpt}</div>}
-        </div>
-      )}
-      renderPreview={f => (
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
-          {f.category && <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{f.category}</div>}
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: C.heading, margin: "0 0 8px" }}>{f.title || "Post title"}</h3>
-          <p style={{ fontSize: 13.5, color: C.text, margin: "0 0 12px", lineHeight: 1.6 }}>{f.excerpt || "Post excerpt goes here."}</p>
-          <div style={{ fontSize: 12, color: C.textMuted }}>{f.author || "Orion Soft"} · {new Date().toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })}</div>
-        </div>
-      )}
-    />
-  );
-}
-
-// ─── Portfolio / Case Studies ────────────────────────────────────────────────
 function PortfolioSection() {
   return (
     <CrudSection
@@ -3267,104 +3221,6 @@ function AuditSection() {
 }
 
 // ─── Media Library ───────────────────────────────────────────────────────────
-function MediaSection() {
-  const [media, setMedia] = useState(() => lsGet(SK.media, []));
-  const [url, setUrl] = useState("");
-  const [label, setLabel] = useState("");
-  const [msg, setMsg] = useState("");
-  const fileRef = useRef(null);
-
-  function addUrl() {
-    if (!url) return;
-    const entry = { id: Date.now(), url, label: label || url.split("/").pop(), type: "url", addedAt: new Date().toISOString() };
-    const updated = [...media, entry];
-    setMedia(updated);
-    lsSet(SK.media, updated, "add_media", label || url);
-    setUrl(""); setLabel(""); setMsg("Added.");
-    setTimeout(() => setMsg(""), 2000);
-  }
-
-  function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 500 * 1024) { setMsg("File too large. Max 500 KB for base64 storage. Host larger images externally."); return; }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const entry = { id: Date.now(), url: ev.target.result, label: file.name, type: "base64", size: file.size, addedAt: new Date().toISOString() };
-      const updated = [...media, entry];
-      setMedia(updated);
-      lsSet(SK.media, updated, "upload_media", file.name);
-      setMsg("Uploaded.");
-      setTimeout(() => setMsg(""), 2000);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function deleteMedia(id) {
-    const updated = media.filter(m => m.id !== id);
-    setMedia(updated);
-    lsSet(SK.media, updated, "delete_media", `ID ${id}`);
-  }
-
-  function copyUrl(u) {
-    navigator.clipboard.writeText(u).then(() => { setMsg("Copied!"); setTimeout(() => setMsg(""), 2000); });
-  }
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-        <SectionCard>
-          <SectionTitle>Add by URL</SectionTitle>
-          <div style={{ marginTop: 14 }}>
-            <Label>Image URL</Label>
-            <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <Label>Label (optional)</Label>
-            <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. CareCore dashboard screenshot" />
-          </div>
-          <div style={{ marginTop: 14 }}><Btn onClick={addUrl}>Add URL</Btn></div>
-        </SectionCard>
-
-        <SectionCard>
-          <SectionTitle>Upload Small Image</SectionTitle>
-          <p style={{ fontSize: 13, color: C.textMuted, fontFamily: font, lineHeight: 1.6, marginTop: 8, marginBottom: 16 }}>
-            Max 500 KB. Stored as base64 in localStorage. For production images, use Cloudinary, Vercel Blob, or upload directly to <code style={{ fontSize: 11 }}>/public/assets/</code> in the repo.
-          </p>
-          <input type="file" accept="image/*" ref={fileRef} onChange={handleFile} style={{ display: "none" }} />
-          <Btn onClick={() => fileRef.current?.click()}>Choose File</Btn>
-        </SectionCard>
-      </div>
-      {msg && <p style={{ fontSize: 13, color: C.mint, fontFamily: font, marginBottom: 16 }}>{msg}</p>}
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
-        {media.map(m => (
-          <div key={m.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ height: 120, background: C.surface, overflow: "hidden" }}>
-              <img src={m.url} alt={m.label} onError={e => { e.target.style.display = "none"; }} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            </div>
-            <div style={{ padding: "10px 12px" }}>
-              <div style={{ fontSize: 12.5, color: C.text, fontFamily: font, marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.label}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" onClick={() => copyUrl(m.url)} style={{ flex: 1, padding: "6px", background: C.goldDim, border: `1px solid ${C.gold}33`, color: C.gold, borderRadius: 6, fontSize: 11.5, fontWeight: 600, fontFamily: font, cursor: "pointer" }}>Copy URL</button>
-                <button type="button" onClick={() => deleteMedia(m.id)} style={{ padding: "6px 10px", background: C.roseDim, border: `1px solid ${C.rose}33`, color: C.rose, borderRadius: 6, fontSize: 11.5, cursor: "pointer" }}>×</button>
-              </div>
-            </div>
-          </div>
-        ))}
-        {media.length === 0 && (
-          <div style={{ gridColumn: "1/-1" }}>
-            <SectionCard>
-              <p style={{ fontSize: 14, color: C.textMuted, fontFamily: font }}>No media yet. Add images by URL or upload small files above.</p>
-            </SectionCard>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Backups ─────────────────────────────────────────────────────────────────
 function BackupsSection() {
   const [status, setStatus] = useState("");
 
@@ -7236,7 +7092,7 @@ function DashboardContent({ active, session, navigate }) {
     case "dashboard":     return <DashboardOverview navigate={navigate} editor={session?.adminRole === "editor"} />;
     case "sales":         return <SalesSection />;
     case "renewals":      return <><RenewalCenter />{session?.adminRole==='superadmin'&&<RenewalsSection />}</>;
-    case "social-content": return <SocialContentManager />;
+    case "social-content": return <SocialContentManager navigate={navigate} />;
     case "analytics":     return <AnalyticsSection />;
     case "live":          return <LiveVisitorsSection />;
     case "activities":    return <RecentActivitiesSection />;
@@ -7250,7 +7106,7 @@ function DashboardContent({ active, session, navigate }) {
     case "announcements": return <AnnouncementsSection />;
     case "products":      return <ProductsSection />;
     case "services":      return <ServicesSection />;
-    case "blog":          return <BlogSection />;
+    case "blog":          return <BlogStudio navigate={navigate} share={post => <BlogShareMenu post={post} />} />;
     case "portfolio":     return <PortfolioSection />;
     case "testimonials":  return <TestimonialsSection />;
     case "faqs":          return <FAQsSection />;
@@ -7287,7 +7143,7 @@ function DashboardContent({ active, session, navigate }) {
     case "my-account":    return <MyAccountSection session={session} />;
     case "users":         return <UsersSection session={session} />;
     case "audit":         return <AuditSection />;
-    case "media":         return <MediaSection />;
+    case "media":         return <section className="publishing-studio"><StudioNavigation current="media" navigate={navigate} /><MediaLibrary /></section>;
     case "backups":       return <BackupsSection />;
     default:              return <DashboardOverview />;
   }

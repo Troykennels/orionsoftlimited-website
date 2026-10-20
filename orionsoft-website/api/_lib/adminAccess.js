@@ -5,7 +5,7 @@ export const CLIENT_CONTENT_KEYS = new Set([
   'orionsoft_seo_v1','orionsoft_announce_v1','orionsoft_events_v1',
 ]);
 const MANAGER_ROUTES = new Set([
-  '/api/admin/renewals','/api/admin/social-content','/api/admin/newsletter',
+  '/api/admin/renewals','/api/admin/social-content','/api/admin/newsletter','/api/admin/media','/api/admin/media-ticket','/api/admin/blog',
   '/api/admin/content','/api/admin/analytics','/api/admin/change-password',
   '/api/admin/security-pin','/api/auth/me',
 ]);

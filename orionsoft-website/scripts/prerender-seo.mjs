@@ -321,18 +321,7 @@ page("/press", {
 try {
   const r = await fetch(`${SITE}/api/content?only=orionsoft_blog_v1,orionsoft_faqs_v1`, { signal: AbortSignal.timeout(10000) });
   const content = (await r.json()).content || {};
-  for (const post of (content.orionsoft_blog_v1 || []).filter(x => x && x.title && x.published !== false && (x.slug || x.id))) {
-    const slug = String(post.slug || post.id);
-    if (!/^[a-z0-9-_]+$/i.test(slug)) continue;
-    const plain = String(post.content || "").replace(/<[^>]+>/g, " ").replace(/[#*_>`-]+/g, " ").replace(/\s+/g, " ").trim();
-    const desc = String(post.excerpt || plain).slice(0, 160);
-    page(`/blog/${slug}`, {
-      title: post.title, desc, h1: post.title, body: plain ? [plain.slice(0, 2500)] : [],
-      // Its own cover picture, or a branded image with its title (api/public/og.js).
-      image: /^https:\/\//.test(post.coverImage || "") ? post.coverImage : `${SITE}/api/public/og?blog=${encodeURIComponent(slug)}`,
-      jsonLd: [{ "@context": "https://schema.org", "@type": "BlogPosting", headline: post.title, description: desc, datePublished: post.date || post.createdAt, dateModified: post.updatedAt || post.date, author: { "@type": "Organization", name: post.author || "Orion Soft" }, publisher: ORG, mainEntityOfPage: `${SITE}/blog/${slug}`, ...(post.coverImage ? { image: post.coverImage } : {}) }],
-    }); count++;
-  }
+  // Article routes use the live blog-page endpoint so edits and unpublishing take effect without a rebuild.
   const faqs = (content.orionsoft_faqs_v1 || []).filter(f => f && (f.q || f.question) && (f.a || f.answer));
   if (faqs.length) {
     page("/faq", {

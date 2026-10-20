@@ -397,6 +397,9 @@ export async function runAutomations() {
     catch (err) { console.error("[queries]", err.message); }
     try { const {processRenewalReminders}=await import('./renewalReminders.js');await processRenewalReminders(); }
     catch(err){console.error('[client-renewal-reminders]',err.message);}
+    // Explicitly approved scheduled articles go live before newsletter discovery.
+    try { const {publishScheduledBlog}=await import('./publishing.js');await publishScheduledBlog(); }
+    catch(err){console.error('[blog-schedule]',err.message);}
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { if (await claim("orionsoft:automation:newsletter:tick", 900)) { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); } }
     catch (err) { console.error("[newsletter]", err.message); }

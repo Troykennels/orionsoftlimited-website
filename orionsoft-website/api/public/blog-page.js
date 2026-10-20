@@ -48,6 +48,10 @@ export function renderPost(base, post) {
   // The readable text version (crawlers; hidden once the app starts).
   html = html.replace(/<main id="seo-fallback"([^>]*)>[\s\S]*?<\/main>/, (_, attrs) =>
     `<main id="seo-fallback"${attrs}><h1 style="color:#F2F6FF">${esc(post.title)}</h1><p>${esc(desc)}</p>${plain ? `<p>${esc(plain.slice(0, 2500))}</p>` : ""}<p><a href="/blog" style="color:#C8A850">More from the Orion Soft blog</a></p></main>`);
+  const absolute=s=>s?.startsWith('/')?BASE+s:s;
+  const schema={"@context":"https://schema.org","@type":"BlogPosting",headline:post.title,description:desc,datePublished:post.date||post.createdAt,dateModified:post.updatedAt||post.date,mainEntityOfPage:url,author:{"@type":"Organization",name:post.author||"Orion Soft Limited"},publisher:{"@type":"Organization",name:"Orion Soft Limited",url:BASE},image};
+  if(post.videoUrl&&cover)schema.video={"@type":"VideoObject",name:post.title,description:desc,thumbnailUrl:cover,uploadDate:post.updatedAt||post.createdAt||post.date,contentUrl:absolute(post.videoUrl)};
+  html=html.replace('</head>',`<script type="application/ld+json">${JSON.stringify(schema).replace(/</g,'\\u003c')}</script></head>`);
   return html;
 }
 
@@ -60,7 +64,7 @@ export default async function handler(req, res) {
   const post = posts.find(p => p && p.title && p.published !== false && (p.slug === want || p.id === want));
   if (!base) { res.setHeader("Location", `${BASE}/blog`); return res.status(302).end(); }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=300");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=30");
   // Unknown post: the blog page itself (the app shows "not found").
   return res.status(post ? 200 : 404).send(post ? renderPost(base, post) : base);
 }

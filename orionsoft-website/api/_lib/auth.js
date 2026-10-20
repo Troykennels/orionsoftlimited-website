@@ -136,6 +136,7 @@ export function getAnySession(req) {
 // Admin "editor" accounts manage website content only (as the Admin Users
 // screen describes them). Every other admin route is super-admin only.
 export const EDITOR_ROUTES = new Set([
+  '/api/admin/media','/api/admin/media-ticket','/api/admin/blog','/api/admin/social-content',
   "/api/admin/content", "/api/admin/analytics", "/api/admin/change-password", "/api/admin/security-pin",
   "/api/auth/me",
 ]);

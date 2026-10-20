@@ -1,0 +1,55 @@
+ORION MEDIA STUDIO — 20 OCTOBER 2026
+
+WHERE TO START
+Sign in to the website Admin. Open Blog, Social Media Content or Media Library.
+The studio navigation lets you move between these three workspaces.
+
+BLOG
+1. Choose New article, or Use SchoolCore template.
+2. Write the title and article. A summary and address are created automatically if left blank.
+3. Add a cover picture, video or up to eight article pictures from the shared media library. Pictures have editable descriptions for accessibility.
+4. Preview the article, then Save draft, Publish now or Schedule article.
+Scheduled articles publish automatically on the server, normally within five minutes of the selected Lagos/WAT time. A browser does not need to remain open.
+Publishing an article follows the Newsletter section's existing settings; existing subscriber notifications have not been switched on or off by this upgrade.
+Unpublishing an existing article requires confirmation. Public articles use live metadata so edits do not require a new site build. Public-page metadata may take approximately 30 seconds to refresh at the hosting cache.
+After publishing, Turn article into six social drafts carries the article title, summary and address into the campaign builder.
+
+SOCIAL CAMPAIGNS
+1. Choose SchoolCore starter or fill your own campaign brief.
+2. Choose or upload the video/pictures once.
+3. Press Prepare six channel drafts. This saves drafts for Facebook, Instagram, LinkedIn, X, TikTok and YouTube.
+4. Open each draft in Publication queue. Review its caption and media. Copy the caption, download the selected file and open your social account using its saved profile link.
+5. Publish in the social platform. Paste its live post link into the studio and mark Published.
+Due posts rise to the top of the queue. Filter by platform, status, campaign or caption.
+Caption preparation uses editable templates and your factual brief, not an AI claim that it has watched/transcribed the video. Short X drafts use a shorter destination link and fewer hashtags to avoid breaking URLs.
+Instagram/TikTok drafts use a profile/contact call to action; these accounts need their actual profile link set appropriately.
+
+AUTOMATIONS INCLUDED
+Shared file reuse, content-hash deduplication, video-cover generation where the browser supports it, file readability/type checks, upload progress, automatic article slugs and summaries, per-channel caption templates, tracking parameters where space allows, six-draft campaign creation, retry protection, unsaved-work recovery within the same browser tab, scheduled Blog publication and due-post sorting.
+Tracking parameters require your website's analytics to report visits; generating them does not install analytics or promise attribution.
+Publication dates for social posts currently organise the team queue; they do not send social posts automatically.
+
+SOCIAL ACCOUNT CONNECTIONS
+Settings social URLs are profile addresses, not API posting permissions. All six channels currently use the same manual handoff workflow. The studio shows this explicitly and does not claim that a scheduled draft has been sent.
+Direct social publishing remains a separate activation/integration step requiring each network's authorised business/developer application, publishing permissions and sometimes a platform review or API plan. The existing Google sign-in credentials must not be mistaken for a YouTube upload grant.
+No social password, token or payment-card detail belongs in a caption or this guide.
+Platform requirements must be checked at activation. Examples of official documentation:
+https://developers.tiktok.com/doc/content-posting-api-get-started
+https://developers.tiktok.com/doc/content-sharing-guidelines
+https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api
+
+UPLOADS AND STORAGE
+Supported files: JPG, PNG, WebP, GIF, MP4 and WebM; up to 100 MB each. Videos are checked for browser readability before upload. Export iPhone MOV/HEVC recordings as a compatible MP4 if necessary.
+The library currently has a 2 GB application quota, plus checks for available disk space. It stores public marketing material on the existing persistent Railway volume, not in browser storage or as huge database values.
+Files have unguessable content-hash addresses but are intended for public use; do not use this library for private staff records, meeting recordings or patient/student data.
+The browser obtains a short-lived, single-use, file-specific upload permission and streams directly to the API host. No new storage provider, card entry or paid service was configured.
+Video seeking uses HTTP range requests. Original files are retained; the library does not silently crop your videos or manufacture higher-resolution footage.
+
+TEAM ACCESS
+Owner, Editor and Client & Content Manager can use the publishing/media workflow. Financial, staff-office and admin-management restrictions remain enforced separately on the server.
+Uploads/drafts are shared. Recovery copies are local to the same browser tab. Conflicting article/post saves are rejected rather than overwriting another editor's changes.
+
+VERIFICATION
+Isolated API tests cover permissions, persistent file writes, deduplication, content validation, single-use upload grants, range/HEAD responses, invalid ranges, unsafe origins, article schedules, concurrent-edit conflicts, campaign retry protection and publication-link validation.
+Browser checks use isolated data at 1440, 820 and 390 pixels, including a content manager, actual video upload, cross-origin upload permission, automatic cover generation, article/video preview, failed-save recovery and six-channel campaign creation.
+No real subscriber emails or social posts are sent by these tests. Real network account publishing has not been configured or tested.

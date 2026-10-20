@@ -8,6 +8,7 @@ import ChatBot from "./components/ChatBot";
 import { readPublished, loadSiteContent, usePublishedList, contentLoaded } from "./lib/siteContent.js";
 import { DEFAULT_PRODUCTS_CATALOG } from "./lib/products.js";
 import { RichText, summary } from "./lib/RichText.jsx";
+import ArticleMedia from "./components/ArticleMedia.jsx";
 import { SHARE_TARGETS, openShare } from "./staff/api.js";
 
 // Admin dashboard loaded on demand not part of the initial JS bundle
@@ -3633,10 +3634,10 @@ function BlogPage({ setCurrentPage, postId, setPostId }) {
           {blogDate(post) && <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {blogDate(post)}</span>}
           <span style={{ fontSize: 13, color: C.textMuted, fontFamily: font }}>·  {blogReadTime(post)}</span>
         </div>
-        {post.coverImage && (
-          <img src={post.coverImage} alt={post.title} style={{ width: "100%", borderRadius: 12, marginBottom: 32, objectFit: "cover", maxHeight: 400 }} loading="lazy" />
+        {post.coverImage && !post.videoUrl && (
+          <img src={post.coverImage} alt={post.coverAlt || post.title} style={{ width: "100%", borderRadius: 12, marginBottom: 32, objectFit: "cover", maxHeight: 400 }} loading="lazy" />
         )}
-        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><RichText text={post.content || post.body || post.excerpt || ""} font={font} headingColor={C.heading} textColor={C.text} linkColor={C.accent} /></div>
+        <div style={{ fontSize: 16, color: C.text, fontFamily: font, lineHeight: 1.8 }}><ArticleMedia post={post} /><RichText text={post.content || post.body || post.excerpt || ""} font={font} headingColor={C.heading} textColor={C.text} linkColor={C.accent} /></div>
         <BlogShare post={post} />
         <NewsletterSignup variant="card" source={`blog: ${post.title}`} />
       </article>
