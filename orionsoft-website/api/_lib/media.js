@@ -7,7 +7,7 @@ export const MAX_MEDIA_BYTES=100*1024*1024;
 export const MEDIA_TYPES=['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm'];
 export const mediaDirectory=()=>process.env.DATA_DIR?path.join(process.env.DATA_DIR,'public-media'):null;
 export const mediaId=id=>/^[a-f0-9]{64}$/.test(String(id||''));
-export const mediaUrl=id=>`/api/public/media?id=${id}`;
+export const mediaUrl=id=>`/api/public/media?id=${id}&v=2`;
 export function safeMediaUrl(value){
  if(!value)return '';
  const s=String(value).trim();

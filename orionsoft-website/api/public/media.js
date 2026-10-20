@@ -8,7 +8,9 @@ export default async function handler(req,res){
  const id=String(req.query.id||'');if(!mediaId(id)||!mediaDirectory())return res.status(404).end();
  const asset=await getRecord('media_assets',id);if(!asset)return res.status(404).end();
  const file=path.join(mediaDirectory(),id);let info;try{info=await fsp.stat(file);}catch{return res.status(404).end();}
- res.setHeader('Content-Type',asset.type);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Security-Policy',"default-src 'none'; sandbox");res.setHeader('Cache-Control','public, max-age=31536000, immutable');res.setHeader('Accept-Ranges','bytes');res.setHeader('ETag',`"${id}"`);
+ // External rewrite caches must never reuse a cached 206 fragment as the next
+ // full/seek response. Keep byte ranges at the origin and out of shared caches.
+ res.setHeader('Content-Type',asset.type);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Security-Policy',"default-src 'none'; sandbox");res.setHeader('Cache-Control','private, no-store');res.setHeader('Vary','Range');res.setHeader('Accept-Ranges','bytes');res.setHeader('ETag',`"${id}"`);
  if(req.headers['if-none-match']===`"${id}"`&&!req.headers.range)return res.status(304).end();
  let start=0,end=info.size-1;
  if(req.headers.range){
