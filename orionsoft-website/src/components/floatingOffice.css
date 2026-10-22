@@ -1,0 +1,6 @@
+.or-office-launcher.or-office-floating{position:fixed;inset:auto 20px 22px auto;z-index:70;display:flex;align-items:center;gap:6px;width:max-content;max-width:calc(100vw - 16px);margin:0;padding:5px;border:1px solid #c8a85066;border-radius:32px;background:#fff;box-shadow:0 5px 24px #102a4330;box-sizing:border-box}
+.or-office-floating .or-office-drag{display:grid;place-items:center;flex-shrink:0;width:30px;height:40px;padding:0;border:0;border-radius:22px;background:#edf2f7;color:#486178;font:24px system-ui;cursor:grab;touch-action:none;user-select:none}
+.or-office-floating[data-dragging] .or-office-drag{cursor:grabbing}
+.or-office-floating .or-office-drag:focus-visible{outline:3px solid #b78824;outline-offset:2px}
+.or-office-floating :is(.ow-launch,.or-office-trigger){position:static;flex-shrink:0;box-shadow:none;white-space:nowrap}
+@media(max-width:600px){.or-office-launcher.or-office-floating{right:12px;bottom:76px;gap:4px;padding:4px}.or-office-floating :is(.ow-launch,.or-office-trigger){padding:10px 11px;font-size:12px}.or-office-floating .or-office-drag{width:28px}}
