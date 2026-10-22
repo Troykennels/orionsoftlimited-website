@@ -173,7 +173,7 @@ export default function FieldVisits() {
   const { me } = useOffice();
   const [data, setData] = useState(null);
   const [checkIn, setCheckIn] = useState(false);
-  const completion = useVisitDraft(me.id, data?.active?.id ? `finish:${data.active.id}` : null, { outcome: "", nextStep: "", contactName: data?.active?.contactName || "", contactPhone: data?.active?.contactPhone || "", contactEmail: data?.active?.contactEmail || "" });
+  const completion = useVisitDraft(me.id, data?.active?.id ? `finish:${data.active.id}` : null, { wrapUp: false, outcome: "", nextStep: "", contactName: data?.active?.contactName || "", contactPhone: data?.active?.contactPhone || "", contactEmail: data?.active?.contactEmail || "" });
   const out = completion.data;
   const setOut = completion.update;
   const [hasArrivalDraft, setHasArrivalDraft] = useState(false);
@@ -228,6 +228,8 @@ export default function FieldVisits() {
           </div>
           <p style={{ fontSize: 13, color: C.textMuted }}>2 · Engage the client first. Show the relevant demonstration and listen to their needs.</p>
           <a href="/products" target="_blank" rel="noopener noreferrer" style={{ color: C.blue, fontSize: 13 }}>Open software demos in a new tab</a>
+          {!out.wrapUp && <div style={{ marginTop: 14 }}><Btn disabled={!completion.ready} onClick={() => setOut({ ...out, wrapUp: true })}>Wrap up visit</Btn></div>}
+          {out.wrapUp && <>
           <h3 style={{ fontSize: 14, color: C.heading, marginBottom: 6 }}>3 · Wrap up the visit</h3>
           <div role="status" style={{ fontSize: 12, color: C.textMuted, marginBottom: 10 }}>{completion.status || "Your summary and contact details save automatically on this device."}</div>
           {!completion.ready ? <p>Restoring visit notes…</p> : <><Grid min={220} style={{ marginBottom: 10 }}>
@@ -241,6 +243,7 @@ export default function FieldVisits() {
             <Field label="Email (optional)"><Input type="email" value={out.contactEmail} onChange={e => setOut({ ...out, contactEmail: e.target.value })} placeholder="Client email" /></Field>
           </Grid>
           <Btn icon={LogOut} disabled={busy} onClick={checkOut}>{busy ? "Saving visit…" : "Finish visit & prepare confirmation"}</Btn></>}
+          </>}
         </SectionCard>
       )}
 

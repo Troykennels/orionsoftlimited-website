@@ -106,6 +106,8 @@ try {
     assert.equal((await post(otherId, { action: 'check-out', id: visit.id })).status, 404);
     const replay = await post(employeeId, { action: 'check-in', organisation, clientRequestId: visit.clientRequestId });
     assert.equal(replay.body.visit.id, visit.id);
+    assert.equal(await page.getByPlaceholder('Client contact name').count(), 0);
+    await page.getByRole('button', { name: 'Wrap up visit', exact: true }).click();
     await page.getByPlaceholder('What happened?').fill('Client saw the demonstration and requested a proposal.');
     await page.getByPlaceholder('e.g. Send proposal Friday').fill('Send proposal on Friday');
     await page.getByPlaceholder('Client contact name').fill('Fixture client');
