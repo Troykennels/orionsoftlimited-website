@@ -218,14 +218,6 @@ export default function FieldVisits() {
       <PageHeader title="Field Visits" sub="Record your arrival, engage the client, save the outcome, then request confirmation. Drafts stay on this device when you leave the page."
         action={!a && <Btn icon={LogIn} onClick={startCheckIn}>{hasArrivalDraft ? "Resume arrival draft" : "Start a client visit"}</Btn>} />
       {data.pendingSpotChecks.map(s => <SpotCheckResponder key={s.id} spot={s} onDone={load} />)}
-      <PhoneCheck />
-      <VisitPlanCard />
-
-      <Grid min={160} style={{ marginBottom: 16 }}>
-        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Visits today</div><div style={{ fontSize: 24, fontWeight: 800, color: C.blue }}>{todays.length}</div></SectionCard>
-        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Client-confirmed (all time)</div><div style={{ fontSize: 24, fontWeight: 800, color: C.mint }}>{confirmed}</div></SectionCard>
-        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>My average trust score</div><div style={{ fontSize: 24, fontWeight: 800, color: avgTrust == null ? C.textMuted : avgTrust >= 80 ? C.mint : avgTrust >= 55 ? C.amber : C.rose }}>{avgTrust == null ? "—" : `${avgTrust}%`}</div></SectionCard>
-      </Grid>
 
       {a && (
         <SectionCard style={{ marginBottom: 16, borderColor: `${C.mint}66` }}>
@@ -251,6 +243,13 @@ export default function FieldVisits() {
           <Btn icon={LogOut} disabled={busy} onClick={checkOut}>{busy ? "Saving visit…" : "Finish visit & prepare confirmation"}</Btn></>}
         </SectionCard>
       )}
+
+
+      <Grid min={160} style={{ marginBottom: 16 }}>
+        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Visits today</div><div style={{ fontSize: 24, fontWeight: 800, color: C.blue }}>{todays.length}</div></SectionCard>
+        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>Client-confirmed (all time)</div><div style={{ fontSize: 24, fontWeight: 800, color: C.mint }}>{confirmed}</div></SectionCard>
+        <SectionCard style={{ padding: 14 }}><div style={{ fontSize: 12, color: C.textMuted }}>My average trust score</div><div style={{ fontSize: 24, fontWeight: 800, color: avgTrust == null ? C.textMuted : avgTrust >= 80 ? C.mint : avgTrust >= 55 ? C.amber : C.rose }}>{avgTrust == null ? "—" : `${avgTrust}%`}</div></SectionCard>
+      </Grid>
 
       <SectionCard>
         <SectionTitle>My visits</SectionTitle>
@@ -293,6 +292,11 @@ export default function FieldVisits() {
         </SectionCard>
       )}
 
+      <VisitPlanCard />
+      <details style={{ marginTop: 16, marginBottom: 16, color: C.textMuted, fontSize: 13 }}>
+        <summary style={{ cursor: "pointer", fontWeight: 700, padding: "10px 0" }}>Phone setup &amp; location help</summary>
+        <PhoneCheck />
+      </details>
       {checkIn && <CheckInFlow onClose={() => setCheckIn(false)} onDone={load} />}
       {open && (
         <Modal title={open.organisation} onClose={() => setOpen(null)} width={620}>
