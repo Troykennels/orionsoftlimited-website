@@ -1,0 +1,150 @@
+import assert from 'node:assert/strict';
+import { readdir, mkdir, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+process.env.NODE_ENV = 'test';
+process.env.SESSION_SECRET = 'visit-draft-isolated-browser-fixture';
+for (const key of Object.keys(process.env)) if (/REDIS|UPSTASH|KV_REST|DATA_DIR|GMAIL|RESEND|SMTP|PAYSTACK|VAPID|TERMII|BREVO/.test(key)) delete process.env[key];
+const nativeFetch = globalThis.fetch;
+globalThis.fetch = async () => { throw new Error('External transport disabled in visit tests'); };
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { storeBackend } = await import('../api/store.js');
+assert.equal(storeBackend(), 'mem');
+const { putRecord, listRecords } = await import('../api/_lib/records.js');
+const { signSession } = await import('../api/_lib/auth.js');
+const cookie = id => `orionsoft_session=${encodeURIComponent(signSession({ role: 'staff', sub: id }))}`;
+const app = express();
+app.use(express.json({ limit: '5mb' }));
+for (const group of ['auth', 'admin', 'staff', 'public']) {
+  for (const file of await readdir(new URL(`../api/${group}/`, import.meta.url))) {
+    if (!file.endsWith('.js')) continue;
+    const { default: handler } = await import(`../api/${group}/${file}`);
+    if (typeof handler === 'function') app.all(`/api/${group}/${file.slice(0, -3)}`, handler);
+  }
+}
+const { default: content } = await import('../api/content.js');
+app.all('/api/content', content);
+app.all('/api/{*path}', (req, res) => res.status(404).json({ error: 'Unknown fixture route' }));
+const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+app.get(['/staff', '/staff/{*path}'], (req, res) => res.sendFile(`${dist}/staff.html`));
+app.use(express.static(dist));
+app.get('/{*path}', (req, res) => res.sendFile(`${dist}/index.html`));
+const server = await new Promise(resolve => { const value = app.listen(0, '127.0.0.1', () => resolve(value)); });
+const base = `http://127.0.0.1:${server.address().port}`;
+const browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+const results = [];
+await mkdir('artifacts', { recursive: true });
+async function post(id, body) {
+  const response = await nativeFetch(`${base}/api/staff/visits`, { method: 'POST', headers: { cookie: cookie(id), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return { status: response.status, body: await response.json() };
+}
+try {
+  for (const width of [1440, 390]) {
+    const employeeId = `visit-browser-${width}`;
+    const otherId = `other-browser-${width}`;
+    for (const id of [employeeId, otherId]) await putRecord('employees', id, { id, fullName: id, email: `${id}@example.invalid`, status: 'active', staffRole: 'owner', department: 'Sales', title: 'Field officer', createdAt: new Date().toISOString() });
+    const context = await browser.newContext({ viewport: { width, height: 1000 }, permissions: ['camera', 'geolocation'], geolocation: { latitude: 6.52, longitude: 3.37, accuracy: 5 }, serviceWorkers: 'block' });
+    await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
+    await context.addCookies([{ name: 'orionsoft_session', value: signSession({ role: 'staff', sub: employeeId }), url: base }]);
+    await context.addInitScript(() => localStorage.setItem('so_loc_consent', '1'));
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`${base}/staff/visits`);
+    await page.getByRole('button', { name: 'Start a client visit', exact: true }).click();
+    let dialog = page.getByRole('dialog', { name: 'Arrival · start a visit' });
+    const organisation = `Draft client ${width}`;
+    await dialog.getByPlaceholder('Organisation name', { exact: true }).fill(organisation);
+    await dialog.getByPlaceholder('Purpose (demo, follow-up, training…)').fill('Demonstrate software');
+    assert.equal(await dialog.getByPlaceholder('Contact person').count(), 0);
+    await dialog.getByRole('button', { name: 'Share my location', exact: true }).click();
+    await dialog.getByText(/Location captured/).waitFor();
+    // Exercise the preferred phone camera/file handoff deterministically.
+    const picture = await page.evaluate(() => {
+      const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 600;
+      const context = canvas.getContext('2d'); context.fillStyle = '#184c38'; context.fillRect(0, 0, 800, 600);
+      return canvas.toDataURL('image/png').split(',')[1];
+    });
+    await dialog.locator('input[type="file"][capture]').setInputFiles({ name: 'visit-photo.png', mimeType: 'image/png', buffer: Buffer.from(picture, 'base64') });
+    const image = dialog.getByAltText('Captured');
+    await image.waitFor();
+    const source = await image.getAttribute('src');
+    await dialog.getByText('Draft saved on this device', { exact: true }).waitFor();
+    const popupPromise = page.waitForEvent('popup');
+    await dialog.getByRole('link', { name: 'Open software demos in a new tab' }).click();
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.close();
+    assert.equal(await image.getAttribute('src'), source);
+    await page.goto(`${base}/staff/tasks`);
+    await page.goto(`${base}/staff/visits`);
+    await page.getByRole('button', { name: 'Resume arrival draft' }).click();
+    dialog = page.getByRole('dialog', { name: 'Arrival · start a visit' });
+    assert.equal(await dialog.getByPlaceholder('Organisation name', { exact: true }).inputValue(), organisation);
+    assert.equal(await dialog.getByAltText('Captured').getAttribute('src'), source);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume arrival draft' }).click();
+    dialog = page.getByRole('dialog', { name: 'Arrival · start a visit' });
+    assert.equal(await dialog.getByAltText('Captured').getAttribute('src'), source);
+    await context.addCookies([{ name: 'orionsoft_session', value: signSession({ role: 'staff', sub: otherId }), url: base }]);
+    await page.reload();
+    await page.getByRole('button', { name: 'Start a client visit', exact: true }).click();
+    const otherDialog = page.getByRole('dialog', { name: 'Arrival · start a visit' });
+    assert.equal(await otherDialog.getByPlaceholder('Organisation name', { exact: true }).inputValue(), '');
+    assert.equal(await otherDialog.getByAltText('Captured').count(), 0);
+    await context.addCookies([{ name: 'orionsoft_session', value: signSession({ role: 'staff', sub: employeeId }), url: base }]);
+    await page.reload();
+    await page.getByRole('button', { name: 'Resume arrival draft' }).click();
+    dialog = page.getByRole('dialog', { name: 'Arrival · start a visit' });
+    assert.equal(await dialog.getByAltText('Captured').getAttribute('src'), source);
+    await dialog.getByRole('button', { name: 'Check in', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue visit', exact: true }).click();
+    const visit = (await listRecords('visits')).find(value => value.employeeId === employeeId);
+    assert.equal(visit.confirmation.status, 'not_requested');
+    assert.equal(visit.confirmation.token, null);
+    assert.equal((await post(employeeId, { action: 'resend-confirmation', id: visit.id })).status, 400);
+    assert.equal((await post(otherId, { action: 'check-out', id: visit.id })).status, 404);
+    const replay = await post(employeeId, { action: 'check-in', organisation, clientRequestId: visit.clientRequestId });
+    assert.equal(replay.body.visit.id, visit.id);
+    await page.getByPlaceholder('What happened?').fill('Client saw the demonstration and requested a proposal.');
+    await page.getByPlaceholder('e.g. Send proposal Friday').fill('Send proposal on Friday');
+    await page.getByPlaceholder('Client contact name').fill('Fixture client');
+    await page.getByPlaceholder('Client email', { exact: true }).fill('fixture@example.invalid');
+    await page.getByText('Draft saved on this device', { exact: true }).waitFor();
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'Visit form must fit the viewport');
+    await page.screenshot({ path: `artifacts/visit-wrapup-${width}.png`, fullPage: true });
+    await page.goto(`${base}/staff/tasks`);
+    await page.goto(`${base}/staff/visits`);
+    assert.equal(await page.getByPlaceholder('What happened?').inputValue(), 'Client saw the demonstration and requested a proposal.');
+    assert.equal(await page.getByPlaceholder('Client email', { exact: true }).inputValue(), 'fixture@example.invalid');
+    await page.route('**/api/staff/visits', async route => {
+      if (route.request().method() === 'POST' && route.request().postDataJSON()?.action === 'check-out') return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Fixture save failure' }) });
+      return route.continue();
+    });
+    await page.getByRole('button', { name: 'Finish visit & prepare confirmation' }).click();
+    await page.getByText('Fixture save failure', { exact: true }).waitFor();
+    await page.reload();
+    assert.equal(await page.getByPlaceholder('What happened?').inputValue(), 'Client saw the demonstration and requested a proposal.');
+    await page.unroute('**/api/staff/visits');
+    await page.getByRole('button', { name: 'Finish visit & prepare confirmation' }).click();
+    await page.getByRole('dialog', { name: '4 · Client confirmation' }).waitFor();
+    assert(await page.getByRole('button', { name: 'Copy confirmation link' }).isVisible());
+    const closed = (await listRecords('visits')).find(value => value.id === visit.id);
+    assert(closed.checkOut.at && closed.confirmation.token);
+    assert.equal(closed.contactName, 'Fixture client');
+    assert.equal((await post(employeeId, { action: 'check-out', id: visit.id })).body.visit.checkOut.at, closed.checkOut.at);
+    assert.equal((await listRecords('visits')).filter(value => value.employeeId === employeeId).length, 1);
+    assert.equal(await page.evaluate(id => localStorage.getItem(`so_visit_draft_v1:${id}:arrival`), employeeId), null);
+    assert.equal(errors.length, 0, errors.join('\n'));
+    results.push({ width, passed: true, checks: ['arrival text/photo survive demo, navigation and refresh', 'employee draft isolation', 'contact details deferred', 'no confirmation at arrival', 'API ownership and replay', 'completion draft recovery', 'failed save recovery', 'confirmation only after completion', 'idempotent finish', 'draft cleared only after success'] });
+    await context.close();
+  }
+  console.log(JSON.stringify({ passed: true, results }, null, 2));
+} finally {
+  await mkdir('artifacts', { recursive: true });
+  await writeFile('artifacts/visit-drafts.json', JSON.stringify(results, null, 2));
+  await browser.close();
+  globalThis.fetch = nativeFetch;
+  server.closeAllConnections();
+  await new Promise(resolve => server.close(resolve));
+}

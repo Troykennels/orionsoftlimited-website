@@ -101,11 +101,14 @@ export default async function handler(req, res) {
     if (!organisation) return res.status(400).json({ error: "Which organisation are you visiting?" });
     if (!validPhoto(b.photoDataUrl)) return res.status(400).json({ error: "Photo must be a JPEG/PNG under 3 MB" });
     const visits = await listRecords("visits");
+    const requestId = typeof b.clientRequestId === "string" && /^[a-zA-Z0-9-]{16,80}$/.test(b.clientRequestId) ? b.clientRequestId : null;
+    const existing = requestId && visits.find(v => v.employeeId === me.id && v.clientRequestId === requestId);
+    if (existing) return res.json({ ok: true, visit: stripPhoto(existing), confirmUrl: existing.checkOut?.at && existing.confirmation?.token ? confirmUrl(existing.confirmation.token) : null, emailSent: false });
     const open = visits.find(v => v.employeeId === me.id && !v.checkOut?.at);
     if (open) return res.status(400).json({ error: `You're still checked in at ${open.organisation}. Check out first.` });
     const id = newId("vis");
     let visit = {
-      id, employeeId: me.id, organisation,
+      id, employeeId: me.id, organisation, clientRequestId: requestId,
       dealId: b.dealId || null, stakeholderId: b.stakeholderId || null,
       purpose: String(b.purpose || "").slice(0, 300),
       contactName: String(b.contactName || "").slice(0, 100), contactPhone: String(b.contactPhone || "").slice(0, 40), contactEmail: String(b.contactEmail || "").slice(0, 120),
@@ -113,8 +116,9 @@ export default async function handler(req, res) {
       checkOut: null, durationMin: null,
       hasPhoto: !!b.photoDataUrl, photoHash: /^[0-9a-f]{16}$/.test(b.photoHash || "") ? b.photoHash : null,
       photoSource: b.photoSource === "camera" ? "camera" : b.photoDataUrl ? "upload" : null,
+      photoCapturedAt: Number.isFinite(Date.parse(b.photoCapturedAt)) && Date.parse(b.photoCapturedAt) <= Date.now() ? new Date(b.photoCapturedAt).toISOString() : null,
       notes: String(b.notes || "").slice(0, 1500), outcome: "", nextStep: "",
-      confirmation: { token: randomBytes(18).toString("base64url"), status: "pending", requestedAt: now },
+      confirmation: { token: null, status: "not_requested", requestedAt: null, workflow: "after_visit" },
       createdAt: now, offlineSync: !!offline,
     };
     await savePhoto(id, b.photoDataUrl);
@@ -129,13 +133,6 @@ export default async function handler(req, res) {
         await putRecord("deals", deal.id, deal);
       }
     }
-    let emailSent = false;
-    if (visit.contactEmail) {
-      try { emailSent = await sendVisitConfirmation(visit, me, confirmUrl(visit.confirmation.token)); }
-      catch { /* the check-in must still succeed when email is unavailable */ }
-      visit.confirmation.channel = emailSent ? "email" : "email_failed";
-      await putRecord("visits", id, visit);
-    }
     // Line manager + owner hear about every check-in (suspicious ones always).
     const alertAll = (await get(OFFICE_CONFIG_KEY))?.alertFieldVisits !== false;
     if (visit.level === "suspicious" || alertAll) {
@@ -149,17 +146,23 @@ export default async function handler(req, res) {
         link: "team:field", actorId: me.id,
       });
     }
-    return res.json({ ok: true, visit: stripPhoto(visit), confirmUrl: confirmUrl(visit.confirmation.token), emailSent });
+    return res.json({ ok: true, visit: stripPhoto(visit), confirmUrl: null, emailSent: false });
   }
 
   if (b.action === "check-out") {
     const v = await getRecord("visits", b.id);
     if (!v || v.employeeId !== me.id) return res.status(404).json({ error: "Visit not found" });
-    if (v.checkOut?.at) return res.status(400).json({ error: "Already checked out" });
+    if (v.checkOut?.at) return res.json({ ok: true, visit: stripPhoto(v), confirmUrl: v.confirmation?.token ? confirmUrl(v.confirmation.token) : null });
+    const contactEmail = typeof b.contactEmail === "string" ? b.contactEmail.trim().slice(0, 120) : v.contactEmail;
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return res.status(400).json({ error: "Enter a valid client email or leave it blank." });
+    v.contactName = typeof b.contactName === "string" ? b.contactName.trim().slice(0, 100) : v.contactName;
+    v.contactPhone = typeof b.contactPhone === "string" ? b.contactPhone.trim().slice(0, 40) : v.contactPhone;
+    v.contactEmail = contactEmail || "";
     v.checkOut = { at: now, geo: cleanGeo(b.geo), ip: meta.ip };
     v.durationMin = Math.round((Date.parse(now) - Date.parse(v.checkIn.at)) / 60000);
     v.outcome = String(b.outcome || "").slice(0, 1000);
     v.nextStep = String(b.nextStep || "").slice(0, 300);
+    if (!v.confirmation?.token) v.confirmation = { ...v.confirmation, token: randomBytes(18).toString("base64url"), status: "pending", requestedAt: now };
     const scored = await rescoreVisit(v);
     await putRecord("visits", v.id, scored);
     await logActivity(me.id, "visit", `Left ${v.organisation} after ${v.durationMin} min`);
@@ -170,12 +173,14 @@ export default async function handler(req, res) {
         body: [v.outcome, v.nextStep && `Next: ${v.nextStep}`].filter(Boolean).join(" · "), link: "team:field", actorId: me.id,
       });
     }
-    return res.json({ ok: true, visit: stripPhoto(scored) });
+    return res.json({ ok: true, visit: stripPhoto(scored), confirmUrl: confirmUrl(scored.confirmation.token) });
   }
 
   if (b.action === "resend-confirmation") {
     const v = await getRecord("visits", b.id);
     if (!v || v.employeeId !== me.id) return res.status(404).json({ error: "Visit not found" });
+    if (!v.checkOut?.at) return res.status(400).json({ error: "Finish the visit before asking the client to confirm." });
+    if (v.confirmation?.status !== "pending" || !v.confirmation?.token) return res.status(400).json({ error: "This visit does not need another confirmation request." });
     if (!v.contactEmail) return res.status(400).json({ error: "No client email on this visit. Share the link on WhatsApp instead." });
     try {
       const sent = await sendVisitConfirmation(v, me, confirmUrl(v.confirmation.token));

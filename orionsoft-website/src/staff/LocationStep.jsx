@@ -18,8 +18,10 @@ function roughTip(acc) {
 
 // Tap-to-share location with live accuracy and phone-specific help when the
 // phone refuses. Calls onChange({ geo }) or onChange({ error, kind }).
-export default function LocationStep({ onChange, label = "Share my location", allowSkip = true, where = "", skipLabel = "Continue without location (scores lower)" }) {
-  const [state, setState] = useState({ phase: "idle" });
+export default function LocationStep({ onChange, label = "Share my location", allowSkip = true, where = "", skipLabel = "Continue without location (scores lower)", initialValue = null }) {
+  const [state, setState] = useState(() => initialValue?.geo
+    ? { phase: "done", geo: initialValue.geo, ageMin: Math.max(0, Math.round((Date.now() - Date.parse(initialValue.geo.at || new Date().toISOString())) / 60000)) }
+    : initialValue?.error ? { phase: "skipped" } : { phase: "idle" });
   const control = useRef({});
 
   async function locate() {

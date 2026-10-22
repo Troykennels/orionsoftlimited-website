@@ -52,13 +52,13 @@ function loadImage(file) {
   });
 }
 
-export default function CameraCapture({ onCapture, name, geo, selfie = false }) {
+export default function CameraCapture({ onCapture, name, geo, selfie = false, initialPhoto = null }) {
   const video = useRef(null);
   const [open, setOpen] = useState(false);
   const [stream, setStream] = useState(null);
   const [facing, setFacing] = useState(selfie ? "user" : "environment");
   const [errKind, setErrKind] = useState(null);
-  const [shot, setShot] = useState(null);
+  const [shot, setShot] = useState(initialPhoto?.dataUrl || null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [attempt, setAttempt] = useState(0);

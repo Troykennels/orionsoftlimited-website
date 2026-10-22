@@ -30,7 +30,7 @@ const tx = async (mode, fn) => {
   });
 };
 const lsRead = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; } };
-const lsWrite = q => { try { localStorage.setItem(LS_KEY, JSON.stringify(q)); } catch { /* storage full */ } };
+const lsWrite = q => { try { localStorage.setItem(LS_KEY, JSON.stringify(q)); return true; } catch { return false; } };
 
 async function readAll() {
   const fromDb = await tx("readonly", s => s.getAll());
@@ -50,8 +50,9 @@ export const isNetworkError = e => !e?.status && (e instanceof TypeError || !nav
 export async function enqueue(path, body) {
   const item = { path, body: { ...body, capturedAt: new Date().toISOString() }, at: Date.now() + Math.random() };
   const ok = await tx("readwrite", s => s.put(item));
-  if (!ok) lsWrite([...lsRead(), { ...item, ls: true }]);
+  if (!ok && !lsWrite([...lsRead(), { ...item, ls: true }])) throw new Error("Could not save the offline action. Keep this page open and try again when connected.");
   window.dispatchEvent(new Event("so-offline-queue"));
+  return true;
 }
 
 let flushing = false;
