@@ -3,7 +3,7 @@
 // added to that same invoice (never a fresh one), the PDF is regenerated with
 // what's been paid and what's left, and a receipt goes to the client.
 // Invoices that follow a payment plan are paid through the plan's own link.
-import { getRecord, putRecord, newId, setLookup, getByLookup } from "./records.js";
+import { getRecord, putRecord, listRecords, newId, setLookup, getByLookup } from "./records.js";
 import { claim, del } from "../store.js";
 import { siteUrl } from "./contracts.js";
 import { computeTotals, normaliseInvoice, statusAfterPayment } from "./invoicing.js";
@@ -133,6 +133,28 @@ export async function verifyInvoicePayment(reference, secretKey) {
   const r = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${secretKey}` } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.status) throw new Error("Could not verify payment");
-  if (j.data.status !== "success") return { ...attempt, status: j.data.status === "failed" ? "failed" : "pending" };
+  if (j.data.status === "failed") { await putRecord("invoice_payments", attempt.id, { ...attempt, status: "failed", checkedAt: new Date().toISOString() }); return { ...attempt, status: "failed" }; }
+  if (j.data.status !== "success") return { ...attempt, status: "pending" };
   return recordInvoiceOnlinePayment(attempt.id, j.data);
+}
+
+// Fallback for a missed webhook: check recent unconfirmed checkouts with
+// Paystack (a few at a time, up to a week old).
+export async function reconcilePendingInvoicePayments() {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  if (!secretKey) return 0;
+  const weekAgo = Date.now() - 7 * 86400000;
+  const pending = (await listRecords("invoice_payments"))
+    .filter(a => a.status === "initialized" && Date.parse(a.createdAt) > weekAgo)
+    .sort((a, b) => String(a.checkedAt || "").localeCompare(String(b.checkedAt || "")))
+    .slice(0, 10);
+  let settled = 0;
+  for (const a of pending) {
+    try {
+      const out = await verifyInvoicePayment(a.reference, secretKey);
+      if (out?.status === "success") settled++;
+      else { const fresh = await getRecord("invoice_payments", a.id); if (fresh?.status === "initialized") await putRecord("invoice_payments", a.id, { ...fresh, checkedAt: new Date().toISOString() }); }
+    } catch (err) { console.error("[invoice-pay reconcile]", err.message); }
+  }
+  return settled;
 }

@@ -403,6 +403,9 @@ export async function runAutomations() {
     // Newsletter: email new blog posts to subscribers and send queued batches.
     try { if (await claim("orionsoft:automation:newsletter:tick", 900)) { const { newsletterJobs } = await import("./newsletter.js"); await newsletterJobs(); } }
     catch (err) { console.error("[newsletter]", err.message); }
+    // Invoice pay-link payments whose payer closed the page before returning.
+    try { if (await claim("orionsoft:automation:invoicepay:tick", 600)) { const { reconcilePendingInvoicePayments } = await import("./invoicePay.js"); await reconcilePendingInvoicePayments(); } }
+    catch (err) { console.error("[invoice-pay]", err.message); }
   } catch (err) {
     console.error("[automations]", err.message);
   } finally { running = false; }
