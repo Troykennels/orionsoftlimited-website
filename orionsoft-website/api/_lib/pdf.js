@@ -702,7 +702,11 @@ export async function renderInvoicePdf(rawInvoice) {
     ? wrapPlain(company.bankDetails, font, 9.5, W - 40)
     : wrapPlain(`To pay, contact our accounts team: ${[company.email, company.phone].filter(Boolean).join(" · ")}`, font, 9.5, W - 40);
   const refLine = `Payment reference: ${invoice.invoiceNumber}`;
-  const panelH = 26 + (bankLines.length + 1) * 13.5 + 10;
+  // Pay online: one link takes the full balance or any part of it.
+  const payLink = invoice.payCode && ["sent", "partially_paid"].includes(invoice.status) && !invoice.source?.contractId && t.balance > 0
+    ? `${(process.env.APP_BASE_URL || "https://www.orionsoftlimited.com").replace(/\/$/, "")}/pay/invoice/${invoice.payCode}` : "";
+  const payLines = payLink ? wrapPlain(`Pay online, in full or in parts: ${payLink}`, bold, 9.5, W - 40) : [];
+  const panelH = 26 + (bankLines.length + 1 + payLines.length) * 13.5 + 10;
   cursor.ensure(panelH + 70);
   const pTop = cursor.y + 6;
   cursor.page.drawRectangle({ x: MARGIN, y: pTop - panelH, width: W, height: panelH, color: PANEL, borderColor: HAIRLINE, borderWidth: 1 });
@@ -711,6 +715,7 @@ export async function renderInvoicePdf(rawInvoice) {
   let py = pTop - 34;
   for (const l of bankLines) { cursor.page.drawText(l, { x: MARGIN + 18, y: py, size: 9.5, font, color: TEXT }); py -= 13.5; }
   cursor.page.drawText(refLine, { x: MARGIN + 18, y: py, size: 9.5, font: bold, color: NAVY });
+  for (const l of payLines) { py -= 13.5; cursor.page.drawText(l, { x: MARGIN + 18, y: py, size: 9.5, font: bold, color: NAVY }); }
   cursor.y = pTop - panelH - 22;
 
   cursor.ensure(60);

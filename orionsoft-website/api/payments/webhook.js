@@ -48,6 +48,14 @@ export default async function handler(req, res) {
     }
   }
 
+  // A payment towards an invoice through its pay link (full or part).
+  if (event.event === "charge.success" && String(event.data?.reference || "").startsWith("orionsoft_inv_")) {
+    const { recordInvoiceOnlinePayment, attemptIdFromReference } = await import("../_lib/invoicePay.js");
+    try { await recordInvoiceOnlinePayment(attemptIdFromReference(event.data.reference), event.data); }
+    catch (err) { console.error("[invoice-pay webhook]", err.message); return res.status(500).json({ error: "Try again" }); }
+    return res.status(200).json({ ok: true });
+  }
+
   if (event.event === "charge.success") {
     const reference = event.data?.reference;
     const payments = await listRecords("payments");

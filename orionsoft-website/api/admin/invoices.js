@@ -10,6 +10,7 @@ import { sendEmail, brandedShell } from "../_lib/mailer.js";
 import { logAudit } from "../_lib/audit.js";
 import { getCompanySettings } from "../_lib/settings.js";
 import { computeTotals, normaliseInvoice, statusAfterPayment, isOverdue, PAYMENT_METHODS, INVOICE_TEMPLATES } from "../_lib/invoicing.js";
+import { ensureInvoicePayCode, invoicePayLink } from "../_lib/invoicePay.js";
 
 const CURRENCIES = ["NGN", "USD", "GBP", "EUR"];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -31,7 +32,7 @@ async function storePdf(invoice) {
 // What the admin UI receives: the record plus its computed money fields.
 function decorate(inv) {
   const n = normaliseInvoice(inv);
-  return { ...n, ...computeTotals(n), overdue: isOverdue(n) };
+  return { ...n, ...computeTotals(n), overdue: isOverdue(n), payLink: invoicePayLink(n) };
 }
 
 // Validates and cleans the editable fields. Returns { data } or { error }.
@@ -94,7 +95,7 @@ function cleanPayment(b, balance) {
 const money = (n, c) => `${c} ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const longDate = d => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" });
 
-async function emailInvoice(invoice, kind) {
+export async function emailInvoice(invoice, kind) {
   const company = await getCompanySettings();
   const t = computeTotals(invoice);
   const pdf = Buffer.from(await renderInvoicePdf(invoice));
@@ -105,10 +106,14 @@ async function emailInvoice(invoice, kind) {
     reminder: `This is a friendly reminder that invoice <strong>${esc(invoice.invoiceNumber)}</strong> has a balance of <strong>${money(t.balance, invoice.currency)}</strong>${due ? `, ${isOverdue(invoice) ? "which was due on" : "due on"} ${due}` : ""}. The latest copy is attached.`,
     receipt: `Thank you. We've received your payment towards invoice <strong>${esc(invoice.invoiceNumber)}</strong>. ${t.balance > 0 ? `The remaining balance is <strong>${money(t.balance, invoice.currency)}</strong>.` : "The invoice is now <strong>fully paid</strong>."} An updated copy is attached.`,
   }[kind];
+  // One link for the whole life of the invoice: pay the balance in full or in parts.
+  const link = invoicePayLink(invoice);
+  const payButton = link ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;">${kind === "receipt" ? "You can pay the rest, all at once or in parts, with the same link:" : "Pay securely online, in full or in parts:"}</p><p><a href="${link}" style="background:#C8A850;color:#060810;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">Pay invoice ${esc(invoice.invoiceNumber)}</a></p>` : "";
   const html = brandedShell(
     `<h2 style="color:#0A2540;font-size:18px;margin:0 0 12px;">${kind === "receipt" ? "Payment received" : `Invoice ${esc(invoice.invoiceNumber)}`}</h2>
      <p style="color:#3A4556;font-size:14px;line-height:1.7;">Dear ${esc(invoice.clientName)},</p>
      <p style="color:#3A4556;font-size:14px;line-height:1.7;">${lead}</p>
+     ${payButton}
      ${kind !== "receipt" && bank ? `<p style="color:#3A4556;font-size:14px;line-height:1.7;"><strong>Payment details</strong><br>${esc(bank).replace(/\n/g, "<br>")}<br>Reference: ${esc(invoice.invoiceNumber)}</p>` : ""}
      <p style="color:#3A4556;font-size:14px;line-height:1.7;">Kind regards,<br>${esc(company.companyName)}</p>`,
     { title: kind === "receipt" ? `Payment received: ${invoice.invoiceNumber}` : `Invoice from ${company.companyName}` },
@@ -117,7 +122,9 @@ async function emailInvoice(invoice, kind) {
   await sendEmail(invoice.clientEmail, subject, html, { kind: `invoice_${kind}`, attachments: [{ filename: `${invoice.invoiceNumber}.pdf`, content: pdf }] });
 }
 
-async function save(invoice) {
+export async function saveInvoice(invoice) {
+  // Anything issued and still owed gets its client pay link.
+  if (["sent", "partially_paid"].includes(invoice.status)) await ensureInvoicePayCode(invoice);
   invoice.updatedAt = new Date().toISOString();
   invoice.pdfKey = await storePdf(invoice);
   await putRecord("invoices", invoice.id, invoice);
@@ -183,7 +190,7 @@ export default async function handler(req, res) {
       invoice.sentAt = new Date().toISOString();
       if (invoice.status === "paid") invoice.paidAt = new Date().toISOString();
     }
-    const out = await save(invoice);
+    const out = await saveInvoice(invoice);
     await logAudit(session, "create_invoice", `invoice ${invoice.invoiceNumber}`, invoice.clientName);
     return res.json({ ok: true, invoice: out });
   }
@@ -203,14 +210,24 @@ export default async function handler(req, res) {
       if (!invoice.items?.length) return res.status(400).json({ error: "Can't send an invoice with no line items." });
       if (["paid", "void"].includes(invoice.status)) return res.status(400).json({ error: `This invoice is ${invoice.status === "paid" ? "already paid" : "void"}.` });
       const reminder = invoice.status !== "draft";
-      try { await emailInvoice(invoice, reminder ? "reminder" : "invoice"); }
+      // The first email already carries the pay link and the PDF shows it.
+      await ensureInvoicePayCode(invoice);
+      try { await emailInvoice(reminder ? invoice : { ...invoice, status: "sent" }, reminder ? "reminder" : "invoice"); }
       catch (e) { return res.status(502).json({ error: `The email couldn't be sent: ${e.message}` }); }
       if (!reminder) { invoice.status = "sent"; invoice.sentAt = new Date().toISOString(); }
       invoice.lastEmailedAt = new Date().toISOString();
       invoice.reminders = (invoice.reminders || 0) + (reminder ? 1 : 0);
-      const out = await save(invoice);
+      const out = await saveInvoice(invoice);
       await logAudit(session, reminder ? "remind_invoice" : "send_invoice", ref, invoice.clientName);
       return res.json({ ok: true, invoice: out });
+    }
+
+    // The client's link to pay the balance online, in full or in parts.
+    if (b.action === "pay_link") {
+      if (invoice.source?.contractId) return res.status(400).json({ error: `This invoice follows ${invoice.source.contractNumber || "a payment plan"}. Share the plan's payment link instead.` });
+      if (!["sent", "partially_paid"].includes(invoice.status)) return res.status(400).json({ error: invoice.status === "paid" ? "This invoice is already fully paid." : "Send or issue the invoice first." });
+      const out = await saveInvoice(invoice);
+      return res.json({ ok: true, invoice: out, payLink: out.payLink });
     }
 
     // Delivered another way (WhatsApp, by hand): issue it without emailing.
@@ -218,7 +235,7 @@ export default async function handler(req, res) {
       if (invoice.status !== "draft") return res.status(400).json({ error: "Only draft invoices can be marked as sent" });
       if (!invoice.items?.length) return res.status(400).json({ error: "Can't issue an invoice with no line items." });
       invoice.status = "sent"; invoice.sentAt = new Date().toISOString();
-      const out = await save(invoice);
+      const out = await saveInvoice(invoice);
       await logAudit(session, "issue_invoice", ref, invoice.clientName);
       return res.json({ ok: true, invoice: out });
     }
@@ -239,7 +256,7 @@ export default async function handler(req, res) {
       const after = computeTotals(invoice);
       invoice.status = statusAfterPayment(after.total, after.amountPaid);
       invoice.paidAt = invoice.status === "paid" ? new Date().toISOString() : null;
-      const out = await save(invoice);
+      const out = await saveInvoice(invoice);
       await logAudit(session, "record_invoice_payment", ref, `${money(payment.amount, invoice.currency)} · ${invoice.status}`);
       let receipt = null;
       if (b.sendReceipt && invoice.clientEmail) {
@@ -257,7 +274,7 @@ export default async function handler(req, res) {
       const after = computeTotals(invoice);
       invoice.status = statusAfterPayment(after.total, after.amountPaid);
       invoice.paidAt = invoice.status === "paid" ? invoice.paidAt : null;
-      const out = await save(invoice);
+      const out = await saveInvoice(invoice);
       await logAudit(session, "delete_invoice_payment", ref, b.paymentId);
       return res.json({ ok: true, invoice: out });
     }
@@ -267,7 +284,7 @@ export default async function handler(req, res) {
       if (invoice.status === "paid") return res.status(400).json({ error: "A fully paid invoice can't be voided" });
       invoice.status = "void"; invoice.voidedAt = new Date().toISOString();
       invoice.voidReason = String(b.reason || "").trim().slice(0, 300);
-      const out = await save(invoice);
+      const out = await saveInvoice(invoice);
       await logAudit(session, "void_invoice", ref, invoice.voidReason);
       return res.json({ ok: true, invoice: out });
     }
@@ -277,12 +294,12 @@ export default async function handler(req, res) {
       const days = invoice.dueDate && invoice.issueDate ? Math.round((Date.parse(invoice.dueDate) - Date.parse(invoice.issueDate)) / 86400000) : null;
       const copy = {
         ...invoice, id: newId("inv"), invoiceNumber: await nextInvoiceNumber(),
-        status: "draft", payments: [], paidAt: null, sentAt: null, voidedAt: null, voidReason: "", lastEmailedAt: null, reminders: 0,
+        status: "draft", payments: [], payCode: "", paidAt: null, sentAt: null, voidedAt: null, voidReason: "", lastEmailedAt: null, reminders: 0,
         issueDate: today(), dueDate: days != null ? new Date(Date.now() + days * 86400000).toISOString().slice(0, 10) : null,
         createdAt: new Date().toISOString(), createdBy: session.sub, duplicatedFrom: invoice.invoiceNumber,
       };
       delete copy.discount;
-      const out = await save(copy);
+      const out = await saveInvoice(copy);
       await logAudit(session, "duplicate_invoice", `invoice ${copy.invoiceNumber}`, `from ${invoice.invoiceNumber}`);
       return res.json({ ok: true, invoice: out });
     }
@@ -295,7 +312,7 @@ export default async function handler(req, res) {
     if (error) return res.status(400).json({ error });
     Object.assign(invoice, data);
     delete invoice.discount;
-    const out = await save(invoice);
+    const out = await saveInvoice(invoice);
     await logAudit(session, "edit_invoice", ref, invoice.clientName);
     return res.json({ ok: true, invoice: out });
   }
